@@ -7,14 +7,14 @@ namespace Tests\Browser;
 use App\Models\Assessment;
 use App\Models\Finding;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Laravel\Dusk\Browser;
 use PHPUnit\Framework\Assert;
 use Tests\DuskTestCase;
 
 final class MilestoneZeroTest extends DuskTestCase
 {
-    use DatabaseMigrations;
+    use DatabaseTruncation;
 
     public function test_admin_login_and_native_workspace_actions_have_no_console_errors(): void
     {
@@ -28,6 +28,9 @@ final class MilestoneZeroTest extends DuskTestCase
             fn ($sequence): array => ['sort_order' => $sequence->index + 1],
         )->create();
         $firstFindingId = (int) $assessment->findings()->firstOrFail()->getKey();
+        Finding::query()->findOrFail($firstFindingId)->update([
+            'problem' => str_repeat('Long multiline content must stay inside a compact row. ', 30),
+        ]);
 
         $multilineProblem = "Prima riga Dusk\nSeconda riga con priorità";
 
@@ -53,7 +56,89 @@ final class MilestoneZeroTest extends DuskTestCase
                 ->assertPresent('[data-dusk="delete-finding"]')
                 ->assertPresent('[data-dusk="reorder-findings"]')
                 ->assertPresent('[data-dusk="move-down-finding"]')
+                ->assertPresent('.fi-fo-table-repeater.fi-compact')
                 ->waitUntil('return document.documentElement.dataset.assestmeWorkspaceAsset === "loaded"');
+
+            $desktopLayout = $browser->script(<<<'JS'
+                const wrapper = document.querySelector('.fi-fo-table-repeater');
+                const firstRow = wrapper.querySelector('tbody tr');
+                const problem = firstRow.querySelector('[data-dusk="finding-problem"]');
+                const actionCell = firstRow.lastElementChild;
+                const cloneAction = actionCell.querySelector('[data-dusk="clone-finding"]');
+                const deleteAction = actionCell.querySelector('[data-dusk="delete-finding"]');
+                const titleCell = firstRow.querySelector('td:nth-of-type(2)');
+                const firstHeader = wrapper.querySelector('thead th:nth-of-type(2)');
+                const table = wrapper.querySelector('table');
+
+                return {
+                    actionCellLeft: actionCell.getBoundingClientRect().left,
+                    actionCellRight: actionCell.getBoundingClientRect().right,
+                    actionCellWidth: actionCell.getBoundingClientRect().width,
+                    cloneActionLeft: cloneAction.getBoundingClientRect().left,
+                    deleteActionRight: deleteAction.getBoundingClientRect().right,
+                    documentClientWidth: document.documentElement.clientWidth,
+                    documentScrollWidth: document.documentElement.scrollWidth,
+                    firstRowHeight: firstRow.getBoundingClientRect().height,
+                    headerPosition: getComputedStyle(firstHeader).position,
+                    problemHeight: problem.getBoundingClientRect().height,
+                    tableWidth: table.getBoundingClientRect().width,
+                    titlePosition: getComputedStyle(titleCell).position,
+                    actionPosition: getComputedStyle(actionCell).position,
+                    wrapperClientHeight: wrapper.clientHeight,
+                    wrapperClientWidth: wrapper.clientWidth,
+                    wrapperScrollHeight: wrapper.scrollHeight,
+                    wrapperScrollWidth: wrapper.scrollWidth,
+                    wrappedHeaderCount: wrapper.querySelectorAll('thead th.fi-wrapped').length,
+                };
+                JS)[0];
+
+            Assert::assertLessThanOrEqual(120, $desktopLayout['firstRowHeight']);
+            Assert::assertLessThanOrEqual(192, $desktopLayout['problemHeight']);
+            Assert::assertGreaterThanOrEqual(96, $desktopLayout['actionCellWidth']);
+            Assert::assertGreaterThanOrEqual($desktopLayout['actionCellLeft'], $desktopLayout['cloneActionLeft']);
+            Assert::assertLessThanOrEqual($desktopLayout['actionCellRight'], $desktopLayout['deleteActionRight']);
+            Assert::assertGreaterThanOrEqual(1880, $desktopLayout['tableWidth']);
+            Assert::assertGreaterThan($desktopLayout['wrapperClientWidth'], $desktopLayout['wrapperScrollWidth']);
+            Assert::assertGreaterThan($desktopLayout['wrapperClientHeight'], $desktopLayout['wrapperScrollHeight']);
+            Assert::assertSame('sticky', $desktopLayout['headerPosition']);
+            Assert::assertSame('sticky', $desktopLayout['titlePosition']);
+            Assert::assertSame('sticky', $desktopLayout['actionPosition']);
+            Assert::assertSame(10, $desktopLayout['wrappedHeaderCount']);
+            Assert::assertLessThanOrEqual(
+                $desktopLayout['documentClientWidth'],
+                $desktopLayout['documentScrollWidth'],
+                'The table repeater must not overflow the document viewport.',
+            );
+
+            $pinnedLayout = $browser->script(<<<'JS'
+                const wrapper = document.querySelector('.fi-fo-table-repeater');
+                const firstRow = wrapper.querySelector('tbody tr');
+                const cells = firstRow.querySelectorAll(':scope > td');
+                const header = wrapper.querySelector('thead th:nth-of-type(2)');
+
+                wrapper.scrollLeft = 600;
+                wrapper.scrollTop = 300;
+
+                const result = {
+                    actionRight: cells[cells.length - 1].getBoundingClientRect().right,
+                    headerTop: header.getBoundingClientRect().top,
+                    reorderLeft: cells[0].getBoundingClientRect().left,
+                    titleLeft: cells[1].getBoundingClientRect().left,
+                    wrapperLeft: wrapper.getBoundingClientRect().left,
+                    wrapperRight: wrapper.getBoundingClientRect().right,
+                    wrapperTop: wrapper.getBoundingClientRect().top,
+                };
+
+                wrapper.scrollLeft = 0;
+                wrapper.scrollTop = 0;
+
+                return result;
+                JS)[0];
+
+            Assert::assertEqualsWithDelta($pinnedLayout['wrapperLeft'], $pinnedLayout['reorderLeft'], 1);
+            Assert::assertEqualsWithDelta($pinnedLayout['wrapperLeft'] + 112, $pinnedLayout['titleLeft'], 1);
+            Assert::assertEqualsWithDelta($pinnedLayout['wrapperRight'], $pinnedLayout['actionRight'], 16);
+            Assert::assertEqualsWithDelta($pinnedLayout['wrapperTop'], $pinnedLayout['headerTop'], 1);
 
             $problem = $browser->element('tbody tr:first-child [data-dusk="finding-problem"]');
             Assert::assertNotNull($problem);
@@ -90,6 +175,29 @@ final class MilestoneZeroTest extends DuskTestCase
             $browser->waitForText('Offline');
             $browser->script('window.dispatchEvent(new Event("online"))');
             $browser->waitForText('Modifiche non salvate');
+
+            $browser->resize(390, 844)->pause(500);
+            $mobileLayout = $browser->script(<<<'JS'
+                const wrapper = document.querySelector('.fi-fo-table-repeater');
+                const table = wrapper.querySelector('table');
+                const firstRow = table.querySelector('tbody tr');
+
+                return {
+                    documentClientWidth: document.documentElement.clientWidth,
+                    documentScrollWidth: document.documentElement.scrollWidth,
+                    firstRowDisplay: getComputedStyle(firstRow).display,
+                    tableDisplay: getComputedStyle(table).display,
+                };
+                JS)[0];
+
+            Assert::assertSame('block', $mobileLayout['tableDisplay']);
+            Assert::assertSame('grid', $mobileLayout['firstRowDisplay']);
+            Assert::assertLessThanOrEqual(
+                $mobileLayout['documentClientWidth'],
+                $mobileLayout['documentScrollWidth'],
+                'The responsive repeater must not overflow the mobile viewport.',
+            );
+            $browser->resize(1920, 1080)->pause(250);
 
             $severeLogs = array_values(array_filter(
                 $browser->driver->manage()->getLog('browser'),

@@ -15,6 +15,7 @@ use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
@@ -24,6 +25,8 @@ use Throwable;
 
 final class WorkspaceAssessment extends EditRecord
 {
+    protected Width|string|null $maxContentWidth = Width::Full;
+
     public const STATUS_SAVED = 'saved';
 
     public const STATUS_UNSAVED = 'unsaved';

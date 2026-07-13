@@ -21,6 +21,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\VerticalAlignment;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
@@ -33,6 +34,9 @@ final class AssessmentWorkspaceForm
             ->columns(1)
             ->components([
                 Section::make(__('assestme.workspace.assessment_section'))
+                    ->compact()
+                    ->collapsible()
+                    ->persistCollapsed()
                     ->columns(3)
                     ->schema([
                         TextInput::make('title')
@@ -64,17 +68,19 @@ final class AssessmentWorkspaceForm
                         modifyQueryUsing: fn (Builder $query): Builder => $query->orderBy('sort_order'),
                     )
                     ->table([
-                        TableColumn::make(__('assestme.findings.fields.title'))->width('14rem'),
-                        TableColumn::make(__('assestme.findings.fields.problem'))->width('20rem'),
-                        TableColumn::make(__('assestme.findings.fields.entrepreneur_notes'))->width('20rem'),
-                        TableColumn::make(__('assestme.findings.fields.recommended_solution'))->width('20rem'),
-                        TableColumn::make(__('assestme.findings.fields.priority'))->width('10rem'),
-                        TableColumn::make(__('assestme.findings.fields.effort'))->width('10rem'),
-                        TableColumn::make(__('assestme.findings.fields.estimate_type'))->width('12rem'),
-                        TableColumn::make(__('assestme.findings.fields.estimate_notes'))->width('16rem'),
-                        TableColumn::make(__('assestme.findings.fields.status'))->width('11rem'),
-                        TableColumn::make(__('assestme.findings.fields.include'))->width('7rem'),
+                        self::tableColumn('assestme.findings.fields.title', '11rem'),
+                        self::tableColumn('assestme.findings.fields.problem', '17rem'),
+                        self::tableColumn('assestme.findings.fields.entrepreneur_notes', '15rem'),
+                        self::tableColumn('assestme.findings.fields.recommended_solution', '15rem'),
+                        self::tableColumn('assestme.findings.fields.priority', '7rem'),
+                        self::tableColumn('assestme.findings.fields.effort', '7rem'),
+                        self::tableColumn('assestme.findings.fields.estimate_type', '10rem'),
+                        self::tableColumn('assestme.findings.fields.estimate_notes', '12rem'),
+                        self::tableColumn('assestme.findings.fields.status', '8rem'),
+                        self::tableColumn('assestme.findings.fields.include', '6rem'),
                     ])
+                    ->compact()
+                    ->extraAttributes(['class' => 'assestme-workspace-findings'])
                     ->schema([
                         Hidden::make('id'),
                         Hidden::make('_temporary_uuid')
@@ -136,12 +142,18 @@ final class AssessmentWorkspaceForm
         return Textarea::make($name)
             ->label(__($labelKey))
             ->rows(3)
-            ->autosize()
             ->maxLength(20000)
             ->extraInputAttributes([
                 'data-dusk' => "finding-{$name}",
-                'style' => 'max-height: 12rem; overflow-y: auto;',
             ]);
+    }
+
+    private static function tableColumn(string $labelKey, string $width): TableColumn
+    {
+        return TableColumn::make(__($labelKey))
+            ->width($width)
+            ->wrapHeader()
+            ->verticalAlignment(VerticalAlignment::Start);
     }
 
     private static function autosaveCallback(WorkspaceAssessment $livewire): void

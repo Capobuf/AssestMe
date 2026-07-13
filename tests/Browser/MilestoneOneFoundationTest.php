@@ -12,14 +12,14 @@ use App\Models\Client;
 use App\Models\Site;
 use App\Models\Tag;
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Laravel\Dusk\Browser;
 use PHPUnit\Framework\Assert;
 use Tests\DuskTestCase;
 
 final class MilestoneOneFoundationTest extends DuskTestCase
 {
-    use DatabaseMigrations;
+    use DatabaseTruncation;
 
     public function test_client_and_site_resources_render_without_console_errors(): void
     {
