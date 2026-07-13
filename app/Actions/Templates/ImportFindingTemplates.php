@@ -75,17 +75,89 @@ final class ImportFindingTemplates
         });
     }
 
-    /** @return list<array{external_id:string,status:string}> */
+    /** @return list<array{external_id:string,status:string,differences:list<string>}> */
     public function preview(string $json): array
     {
         $document = $this->validatedDocument($json);
-        $existing = FindingTemplate::withTrashed()->whereIn('external_id', array_column($document['templates'], 'external_id'))
-            ->pluck('external_id')->all();
+        $existing = FindingTemplate::withTrashed()
+            ->with(['category', 'tags', 'solutions.effortLevel', 'defaultConsequenceLevel', 'defaultLikelihoodLevel', 'defaultPriorityLevel'])
+            ->whereIn('external_id', array_column($document['templates'], 'external_id'))
+            ->get()
+            ->keyBy('external_id');
 
-        return array_map(static fn (array $row): array => [
-            'external_id' => (string) $row['external_id'],
-            'status' => in_array($row['external_id'], $existing, true) ? 'replace' : 'create',
-        ], $document['templates']);
+        return array_map(function (array $row) use ($existing): array {
+            $template = $existing->get($row['external_id']);
+            if (! $template instanceof FindingTemplate) {
+                return ['external_id' => (string) $row['external_id'], 'status' => 'create', 'differences' => []];
+            }
+
+            $differences = $this->differences($template, $row);
+
+            return [
+                'external_id' => (string) $row['external_id'],
+                'status' => $differences === [] ? 'unchanged' : 'replace',
+                'differences' => $differences,
+            ];
+        }, $document['templates']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return list<string>
+     */
+    private function differences(FindingTemplate $template, array $row): array
+    {
+        $current = [
+            'title' => $template->title,
+            'category' => $template->category->name,
+            'tags' => $template->tags->sortBy(fn (Tag $tag) => $this->normalizeName($tag->name))->pluck('name')->values()->all(),
+            'problem' => $template->problem,
+            'entrepreneur_notes' => $template->entrepreneur_notes,
+            'technical_notes' => $template->technical_notes,
+            'default_scope_type' => $template->default_scope_type->value,
+            'default_scope_description' => $template->default_scope_description,
+            'consequence' => $template->defaultConsequenceLevel?->code,
+            'likelihood' => $template->defaultLikelihoodLevel?->code,
+            'priority' => $template->defaultPriorityLevel?->code,
+            'priority_rationale' => $template->priority_rationale,
+            'active' => $template->is_enabled,
+        ];
+        $incoming = collect($row)->only(array_keys($current))->all();
+        $differences = [];
+
+        foreach ($current as $field => $value) {
+            $incomingValue = $incoming[$field] ?? null;
+            if ($field === 'tags') {
+                sort($value);
+                sort($incomingValue);
+            }
+            if ($value !== $incomingValue) {
+                $differences[] = $field;
+            }
+        }
+
+        $currentSolutions = $template->solutions->map(static fn (FindingTemplateSolution $solution): array => [
+            'external_id' => $solution->external_id,
+            'title' => $solution->title,
+            'description' => $solution->description,
+            'comparison_notes' => $solution->comparison_notes,
+            'effort' => $solution->effortLevel?->code,
+            'effort_notes' => $solution->effort_notes,
+            'estimate_type' => $solution->estimate_type->value,
+            'amount_min' => $solution->amount_min === null ? null : (float) $solution->amount_min,
+            'amount_max' => $solution->amount_max === null ? null : (float) $solution->amount_max,
+            'currency_code' => $solution->currency_code,
+            'billing_frequency' => $solution->billing_frequency->value,
+            'custom_billing_frequency' => $solution->custom_billing_frequency,
+            'estimate_notes' => $solution->estimate_notes,
+            'recommended' => $solution->is_recommended,
+            'sort_order' => $solution->sort_order,
+        ])->values()->all();
+        if ($currentSolutions !== $row['solutions']) {
+            $differences[] = 'solutions';
+        }
+
+        return $differences;
     }
 
     /** @return array{schema_version:int,templates:list<array<string, mixed>>} */

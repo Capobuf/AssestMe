@@ -43,8 +43,8 @@
                 <tr>
                     <td>{{ $finding->sort_order }}</td>
                     <td>{{ $finding->title }}</td>
-                    <td>{{ $finding->priority?->value ?? 'Non definita' }}</td>
-                    <td class="multiline">{{ $finding->recommended_solution_summary }}</td>
+                    <td>{{ $finding->priorityLevel?->label ?? 'Non definita' }}</td>
+                    <td class="multiline">{{ $finding->recommendedSolution?->description }}</td>
                 </tr>
             @endforeach
         </tbody>
@@ -61,7 +61,7 @@
             <p><strong>Note per l’imprenditore</strong></p>
             <p class="multiline">{{ $finding->entrepreneur_notes }}</p>
             <p><strong>Soluzione raccomandata</strong></p>
-            <p class="multiline">{{ $finding->recommended_solution_summary }}</p>
+            <p class="multiline">{{ $finding->recommendedSolution?->description }}</p>
         </section>
     @empty
         <p>Nessun finding presente.</p>

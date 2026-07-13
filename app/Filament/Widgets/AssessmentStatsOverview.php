@@ -6,7 +6,6 @@ namespace App\Filament\Widgets;
 
 use App\Enums\AssessmentStatus;
 use App\Enums\DeletionOperationStatus;
-use App\Enums\FindingPriority;
 use App\Enums\FindingStatus;
 use App\Models\Assessment;
 use App\Models\DeletionOperation;
@@ -43,7 +42,7 @@ final class AssessmentStatsOverview extends StatsOverviewWidget
                 __('assestme.dashboard.urgent_findings'),
                 Finding::query()
                     ->where('include_in_report', true)
-                    ->whereIn('priority', [FindingPriority::High, FindingPriority::Critical])
+                    ->whereHas('priorityLevel', fn ($query) => $query->whereIn('code', ['high', 'critical']))
                     ->count(),
             ),
             Stat::make(

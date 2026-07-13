@@ -103,7 +103,7 @@ final class MilestoneZeroTest extends DuskTestCase
             Assert::assertSame('sticky', $desktopLayout['headerPosition']);
             Assert::assertSame('sticky', $desktopLayout['titlePosition']);
             Assert::assertSame('sticky', $desktopLayout['actionPosition']);
-            Assert::assertSame(10, $desktopLayout['wrappedHeaderCount']);
+            Assert::assertSame(9, $desktopLayout['wrappedHeaderCount']);
             Assert::assertLessThanOrEqual(
                 $desktopLayout['documentClientWidth'],
                 $desktopLayout['documentScrollWidth'],

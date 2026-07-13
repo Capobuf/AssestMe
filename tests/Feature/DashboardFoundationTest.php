@@ -4,22 +4,24 @@ declare(strict_types=1);
 
 use App\Enums\AssessmentStatus;
 use App\Enums\DeletionOperationStatus;
-use App\Enums\FindingPriority;
 use App\Enums\FindingStatus;
 use App\Filament\Widgets\AssessmentStatsOverview;
 use App\Filament\Widgets\LatestAssessments;
 use App\Models\Assessment;
 use App\Models\DeletionOperation;
 use App\Models\Finding;
+use App\Models\PriorityLevel;
 use App\Models\User;
 use App\Services\Backups\LatestBackupStatus;
 use Carbon\CarbonImmutable;
+use Database\Seeders\MilestoneOneSeeder;
 use Illuminate\Support\Facades\File;
 use Livewire\Livewire;
 
 it('shows actionable dashboard counts and only the latest five assessments', function (): void {
     $administrator = User::factory()->create();
     $this->actingAs($administrator);
+    $this->seed(MilestoneOneSeeder::class);
 
     Assessment::factory()->count(6)->sequence(
         fn ($sequence): array => [
@@ -32,12 +34,12 @@ it('shows actionable dashboard counts and only the latest five assessments', fun
     $assessment = Assessment::query()->latest('updated_at')->firstOrFail();
     Finding::factory()->for($assessment)->create([
         'status' => FindingStatus::Open,
-        'priority' => FindingPriority::Critical,
+        'priority_level_id' => PriorityLevel::query()->where('code', 'critical')->value('id'),
         'include_in_report' => true,
     ]);
     Finding::factory()->for($assessment)->create([
         'status' => FindingStatus::Resolved,
-        'priority' => FindingPriority::High,
+        'priority_level_id' => PriorityLevel::query()->where('code', 'high')->value('id'),
         'include_in_report' => false,
     ]);
     DeletionOperation::query()->create([

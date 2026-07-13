@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * @property int $id
+ * @property int $finding_template_id
+ * @property int|null $effort_level_id
  * @property string $external_id
  * @property string $title
  * @property string $description

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\ScopeType;
+use Database\Factories\FindingTemplateFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -14,6 +16,10 @@ use Illuminate\Support\Collection;
 
 /**
  * @property int $id
+ * @property int $category_id
+ * @property int|null $default_consequence_level_id
+ * @property int|null $default_likelihood_level_id
+ * @property int|null $default_priority_level_id
  * @property string $external_id
  * @property string $title
  * @property string $problem
@@ -32,6 +38,9 @@ use Illuminate\Support\Collection;
  */
 class FindingTemplate extends Model
 {
+    /** @use HasFactory<FindingTemplateFactory> */
+    use HasFactory;
+
     use SoftDeletes;
 
     /** @var list<string> */

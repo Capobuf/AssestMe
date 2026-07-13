@@ -10,7 +10,7 @@ final readonly class WorkspaceSaveData
 {
     /**
      * @param array{
-     *     assessment: array{title: string, assessment_date: string},
+     *     assessment: array<string, mixed>,
      *     findings: list<array<string, mixed>>
      * } $payload
      */

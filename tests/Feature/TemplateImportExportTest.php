@@ -38,7 +38,7 @@ it('previews conflicts and skips existing templates without changing them', func
     $preview = app(ImportFindingTemplates::class)->preview($json);
     $result = app(ImportFindingTemplates::class)->handle($json, 'skip');
 
-    expect(array_unique(array_column($preview, 'status')))->toBe(['replace'])
+    expect(array_unique(array_column($preview, 'status')))->toBe(['unchanged'])
         ->and($result)->toBe(['created' => 0, 'replaced' => 0, 'skipped' => 5])
         ->and(FindingTemplate::query()->where('external_id', 'fixture.exact.monthly')->value('title'))->toBe($originalTitle);
 });

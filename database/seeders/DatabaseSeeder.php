@@ -13,7 +13,8 @@ final class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        $this->call(MilestoneZeroSeeder::class);
         $this->call(MilestoneOneSeeder::class);
+        $this->call(MilestoneTwoSeeder::class);
+        $this->call(MilestoneZeroSeeder::class);
     }
 }
