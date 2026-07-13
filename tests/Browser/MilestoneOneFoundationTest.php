@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Browser;
 
+use App\Models\Asset;
+use App\Models\AssetType;
 use App\Models\Client;
 use App\Models\Site;
 use App\Models\User;
@@ -27,8 +29,18 @@ final class MilestoneOneFoundationTest extends DuskTestCase
             'name' => 'Sede prova browser',
             'city' => 'Torino',
         ]);
+        $assetType = AssetType::factory()->create([
+            'name' => 'Server browser',
+            'slug' => 'server-browser',
+            'sort_order' => 1,
+        ]);
+        $asset = Asset::factory()
+            ->for($client)
+            ->for($site)
+            ->for($assetType, 'assetType')
+            ->create(['name' => 'Asset prova browser']);
 
-        $this->browse(function (Browser $browser) use ($administrator, $client, $site): void {
+        $this->browse(function (Browser $browser) use ($administrator, $asset, $client, $site): void {
             $browser->loginAs($administrator)
                 ->visit('/admin/clients')
                 ->waitForText('Clienti')
@@ -53,6 +65,21 @@ final class MilestoneOneFoundationTest extends DuskTestCase
                 'return Array.from(document.querySelectorAll("input")).map((element) => element.value);',
             );
             Assert::assertContains('Sede prova browser', $siteInputValues[0] ?? []);
+
+            $browser->visit('/admin/asset-types')
+                ->waitForText('Tipologie asset')
+                ->assertSee('Server browser')
+                ->visit('/admin/assets')
+                ->waitForText('Asset')
+                ->assertSee('Asset prova browser')
+                ->assertSee('Cliente prova browser S.r.l.')
+                ->visit("/admin/assets/{$asset->getKey()}/edit")
+                ->waitForText('Identificazione');
+
+            $assetInputValues = $browser->script(
+                'return Array.from(document.querySelectorAll("input")).map((element) => element.value);',
+            );
+            Assert::assertContains('Asset prova browser', $assetInputValues[0] ?? []);
 
             $severeLogs = array_values(array_filter(
                 $browser->driver->manage()->getLog('browser'),

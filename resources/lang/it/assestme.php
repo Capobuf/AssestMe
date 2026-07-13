@@ -8,6 +8,12 @@ return [
     ],
     'navigation' => [
         'registry' => 'Anagrafica',
+        'library' => 'Libreria',
+    ],
+    'common' => [
+        'description' => 'Descrizione',
+        'enabled' => 'Abilitata',
+        'sort_order' => 'Ordine',
     ],
     'address' => [
         'section' => 'Indirizzo',
@@ -58,6 +64,47 @@ return [
             'name' => 'Nome',
             'description' => 'Descrizione',
             'notes' => 'Note',
+        ],
+    ],
+    'asset_types' => [
+        'navigation' => 'Tipologie asset',
+        'singular' => 'tipologia asset',
+        'plural' => 'tipologie asset',
+        'section' => 'Tipologia asset',
+        'fields' => [
+            'name' => 'Nome',
+            'slug' => 'Slug',
+        ],
+        'slug_help' => 'Se vuoto viene generato dal nome. Gli slug già usati restano riservati.',
+        'disabled_option' => ':name — disabilitata',
+    ],
+    'assets' => [
+        'navigation' => 'Asset',
+        'singular' => 'asset',
+        'plural' => 'asset',
+        'sections' => [
+            'assignment' => 'Assegnazione',
+            'identification' => 'Identificazione',
+            'details' => 'Dettagli',
+        ],
+        'fields' => [
+            'client' => 'Cliente',
+            'site' => 'Sede',
+            'asset_type' => 'Tipologia asset',
+            'name' => 'Nome',
+            'manufacturer' => 'Produttore',
+            'model' => 'Modello',
+            'hostname' => 'Hostname',
+            'ip_address' => 'Indirizzo IP',
+            'mac_address' => 'Indirizzo MAC',
+            'serial_number' => 'Numero di serie',
+            'notes' => 'Note',
+        ],
+        'identifier_help' => 'Compila almeno uno tra nome, modello, hostname, IP, MAC o numero di serie.',
+        'errors' => [
+            'identifier_required' => 'È richiesto almeno un valore identificativo.',
+            'site_client' => 'La sede selezionata non appartiene al cliente.',
+            'asset_type_disabled' => 'La tipologia asset selezionata è disabilitata.',
         ],
     ],
     'admin' => [

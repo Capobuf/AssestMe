@@ -48,6 +48,12 @@ class Client extends Model
         return $this->hasMany(Site::class);
     }
 
+    /** @return HasMany<Asset, $this> */
+    public function assets(): HasMany
+    {
+        return $this->hasMany(Asset::class);
+    }
+
     public function displayName(): string
     {
         return $this->trade_name ?: $this->legal_name;
