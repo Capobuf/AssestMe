@@ -1,0 +1,92 @@
+name: Quality
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    services: {}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip
+          tools: composer:v2
+
+      - name: Validate Composer metadata
+        run: composer validate --strict
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Audit locked dependencies
+        run: composer audit --locked --no-interaction
+
+      - name: Prepare environment
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
+        run: |
+          cp .env.example .env
+          touch database/database.sqlite
+          php artisan key:generate --force
+          php artisan migrate:fresh --seed --force
+          php artisan filament:assets
+
+      - name: Check formatting
+        run: vendor/bin/pint --test
+
+      - name: Run static analysis
+        run: vendor/bin/phpstan analyse --memory-limit=1G
+
+      - name: Run application tests
+        run: php artisan test
+
+      - name: Run Filament Canary
+        run: php artisan canary:check --strict
+
+      - name: Detect ChromeDriver version
+        run: php artisan dusk:chrome-driver --detect
+
+      - name: Start application
+        run: |
+          php artisan serve --host=127.0.0.1 --port=8000 > storage/logs/ci-server.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8000/admin >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat storage/logs/ci-server.log
+          exit 1
+
+      - name: Run browser tests
+        env:
+          APP_URL: http://127.0.0.1:8000
+        run: php artisan dusk
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: assestme-failure-artifacts
+          path: |
+            storage/logs/*.log
+            tests/Browser/screenshots
+            tests/Browser/console
+          if-no-files-found: ignore

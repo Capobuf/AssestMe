@@ -1,0 +1,84 @@
+name: Quality
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      APP_URL: http://127.0.0.1:8000
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ${{ github.workspace }}/database/database.sqlite
+      CACHE_STORE: file
+      SESSION_DRIVER: file
+      QUEUE_CONNECTION: sync
+      LARAVEL_PDF_DRIVER: dompdf
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip
+          ini-values: memory_limit=512M
+          tools: composer:v2
+
+      - name: Validate and install locked dependencies
+        run: |
+          composer validate --strict
+          composer install --no-interaction --prefer-dist --no-progress
+          composer audit --locked --no-interaction
+
+      - name: Prepare SQLite and application assets
+        run: |
+          touch database/database.sqlite
+          php artisan migrate:fresh --seed --force
+          php artisan filament:assets
+
+      - name: Run quality gates
+        run: |
+          vendor/bin/pint --test
+          vendor/bin/phpstan analyse --memory-limit=1G
+          php artisan test
+          php artisan canary:check --strict
+          php artisan assestme:diagnose
+          php artisan assestme:benchmark --findings=50
+
+      - name: Install matching ChromeDriver
+        run: php artisan dusk:chrome-driver --detect
+
+      - name: Run Dusk against the local server
+        run: |
+          php artisan serve --host=127.0.0.1 --port=8000 > storage/logs/ci-server.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8000/admin/login >/dev/null; then
+              php artisan dusk
+              exit $?
+            fi
+            sleep 1
+          done
+          cat storage/logs/ci-server.log
+          exit 1
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: assestme-failure-artifacts
+          path: |
+            storage/logs/*.log
+            tests/Browser/screenshots
+            tests/Browser/console
+          if-no-files-found: ignore

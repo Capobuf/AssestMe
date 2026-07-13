@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "templates": [
+    {
+      "external_id": "fixture.range.yearly",
+      "title": "Stima a intervallo annuale",
+      "category": "Fixture",
+      "tags": [
+        "Fixture",
+        "Import"
+      ],
+      "problem": "Problema di prova: Stima a intervallo annuale.",
+      "entrepreneur_notes": "Nota non tecnica usata per verificare import ed export.",
+      "technical_notes": "Nota tecnica usata esclusivamente nelle fixture.",
+      "default_scope_type": "selected_sites",
+      "default_scope_description": null,
+      "consequence": "significant",
+      "likelihood": "possible",
+      "priority": "moderate",
+      "priority_rationale": "Motivazione di prova coerente con la matrice configurata.",
+      "active": true,
+      "solutions": [
+        {
+          "external_id": "license",
+          "title": "Licenza annuale",
+          "description": "Descrizione operativa per licenza annuale.",
+          "comparison_notes": null,
+          "effort": "moderate",
+          "effort_notes": "Fixture destinata alla validazione dei rami dello schema.",
+          "estimate_type": "range",
+          "amount_min": 120.0,
+          "amount_max": 240.0,
+          "currency_code": "EUR",
+          "billing_frequency": "yearly",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Valore di prova per importazione e formattazione.",
+          "recommended": true,
+          "sort_order": 0
+        },
+        {
+          "external_id": "custom-service",
+          "title": "Servizio con frequenza personalizzata",
+          "description": "Descrizione operativa per servizio con frequenza personalizzata.",
+          "comparison_notes": null,
+          "effort": "moderate",
+          "effort_notes": "Fixture destinata alla validazione dei rami dello schema.",
+          "estimate_type": "exact",
+          "amount_min": 75.0,
+          "amount_max": null,
+          "currency_code": "EUR",
+          "billing_frequency": "custom",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Valore di prova per importazione e formattazione.",
+          "recommended": false,
+          "sort_order": 1
+        }
+      ]
+    }
+  ]
+}

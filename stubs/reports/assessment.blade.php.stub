@@ -1,0 +1,475 @@
+{{-- 
+    AssestMe base report template.
+
+    This template intentionally uses DOMPDF-compatible layout primitives.
+    `$report` must be an immutable App\Data\Reports\AssessmentReportData instance.
+    Every string rendered from persisted content is escaped.
+--}}
+<!DOCTYPE html>
+<html lang="{{ $report->locale }}">
+<head>
+    <meta charset="utf-8">
+    <title>{{ $report->title }}</title>
+    <style>
+        @page {
+            margin: 24mm 16mm 22mm 16mm;
+        }
+
+        body {
+            font-family: "DejaVu Sans", sans-serif;
+            color: #1f2937;
+            font-size: 9.5pt;
+            line-height: 1.45;
+        }
+
+        h1, h2, h3, p {
+            margin-top: 0;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .avoid-break {
+            page-break-inside: avoid;
+        }
+
+        .cover {
+            text-align: center;
+            padding-top: 48mm;
+        }
+
+        .cover-logo {
+            max-height: 32mm;
+            max-width: 90mm;
+            margin-bottom: 18mm;
+        }
+
+        .cover h1 {
+            font-size: 27pt;
+            margin-bottom: 8mm;
+        }
+
+        .muted {
+            color: #6b7280;
+        }
+
+        .confidentiality {
+            border: 1px solid #9ca3af;
+            display: inline-block;
+            font-size: 8pt;
+            margin-top: 20mm;
+            padding: 2mm 4mm;
+            text-transform: uppercase;
+        }
+
+        .section-title {
+            border-bottom: 2px solid {{ $report->primaryColor }};
+            font-size: 17pt;
+            margin-bottom: 7mm;
+            padding-bottom: 2mm;
+        }
+
+        .subsection-title {
+            color: {{ $report->primaryColor }};
+            font-size: 12pt;
+            margin-bottom: 3mm;
+        }
+
+        .finding-header {
+            background: #f3f4f6;
+            border-left: 5px solid {{ $report->primaryColor }};
+            padding: 5mm;
+            margin-bottom: 5mm;
+        }
+
+        .finding-header h2 {
+            font-size: 16pt;
+            margin-bottom: 2mm;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .meta-table td,
+        .detail-table td {
+            padding: 2mm 3mm;
+            vertical-align: top;
+        }
+
+        .summary-table {
+            font-size: 8pt;
+        }
+
+        .summary-table th,
+        .summary-table td {
+            border: 1px solid #d1d5db;
+            padding: 2mm;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        .summary-table th {
+            background: #e5e7eb;
+            font-weight: bold;
+        }
+
+        .label {
+            color: #4b5563;
+            font-size: 7.5pt;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .content-block {
+            margin-bottom: 5mm;
+        }
+
+        .badge {
+            border: 1px solid #9ca3af;
+            display: inline-block;
+            font-size: 8pt;
+            margin-right: 1.5mm;
+            padding: 1mm 2mm;
+        }
+
+        .priority-badge {
+            border-color: {{ $report->primaryColor }};
+            font-weight: bold;
+        }
+
+        .solution {
+            border: 1px solid #d1d5db;
+            margin-bottom: 4mm;
+            padding: 4mm;
+            page-break-inside: avoid;
+        }
+
+        .solution.recommended {
+            border-left: 5px solid {{ $report->primaryColor }};
+        }
+
+        .evidence {
+            margin-bottom: 5mm;
+            page-break-inside: avoid;
+        }
+
+        .evidence img {
+            display: block;
+            height: auto;
+            margin: 0 auto;
+            max-height: 175mm;
+            max-width: 100%;
+        }
+
+        .attachment-list {
+            margin: 0;
+            padding-left: 6mm;
+        }
+
+    </style>
+</head>
+<body>
+    @if ($report->showCover)
+        <section class="cover">
+            @if ($report->logoDataUri !== null)
+                <img class="cover-logo" src="{{ $report->logoDataUri }}" alt="">
+            @endif
+
+            <h1>{{ $report->title }}</h1>
+            <p>{{ $report->clientName }}</p>
+            <p class="muted">{{ $report->assessmentDateLabel }}</p>
+
+            @if ($report->confidentialityLabel !== null)
+                <div class="confidentiality">{{ $report->confidentialityLabel }}</div>
+            @endif
+        </section>
+
+        <div class="page-break"></div>
+    @endif
+
+    <section>
+        <h1 class="section-title">{{ __('report.sections.assessment') }}</h1>
+
+        <table class="meta-table">
+            <tr>
+                <td>
+                    <div class="label">{{ __('report.fields.client') }}</div>
+                    <div>{{ $report->clientName }}</div>
+                </td>
+                <td>
+                    <div class="label">{{ __('report.fields.assessment_date') }}</div>
+                    <div>{{ $report->assessmentDateLabel }}</div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <div class="label">{{ __('report.fields.scope') }}</div>
+                    <div>{!! nl2br(e($report->assessmentScope)) !!}</div>
+                </td>
+            </tr>
+        </table>
+
+        @if ($report->introduction !== null)
+            <div class="content-block">
+                <div class="label">{{ __('report.fields.introduction') }}</div>
+                <div>{!! nl2br(e($report->introduction)) !!}</div>
+            </div>
+        @endif
+    </section>
+
+    @if ($report->showExecutiveSummary && $report->executiveSummary !== null)
+        <section class="avoid-break">
+            <h1 class="section-title">{{ __('report.sections.executive_summary') }}</h1>
+            <div>{!! nl2br(e($report->executiveSummary)) !!}</div>
+        </section>
+    @endif
+
+    @if ($report->showTableOfContents)
+        <section>
+            <h1 class="section-title">{{ __('report.sections.contents') }}</h1>
+            <ol>
+                @foreach ($report->findings as $finding)
+                    <li>{{ $finding->number }}. {{ $finding->title }}</li>
+                @endforeach
+            </ol>
+        </section>
+    @endif
+
+    @if ($report->showRiskLegend)
+        <section class="avoid-break">
+            <h1 class="section-title">{{ __('report.sections.priority_legend') }}</h1>
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>{{ __('report.fields.priority') }}</th>
+                        <th>{{ __('report.fields.description') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($report->priorityLegend as $level)
+                        <tr>
+                            <td>{{ $level->label }}</td>
+                            <td>{{ $level->description }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </section>
+    @endif
+
+    @if ($report->showSummary)
+        <section>
+            <h1 class="section-title">{{ __('report.sections.summary') }}</h1>
+            <table class="summary-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>{{ __('report.fields.finding') }}</th>
+                        <th>{{ __('report.fields.category') }}</th>
+                        <th>{{ __('report.fields.scope') }}</th>
+                        <th>{{ __('report.fields.solution') }}</th>
+                        <th>{{ __('report.fields.priority') }}</th>
+                        <th>{{ __('report.fields.effort') }}</th>
+                        <th>{{ __('report.fields.estimate') }}</th>
+                        <th>{{ __('report.fields.status') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($report->findings as $finding)
+                        <tr>
+                            <td>{{ $finding->number }}</td>
+                            <td>{{ $finding->title }}</td>
+                            <td>{{ $finding->category }}</td>
+                            <td>{{ $finding->scopeLabel }}</td>
+                            <td>{!! nl2br(e($finding->recommendedSolution->description)) !!}</td>
+                            <td>{{ $finding->priorityLabel }}</td>
+                            <td>{{ $finding->recommendedSolution->effortLabel }}</td>
+                            <td>{{ $finding->recommendedSolution->estimateLabel }}</td>
+                            <td>{{ $finding->statusLabel }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </section>
+    @endif
+
+    @foreach ($report->findings as $finding)
+        @if ($report->startFindingOnNewPage)
+            <div class="page-break"></div>
+        @endif
+
+        <article>
+            <header class="finding-header">
+                <h2>{{ $finding->number }}. {{ $finding->title }}</h2>
+                <span class="badge priority-badge">{{ $finding->priorityLabel }}</span>
+                <span class="badge">{{ $finding->statusLabel }}</span>
+                <span class="badge">{{ $finding->category }}</span>
+            </header>
+
+            @if ($finding->tags !== [])
+                <div class="content-block">
+                    <div class="label">{{ __('report.fields.tags') }}</div>
+                    <div>{{ implode(', ', $finding->tags) }}</div>
+                </div>
+            @endif
+
+            <div class="content-block">
+                <div class="label">{{ __('report.fields.scope') }}</div>
+                <div>{!! nl2br(e($finding->scopeLabel)) !!}</div>
+            </div>
+
+            @if ($finding->assets !== [])
+                <div class="content-block">
+                    <div class="label">{{ __('report.fields.assets') }}</div>
+                    <ul>
+                        @foreach ($finding->assets as $asset)
+                            <li>{{ $asset->displayLabel }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            <div class="content-block">
+                <div class="label">{{ __('report.fields.problem') }}</div>
+                <div>{!! nl2br(e($finding->problem)) !!}</div>
+            </div>
+
+            @if ($finding->entrepreneurNotes !== null)
+                <div class="content-block">
+                    <div class="label">{{ __('report.fields.entrepreneur_notes') }}</div>
+                    <div>{!! nl2br(e($finding->entrepreneurNotes)) !!}</div>
+                </div>
+            @endif
+
+            @if ($finding->priorityRationale !== null)
+                <div class="content-block">
+                    <div class="label">{{ __('report.fields.priority_rationale') }}</div>
+                    <div>{!! nl2br(e($finding->priorityRationale)) !!}</div>
+                </div>
+            @endif
+
+            <h3 class="subsection-title">{{ __('report.sections.recommended_solution') }}</h3>
+
+            <div class="solution recommended">
+                <strong>{{ $finding->recommendedSolution->title }}</strong>
+                <p>{!! nl2br(e($finding->recommendedSolution->description)) !!}</p>
+                <table class="detail-table">
+                    <tr>
+                        <td>
+                            <div class="label">{{ __('report.fields.effort') }}</div>
+                            <div>{{ $finding->recommendedSolution->effortLabel }}</div>
+                        </td>
+                        <td>
+                            <div class="label">{{ __('report.fields.estimate') }}</div>
+                            <div>{{ $finding->recommendedSolution->estimateLabel }}</div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            @if ($report->showAlternativeSolutions && $finding->alternativeSolutions !== [])
+                <h3 class="subsection-title">{{ __('report.sections.alternative_solutions') }}</h3>
+
+                @foreach ($finding->alternativeSolutions as $solution)
+                    <div class="solution">
+                        <strong>{{ $solution->title }}</strong>
+                        <p>{!! nl2br(e($solution->description)) !!}</p>
+
+                        @if ($solution->comparisonNotes !== null)
+                            <p class="muted">{!! nl2br(e($solution->comparisonNotes)) !!}</p>
+                        @endif
+
+                        <table class="detail-table">
+                            <tr>
+                                <td>{{ $solution->effortLabel }}</td>
+                                <td>{{ $solution->estimateLabel }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                @endforeach
+            @endif
+
+            @if ($report->showEvidence && $finding->imageEvidence !== [])
+                <h3 class="subsection-title">{{ __('report.sections.evidence') }}</h3>
+
+                @foreach ($finding->imageEvidence as $evidence)
+                    <div class="evidence">
+                        <img src="{{ $evidence->imageDataUri }}" alt="">
+                        @if ($report->showEvidenceCaptions && $evidence->caption !== null)
+                            <p class="muted">{{ $evidence->caption }}</p>
+                        @endif
+                    </div>
+                @endforeach
+            @endif
+
+            @if ($report->showEvidence && $finding->attachmentEvidence !== [])
+                <div class="content-block">
+                    <div class="label">{{ __('report.fields.attachments') }}</div>
+                    <ul class="attachment-list">
+                        @foreach ($finding->attachmentEvidence as $evidence)
+                            <li>
+                                {{ $evidence->displayName }}
+                                @if ($evidence->caption !== null)
+                                    — {{ $evidence->caption }}
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            @if ($report->showEvidence && $finding->urlEvidence !== [])
+                <div class="content-block">
+                    <div class="label">{{ __('report.fields.links') }}</div>
+                    <ul class="attachment-list">
+                        @foreach ($finding->urlEvidence as $evidence)
+                            <li><a href="{{ $evidence->url }}">{{ $evidence->displayName }}</a></li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
+            @if ($report->showTechnicalNotes && $finding->technicalNotes !== null)
+                <div class="content-block">
+                    <div class="label">{{ __('report.fields.technical_notes') }}</div>
+                    <div>{!! nl2br(e($finding->technicalNotes)) !!}</div>
+                </div>
+            @endif
+
+            @if ($finding->resolutionNotes !== null)
+                <div class="content-block">
+                    <div class="label">{{ __('report.fields.resolution') }}</div>
+                    <div>{!! nl2br(e($finding->resolutionNotes)) !!}</div>
+                </div>
+            @endif
+        </article>
+    @endforeach
+
+    @if ($report->showMethodology && $report->methodology !== null)
+        <div class="page-break"></div>
+        <section>
+            <h1 class="section-title">{{ __('report.sections.methodology') }}</h1>
+            <div>{!! nl2br(e($report->methodology)) !!}</div>
+        </section>
+    @endif
+
+    @if ($report->showDisclaimer && $report->disclaimer !== null)
+        <section class="avoid-break">
+            <h1 class="section-title">{{ __('report.sections.disclaimer') }}</h1>
+            <div>{!! nl2br(e($report->disclaimer)) !!}</div>
+        </section>
+    @endif
+
+    @if ($report->showSignature)
+        <section class="avoid-break">
+            <h1 class="section-title">{{ __('report.sections.signature') }}</h1>
+            <p>{{ $report->signatureName }}</p>
+            <p>{{ $report->signatureRole }}</p>
+            <p style="margin-top: 15mm;">______________________________</p>
+        </section>
+    @endif
+</body>
+</html>

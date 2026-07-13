@@ -1,0 +1,317 @@
+{
+  "schema_version": 1,
+  "templates": [
+    {
+      "external_id": "nas.notifications.missing",
+      "title": "Notifiche del NAS non configurate",
+      "category": "NAS e Storage",
+      "tags": [
+        "Monitoraggio",
+        "Continuità operativa",
+        "Backup"
+      ],
+      "problem": "Il NAS non è configurato per inviare notifiche relative a guasti, volumi degradati, errori dei dischi o attività di backup non riuscite.",
+      "entrepreneur_notes": "Senza notifiche, un problema può rimanere inosservato fino a quando causa un'interruzione o rende indisponibili i dati. La presenza del NAS non garantisce che il suo stato venga controllato automaticamente.",
+      "technical_notes": "Verificare gli eventi supportati dal dispositivo, il canale SMTP o webhook disponibile e l'effettiva consegna degli avvisi.",
+      "default_scope_type": "selected_assets",
+      "default_scope_description": null,
+      "consequence": "serious",
+      "likelihood": "possible",
+      "priority": "high",
+      "priority_rationale": "Il mancato rilevamento tempestivo di un guasto può aumentare la perdita di dati e il tempo di fermo.",
+      "active": true,
+      "solutions": [
+        {
+          "external_id": "configurare-e-verificare-le-notifiche",
+          "title": "Configurare e verificare le notifiche",
+          "description": "Configurare un canale di notifica affidabile per gli eventi critici e verificare con un test che gli avvisi raggiungano i destinatari previsti.",
+          "comparison_notes": null,
+          "effort": "low",
+          "effort_notes": "L'attività è generalmente breve ma deve includere una prova reale di consegna.",
+          "estimate_type": "bundled",
+          "amount_min": null,
+          "amount_max": null,
+          "currency_code": null,
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Da sommare ad altre attività di configurazione e verifica.",
+          "recommended": true,
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "external_id": "infrastructure.nas.on-ups",
+      "title": "NAS appoggiato sopra l'UPS senza supporto adeguato",
+      "category": "Cablaggio e Infrastruttura Fisica",
+      "tags": [
+        "Rack",
+        "Sicurezza fisica",
+        "Continuità operativa"
+      ],
+      "problem": "Il NAS è appoggiato direttamente sopra l'UPS e non è installato su guide, staffe o un ripiano rack idoneo.",
+      "entrepreneur_notes": "Una sistemazione non stabile può favorire cadute, urti, surriscaldamento e difficoltà durante la manutenzione. L'UPS non deve essere usato come piano di appoggio per altri apparati.",
+      "technical_notes": "Verificare peso, ventilazione, profondità del rack, compatibilità delle guide e distribuzione dei carichi.",
+      "default_scope_type": "selected_assets",
+      "default_scope_description": null,
+      "consequence": "serious",
+      "likelihood": "possible",
+      "priority": "high",
+      "priority_rationale": "La configurazione espone apparati critici a rischio fisico e può ostacolare ventilazione e manutenzione.",
+      "active": true,
+      "solutions": [
+        {
+          "external_id": "installare-il-nas-su-supporto-rack-idoneo",
+          "title": "Installare il NAS su supporto rack idoneo",
+          "description": "Installare guide originali o un ripiano rack dimensionato per peso e profondità del NAS, mantenendo libera la ventilazione dell'UPS e degli altri apparati.",
+          "comparison_notes": "Le guide originali sono preferibili quando supportate dal modello; un ripiano certificato è accettabile quando correttamente dimensionato.",
+          "effort": "moderate",
+          "effort_notes": "Può richiedere lo spegnimento controllato e il riposizionamento degli apparati.",
+          "estimate_type": "requires_quote",
+          "amount_min": null,
+          "amount_max": null,
+          "currency_code": null,
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Il costo dipende dal supporto compatibile e dalle modifiche necessarie al rack.",
+          "recommended": true,
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "external_id": "security.rdp.public",
+      "title": "Servizio RDP esposto direttamente su Internet",
+      "category": "Sicurezza",
+      "tags": [
+        "Accesso remoto",
+        "Firewall",
+        "Identità"
+      ],
+      "problem": "Il servizio Remote Desktop è raggiungibile direttamente da Internet senza un livello di accesso remoto protetto intermedio.",
+      "entrepreneur_notes": "L'esposizione diretta aumenta in modo significativo la possibilità di tentativi automatizzati, furto di credenziali e compromissione dei sistemi aziendali.",
+      "technical_notes": "Verificare NAT, regole firewall, autenticazione, MFA, log e sistemi che dipendono dall'accesso corrente prima della modifica.",
+      "default_scope_type": "selected_assets",
+      "default_scope_description": null,
+      "consequence": "critical",
+      "likelihood": "likely",
+      "priority": "critical",
+      "priority_rationale": "Un accesso remoto compromesso può consentire il controllo del sistema e l'accesso ai dati aziendali.",
+      "active": true,
+      "solutions": [
+        {
+          "external_id": "rimuovere-l-esposizione-diretta-e-utilizzare-una-vpn",
+          "title": "Rimuovere l'esposizione diretta e utilizzare una VPN",
+          "description": "Chiudere la pubblicazione diretta del servizio e consentire RDP esclusivamente attraverso una VPN aziendale protetta, preferibilmente con autenticazione multifattore.",
+          "comparison_notes": null,
+          "effort": "moderate",
+          "effort_notes": "Richiede la verifica degli utenti, dei dispositivi e delle modalità di accesso remoto.",
+          "estimate_type": "requires_analysis",
+          "amount_min": null,
+          "amount_max": null,
+          "currency_code": null,
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "La stima dipende dal firewall disponibile, dal numero di utenti e dai requisiti di autenticazione.",
+          "recommended": true,
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "external_id": "network.cabling.unlabelled",
+      "title": "Cablaggio disordinato o non identificato",
+      "category": "Cablaggio e Infrastruttura Fisica",
+      "tags": [
+        "Cablaggio",
+        "Manutenibilità",
+        "Documentazione"
+      ],
+      "problem": "I cavi e le porte di rete non sono organizzati e identificati in modo coerente, rendendo difficile stabilire rapidamente le connessioni.",
+      "entrepreneur_notes": "La mancanza di ordine e identificazione aumenta i tempi degli interventi e il rischio di scollegare servizi errati durante manutenzioni o guasti.",
+      "technical_notes": "Verificare patch panel, prese, schema di numerazione, lunghezze dei patch cord, passacavi e documentazione delle porte.",
+      "default_scope_type": "network",
+      "default_scope_description": "Cablaggio strutturato e collegamenti presenti nell'armadio di rete.",
+      "consequence": "significant",
+      "likelihood": "likely",
+      "priority": "moderate",
+      "priority_rationale": "Il problema aumenta concretamente il rischio di errori e i tempi di ripristino, pur non causando necessariamente un guasto immediato.",
+      "active": true,
+      "solutions": [
+        {
+          "external_id": "riordinare-identificare-e-documentare-il-cablaggio",
+          "title": "Riordinare, identificare e documentare il cablaggio",
+          "description": "Definire una nomenclatura, etichettare porte e cavi, sostituire i patch cord inadeguati e produrre una corrispondenza aggiornata tra patch panel, presa e apparato.",
+          "comparison_notes": null,
+          "effort": "moderate",
+          "effort_notes": "L'impegno dipende dal numero di porte e dalla possibilità di tracciare le connessioni senza interrompere i servizi.",
+          "estimate_type": "requires_analysis",
+          "amount_min": null,
+          "amount_max": null,
+          "currency_code": null,
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "È necessario verificare quantità, stato e tracciabilità dei collegamenti.",
+          "recommended": true,
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "external_id": "network.dhcp.invalid-dns",
+      "title": "Il DHCP distribuisce server DNS non corretti",
+      "category": "Rete",
+      "tags": [
+        "DHCP",
+        "DNS",
+        "Continuità operativa"
+      ],
+      "problem": "Il servizio DHCP assegna ai dispositivi server DNS non coerenti con l'architettura della rete o non disponibili.",
+      "entrepreneur_notes": "Una configurazione DNS errata può causare accessi intermittenti a Internet, applicazioni, server e risorse aziendali, anche quando la connettività di base sembra funzionare.",
+      "technical_notes": "Verificare scope DHCP, VLAN, DNS interni, forwarder, domini locali, ridondanza e lease già assegnati.",
+      "default_scope_type": "network",
+      "default_scope_description": "Tutti i dispositivi che ricevono la configurazione dal servizio DHCP interessato.",
+      "consequence": "serious",
+      "likelihood": "likely",
+      "priority": "high",
+      "priority_rationale": "L'errore può influenzare contemporaneamente numerosi dispositivi e produrre disservizi difficili da diagnosticare.",
+      "active": true,
+      "solutions": [
+        {
+          "external_id": "correggere-le-opzioni-dns-del-dhcp",
+          "title": "Correggere le opzioni DNS del DHCP",
+          "description": "Configurare i server DNS corretti, verificare la raggiungibilità e rinnovare in modo controllato le configurazioni dei client interessati.",
+          "comparison_notes": null,
+          "effort": "low",
+          "effort_notes": "La modifica è generalmente semplice, ma richiede verifica dell'architettura DNS esistente.",
+          "estimate_type": "bundled",
+          "amount_min": null,
+          "amount_max": null,
+          "currency_code": null,
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Da sommare ad altre attività di configurazione e verifica della rete.",
+          "recommended": true,
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "external_id": "backup.restore-test.missing",
+      "title": "Ripristino dei backup non verificato",
+      "category": "Backup",
+      "tags": [
+        "Ripristino",
+        "Continuità operativa",
+        "Dati"
+      ],
+      "problem": "Non risultano prove recenti e documentate di ripristino dei dati dai backup disponibili.",
+      "entrepreneur_notes": "Un backup può risultare completato ma essere inutilizzabile quando serve. Solo una prova di ripristino consente di verificare che dati, credenziali e procedure siano realmente disponibili.",
+      "technical_notes": "Verificare campione di dati, tempi di ripristino, integrità, cifratura, credenziali, destinazione alternativa e registrazione dell'esito.",
+      "default_scope_type": "organization",
+      "default_scope_description": "Sistemi e dati coperti dalle procedure di backup aziendali.",
+      "consequence": "critical",
+      "likelihood": "possible",
+      "priority": "high",
+      "priority_rationale": "L'assenza di test può rendere evidente un backup inutilizzabile soltanto durante un'emergenza.",
+      "active": true,
+      "solutions": [
+        {
+          "external_id": "eseguire-e-documentare-una-prova-di-ripristino",
+          "title": "Eseguire e documentare una prova di ripristino",
+          "description": "Definire un campione rappresentativo, eseguire il ripristino in un ambiente sicuro, verificare l'integrità e documentare risultato, tempi e problemi.",
+          "comparison_notes": null,
+          "effort": "moderate",
+          "effort_notes": "L'impegno dipende da quantità di dati, sistemi coinvolti e disponibilità di un ambiente di prova.",
+          "estimate_type": "requires_analysis",
+          "amount_min": null,
+          "amount_max": null,
+          "currency_code": null,
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "La stima richiede l'analisi delle piattaforme e delle procedure di backup esistenti.",
+          "recommended": true,
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "external_id": "infrastructure.rack.unsuitable-location",
+      "title": "Armadio rack installato in un locale non idoneo",
+      "category": "Cablaggio e Infrastruttura Fisica",
+      "tags": [
+        "Rack",
+        "Ambiente",
+        "Sicurezza fisica"
+      ],
+      "problem": "L'armadio rack è installato in un locale esposto a condizioni ambientali, accessi o utilizzi non compatibili con la presenza di apparati IT.",
+      "entrepreneur_notes": "Umidità, calore, polvere, acqua, accessi non controllati o attività estranee possono danneggiare gli apparati e aumentare la probabilità di interruzioni.",
+      "technical_notes": "Valutare temperatura, umidità, ventilazione, rischio acqua, alimentazione, accesso, spazio di manutenzione e protezione fisica.",
+      "default_scope_type": "selected_sites",
+      "default_scope_description": null,
+      "consequence": "serious",
+      "likelihood": "likely",
+      "priority": "high",
+      "priority_rationale": "Le condizioni del locale possono coinvolgere contemporaneamente l'intera infrastruttura concentrata nel rack.",
+      "active": true,
+      "solutions": [
+        {
+          "external_id": "trasferire-o-adeguare-il-locale-tecnico",
+          "title": "Trasferire o adeguare il locale tecnico",
+          "description": "Collocare il rack in un ambiente idoneo oppure adeguare il locale eliminando i rischi ambientali e garantendo ventilazione, alimentazione e accesso controllato.",
+          "comparison_notes": "Il semplice spostamento è preferibile quando l'adeguamento del locale non può garantire condizioni stabili.",
+          "effort": "very_high",
+          "effort_notes": "Può richiedere opere impiantistiche, ricablaggio e una finestra di fermo.",
+          "estimate_type": "requires_quote",
+          "amount_min": null,
+          "amount_max": null,
+          "currency_code": null,
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Sono necessari sopralluogo e preventivi per opere, materiali e ricablaggio.",
+          "recommended": true,
+          "sort_order": 0
+        }
+      ]
+    },
+    {
+      "external_id": "ups.monitoring.missing",
+      "title": "Monitoraggio dell'UPS non configurato",
+      "category": "Continuità Operativa",
+      "tags": [
+        "UPS",
+        "Monitoraggio",
+        "Spegnimento controllato"
+      ],
+      "problem": "L'UPS non comunica il proprio stato ai sistemi e non sono configurati avvisi o procedure automatiche di spegnimento controllato.",
+      "entrepreneur_notes": "In caso di blackout prolungato, i sistemi possono spegnersi bruscamente e l'azienda può non ricevere avvisi sullo stato delle batterie o su un guasto dell'UPS.",
+      "technical_notes": "Verificare USB, SNMP, scheda di rete, software del produttore, autonomia, soglie e sequenza di arresto.",
+      "default_scope_type": "selected_assets",
+      "default_scope_description": null,
+      "consequence": "serious",
+      "likelihood": "possible",
+      "priority": "high",
+      "priority_rationale": "Un'interruzione prolungata può produrre spegnimenti non controllati e danni logici ai dati.",
+      "active": true,
+      "solutions": [
+        {
+          "external_id": "configurare-monitoraggio-e-spegnimento-controllato",
+          "title": "Configurare monitoraggio e spegnimento controllato",
+          "description": "Integrare l'UPS con i sistemi supportati, configurare avvisi, soglie e una procedura verificata di arresto controllato.",
+          "comparison_notes": null,
+          "effort": "moderate",
+          "effort_notes": "Può richiedere una scheda di gestione o software specifico del produttore.",
+          "estimate_type": "requires_analysis",
+          "amount_min": null,
+          "amount_max": null,
+          "currency_code": null,
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "La stima dipende dalle interfacce disponibili e dal numero di sistemi da arrestare.",
+          "recommended": true,
+          "sort_order": 0
+        }
+      ]
+    }
+  ]
+}

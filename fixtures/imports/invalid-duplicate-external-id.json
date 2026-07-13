@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "templates": [
+    {
+      "external_id": "fixture.exact.monthly",
+      "title": "Stima esatta mensile",
+      "category": "Fixture",
+      "tags": [
+        "Fixture",
+        "Import"
+      ],
+      "problem": "Problema di prova: Stima esatta mensile.",
+      "entrepreneur_notes": "Nota non tecnica usata per verificare import ed export.",
+      "technical_notes": "Nota tecnica usata esclusivamente nelle fixture.",
+      "default_scope_type": "organization",
+      "default_scope_description": null,
+      "consequence": "significant",
+      "likelihood": "possible",
+      "priority": "moderate",
+      "priority_rationale": "Motivazione di prova coerente con la matrice configurata.",
+      "active": true,
+      "solutions": [
+        {
+          "external_id": "configure",
+          "title": "Configurazione servizio",
+          "description": "Descrizione operativa per configurazione servizio.",
+          "comparison_notes": null,
+          "effort": "low",
+          "effort_notes": "Fixture destinata alla validazione dei rami dello schema.",
+          "estimate_type": "exact",
+          "amount_min": 25.0,
+          "amount_max": null,
+          "currency_code": "EUR",
+          "billing_frequency": "monthly",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Valore di prova per importazione e formattazione.",
+          "recommended": true,
+          "sort_order": 0
+        },
+        {
+          "external_id": "replace",
+          "title": "Sostituzione servizio",
+          "description": "Descrizione operativa per sostituzione servizio.",
+          "comparison_notes": null,
+          "effort": "high",
+          "effort_notes": "Fixture destinata alla validazione dei rami dello schema.",
+          "estimate_type": "range",
+          "amount_min": 250.0,
+          "amount_max": 600.0,
+          "currency_code": "EUR",
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Valore di prova per importazione e formattazione.",
+          "recommended": false,
+          "sort_order": 1
+        }
+      ]
+    },
+    {
+      "external_id": "fixture.exact.monthly",
+      "title": "Stima esatta mensile",
+      "category": "Fixture",
+      "tags": [
+        "Fixture",
+        "Import"
+      ],
+      "problem": "Problema di prova: Stima esatta mensile.",
+      "entrepreneur_notes": "Nota non tecnica usata per verificare import ed export.",
+      "technical_notes": "Nota tecnica usata esclusivamente nelle fixture.",
+      "default_scope_type": "organization",
+      "default_scope_description": null,
+      "consequence": "significant",
+      "likelihood": "possible",
+      "priority": "moderate",
+      "priority_rationale": "Motivazione di prova coerente con la matrice configurata.",
+      "active": true,
+      "solutions": [
+        {
+          "external_id": "configure",
+          "title": "Configurazione servizio",
+          "description": "Descrizione operativa per configurazione servizio.",
+          "comparison_notes": null,
+          "effort": "low",
+          "effort_notes": "Fixture destinata alla validazione dei rami dello schema.",
+          "estimate_type": "exact",
+          "amount_min": 25.0,
+          "amount_max": null,
+          "currency_code": "EUR",
+          "billing_frequency": "monthly",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Valore di prova per importazione e formattazione.",
+          "recommended": true,
+          "sort_order": 0
+        },
+        {
+          "external_id": "replace",
+          "title": "Sostituzione servizio",
+          "description": "Descrizione operativa per sostituzione servizio.",
+          "comparison_notes": null,
+          "effort": "high",
+          "effort_notes": "Fixture destinata alla validazione dei rami dello schema.",
+          "estimate_type": "range",
+          "amount_min": 250.0,
+          "amount_max": 600.0,
+          "currency_code": "EUR",
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Valore di prova per importazione e formattazione.",
+          "recommended": false,
+          "sort_order": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+.fi-fo-table-repeater {
+    overflow-x: auto;
+}
+
+.fi-fo-table-repeater > table {
+    min-width: 154rem;
+    table-layout: fixed;
+}
+
+.fi-fo-table-repeater textarea {
+    min-height: 5rem;
+}

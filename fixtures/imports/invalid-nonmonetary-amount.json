@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "templates": [
+    {
+      "external_id": "fixture.non-monetary",
+      "title": "Stime non monetarie",
+      "category": "Fixture",
+      "tags": [
+        "Fixture",
+        "Import"
+      ],
+      "problem": "Problema di prova: Stime non monetarie.",
+      "entrepreneur_notes": "Nota non tecnica usata per verificare import ed export.",
+      "technical_notes": "Nota tecnica usata esclusivamente nelle fixture.",
+      "default_scope_type": "selected_assets",
+      "default_scope_description": null,
+      "consequence": "significant",
+      "likelihood": "possible",
+      "priority": "moderate",
+      "priority_rationale": "Motivazione di prova coerente con la matrice configurata.",
+      "active": true,
+      "solutions": [
+        {
+          "external_id": "bundled",
+          "title": "Attività da sommare",
+          "description": "Descrizione operativa per attività da sommare.",
+          "comparison_notes": null,
+          "effort": "low",
+          "effort_notes": "Fixture destinata alla validazione dei rami dello schema.",
+          "estimate_type": "bundled",
+          "amount_min": 10.0,
+          "amount_max": null,
+          "currency_code": "EUR",
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Valore di prova per importazione e formattazione.",
+          "recommended": true,
+          "sort_order": 0
+        },
+        {
+          "external_id": "quote",
+          "title": "Richiesta preventivo",
+          "description": "Descrizione operativa per richiesta preventivo.",
+          "comparison_notes": null,
+          "effort": "moderate",
+          "effort_notes": "Fixture destinata alla validazione dei rami dello schema.",
+          "estimate_type": "requires_quote",
+          "amount_min": null,
+          "amount_max": null,
+          "currency_code": null,
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Valore di prova per importazione e formattazione.",
+          "recommended": false,
+          "sort_order": 1
+        },
+        {
+          "external_id": "analysis",
+          "title": "Analisi preliminare",
+          "description": "Descrizione operativa per analisi preliminare.",
+          "comparison_notes": null,
+          "effort": "moderate",
+          "effort_notes": "Fixture destinata alla validazione dei rami dello schema.",
+          "estimate_type": "requires_analysis",
+          "amount_min": null,
+          "amount_max": null,
+          "currency_code": null,
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Valore di prova per importazione e formattazione.",
+          "recommended": false,
+          "sort_order": 2
+        },
+        {
+          "external_id": "variable",
+          "title": "Soluzione variabile",
+          "description": "Descrizione operativa per soluzione variabile.",
+          "comparison_notes": null,
+          "effort": "moderate",
+          "effort_notes": "Fixture destinata alla validazione dei rami dello schema.",
+          "estimate_type": "variable",
+          "amount_min": null,
+          "amount_max": null,
+          "currency_code": null,
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Valore di prova per importazione e formattazione.",
+          "recommended": false,
+          "sort_order": 3
+        },
+        {
+          "external_id": "none",
+          "title": "Nessun costo diretto",
+          "description": "Descrizione operativa per nessun costo diretto.",
+          "comparison_notes": null,
+          "effort": "low",
+          "effort_notes": "Fixture destinata alla validazione dei rami dello schema.",
+          "estimate_type": "not_applicable",
+          "amount_min": null,
+          "amount_max": null,
+          "currency_code": null,
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Valore di prova per importazione e formattazione.",
+          "recommended": false,
+          "sort_order": 4
+        }
+      ]
+    }
+  ]
+}

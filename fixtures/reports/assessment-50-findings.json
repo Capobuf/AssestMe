@@ -1,0 +1,1425 @@
+{
+  "title": "Assessment IT — Fixture 50 finding",
+  "client": "Azienda di prova S.r.l.",
+  "assessment_date": "2026-07-13",
+  "findings": [
+    {
+      "number": 1,
+      "title": "Finding di prova 01",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-01"
+      ],
+      "priority": "Bassa",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 2,
+      "title": "Finding di prova 02",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-02"
+      ],
+      "priority": "Moderata",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 3,
+      "title": "Finding di prova 03",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Alta",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 4,
+      "title": "Finding di prova 04",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-04"
+      ],
+      "priority": "Critica",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 5,
+      "title": "Finding di prova 05",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-05"
+      ],
+      "priority": "Bassa",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 6,
+      "title": "Finding di prova 06",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Moderata",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 7,
+      "title": "Finding di prova 07",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-07"
+      ],
+      "priority": "Alta",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 8,
+      "title": "Finding di prova 08",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-08"
+      ],
+      "priority": "Critica",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 9,
+      "title": "Finding di prova 09",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Bassa",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 10,
+      "title": "Finding di prova 10",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-10"
+      ],
+      "priority": "Moderata",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 11,
+      "title": "Finding di prova 11",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-11"
+      ],
+      "priority": "Alta",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 12,
+      "title": "Finding di prova 12",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Critica",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 13,
+      "title": "Finding di prova 13",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-13"
+      ],
+      "priority": "Bassa",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 14,
+      "title": "Finding di prova 14",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-14"
+      ],
+      "priority": "Moderata",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 15,
+      "title": "Finding di prova 15",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Alta",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 16,
+      "title": "Finding di prova 16",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-16"
+      ],
+      "priority": "Critica",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 17,
+      "title": "Finding di prova 17",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-17"
+      ],
+      "priority": "Bassa",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 18,
+      "title": "Finding di prova 18",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Moderata",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 19,
+      "title": "Finding di prova 19",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-19"
+      ],
+      "priority": "Alta",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 20,
+      "title": "Finding di prova 20",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-20"
+      ],
+      "priority": "Critica",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 21,
+      "title": "Finding di prova 21",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Bassa",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 22,
+      "title": "Finding di prova 22",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-22"
+      ],
+      "priority": "Moderata",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 23,
+      "title": "Finding di prova 23",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-23"
+      ],
+      "priority": "Alta",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 24,
+      "title": "Finding di prova 24",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Critica",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 25,
+      "title": "Finding di prova 25",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-25"
+      ],
+      "priority": "Bassa",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 26,
+      "title": "Finding di prova 26",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-26"
+      ],
+      "priority": "Moderata",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 27,
+      "title": "Finding di prova 27",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Alta",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 28,
+      "title": "Finding di prova 28",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-28"
+      ],
+      "priority": "Critica",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 29,
+      "title": "Finding di prova 29",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-29"
+      ],
+      "priority": "Bassa",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 30,
+      "title": "Finding di prova 30",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Moderata",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 31,
+      "title": "Finding di prova 31",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-31"
+      ],
+      "priority": "Alta",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 32,
+      "title": "Finding di prova 32",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-32"
+      ],
+      "priority": "Critica",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 33,
+      "title": "Finding di prova 33",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Bassa",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 34,
+      "title": "Finding di prova 34",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-34"
+      ],
+      "priority": "Moderata",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 35,
+      "title": "Finding di prova 35",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-35"
+      ],
+      "priority": "Alta",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 36,
+      "title": "Finding di prova 36",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Critica",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 37,
+      "title": "Finding di prova 37",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-37"
+      ],
+      "priority": "Bassa",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 38,
+      "title": "Finding di prova 38",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-38"
+      ],
+      "priority": "Moderata",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 39,
+      "title": "Finding di prova 39",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Alta",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 40,
+      "title": "Finding di prova 40",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-40"
+      ],
+      "priority": "Critica",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 41,
+      "title": "Finding di prova 41",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-41"
+      ],
+      "priority": "Bassa",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 42,
+      "title": "Finding di prova 42",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Moderata",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 43,
+      "title": "Finding di prova 43",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-43"
+      ],
+      "priority": "Alta",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 44,
+      "title": "Finding di prova 44",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-44"
+      ],
+      "priority": "Critica",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 45,
+      "title": "Finding di prova 45",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Bassa",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 46,
+      "title": "Finding di prova 46",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-46"
+      ],
+      "priority": "Moderata",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 47,
+      "title": "Finding di prova 47",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-47"
+      ],
+      "priority": "Alta",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 48,
+      "title": "Finding di prova 48",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Intera organizzazione",
+      "assets": [],
+      "priority": "Critica",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 49,
+      "title": "Finding di prova 49",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-49"
+      ],
+      "priority": "Bassa",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Da sommare ad altre attività",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    },
+    {
+      "number": 50,
+      "title": "Finding di prova 50",
+      "category": "Fixture",
+      "tags": [
+        "Prestazioni",
+        "PDF"
+      ],
+      "scope": "Rete aziendale",
+      "assets": [
+        "Asset-50"
+      ],
+      "priority": "Moderata",
+      "status": "Aperto",
+      "problem": "Testo esteso per verificare wrapping, interruzioni di pagina e caratteri italiani: à è ì ò ù. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. Dettaglio operativo ripetuto. ",
+      "entrepreneur_notes": "Spiegazione non tecnica sufficientemente lunga per attraversare più righe nel report.",
+      "priority_rationale": "Conseguenza e probabilità sono state valutate sulla base del contesto della fixture.",
+      "recommended_solution": "Applicare la soluzione raccomandata e verificarne l’esito con una prova documentata.",
+      "effort": "Moderato",
+      "estimate": "Indicativamente 500–900 €",
+      "alternatives": [
+        {
+          "title": "Alternativa",
+          "description": "Soluzione alternativa usata per il test."
+        }
+      ],
+      "evidence": [],
+      "technical_notes": "Nota tecnica visibile soltanto quando abilitata."
+    }
+  ]
+}

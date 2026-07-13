@@ -1,0 +1,134 @@
+<?php
+
+declare(strict_types=1);
+
+use Dompdf\Canvas;
+use Dompdf\Dompdf;
+use Dompdf\FontMetrics;
+
+/**
+ * Draws the repeated report header, footer, confidentiality label, and page
+ * numbers after DOMPDF knows the final page count.
+ *
+ * The caller passes whether a cover exists. When present, the cover is skipped
+ * and content numbering starts from one on DOMPDF's second physical page.
+ */
+return static function (
+    Dompdf $dompdf,
+    bool $hasCover,
+    ?string $headerText,
+    ?string $footerText,
+    ?string $confidentialityLabel,
+    bool $showPageNumbers,
+): void {
+    $canvas = $dompdf->getCanvas();
+    $fontMetrics = $dompdf->getFontMetrics();
+    $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
+
+    if ($font === null) {
+        throw new \RuntimeException('The DejaVu Sans font is unavailable for report page chrome.');
+    }
+
+    $coverOffset = $hasCover ? 1 : 0;
+
+    $canvas->page_script(
+        static function (
+            int $pageNumber,
+            int $pageCount,
+            Canvas $pageCanvas,
+            FontMetrics $pageFontMetrics,
+        ) use (
+            $font,
+            $coverOffset,
+            $headerText,
+            $footerText,
+            $confidentialityLabel,
+            $showPageNumbers,
+        ): void {
+            if ($pageNumber <= $coverOffset) {
+                return;
+            }
+
+            $pageWidth = $pageCanvas->get_width();
+            $pageHeight = $pageCanvas->get_height();
+            $textColor = [0.42, 0.45, 0.50];
+            $lineColor = [0.82, 0.84, 0.86];
+            $fontSize = 8.0;
+            $left = 45.0;
+            $right = $pageWidth - 45.0;
+
+            $fitText = static function (string $text, float $maxWidth) use (
+                $pageFontMetrics,
+                $font,
+                $fontSize,
+            ): string {
+                if ($pageFontMetrics->getTextWidth($text, $font, $fontSize) <= $maxWidth) {
+                    return $text;
+                }
+
+                $suffix = '…';
+                while ($text !== '' && $pageFontMetrics->getTextWidth($text.$suffix, $font, $fontSize) > $maxWidth) {
+                    $text = mb_substr($text, 0, -1);
+                }
+
+                return $text === '' ? '' : $text.$suffix;
+            };
+
+            if ($headerText !== null && $headerText !== '') {
+                $headerText = $fitText($headerText, $right - $left);
+                $headerWidth = $pageFontMetrics->getTextWidth($headerText, $font, $fontSize);
+                $pageCanvas->text(
+                    max($left, $right - $headerWidth),
+                    24.0,
+                    $headerText,
+                    $font,
+                    $fontSize,
+                    $textColor,
+                );
+            }
+
+            $footerY = $pageHeight - 28.0;
+            $pageCanvas->line($left, $footerY - 6.0, $right, $footerY - 6.0, $lineColor, 0.5);
+
+            $rightParts = [];
+
+            if ($confidentialityLabel !== null && $confidentialityLabel !== '') {
+                $rightParts[] = $confidentialityLabel;
+            }
+
+            if ($showPageNumbers) {
+                $contentPage = $pageNumber - $coverOffset;
+                $contentCount = max(1, $pageCount - $coverOffset);
+                $rightParts[] = sprintf('Pagina %d di %d', $contentPage, $contentCount);
+            }
+
+            $rightText = implode(' — ', $rightParts);
+            $rightWidth = $rightText === ''
+                ? 0.0
+                : $pageFontMetrics->getTextWidth($rightText, $font, $fontSize);
+
+            if ($footerText !== null && $footerText !== '') {
+                $footerText = $fitText($footerText, max(0.0, ($right - $left) - $rightWidth - 15.0));
+                $pageCanvas->text(
+                    $left,
+                    $footerY,
+                    $footerText,
+                    $font,
+                    $fontSize,
+                    $textColor,
+                );
+            }
+
+            if ($rightText !== '') {
+                $pageCanvas->text(
+                    max($left, $right - $rightWidth),
+                    $footerY,
+                    $rightText,
+                    $font,
+                    $fontSize,
+                    $textColor,
+                );
+            }
+        },
+    );
+};

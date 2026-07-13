@@ -1,0 +1,106 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Browser;
+
+use App\Models\Assessment;
+use App\Models\Finding;
+use App\Models\User;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Laravel\Dusk\Browser;
+use PHPUnit\Framework\Assert;
+use Tests\DuskTestCase;
+
+final class MilestoneZeroTest extends DuskTestCase
+{
+    use DatabaseMigrations;
+
+    public function test_admin_login_and_native_workspace_actions_have_no_console_errors(): void
+    {
+        $password = 'AssestMe-Dusk!2026';
+        $administrator = User::factory()->create([
+            'email' => 'dusk@assestme.local',
+            'password' => $password,
+        ]);
+        $assessment = Assessment::factory()->create(['title' => 'Dusk workspace M0']);
+        Finding::factory()->count(10)->for($assessment)->sequence(
+            fn ($sequence): array => ['sort_order' => $sequence->index + 1],
+        )->create();
+        $firstFindingId = (int) $assessment->findings()->firstOrFail()->getKey();
+
+        $multilineProblem = "Prima riga Dusk\nSeconda riga con priorità";
+
+        $this->browse(function (Browser $browser) use ($administrator, $password, $assessment): void {
+            $browser->visit('/admin/login')
+                ->waitFor('input[type="email"]');
+
+            $emailInput = $browser->element('input[type="email"]');
+            $passwordInput = $browser->element('input[type="password"]');
+            Assert::assertNotNull($emailInput);
+            Assert::assertNotNull($passwordInput);
+            $emailInput->sendKeys($administrator->email);
+            $passwordInput->sendKeys($password);
+
+            $browser->press('Accedi')
+                ->waitForLocation('/admin')
+                ->assertPathIs('/admin')
+                ->visit("/admin/assessments/{$assessment->getKey()}/workspace")
+                ->waitFor('[data-dusk="add-finding"]')
+                ->assertSee('Finding')
+                ->assertPresent('[data-dusk="add-finding"]')
+                ->assertPresent('[data-dusk="clone-finding"]')
+                ->assertPresent('[data-dusk="delete-finding"]')
+                ->assertPresent('[data-dusk="reorder-findings"]')
+                ->assertPresent('[data-dusk="move-down-finding"]')
+                ->waitUntil('return document.documentElement.dataset.assestmeWorkspaceAsset === "loaded"');
+
+            $problem = $browser->element('tbody tr:first-child [data-dusk="finding-problem"]');
+            Assert::assertNotNull($problem);
+            $problem->click();
+            $browser->script(<<<'JS'
+                const problem = document.querySelector('[data-dusk="finding-problem"]');
+                problem.value = "Prima riga Dusk\nSeconda riga con priorità";
+                problem.dispatchEvent(new Event('input', { bubbles: true }));
+                JS);
+
+            $browser->click('h1')
+                ->waitUntil('return document.querySelector(\'[data-assestme-save-status]\').dataset.status === "saved"')
+                ->click('tbody tr:first-child [data-dusk="clone-finding"]')
+                ->waitUntil('return document.querySelectorAll(\'[data-dusk="clone-finding"]\').length === 11')
+                ->waitUntil('return document.querySelector(\'[data-assestme-save-status]\').dataset.status === "saved"')
+                ->click('[data-dusk="add-finding"]')
+                ->waitUntil('return document.querySelectorAll(\'[data-dusk="clone-finding"]\').length === 12')
+                ->waitUntil('return document.querySelector(\'[data-assestme-save-status]\').dataset.status === "saved"');
+
+            $browser->script('document.querySelector(\'tbody tr:first-child [data-dusk="move-down-finding"]\').click()');
+            $browser->waitUntil('return document.querySelectorAll(\'tbody tr[x-sortable-item]\')[1].getAttribute(\'x-sortable-item\') === "record-1"')
+                ->waitUntil('return document.querySelector(\'[data-assestme-save-status]\').dataset.status === "saved"')
+                ->pause(750);
+
+            $browser->script('document.querySelector(\'tbody tr:last-child [data-dusk="delete-finding"]\').click()');
+            $browser->waitForText('Conferma')
+                ->press('Conferma')
+                ->waitUntil('return document.querySelectorAll(\'[data-dusk="clone-finding"]\').length === 11')
+                ->waitUntil('return document.querySelector(\'[data-assestme-save-status]\').dataset.status === "saved"')
+                ->assertSee('Salva assessment')
+                ->assertSee('Salvato');
+
+            $browser->script('window.dispatchEvent(new Event("offline"))');
+            $browser->waitForText('Offline');
+            $browser->script('window.dispatchEvent(new Event("online"))');
+            $browser->waitForText('Modifiche non salvate');
+
+            $severeLogs = array_values(array_filter(
+                $browser->driver->manage()->getLog('browser'),
+                static fn (array $entry): bool => ($entry['level'] ?? '') === 'SEVERE',
+            ));
+            Assert::assertSame([], $severeLogs, 'The browser console contains severe errors.');
+        });
+
+        $assessment->refresh();
+        self::assertSame(11, $assessment->findings()->count());
+        self::assertSame(2, Finding::query()->findOrFail($firstFindingId)->sort_order);
+        self::assertSame($multilineProblem, Finding::query()->findOrFail($firstFindingId)->problem);
+    }
+}

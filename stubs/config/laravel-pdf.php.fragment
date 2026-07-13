@@ -1,0 +1,14 @@
+<?php
+
+// Merge the returned values into config/laravel-pdf.php after publishing the
+// package configuration with `php artisan vendor:publish --tag=pdf-config`.
+// Remote resources remain disabled so report generation cannot depend on an
+// external host or fetch untrusted URLs.
+return [
+    'driver' => env('LARAVEL_PDF_DRIVER', 'dompdf'),
+
+    'dompdf' => [
+        'is_remote_enabled' => env('LARAVEL_PDF_DOMPDF_REMOTE_ENABLED', false),
+        'chroot' => env('LARAVEL_PDF_DOMPDF_CHROOT', base_path()),
+    ],
+];
