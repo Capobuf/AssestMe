@@ -6,8 +6,10 @@ namespace Tests\Browser;
 
 use App\Models\Asset;
 use App\Models\AssetType;
+use App\Models\Category;
 use App\Models\Client;
 use App\Models\Site;
+use App\Models\Tag;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Laravel\Dusk\Browser;
@@ -39,6 +41,8 @@ final class MilestoneOneFoundationTest extends DuskTestCase
             ->for($site)
             ->for($assetType, 'assetType')
             ->create(['name' => 'Asset prova browser']);
+        Category::factory()->create(['name' => 'Categoria prova browser']);
+        Tag::factory()->create(['name' => 'Tag prova browser']);
 
         $this->browse(function (Browser $browser) use ($administrator, $asset, $client, $site): void {
             $browser->loginAs($administrator)
@@ -80,6 +84,13 @@ final class MilestoneOneFoundationTest extends DuskTestCase
                 'return Array.from(document.querySelectorAll("input")).map((element) => element.value);',
             );
             Assert::assertContains('Asset prova browser', $assetInputValues[0] ?? []);
+
+            $browser->visit('/admin/categories')
+                ->waitForText('Categorie')
+                ->assertSee('Categoria prova browser')
+                ->visit('/admin/tags')
+                ->waitForText('Tag')
+                ->assertSee('Tag prova browser');
 
             $severeLogs = array_values(array_filter(
                 $browser->driver->manage()->getLog('browser'),

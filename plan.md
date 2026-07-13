@@ -3049,7 +3049,7 @@ The implementation agent must maintain this section.
 - [ ] Milestone 4 — Reporting and exports
 - [ ] Milestone 5 — Completion and hardening
 
-Current state: Milestone 0 is complete. Milestone 1 is in progress. The client/site and asset-type/asset foundation vertical slices are complete with migrations, typed application actions, exact domain seeds, native Filament resources, focused failure-path tests, Canary coverage, and browser proof; the remaining Milestone 1 slices have not been marked complete.
+Current state: Milestone 0 is complete. Milestone 1 is in progress. The client/site, asset-type/asset, and category/tag foundation vertical slices are complete with migrations, typed application actions, exact domain seeds, native Filament resources, focused failure-path tests, Canary coverage, and browser proof; the remaining Milestone 1 slices have not been marked complete.
 
 ---
 
@@ -3074,6 +3074,7 @@ Record unexpected package behavior, version incompatibilities, and material desi
 - 2026-07-13: Milestone 1 client/site slice added normalized client fiscal identifiers, non-blocking duplicate warnings, HTTP/HTTPS-only website validation, archived-client protection for new sites, native searchable Filament resources, private PNG/JPEG logo upload constraints, and soft-delete archive actions. Evidence is green: 32 Pest tests with 259 assertions, Canary strict 11/11 pages, Pint, Larastan level 6, and a Chrome browser proof with 1 test/7 assertions and no severe console errors. Dusk's PHP downloader could not use the local PHP CA trust store (`cURL error 60`), so ChromeDriver 150.0.7871.115 was installed from the exact official Chrome-for-Testing milestone manifest URL through the Windows trust store; the binary remains an ignored local test dependency.
 - 2026-07-13: The Windows browser proof currently targets the configured local file SQLite database. Dusk's `DatabaseMigrations` reset test data but left that database with migrations rolled back afterward; local schema, domain seed, and administrator were explicitly restored before rerunning Canary. A Canary result obtained while the schema was absent showed 11 skips despite a zero process exit and was rejected; the accepted rerun is 11 passed and zero skipped.
 - 2026-07-13: Milestone 1 asset slice added the exact ordered 13-type seed, reserved collision-safe slugs, client/site/type foreign-key constraints, client-site ownership validation, at-least-one-identifier validation, IPv4/IPv6 validation, uppercase colon-separated MAC normalization, and disabled-type protection that preserves existing references. Evidence is green: 39 Pest tests with 328 assertions, Pint, Larastan level 6, diagnostics, Canary strict 17/17 pages, and the expanded Chrome proof with 1 test/11 assertions and no severe console errors.
+- 2026-07-13: Milestone 1 classification slice added the exact ordered 18-category seed, archived-record-safe slug reservation with deterministic suffixes, strict uppercase `#RRGGBB` normalization, archive/restore resources for categories and tags, and no premature finding/template associations. Evidence is green: 44 Pest tests with 396 assertions, Pint, Larastan level 6, Canary strict 23/23 pages, and the expanded Chrome proof with 1 test/13 assertions and no severe console errors.
 
 ---
 

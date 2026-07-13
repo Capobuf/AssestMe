@@ -11,9 +11,13 @@ return [
         'library' => 'Libreria',
     ],
     'common' => [
+        'name' => 'Nome',
         'description' => 'Descrizione',
         'enabled' => 'Abilitata',
         'sort_order' => 'Ordine',
+        'slug' => 'Slug',
+        'slug_help' => 'Se vuoto viene generato dal nome. Gli slug già usati restano riservati.',
+        'color' => 'Colore',
     ],
     'address' => [
         'section' => 'Indirizzo',
@@ -106,6 +110,16 @@ return [
             'site_client' => 'La sede selezionata non appartiene al cliente.',
             'asset_type_disabled' => 'La tipologia asset selezionata è disabilitata.',
         ],
+    ],
+    'categories' => [
+        'navigation' => 'Categorie',
+        'singular' => 'categoria',
+        'plural' => 'categorie',
+    ],
+    'tags' => [
+        'navigation' => 'Tag',
+        'singular' => 'tag',
+        'plural' => 'tag',
     ],
     'admin' => [
         'created' => 'Amministratore AssestMe configurato correttamente.',
