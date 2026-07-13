@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Storage\CleanupDeletionOperations;
 use App\Actions\Storage\DeleteEntityAccordingToPolicy;
 use App\Enums\DeletionOperationStatus;
 use App\Enums\DeletionPolicy;
@@ -9,6 +10,7 @@ use App\Models\Client;
 use App\Models\DeletionOperation;
 use App\Models\Site;
 use Illuminate\Database\QueryException;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\File;
 
 beforeEach(function (): void {
@@ -99,3 +101,71 @@ it('rejects path traversal and missing referenced files before changing persiste
     'path traversal' => ['../database/database.sqlite', InvalidArgumentException::class],
     'missing file' => ['clients/missing/logo.png', RuntimeException::class],
 ]);
+
+it('retries a committed cleanup and removes only its validated trash directory', function (): void {
+    $uuid = fake()->uuid();
+    $relativeTrash = ".trash/{$uuid}";
+    $absoluteTrash = $this->privateRoot.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relativeTrash);
+    File::ensureDirectoryExists($absoluteTrash);
+    File::put($absoluteTrash.DIRECTORY_SEPARATOR.'staged.bin', 'staged');
+    $operation = DeletionOperation::query()->create([
+        'uuid' => $uuid,
+        'entity_type' => Client::class,
+        'entity_id' => 404,
+        'status' => DeletionOperationStatus::Committed,
+        'trash_path' => $relativeTrash,
+        'manifest' => [],
+    ]);
+
+    $result = app(CleanupDeletionOperations::class)->handle();
+
+    expect($result->processed)->toBe(1)
+        ->and($result->cleaned)->toBe(1)
+        ->and($result->failed)->toBe(0)
+        ->and($operation->fresh()?->status)->toBe(DeletionOperationStatus::Cleaned)
+        ->and(File::isDirectory($absoluteTrash))->toBeFalse();
+});
+
+it('keeps a cleanup failure visible and exits the command non-zero', function (): void {
+    $uuid = fake()->uuid();
+    $relativeTrash = ".trash/{$uuid}";
+    $absoluteTrash = $this->privateRoot.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relativeTrash);
+    $operation = DeletionOperation::query()->create([
+        'uuid' => $uuid,
+        'entity_type' => Client::class,
+        'entity_id' => 405,
+        'status' => DeletionOperationStatus::CleanupFailed,
+        'trash_path' => $relativeTrash,
+        'manifest' => [],
+        'error_text' => 'Initial cleanup failure.',
+    ]);
+
+    $files = Mockery::mock(Filesystem::class);
+    $files->shouldReceive('isDirectory')->once()->with($absoluteTrash)->andReturnTrue();
+    $files->shouldReceive('deleteDirectory')->once()->with($absoluteTrash)->andReturnFalse();
+    app()->instance(Filesystem::class, $files);
+
+    $this->artisan('assestme:storage:cleanup')
+        ->expectsOutputToContain('non riuscite: 1')
+        ->assertFailed();
+
+    expect($operation->fresh()?->status)->toBe(DeletionOperationStatus::CleanupFailed)
+        ->and($operation->fresh()?->error_text)->toContain('could not be removed');
+});
+
+it('refuses a cleanup operation whose persisted path does not match its UUID', function (): void {
+    $operation = DeletionOperation::query()->create([
+        'uuid' => fake()->uuid(),
+        'entity_type' => Client::class,
+        'entity_id' => 406,
+        'status' => DeletionOperationStatus::Committed,
+        'trash_path' => '.trash/another-operation',
+        'manifest' => [],
+    ]);
+
+    $result = app(CleanupDeletionOperations::class)->handle();
+
+    expect($result->failed)->toBe(1)
+        ->and($operation->fresh()?->status)->toBe(DeletionOperationStatus::CleanupFailed)
+        ->and($operation->fresh()?->error_text)->toContain('invalid trash path');
+});

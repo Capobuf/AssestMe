@@ -153,6 +153,12 @@ return [
             'no_administrator' => 'Nessun amministratore configurato.',
         ],
     ],
+    'storage' => [
+        'cleanup' => [
+            'invalid_limit' => 'Il limite deve essere un numero intero compreso tra 1 e 1000.',
+            'result' => 'Operazioni elaborate: :processed; pulite: :cleaned; non riuscite: :failed.',
+        ],
+    ],
     'assessments' => [
         'navigation' => 'Assessment',
         'singular' => 'assessment',
