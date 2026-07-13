@@ -35,10 +35,10 @@ php artisan assestme:benchmark --findings=50
 php artisan route:list --except-vendor
 php artisan about
 
-if [[ "${RUN_DUSK:-0}" == "1" ]]; then
+if [[ "${RUN_DUSK:-1}" == "1" ]]; then
     php artisan dusk
 else
-    info "Dusk was not run. Set RUN_DUSK=1 after Chrome/ChromeDriver are available."
+    info "Dusk was explicitly disabled with RUN_DUSK=${RUN_DUSK}."
 fi
 
 info "All requested verification checks passed."

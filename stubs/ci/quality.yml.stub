@@ -11,8 +11,16 @@ jobs:
   quality:
     runs-on: ubuntu-24.04
     timeout-minutes: 25
-
-    services: {}
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      APP_URL: http://127.0.0.1:8000
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ${{ github.workspace }}/database/database.sqlite
+      CACHE_STORE: file
+      SESSION_DRIVER: file
+      QUEUE_CONNECTION: sync
+      LARAVEL_PDF_DRIVER: dompdf
 
     steps:
       - name: Check out repository
@@ -26,25 +34,15 @@ jobs:
           extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip
           tools: composer:v2
 
-      - name: Validate Composer metadata
-        run: composer validate --strict
-
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-
-      - name: Audit locked dependencies
-        run: composer audit --locked --no-interaction
+      - name: Validate and install locked dependencies
+        run: |
+          composer validate --strict
+          composer install --no-interaction --prefer-dist --no-progress
+          composer audit --locked --no-interaction
 
       - name: Prepare environment
-        env:
-          APP_ENV: testing
-          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-          DB_CONNECTION: sqlite
-          DB_DATABASE: database/database.sqlite
         run: |
-          cp .env.example .env
           touch database/database.sqlite
-          php artisan key:generate --force
           php artisan migrate:fresh --seed --force
           php artisan filament:assets
 
@@ -60,25 +58,27 @@ jobs:
       - name: Run Filament Canary
         run: php artisan canary:check --strict
 
+      - name: Run diagnostics, benchmark, and verification script
+        run: |
+          php artisan assestme:diagnose
+          php artisan assestme:benchmark --findings=50
+          RUN_DUSK=0 scripts/verify.sh
+
       - name: Detect ChromeDriver version
         run: php artisan dusk:chrome-driver --detect
 
-      - name: Start application
+      - name: Run Dusk against the local server
         run: |
           php artisan serve --host=127.0.0.1 --port=8000 > storage/logs/ci-server.log 2>&1 &
           for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:8000/admin >/dev/null; then
-              exit 0
+            if curl --fail --silent http://127.0.0.1:8000/admin/login >/dev/null; then
+              php artisan dusk
+              exit $?
             fi
             sleep 1
           done
           cat storage/logs/ci-server.log
           exit 1
-
-      - name: Run browser tests
-        env:
-          APP_URL: http://127.0.0.1:8000
-        run: php artisan dusk
 
       - name: Upload failure artifacts
         if: failure()
@@ -90,3 +90,36 @@ jobs:
             tests/Browser/screenshots
             tests/Browser/console
           if-no-files-found: ignore
+
+  clean-bootstrap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      DEV_ADMIN_NAME: CI Administrator
+      DEV_ADMIN_EMAIL: admin@assestme.local
+      DEV_ADMIN_PASSWORD: CI-Only!AssestMe-2026
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip
+          ini-values: memory_limit=512M
+          tools: composer:v2
+
+      - name: Install clean-bootstrap system tools
+        run: sudo apt-get update && sudo apt-get install -y lsb-release sqlite3
+
+      - name: Bootstrap a clean checkout
+        run: scripts/bootstrap-local.sh "${GITHUB_WORKSPACE}"
+
+      - name: Verify bootstrapped application
+        run: |
+          php artisan assestme:diagnose
+          test "$(php artisan tinker --execute='echo App\Models\User::query()->count();')" = "1"
+          test "$(php artisan tinker --execute='echo App\Models\Category::query()->count();')" = "18"
