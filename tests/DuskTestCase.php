@@ -39,7 +39,12 @@ abstract class DuskTestCase extends BaseTestCase
             $this->shouldStartMaximized() ? '--start-maximized' : '--window-size=1920,1080',
             '--disable-search-engine-choice-screen',
             '--disable-smooth-scrolling',
-        ])->unless($this->hasHeadlessDisabled(), function (Collection $items) {
+            // Pipe transport avoids the Chromium snap stalling while ChromeDriver discovers its ephemeral debug port.
+            '--remote-debugging-pipe',
+        ])->when(function_exists('posix_geteuid') && posix_geteuid() === 0, function (Collection $items) {
+            // Chrome refuses to create a Linux session as root unless its sandbox is explicitly disabled.
+            return $items->push('--no-sandbox');
+        })->unless($this->hasHeadlessDisabled(), function (Collection $items) {
             return $items->merge([
                 '--disable-gpu',
                 '--headless=new',

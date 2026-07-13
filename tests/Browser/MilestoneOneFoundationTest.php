@@ -9,9 +9,12 @@ use App\Models\Asset;
 use App\Models\AssetType;
 use App\Models\Category;
 use App\Models\Client;
+use App\Models\EffortLevel;
+use App\Models\RiskProfile;
 use App\Models\Site;
 use App\Models\Tag;
 use App\Models\User;
+use Database\Seeders\MilestoneOneSeeder;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Laravel\Dusk\Browser;
 use PHPUnit\Framework\Assert;
@@ -23,6 +26,7 @@ final class MilestoneOneFoundationTest extends DuskTestCase
 
     public function test_client_and_site_resources_render_without_console_errors(): void
     {
+        $this->seed(MilestoneOneSeeder::class);
         $administrator = User::factory()->create();
         $client = Client::factory()->create([
             'legal_name' => 'Cliente prova browser S.r.l.',
@@ -42,11 +46,13 @@ final class MilestoneOneFoundationTest extends DuskTestCase
             ->for($site)
             ->for($assetType, 'assetType')
             ->create(['name' => 'Asset prova browser']);
-        Category::factory()->create(['name' => 'Categoria prova browser']);
+        Category::factory()->create(['name' => 'Categoria prova browser', 'sort_order' => 0]);
         Tag::factory()->create(['name' => 'Tag prova browser']);
         Assessment::factory()->create(['title' => 'Assessment dashboard browser']);
+        $riskProfile = RiskProfile::query()->where('is_default', true)->firstOrFail();
+        $effortLevel = EffortLevel::query()->where('code', 'low')->firstOrFail();
 
-        $this->browse(function (Browser $browser) use ($administrator, $asset, $client, $site): void {
+        $this->browse(function (Browser $browser) use ($administrator, $asset, $client, $effortLevel, $riskProfile, $site): void {
             $browser->loginAs($administrator)
                 ->visit('/admin')
                 ->waitForText('Assessment in bozza')
@@ -139,7 +145,24 @@ final class MilestoneOneFoundationTest extends DuskTestCase
                 ->visit('/admin/profile')
                 ->waitForText('Autenticazione a due fattori (2FA)')
                 ->assertSee('App di autenticazione')
-                ->assertSee('Configurazione');
+                ->assertSee('Configurazione')
+                ->visit('/admin/risk-profiles')
+                ->waitForText('Profilo predefinito')
+                ->assertSee('Profilo predefinito')
+                ->visit("/admin/risk-profiles/{$riskProfile->getKey()}/edit")
+                ->waitForText('Conseguenze')
+                ->assertSee('Matrice')
+                ->visit('/admin/effort-levels')
+                ->waitForText('Basso')
+                ->assertSee('Basso')
+                ->visit("/admin/effort-levels/{$effortLevel->getKey()}/edit")
+                ->waitForText('Codice')
+                ->visit('/admin/general-settings-page')
+                ->waitForText('Impostazioni generali')
+                ->assertSee('Profilo di rischio attivo')
+                ->visit('/admin/report-settings-page')
+                ->waitForText('Impostazioni report')
+                ->assertSee('Identità del consulente');
 
             $severeLogs = array_values(array_filter(
                 $browser->driver->manage()->getLog('browser'),
