@@ -135,6 +135,14 @@ return [
             'replace_confirmation' => 'In modalità non interattiva --replace richiede --current-password.',
         ],
     ],
+    'mfa' => [
+        'reset_confirmation' => 'Confermi la disattivazione MFA e l’invalidazione di tutti i codici di recupero?',
+        'reset_cancelled' => 'Reset MFA annullato.',
+        'reset_complete' => 'MFA disattivata e codici di recupero invalidati.',
+        'errors' => [
+            'no_administrator' => 'Nessun amministratore configurato.',
+        ],
+    ],
     'assessments' => [
         'navigation' => 'Assessment',
         'singular' => 'assessment',

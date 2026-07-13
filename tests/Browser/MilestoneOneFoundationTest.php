@@ -90,7 +90,11 @@ final class MilestoneOneFoundationTest extends DuskTestCase
                 ->assertSee('Categoria prova browser')
                 ->visit('/admin/tags')
                 ->waitForText('Tag')
-                ->assertSee('Tag prova browser');
+                ->assertSee('Tag prova browser')
+                ->visit('/admin/profile')
+                ->waitForText('Autenticazione a due fattori (2FA)')
+                ->assertSee('App di autenticazione')
+                ->assertSee('Configurazione');
 
             $severeLogs = array_values(array_filter(
                 $browser->driver->manage()->getLog('browser'),
