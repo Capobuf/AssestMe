@@ -1,6 +1,6 @@
 # AssestMe — Deterministic Executable Development Plan
 
-Specification version: **2.1**  
+Specification version: **2.2**
 Status: **approved for implementation**  
 Application name: **AssestMe**  
 Reference environment: **Ubuntu Server 24.04 LTS**  
@@ -72,7 +72,7 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-011 | APPROVED | Italian v1 UI/report, translation keys from the first commit |
 | D-012 | APPROVED | JSON Schema v1 is the canonical template interchange contract |
 | D-013 | APPROVED | Priority = consequence × likelihood, with reasoned manual override |
-| D-014 | APPROVED | Economic values are indicative and never totaled as a quotation |
+| D-014 | APPROVED | Economic values are indicative, never totaled as a quotation, and always understood as excluding VAT |
 | D-015 | APPROVED | Asset association is optional and scope can be organization-wide |
 | D-016 | APPROVED | Autosave plus explicit draft save, both using the same persistence layer |
 | D-017 | APPROVED | Archive/permanent-delete behavior follows one global setting |
@@ -96,6 +96,9 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-035 | APPROVED | API, MCP server, Jira, runZero, and scanner imports are outside v1 |
 | D-036 | APPROVED | Univer Sheet is not installed and never stores assessment findings |
 | D-037 | APPROVED | Right Click and Advanced Table Export enhance standard resource tables only |
+| D-038 | APPROVED | Risk profiles own consequence, likelihood, priority, and matrix records; effort levels are global |
+| D-039 | APPROVED | VAT treatment is not modeled or configurable; reports and XLSX contain one mandatory VAT-excluded estimate note |
+| D-040 | APPROVED | Optional consultant identity/contact/logo and text-only signature fields are explicitly defined for reports |
 
 ### D-001 — Framework
 
@@ -1317,7 +1320,41 @@ Tables:
 - `priority_levels`;
 - `risk_matrix_entries`.
 
-`risk_profiles` has `is_enabled`, not `is_active`.
+`risk_profiles` contains:
+
+- `code varchar(40)` unique;
+- `label varchar(120)`;
+- `description text` nullable;
+- `is_default boolean`;
+- `is_enabled boolean`, not `is_active`;
+- timestamps.
+
+Exactly one risk profile is default. Replacing the default is one transaction. The default profile cannot be disabled until another enabled profile becomes default.
+
+`consequence_levels` and `likelihood_levels` each contain:
+
+- risk profile FK with restricted deletion;
+- `code varchar(40)`, unique inside the profile;
+- `label varchar(120)`;
+- `description text` nullable;
+- integer `score` from 1 through 4, unique inside the profile;
+- strict uppercase `#RRGGBB` color;
+- integer `sort_order`;
+- `is_enabled boolean`;
+- timestamps.
+
+`priority_levels` contains:
+
+- risk profile FK with restricted deletion;
+- `code varchar(40)`, unique inside the profile;
+- `label varchar(120)`;
+- `description text` nullable;
+- strict uppercase `#RRGGBB` color;
+- integer `sort_order`;
+- `is_enabled boolean`;
+- timestamps.
+
+`risk_matrix_entries` contains risk profile, consequence, likelihood, and priority FKs, all with restricted deletion, plus timestamps. The three referenced levels must belong to the same profile as the entry. The profile/consequence/likelihood tuple is unique.
 
 `GeneralSettings.active_risk_profile_id` is the only source of truth for new calculations.
 
@@ -1355,9 +1392,9 @@ Default matrix:
 
 Constraints:
 
-- one matrix entry per consequence/likelihood pair;
+- one matrix entry per profile/consequence/likelihood tuple;
 - exactly 16 entries for an enabled 4×4 profile;
-- referenced levels cannot be deleted;
+- referenced profiles and levels cannot be deleted and are disabled instead;
 - editing a matrix does not automatically recalculate existing findings;
 - recalculation occurs when consequence/likelihood changes or the user invokes recalculation;
 - current UI uses live labels/colors;
@@ -1368,10 +1405,15 @@ Constraints:
 `effort_levels`:
 
 - `code varchar(40)` unique;
-- label, description, color, order, enabled;
+- `label varchar(120)`;
+- `description text` nullable;
+- strict uppercase `#RRGGBB` color;
+- integer `sort_order`;
+- `is_enabled boolean`;
+- timestamps;
 - no soft delete after use.
 
-Seed low, moderate, high, very_high.
+Effort levels are global and independent from risk profiles. Seed low, moderate, high, very_high.
 
 Effort belongs to a solution.
 
@@ -1603,7 +1645,6 @@ Defaults:
 | currency symbol | € |
 | symbol position | after |
 | decimals | 2 |
-| VAT display | not specified |
 | deletion policy | archive |
 | max evidence file | 25 MB |
 | max assessment evidence | 250 MB |
@@ -1619,11 +1660,23 @@ Defaults:
 | dark mode | enabled |
 | report excluded findings in XLSX | false |
 
+VAT treatment is not an application setting. No VAT status, display mode, rate, taxable amount, tax amount, enum, configurable label, or fiscal calculation exists. Every entered economic amount is understood as VAT excluded. Client and consultant VAT numbers remain permitted only as explicitly required anagraphic identifiers and never participate in calculations.
+
 ### 8.2 ReportSettings
 
 - default title pattern: `Assessment IT — {client}`;
-- consultant/business contact fields;
-- consultant logo;
+- optional `consultant_name`;
+- optional `business_name`;
+- optional `consultant_role`;
+- optional `consultant_email`;
+- optional `consultant_phone`;
+- optional HTTP/HTTPS `consultant_website`;
+- optional multiline `consultant_address`;
+- optional `consultant_vat_number`, used only as an anagraphic identifier;
+- optional `consultant_pec` with email shape;
+- optional `consultant_tax_code`;
+- optional private `consultant_logo_path`;
+- optional text-only `signature_name` and `signature_role`; no handwritten-signature upload in v1;
 - primary color, strict six-digit hex;
 - branding: consultant, client, both;
 - cover;
@@ -1666,6 +1719,8 @@ Defaults:
 
 - colors normalize uppercase `#RRGGBB`;
 - logo accepts PNG/JPEG only, max 5 MB;
+- consultant email and PEC use email validation; consultant website accepts HTTP/HTTPS only;
+- consultant VAT number and tax code are normalized uppercase without spaces and are never used for tax calculation;
 - currency must be uppercase ISO 4217 shape;
 - numeric limits are bounded;
 - report header and footer text max 120 characters; confidentiality label max 40 characters;
@@ -2323,6 +2378,12 @@ Format examples:
 - `Variabile in base alla soluzione`;
 - `Nessun costo diretto previsto`.
 
+The report contains exactly once, as a general note and never beside each amount:
+
+`Tutti gli importi indicati sono stime orientative e si intendono IVA esclusa.`
+
+The note is fixed, not configurable, and present even when an assessment currently has no numeric estimate.
+
 ### 13.7 Evidence
 
 - images embedded from verified local files/data URI;
@@ -2335,7 +2396,7 @@ Format examples:
 
 ### 13.8 Signature/disclaimer
 
-Signature is a text block with name, role, date line, and empty signature line. No image-signature support in v1.
+Signature is an optional text block with the configured signature name, role, date line, and empty signature line. No image-signature support in v1.
 
 Default confidentiality label: `Riservato`.
 
@@ -2408,6 +2469,12 @@ Workbook versioning is independent from PDF versioning.
 ### 14.1 Sheet `Finding`
 
 One row per exported finding.
+
+Row 1 is one merged general-note cell across all exported columns containing exactly:
+
+`Tutti gli importi indicati sono stime orientative e si intendono IVA esclusa.`
+
+The note is fixed, not configurable, and not repeated per finding or amount. Column headers are on row 2, data starts on row 3, the frozen pane is `A3`, and the auto filter starts on row 2.
 
 Columns:
 
@@ -2527,6 +2594,8 @@ Fixture coverage is separate from the user-facing template library and must incl
 - long text;
 - corrupt image;
 - all evidence types.
+
+Report/XLSX fixtures include the exact mandatory VAT-excluded estimate note once and contain no VAT treatment/display/rate/tax-calculation field. Anagraphic VAT-number fields remain allowed for clients and consultant contacts only.
 
 ## 16. Testing, CI, browser QA, and performance
 
@@ -3049,7 +3118,7 @@ The implementation agent must maintain this section.
 - [ ] Milestone 4 — Reporting and exports
 - [ ] Milestone 5 — Completion and hardening
 
-Current state: Milestone 0 is complete. Milestone 1 is in progress. The client/site, asset-type/asset, category/tag, optional TOTP MFA, application-aware backup/restore, actionable dashboard, and recoverable deletion-operation vertical slices are complete with migrations where applicable, typed application actions, exact domain seeds, native Filament resources/profile management, focused failure-path tests, Canary coverage, and browser proof for UI-bearing slices. D-037 is integrated into every currently existing standard resource table with visible-action parity and generic CSV/XLSX export; future standard template resources must opt into the same application-owned enhancement. Independent Milestone 5 clean-machine bootstrap and CI verification work is in progress while the remaining Milestone 1 decisions await approval.
+Current state: Milestone 0 is complete. Milestone 1 is in progress. The client/site, asset-type/asset, category/tag, optional TOTP MFA, application-aware backup/restore, actionable dashboard, and recoverable deletion-operation vertical slices are complete with migrations where applicable, typed application actions, exact domain seeds, native Filament resources/profile management, focused failure-path tests, Canary coverage, and browser proof for UI-bearing slices. D-037 is integrated into every currently existing standard resource table with visible-action parity and generic CSV/XLSX export; future standard template resources must opt into the same application-owned enhancement. The previously missing risk, effort, VAT-treatment, and consultant-contact decisions are now APPROVED in specification 2.2; their Milestone 1 implementation is in progress. Independent Milestone 5 clean-machine bootstrap and CI verification work is also in progress.
 
 ---
 
@@ -3085,6 +3154,7 @@ Record unexpected package behavior, version incompatibilities, and material desi
 - 2026-07-13: The CI workflow and its maintained stub now keep the SQLite environment across steps, run every current quality/diagnostic/benchmark gate, run Dusk against a readiness-checked local server, retain failure artifacts, and include a separate Ubuntu 24.04 clean-checkout bootstrap job that verifies exactly one administrator and all 18 seeded categories. `bootstrap-local.sh` now runs domain seeds and diagnostics; `verify.sh` runs Dusk by default unless explicitly disabled by CI before its dedicated browser step. All shell scripts are committed executable. Both YAML files parse successfully with Symfony YAML and the embedded Tinker assertions were executed locally. The Ubuntu-only bootstrap itself cannot run on the Windows development host because the required Linux shell/reference environment is absent; its definitive execution evidence remains the GitHub Actions job.
 - 2026-07-13: D-037 resolved to `leek/filament-right-click` 1.3.5 and `occtherapist/advanced-table-export-for-filament` 1.0.1, both MIT licensed and compatible with the locked Laravel 13/Filament 5 stack. Package metadata, service providers, Composer hooks, registered assets, views, translations, actions, and relevant source paths were inspected before activation; neither package adds a Composer plugin or install script, and the exporter reuses locked OpenSpout 4.32.0. Right Click adds one lazily loaded JavaScript asset and stylesheet, published through the native `filament:assets` command without Node or a frontend build. Advanced Table Export has no frontend build requirement. No vendor file was edited.
 - 2026-07-13: The application-owned standard-table enhancement applies Right Click only to the seven currently existing standard resource lists and keeps every context action duplicated by a visible Filament record action; it is absent from the assessment workspace. Generic export is intentionally limited to CSV and XLSX, with Italian controls and a 2,000-row cap; plugin PDF/JSON/XML/clipboard paths are disabled, so assessment PDF/workbook generation remains dedicated. A focused test reopens a real XLSX download, and Dusk dispatches a real `contextmenu` event, invokes the contextual edit modal, proves the visible edit path, and reports no severe console errors. Accepted evidence is green: 75 Pest tests with 608 assertions; Pint; Larastan level 6; Composer validation/audit; Canary strict 23/23 with zero skips; and Dusk Chrome 150.0.7871.101 at 1920×1080 with 1 test/23 assertions. The database, domain seed, and local administrator were restored after Dusk.
+- 2026-07-13: The user approved the missing Milestone 1 decisions and specification 2.2 records them as D-038 through D-040. Risk profiles own their consequence, likelihood, priority, and matrix rows; effort levels are global. VAT treatment, rates, and calculations are absent and non-configurable, while VAT numbers remain anagraphic identifiers only. PDF and XLSX each show the fixed VAT-excluded estimate note once. Optional consultant identity/contact fields now include logo, PEC, tax code, and a text-only name/role signature block.
 
 ---
 
