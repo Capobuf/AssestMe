@@ -159,6 +159,20 @@ return [
             'result' => 'Operazioni elaborate: :processed; pulite: :cleaned; non riuscite: :failed.',
         ],
     ],
+    'exports' => [
+        'action' => 'Esporta tabella',
+        'heading' => 'Esporta i dati della tabella',
+        'download' => 'Scarica',
+        'formats' => [
+            'csv' => 'CSV',
+            'xlsx' => 'Excel (XLSX)',
+        ],
+        'fields' => [
+            'format' => 'Formato',
+            'filename' => 'Nome file',
+            'columns' => 'Colonne incluse',
+        ],
+    ],
     'assessments' => [
         'navigation' => 'Assessment',
         'singular' => 'assessment',

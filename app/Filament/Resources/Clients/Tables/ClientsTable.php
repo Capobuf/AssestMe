@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Clients\Tables;
 
+use App\Filament\Support\StandardTableEnhancements;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -18,7 +19,7 @@ final class ClientsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table = $table
             ->columns([
                 TextColumn::make('legal_name')
                     ->label(__('assestme.clients.fields.legal_name'))
@@ -52,5 +53,7 @@ final class ClientsTable
                     RestoreBulkAction::make(),
                 ]),
             ]);
+
+        return StandardTableEnhancements::apply($table, StandardTableEnhancements::editableArchivables());
     }
 }

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e7bd91e64d95cf996836599196159d8f",
+    "content-hash": "b413e842da55de11523a9a65ed0a2760",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -3560,6 +3560,77 @@
             "time": "2026-03-08T20:05:35+00:00"
         },
         {
+            "name": "leek/filament-right-click",
+            "version": "v1.3.5",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/leek/filament-right-click.git",
+                "reference": "09acac0cf8863a77f16133335abfdccfe4bb229e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/leek/filament-right-click/zipball/09acac0cf8863a77f16133335abfdccfe4bb229e",
+                "reference": "09acac0cf8863a77f16133335abfdccfe4bb229e",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^4.0 || ^5.0",
+                "php": "^8.2",
+                "spatie/laravel-package-tools": "^1.15"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.0",
+                "orchestra/testbench": "^9.0 || ^10.0 || ^11.0",
+                "pestphp/pest": "^3.0 || ^4.0",
+                "pestphp/pest-plugin-laravel": "^3.0 || ^4.0"
+            },
+            "suggest": {
+                "leek/filament-header-filters": "Add inline header filters to the tables you enhance with right-click menus.",
+                "leek/filament-ui-plus": "Enhanced Filament UI components to match your upgraded tables.",
+                "leek/filament-workflows": "Trigger a workflow on the right-clicked record — wrap TriggerWorkflowAction in a ContextMenuItem."
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Leek\\FilamentRightClick\\FilamentRightClickServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Leek\\FilamentRightClick\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Chris Jones",
+                    "email": "leeked@gmail.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Right-click table row menus for Filament panels that trigger native Filament actions.",
+            "keywords": [
+                "actions",
+                "context-menu",
+                "filament",
+                "filamentphp",
+                "laravel",
+                "leek",
+                "right-click",
+                "tables"
+            ],
+            "support": {
+                "issues": "https://github.com/leek/filament-right-click/issues",
+                "source": "https://github.com/leek/filament-right-click"
+            },
+            "time": "2026-07-07T13:20:01+00:00"
+        },
+        {
             "name": "livewire/livewire",
             "version": "v4.3.3",
             "source": {
@@ -4470,6 +4541,87 @@
                 }
             ],
             "time": "2026-02-16T23:10:27+00:00"
+        },
+        {
+            "name": "occtherapist/advanced-table-export-for-filament",
+            "version": "v1.0.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/OccTherapist/advanced-table-export-for-filament.git",
+                "reference": "af72dcdf6196a9b41401302290ebfb187ee89b7d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/OccTherapist/advanced-table-export-for-filament/zipball/af72dcdf6196a9b41401302290ebfb187ee89b7d",
+                "reference": "af72dcdf6196a9b41401302290ebfb187ee89b7d",
+                "shasum": ""
+            },
+            "require": {
+                "filament/filament": "^4.0|^5.0",
+                "illuminate/contracts": "^11.0|^12.0|^13.0",
+                "illuminate/support": "^11.0|^12.0|^13.0",
+                "openspout/openspout": "^4.28",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.22",
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^10.0|^11.0",
+                "phpunit/phpunit": "^11.0"
+            },
+            "suggest": {
+                "dompdf/dompdf": "Required for Dompdf PDF rendering.",
+                "spatie/browsershot": "Required for local Browsershot PDF rendering.",
+                "spatie/laravel-pdf": "Required for PDF rendering drivers.",
+                "wnx/sidecar-browsershot": "Required for Sidecar Browsershot PDF rendering."
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "OccTherapist\\AdvancedTableExportForFilament\\AdvancedTableExportForFilamentServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "OccTherapist\\AdvancedTableExportForFilament\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Igor Clauss",
+                    "homepage": "https://igorclauss.de",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Export and print Filament admin tables to CSV, XLSX, and PDF — Filament v4/v5 compatible successor to filament-export.",
+            "homepage": "https://github.com/OccTherapist/advanced-table-export-for-filament",
+            "keywords": [
+                "browsershot",
+                "csv",
+                "dompdf",
+                "export",
+                "filament",
+                "filament-export",
+                "filament-plugin",
+                "laravel",
+                "openspout",
+                "pdf",
+                "print",
+                "table-export",
+                "xlsx"
+            ],
+            "support": {
+                "docs": "https://github.com/OccTherapist/advanced-table-export-for-filament#readme",
+                "issues": "https://github.com/OccTherapist/advanced-table-export-for-filament/issues",
+                "source": "https://github.com/OccTherapist/advanced-table-export-for-filament"
+            },
+            "time": "2026-07-03T21:57:13+00:00"
         },
         {
             "name": "openspout/openspout",

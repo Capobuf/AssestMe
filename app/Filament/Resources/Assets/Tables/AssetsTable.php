@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Assets\Tables;
 
+use App\Filament\Support\StandardTableEnhancements;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -18,7 +19,7 @@ final class AssetsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table = $table
             ->columns([
                 TextColumn::make('name')
                     ->label(__('assestme.assets.fields.name'))
@@ -61,5 +62,7 @@ final class AssetsTable
                     RestoreBulkAction::make(),
                 ]),
             ]);
+
+        return StandardTableEnhancements::apply($table, StandardTableEnhancements::editableArchivables());
     }
 }

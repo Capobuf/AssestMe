@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Tags\Tables;
 
+use App\Filament\Support\StandardTableEnhancements;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -19,7 +20,7 @@ final class TagsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table = $table
             ->columns([
                 TextColumn::make('name')->label(__('assestme.common.name'))->searchable()->sortable(),
                 TextColumn::make('slug')->label(__('assestme.common.slug'))->searchable()->toggleable(),
@@ -30,5 +31,7 @@ final class TagsTable
             ->toolbarActions([
                 BulkActionGroup::make([DeleteBulkAction::make(), RestoreBulkAction::make()]),
             ]);
+
+        return StandardTableEnhancements::apply($table, StandardTableEnhancements::editableArchivables());
     }
 }

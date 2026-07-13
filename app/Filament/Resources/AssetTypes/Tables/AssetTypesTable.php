@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\AssetTypes\Tables;
 
+use App\Filament\Support\StandardTableEnhancements;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -13,7 +14,7 @@ final class AssetTypesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table = $table
             ->defaultSort('sort_order')
             ->columns([
                 TextColumn::make('sort_order')
@@ -35,5 +36,7 @@ final class AssetTypesTable
                     ->counts('assets'),
             ])
             ->recordActions([EditAction::make()]);
+
+        return StandardTableEnhancements::apply($table, StandardTableEnhancements::editable());
     }
 }

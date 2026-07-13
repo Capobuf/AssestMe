@@ -50,12 +50,51 @@ final class MilestoneOneFoundationTest extends DuskTestCase
             $browser->loginAs($administrator)
                 ->visit('/admin')
                 ->waitForText('Assessment in bozza')
-                ->assertSee('Ultimi assessment')
-                ->assertSee('Assessment dashboard browser')
+                ->waitForText('Ultimi assessment')
+                ->waitForText('Assessment dashboard browser')
                 ->visit('/admin/clients')
                 ->waitForText('Clienti')
                 ->assertSee('Cliente prova browser S.r.l.')
                 ->assertSee('Cliente Browser')
+                ->assertSee('Esporta tabella')
+                ->assertPresent("a[href$='/admin/clients/{$client->getKey()}/edit']")
+                ->waitUntil('window.FilamentRightClick !== undefined');
+
+            $contextMenuState = $browser->script(<<<'JS'
+                const row = document.querySelector('.fi-ta-record, .fi-ta-row');
+                const surface = row?.closest('[data-filament-right-click-record-config]');
+                row?.dispatchEvent(new MouseEvent('contextmenu', {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: 120,
+                    clientY: 160,
+                }));
+
+                const menu = document.querySelector('.fi-right-click-menu');
+
+                return {
+                    hasRow: Boolean(row),
+                    hasSurface: Boolean(surface),
+                    menuIsOpen: Boolean(menu && ! menu.hidden && menu.classList.contains('fi-open')),
+                    recordKey: row?.getAttribute('wire:key') ?? null,
+                };
+                JS);
+            $contextMenuState = $contextMenuState[0] ?? [];
+            $contextMenuDiagnostics = json_encode($contextMenuState, JSON_THROW_ON_ERROR);
+            Assert::assertTrue($contextMenuState['hasRow'] ?? false, $contextMenuDiagnostics);
+            Assert::assertTrue($contextMenuState['hasSurface'] ?? false, $contextMenuDiagnostics);
+            Assert::assertMatchesRegularExpression(
+                '/\\.table\\.records\\.[^.]+$/',
+                (string) ($contextMenuState['recordKey'] ?? ''),
+                $contextMenuDiagnostics,
+            );
+            Assert::assertTrue($contextMenuState['menuIsOpen'] ?? false, $contextMenuDiagnostics);
+
+            $browser->waitFor('.fi-right-click-menu.fi-open')
+                ->assertSeeIn('.fi-right-click-menu.fi-open', 'Modifica')
+                ->click('.fi-right-click-menu.fi-open [data-action="contextEdit"]')
+                ->waitForText('Modifica cliente')
+                ->assertSee('Ragione sociale')
                 ->visit("/admin/clients/{$client->getKey()}/edit")
                 ->waitForText('Ragione sociale');
 

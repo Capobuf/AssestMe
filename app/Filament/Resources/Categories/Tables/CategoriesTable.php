@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Categories\Tables;
 
+use App\Filament\Support\StandardTableEnhancements;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
@@ -20,7 +21,7 @@ final class CategoriesTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table = $table
             ->defaultSort('sort_order')
             ->columns([
                 TextColumn::make('sort_order')->label(__('assestme.common.sort_order'))->sortable(),
@@ -34,5 +35,7 @@ final class CategoriesTable
             ->toolbarActions([
                 BulkActionGroup::make([DeleteBulkAction::make(), RestoreBulkAction::make()]),
             ]);
+
+        return StandardTableEnhancements::apply($table, StandardTableEnhancements::editableArchivables());
     }
 }
