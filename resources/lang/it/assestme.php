@@ -6,6 +6,60 @@ return [
     'app' => [
         'name' => 'AssestMe',
     ],
+    'navigation' => [
+        'registry' => 'Anagrafica',
+    ],
+    'address' => [
+        'section' => 'Indirizzo',
+        'fields' => [
+            'address' => 'Indirizzo',
+            'city' => 'Città',
+            'postal_code' => 'CAP',
+            'province' => 'Provincia',
+            'country' => 'Paese',
+        ],
+    ],
+    'clients' => [
+        'navigation' => 'Clienti',
+        'singular' => 'cliente',
+        'plural' => 'clienti',
+        'sections' => [
+            'identity' => 'Identità',
+            'contacts' => 'Contatti',
+            'additional' => 'Informazioni aggiuntive',
+        ],
+        'fields' => [
+            'legal_name' => 'Ragione sociale',
+            'trade_name' => 'Nome commerciale',
+            'vat_number' => 'Partita IVA',
+            'tax_code' => 'Codice fiscale',
+            'email' => 'Email',
+            'phone' => 'Telefono',
+            'website' => 'Sito web',
+            'logo' => 'Logo',
+            'internal_notes' => 'Note interne',
+            'sites' => 'Sedi',
+        ],
+        'duplicate' => [
+            'title' => 'Possibile cliente duplicato',
+            'body' => 'Esiste già un cliente con lo stesso valore per: :fields. Il salvataggio è stato mantenuto.',
+        ],
+    ],
+    'sites' => [
+        'navigation' => 'Sedi',
+        'singular' => 'sede',
+        'plural' => 'sedi',
+        'sections' => [
+            'identity' => 'Identità',
+            'details' => 'Dettagli',
+        ],
+        'fields' => [
+            'client' => 'Cliente',
+            'name' => 'Nome',
+            'description' => 'Descrizione',
+            'notes' => 'Note',
+        ],
+    ],
     'admin' => [
         'created' => 'Amministratore AssestMe configurato correttamente.',
         'prompts' => [
