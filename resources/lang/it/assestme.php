@@ -10,6 +10,16 @@ return [
         'registry' => 'Anagrafica',
         'library' => 'Libreria',
     ],
+    'dashboard' => [
+        'draft_assessments' => 'Assessment in bozza',
+        'completed_assessments' => 'Assessment completati',
+        'open_findings' => 'Finding aperti',
+        'urgent_findings' => 'Finding alti o critici',
+        'cleanup_failures' => 'Pulizie file da risolvere',
+        'last_backup' => 'Ultimo backup riuscito',
+        'backup_never' => 'Mai eseguito',
+        'latest_assessments' => 'Ultimi assessment',
+    ],
     'common' => [
         'name' => 'Nome',
         'description' => 'Descrizione',

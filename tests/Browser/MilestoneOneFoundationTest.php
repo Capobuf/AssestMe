@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Browser;
 
+use App\Models\Assessment;
 use App\Models\Asset;
 use App\Models\AssetType;
 use App\Models\Category;
@@ -43,9 +44,14 @@ final class MilestoneOneFoundationTest extends DuskTestCase
             ->create(['name' => 'Asset prova browser']);
         Category::factory()->create(['name' => 'Categoria prova browser']);
         Tag::factory()->create(['name' => 'Tag prova browser']);
+        Assessment::factory()->create(['title' => 'Assessment dashboard browser']);
 
         $this->browse(function (Browser $browser) use ($administrator, $asset, $client, $site): void {
             $browser->loginAs($administrator)
+                ->visit('/admin')
+                ->waitForText('Assessment in bozza')
+                ->assertSee('Ultimi assessment')
+                ->assertSee('Assessment dashboard browser')
                 ->visit('/admin/clients')
                 ->waitForText('Clienti')
                 ->assertSee('Cliente prova browser S.r.l.')

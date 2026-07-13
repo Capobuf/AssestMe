@@ -14,4 +14,8 @@ return [
             'monthly' => 6,
         ],
     ],
+
+    'deletion' => [
+        'trash_root' => storage_path('app/private/.trash'),
+    ],
 ];
