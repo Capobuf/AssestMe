@@ -37,7 +37,7 @@ cleanup_failed_release() {
     if [[ $exit_code -ne 0 ]]; then
         printf 'ERROR: Deployment failed.\n' >&2
         if [[ -n "$backup_path" && -d "$release_dir" && -f "$release_dir/artisan" ]]; then
-            php "$release_dir/artisan" assestme:restore-backup "$backup_path" --force --no-interaction || true
+            php "$release_dir/artisan" assestme:restore-backup "$backup_path" --no-interaction || true
         fi
         if [[ "$switched" == "1" ]]; then
             if [[ -n "$previous_target" ]]; then
@@ -79,13 +79,13 @@ php artisan optimize:clear
 php artisan down --retry=60
 
 mkdir -p "$backup_root"
-backup_path="${backup_root}/predeploy_${release_id}.tar.gz"
+backup_path="${backup_root}/assestme-$(date -u +%Y%m%d-%H%M%S).tar.gz"
 php artisan assestme:backup --output="$backup_path" --no-interaction
 [[ -f "$backup_path" ]] || fail "The pre-deployment backup archive was not created: $backup_path"
 php artisan migrate --force --isolated
 php artisan filament:assets
 php artisan optimize
-php artisan assestme:diagnose --production
+php artisan assestme:diagnose
 
 ln -sfn "$release_dir" "${current_link}.next"
 mv -Tf "${current_link}.next" "$current_link"
