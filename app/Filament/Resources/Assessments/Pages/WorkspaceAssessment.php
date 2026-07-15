@@ -12,9 +12,11 @@ use App\Actions\Assessments\SaveFindingDetails;
 use App\Actions\Assessments\TransitionAssessment;
 use App\Actions\Evidence\StoreEvidenceFile;
 use App\Actions\Evidence\StoreEvidenceUrl;
+use App\Actions\Reports\DeleteGeneratedReport;
 use App\Actions\Reports\GenerateAssessmentPdf;
 use App\Data\Assessments\WorkspaceSaveData;
 use App\Enums\AssessmentStatus;
+use App\Enums\DeletionOperationStatus;
 use App\Enums\ScopeType;
 use App\Exceptions\AssessmentVersionConflict;
 use App\Exceptions\IdempotencyKeyMismatch;
@@ -209,6 +211,73 @@ final class WorkspaceAssessment extends EditRecord
                 ->send();
 
         }
+    }
+
+    public function deleteGeneratedReportAction(): Action
+    {
+        return Action::make('deleteGeneratedReport')
+            ->label(__('assestme.reports.delete.action'))
+            ->icon('heroicon-o-trash')
+            ->color('danger')
+            ->requiresConfirmation()
+            ->modalHeading(__('assestme.reports.delete.heading'))
+            ->modalDescription(__('assestme.reports.delete.description'))
+            ->modalSubmitActionLabel(__('assestme.reports.delete.confirm'))
+            ->extraAttributes(['data-dusk' => 'delete-generated-report'])
+            ->action(function (array $arguments): void {
+                $reportId = filter_var($arguments['report'] ?? null, FILTER_VALIDATE_INT);
+
+                if (! is_int($reportId) || $reportId < 1) {
+                    $this->reportGeneratedFileDeletionFailure(null, new \InvalidArgumentException('The generated report identifier is invalid.'));
+
+                    return;
+                }
+
+                try {
+                    $report = $this->assessment()->generatedReports()->findOrFail($reportId);
+                    $operation = app(DeleteGeneratedReport::class)->handle($report);
+
+                    if ($operation->status === DeletionOperationStatus::CleanupFailed) {
+                        Log::warning('Generated report deleted with pending trash cleanup.', [
+                            'assessment_id' => $this->assessment()->getKey(),
+                            'generated_report_id' => $reportId,
+                            'deletion_operation_uuid' => $operation->uuid,
+                        ]);
+
+                        Notification::make()
+                            ->warning()
+                            ->title(__('assestme.reports.delete.cleanup_pending'))
+                            ->body(__('assestme.reports.delete.cleanup_pending_body'))
+                            ->persistent()
+                            ->send();
+
+                        return;
+                    }
+
+                    Notification::make()
+                        ->success()
+                        ->title(__('assestme.reports.delete.deleted'))
+                        ->send();
+                } catch (Throwable $exception) {
+                    $this->reportGeneratedFileDeletionFailure($reportId, $exception);
+                }
+            });
+    }
+
+    private function reportGeneratedFileDeletionFailure(?int $reportId, Throwable $exception): void
+    {
+        Log::error('Generated report permanent deletion failed.', [
+            'assessment_id' => $this->assessment()->getKey(),
+            'generated_report_id' => $reportId,
+            'exception' => $exception,
+        ]);
+
+        Notification::make()
+            ->danger()
+            ->title(__('assestme.reports.delete.failed'))
+            ->body(__('assestme.reports.delete.failed_body'))
+            ->persistent()
+            ->send();
     }
 
     protected function getSaveFormAction(): Action

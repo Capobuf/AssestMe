@@ -425,6 +425,17 @@ return [
     'reports' => [
         'generated' => 'Report PDF generato',
         'download_existing' => 'Scarica file',
+        'delete' => [
+            'action' => 'Elimina file',
+            'heading' => 'Eliminare definitivamente il file generato?',
+            'description' => 'Il file e il relativo snapshot immutabile saranno eliminati definitivamente. Questa operazione non può essere annullata.',
+            'confirm' => 'Elimina definitivamente',
+            'deleted' => 'File generato eliminato definitivamente',
+            'cleanup_pending' => 'File eliminato, pulizia storage da completare',
+            'cleanup_pending_body' => 'L’operazione è registrata e può essere ritentata dalla pulizia storage.',
+            'failed' => 'Eliminazione del file generato non riuscita',
+            'failed_body' => 'L’eliminazione non è stata completata correttamente. Verifica lo storage e le operazioni di recupero prima di riprovare.',
+        ],
         'document' => [
             'assessment_information' => 'Informazioni assessment',
             'client' => 'Cliente',
