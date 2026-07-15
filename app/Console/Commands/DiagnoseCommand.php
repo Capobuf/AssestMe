@@ -30,6 +30,7 @@ final class DiagnoseCommand extends Command
         $journalMode = strtolower((string) DB::scalar('PRAGMA journal_mode'));
         $busyTimeout = (int) DB::scalar('PRAGMA busy_timeout');
         $synchronous = (int) DB::scalar('PRAGMA synchronous');
+        $integrityCheck = strtolower((string) DB::scalar('PRAGMA integrity_check'));
         $transactionMode = strtoupper((string) config('database.connections.sqlite.transaction_mode'));
 
         $checks = [
@@ -41,6 +42,7 @@ final class DiagnoseCommand extends Command
             'sqlite_journal_mode_wal' => $journalMode === 'wal',
             'sqlite_busy_timeout_5000' => $busyTimeout === 5000,
             'sqlite_synchronous_normal' => $synchronous === 1,
+            'sqlite_integrity_check' => $integrityCheck === 'ok',
             'sqlite_transaction_immediate' => $transactionMode === 'IMMEDIATE',
             'pdf_driver_dompdf' => config('laravel-pdf.driver') === 'dompdf',
             'single_administrator' => User::query()->count() <= 1,
@@ -58,6 +60,7 @@ final class DiagnoseCommand extends Command
                 'journal_mode' => $journalMode,
                 'busy_timeout' => $busyTimeout,
                 'synchronous' => $synchronous,
+                'integrity_check' => $integrityCheck,
                 'transaction_mode' => $transactionMode,
             ],
         ];

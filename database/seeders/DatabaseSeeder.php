@@ -15,6 +15,5 @@ final class DatabaseSeeder extends Seeder
     {
         $this->call(MilestoneOneSeeder::class);
         $this->call(MilestoneTwoSeeder::class);
-        $this->call(MilestoneZeroSeeder::class);
     }
 }

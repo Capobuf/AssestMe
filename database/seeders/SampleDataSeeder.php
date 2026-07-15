@@ -18,12 +18,12 @@ use App\Models\RiskMatrixEntry;
 use Illuminate\Database\Seeder;
 use RuntimeException;
 
-final class MilestoneZeroSeeder extends Seeder
+final class SampleDataSeeder extends Seeder
 {
     public function run(): void
     {
         if (app()->isProduction() && ! (bool) $this->command->option('force')) {
-            throw new RuntimeException('MilestoneZeroSeeder is disabled in production without --force.');
+            throw new RuntimeException('SampleDataSeeder is disabled in production without --force.');
         }
 
         $client = Client::query()->firstOrCreate(
@@ -32,7 +32,7 @@ final class MilestoneZeroSeeder extends Seeder
         );
 
         $assessment = Assessment::query()->firstOrCreate(
-            ['title' => 'Assessment IT — Proof Milestone 0'],
+            ['title' => 'Assessment IT — Esempio'],
             ['client_id' => $client->getKey(), 'assessment_date' => today(), 'lock_version' => 0],
         );
 

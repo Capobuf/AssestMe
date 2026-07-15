@@ -15,8 +15,6 @@ jobs:
       APP_ENV: testing
       APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       APP_URL: http://127.0.0.1:8000
-      DB_CONNECTION: sqlite
-      DB_DATABASE: ${{ github.workspace }}/database/database.sqlite
       CACHE_STORE: file
       SESSION_DRIVER: file
       QUEUE_CONNECTION: sync
@@ -40,45 +38,18 @@ jobs:
           composer install --no-interaction --prefer-dist --no-progress
           composer audit --locked --no-interaction
 
-      - name: Prepare environment
+      - name: Prepare application assets
         run: |
-          touch database/database.sqlite
-          php artisan migrate:fresh --seed --force
           php artisan filament:assets
 
-      - name: Check formatting
-        run: vendor/bin/pint --test
-
-      - name: Run static analysis
-        run: vendor/bin/phpstan analyse --memory-limit=1G
-
-      - name: Run application tests
-        run: php artisan test
-
-      - name: Run Filament Canary
-        run: php artisan canary:check --strict
-
-      - name: Run diagnostics, benchmark, and verification script
-        run: |
-          php artisan assestme:diagnose
-          php artisan assestme:benchmark --findings=50
-          RUN_DUSK=0 scripts/verify.sh
+      - name: Run isolated quality gates
+        run: RUN_DUSK=0 scripts/verify.sh
 
       - name: Detect ChromeDriver version
         run: php artisan dusk:chrome-driver --detect
 
-      - name: Run Dusk against the local server
-        run: |
-          php artisan serve --host=127.0.0.1 --port=8000 > storage/logs/ci-server.log 2>&1 &
-          for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:8000/admin/login >/dev/null; then
-              php artisan dusk
-              exit $?
-            fi
-            sleep 1
-          done
-          cat storage/logs/ci-server.log
-          exit 1
+      - name: Run isolated Dusk suite
+        run: scripts/dusk-isolated.sh
 
       - name: Upload failure artifacts
         if: failure()
@@ -123,3 +94,5 @@ jobs:
           php artisan assestme:diagnose
           test "$(php artisan tinker --execute='echo App\Models\User::query()->count();')" = "1"
           test "$(php artisan tinker --execute='echo App\Models\Category::query()->count();')" = "18"
+          test "$(php artisan tinker --execute='echo App\Models\Assessment::query()->count();')" = "0"
+          test "$(php artisan tinker --execute='echo App\Models\FindingTemplate::query()->count();')" -gt "0"

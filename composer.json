@@ -50,14 +50,10 @@
     },
     "scripts": {
         "quality": [
-            "@php vendor/bin/pint --test",
-            "@php vendor/bin/phpstan analyse --memory-limit=1G",
-            "@php artisan test",
-            "@php artisan canary:check --strict",
-            "@composer audit --locked"
+            "bash scripts/quality-isolated.sh"
         ],
         "browser": [
-            "@php artisan dusk"
+            "bash scripts/dusk-isolated.sh"
         ],
         "fix": [
             "@php vendor/bin/pint"

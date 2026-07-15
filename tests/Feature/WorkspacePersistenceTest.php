@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Assessments\PurgeExpiredWorkspaceSaveRequests;
 use App\Actions\Assessments\SaveAssessmentWorkspace;
 use App\Data\Assessments\WorkspaceSaveData;
 use App\Enums\FindingStatus;
@@ -9,6 +10,9 @@ use App\Exceptions\AssessmentVersionConflict;
 use App\Exceptions\IdempotencyKeyMismatch;
 use App\Models\Assessment;
 use App\Models\Finding;
+use App\Models\WorkspaceSaveRequest;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -48,6 +52,27 @@ function workspaceRequest(Assessment $assessment, array $payload, ?string $reque
         payloadSha256: WorkspaceSaveData::hashPayload($payload),
     );
 }
+
+it('purges workspace save requests older than twenty four hours through the scheduler', function (): void {
+    $assessment = Assessment::factory()->create();
+    $request = static fn (Carbon $createdAt): array => [
+        'request_id' => (string) Str::uuid(),
+        'assessment_id' => $assessment->getKey(),
+        'expected_version' => 0,
+        'applied_version' => 1,
+        'payload_hash' => str_repeat('a', 64),
+        'response' => [],
+        'created_at' => $createdAt,
+    ];
+    WorkspaceSaveRequest::query()->create($request(now('UTC')->subHours(25)));
+    $retained = WorkspaceSaveRequest::query()->create($request(now('UTC')->subHours(23)));
+
+    expect(app(PurgeExpiredWorkspaceSaveRequests::class)())->toBe(1)
+        ->and(WorkspaceSaveRequest::query()->sole()->is($retained))->toBeTrue()
+        ->and(collect(Schedule::events())->contains(
+            fn ($event): bool => $event->description === 'assestme:purge-workspace-save-requests',
+        ))->toBeTrue();
+});
 
 it('atomically adds updates deletes and reorders multiline findings', function (): void {
     $assessment = Assessment::factory()->create();

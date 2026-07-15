@@ -99,6 +99,7 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-038 | APPROVED | Risk profiles own consequence, likelihood, priority, and matrix records; effort levels are global |
 | D-039 | APPROVED | VAT treatment is not modeled or configurable; reports and XLSX contain one mandatory VAT-excluded estimate note |
 | D-040 | APPROVED | Optional consultant identity/contact/logo and text-only signature fields are explicitly defined for reports |
+| D-041 | APPROVED | Development verification is autonomous and isolated; manual cross-browser/device QA is deferred until a reference installation and devices exist |
 
 ### D-001 — Framework
 
@@ -427,7 +428,26 @@ Use `phpoffice/phpspreadsheet` directly. Do not rely on a transitive dependency 
 
 Use Laravel Dusk with Chrome/ChromeDriver in development/CI. No Node.js or Playwright.
 
-Camera capture and cross-browser/mobile behavior also require the manual acceptance checklist in this plan.
+The maintained Dusk suite is the automated browser gate while the application is under active development. It covers the browser behaviors already represented by executable tests and must run against an isolated disposable database and storage root.
+
+Manual Edge, Firefox, iOS Safari, Android Chrome, camera, and device-specific checks are deferred until a reference installation and suitable devices exist. They are compatibility evidence for a later production-release decision and do not block development milestones.
+
+### D-041 — Autonomous isolated verification
+
+No development or CI verification command may read, migrate, truncate, seed, back up, restore, benchmark, or otherwise mutate the configured application database or private storage.
+
+Required behavior:
+
+- the maintained entry points `php artisan test`, `composer quality` (including Canary), `composer browser` (Dusk), the benchmark, and `scripts/verify.sh` use disposable file-backed SQLite databases created specifically for that run;
+- test cache, sessions, generated reports, evidence, backups, temporary uploads, and deletion trash use disposable test roots;
+- verification creates its own domain fixtures and administrator when required;
+- commands clean their disposable state on success and failure;
+- a missing seed, template, administrator, or reference assessment in the application database cannot make a test or benchmark fail;
+- the application may have no initialized reference database while development is in progress;
+- `scripts/bootstrap-local.sh` is an explicit installation command and is the only development helper allowed to initialize the configured local application database;
+- tests proving backup/restore or deployment behavior operate only on temporary paths.
+
+Until a reference installation and test devices exist, the blocking automated gate is Composer validation/audit, Pint, PHPStan, Pest, Canary strict zero-skip, the maintained Dusk suite where ChromeDriver is available, diagnostics against an isolated initialized database, the isolated 50-finding benchmark, storage audit, and `scripts/verify.sh`. Manual cross-browser/device QA is recorded as deferred, never falsely reported as passed.
 
 ### D-028 — Authentication and MFA
 
@@ -1890,7 +1910,7 @@ Use camera capture hint for image upload. HEIC/HEIF remains rejected with an exp
 
 ### 9.9 Browser support
 
-Supported:
+Target compatibility:
 
 - latest two stable Chrome;
 - latest two stable Edge;
@@ -1898,9 +1918,9 @@ Supported:
 - current iOS Safari;
 - current Android Chrome.
 
-Automated Dusk acceptance uses current stable Chrome.
+Automated Dusk verification uses the available current stable Chrome/Chromium and the maintained browser suite.
 
-Manual blocking checklist covers Edge, Firefox, iOS Safari, and Android Chrome.
+Edge, Firefox, iOS Safari, and Android Chrome remain compatibility targets. Their manual checklist is deferred until a reference installation and suitable devices exist and is not a development-milestone blocker under D-041.
 
 ### 9.10 Preferences and theme
 
@@ -2658,25 +2678,25 @@ Enforce:
 
 #### Dusk
 
-Automate current Chrome:
+The maintained current-Chrome suite must automate:
 
 - login;
 - multiline editing;
 - autosave status;
 - explicit save;
-- drag reorder;
+- native accessible reorder;
 - native clone/delete actions;
-- shortcuts;
 - right-click and visible equivalent;
-- conflict between two tabs/windows;
 - report/XLSX download;
 - browser console has no errors.
 
+Shortcut behavior, physical drag-and-drop, and a real two-window conflict remain implementation requirements covered by application/Livewire tests where practical, but expanded browser automation is deferred unless a regression requires it.
+
 No Node.js.
 
-### 16.2 Manual blocking QA
+### 16.2 Deferred manual compatibility QA
 
-Record date, exact browser version, operating system/device, viewport, and pass/fail in the Progress/Discoveries section.
+When a reference installation and suitable devices become available, record date, exact browser version, operating system/device, viewport, and pass/fail in the Progress/Discoveries section.
 
 Desktop:
 
@@ -2695,7 +2715,7 @@ Mobile:
 - vertical finding edit;
 - download/open PDF.
 
-A failed manual blocking item prevents completion.
+This checklist is not executable in the current development environment and does not block Milestone 4 or the development implementation state. It must remain explicitly deferred and must be completed before claiming the corresponding production browser/device compatibility.
 
 ### 16.3 CI
 
@@ -2720,7 +2740,9 @@ Warnings, notices, deprecations, unhandled console errors, skipped Canary pages,
 
 ### 16.4 Test database
 
-Use temporary file SQLite for integration/concurrency/storage tests.
+Use a unique temporary file SQLite database for every application, integration, concurrency, Canary, Dusk, benchmark, and verification run. The path must be outside the configured application database path and must be removed after the run.
+
+Every test runner also redirects private storage, generated reports, cache, sessions, backups, pending uploads, and deletion trash to disposable roots. Tests must fail before execution if their resolved database or private-storage path matches the configured application instance.
 
 In-memory SQLite only for pure tests that do not depend on connection/locking/filesystem behavior.
 
@@ -2743,13 +2765,13 @@ composer validate --strict
 composer install --no-interaction --prefer-dist
 composer quality
 composer browser
-php artisan migrate:fresh --seed
-php artisan assestme:diagnose
 php artisan assestme:benchmark --findings=50
 scripts/verify.sh
 ```
 
 `composer.lock` is mandatory.
+
+`migrate:fresh --seed`, standalone Canary, diagnostics, storage audit, and Dusk are executed inside the maintained isolated scripts. They are not accepted as direct development-verification entry points against the configured application environment. `scripts/bootstrap-local.sh` remains the explicit command for initializing an intended local installation.
 
 ## 17. Security and operational controls
 
@@ -2987,14 +3009,14 @@ Failure of central grid or DOMPDF blocks the project.
 - versioning;
 - three-sheet XLSX;
 - generated file history;
-- automated/manual validation.
+- isolated automated validation; manual cross-browser/device compatibility is deferred under D-041.
 
 ### Milestone 5 — Hardening and delivery
 
 - right-click standard tables;
 - generic exports;
 - all Italian translations;
-- browser/mobile checklist;
+- record the browser/mobile checklist as deferred until a reference installation and devices exist;
 - storage audit;
 - production Nginx/deploy scripts;
 - clean-machine bootstrap;
@@ -3053,7 +3075,7 @@ Failure of central grid or DOMPDF blocks the project.
 - Dusk;
 - Composer audit;
 - benchmark;
-- manual cross-browser/mobile checklist;
+- autonomous test isolation with no mutation of an initialized application instance;
 - no debug/fallback/placeholder/vendor patch;
 - Italian labels complete;
 - English meaningful comments;
@@ -3115,10 +3137,18 @@ The implementation agent must maintain this section.
 - [x] Milestone 1 — Foundation and settings completed on 2026-07-13
 - [x] Milestone 2 — Template library completed on 2026-07-13
 - [x] Milestone 3 — Assessment workspace completed on 2026-07-13
-- [ ] Milestone 4 — Reporting and exports
+- [x] Milestone 4 — Reporting and exports completed on 2026-07-15
 - [ ] Milestone 5 — Completion and hardening
 
-Current state: Milestones 0 through 3 are complete. Milestone 4 is in progress. The application now includes the singleton administrator, optional TOTP MFA, clients/sites/assets, classifications, owned risk profiles and matrices, global effort levels, typed settings, application-aware backup/restore, actionable dashboard, recoverable deletion, the versioned template library, and the definitive assessment workspace. The workspace uses the approved native table Repeater with detached template snapshots, lifecycle validation, signed idempotent optimistic persistence, explicit conflict/offline/save states, scope and risk editing, nested solutions, private evidence, accessible actions and keyboard shortcuts, and the four approved workspace tabs. D-037 remains limited to standard resource tables with visible-action parity and generic CSV/XLSX export. Milestone 5 clean-machine bootstrap and CI verification work is also in progress.
+Current state: Milestones 0 through 4 are complete. Milestone 5 remains in progress. The application includes the singleton administrator, optional TOTP MFA, clients/sites/assets, classifications, owned risk profiles and matrices, global effort levels, typed settings, application-aware backup/restore, actionable dashboard, recoverable deletion, the versioned template library, the definitive assessment workspace, immutable PDF/XLSX generation, generated-file history, and staged generated-file deletion. The workspace uses the approved native table Repeater with detached template snapshots, lifecycle validation, signed idempotent optimistic persistence, explicit conflict/offline/save states, scope and risk editing, nested solutions, private evidence, accessible actions and keyboard shortcuts, and the four approved workspace tabs. D-037 remains limited to standard resource tables with visible-action parity and generic CSV/XLSX export.
+
+Milestone 4 closure remediation started on 2026-07-15 after a repository and runtime audit. Confirmed gaps are: the benchmark reads templates from and creates records in the configured application database; its setup happens before its cleanup guard and can leave client/assessment records on failure; the maintained Dusk invocation can target the configured application database; `scripts/verify.sh` and CI do not create one shared disposable verification environment; `DatabaseSeeder` incorrectly includes the 50-finding demonstration seeder while the required separate `SampleDataSeeder` is absent; the workspace-save request retention schedule is absent; fixture coverage does not yet include every declared evidence type; the required action naming/invokable convention and policy layer require a separate architecture review; and the configured local database currently has no status as an authoritative installation. No application database is considered a reference database during active development. The user approved D-041: automated verification must be autonomous and isolated, while manual Edge, Firefox, iOS Safari, Android Chrome, camera, and device-specific QA is deferred and does not block Milestone 4. Milestone 4 remains in progress until isolated verification, benchmark cleanup, seeding separation, focused regression tests, and all revised automated gates pass.
+
+Milestone 4 closure remediation completed and accepted on 2026-07-15. PHPUnit, Canary, Dusk, the definitive benchmark, `composer quality`, CI, and `scripts/verify.sh` now create marked disposable file-SQLite and storage roots; cleanup runs on success/failure, and reuse of an unmarked or project-overlapping root is rejected. The standalone benchmark creates and seeds every prerequisite inside its own temporary environment before measuring the real workspace, PDF, and XLSX paths. `DatabaseSeeder` now installs domain configuration only; the explicit production-guarded `SampleDataSeeder` owns the sample client/assessment/50 findings. Expired workspace-save request UUID rows are purged hourly. Diagnostics include `PRAGMA integrity_check`. Runtime-generated fixtures exercise every approved evidence type; valid ODS/OOXML ZIP containers are structurally identified while generic renamed ZIP archives remain rejected. Dead Milestone 0 report generators and their isolated proof view/test were removed, and the report uses an application-owned partial without changing the one-note PDF contract. Accepted evidence is strict Composer validation, Pint clean, PHPStan over 216 files with zero errors, 148 application tests/1,378 assertions, Canary strict 34/34 with zero skips, locked audit with zero advisories, Dusk 5 tests/102 assertions with no severe console errors, green diagnostics/storage audit, and a complete successful `scripts/verify.sh`. The isolated 50-finding benchmark passed with HTTP 200, 1.0906 s first render, 2,697,535 response bytes, 0.0452 s explicit save, 0.0546 s reorder, 2.0757 s PDF, and 0.2343 s XLSX. Before and after `composer quality`, Dusk, the standalone benchmark, and the final verification script, the configured development database SHA-256 remained `4af2bdd29112214c3fd5f81199bd9a282cd111fac7eaaaf9037cf59e759865fb`, the private-storage manifest SHA-256 remained `80e5f8185b9337b350a513095d04fa1a4634e8af74a44799cd81a7e709faac88`, and counts remained one user, one client, one assessment, and zero generated reports. Those records are development residue and are not declared a reference installation. Under D-041, deferred manual browser/device compatibility does not block this closure.
+
+Known work remaining for Milestone 5 is explicit and not included in Milestone 4 completion: no Laravel policy classes currently exist; the approved required-action inventory is structurally divergent (ten named facade actions are absent, while their behavior is consolidated in tested typed actions), and only 2 of 42 current actions are invokable while 40 expose `handle()`; the dashboard shows the latest successful backup and cleanup failures but does not persist/show a failed-backup or scheduled integrity-check warning; the committed `fixtures/evidence` directory does not contain one reusable file for every accepted format even though runtime-generated fixture coverage now exercises all of them; the clean Ubuntu GitHub jobs have not been executed in this local handoff; manual Edge/Firefox/iOS Safari/Android Chrome/camera/device QA remains deferred; and the production-like backup/restore and final deployment handoff remain incomplete.
+
+After the isolated Milestone 4 acceptance, the user explicitly requested initialization of the configured local development instance. Domain migrations/seeds and Filament assets were applied, the singleton administrator was explicitly replaced from the local `DEV_ADMIN_*` values, MFA was reset, diagnostics passed, and the application was started at `http://127.0.0.1:8000/admin`. A real headless Chromium/ChromeDriver login reached `Dashboard - AssestMe` at `/admin` with zero severe console errors. The unavailable optional `agent-browser` CLI was not claimed; ChromeDriver from the locked Dusk toolchain provided the executable browser proof. The one-time local credential is delivered in the handoff and is not stored in this plan.
 
 Milestone 5 deletion-policy integration slice completed and verified on 2026-07-15: every supported archivable Filament resource now reads `GeneralSettings.deletion_policy` through one typed application action and delegates to the existing staged filesystem recovery protocol. Permanent assessment deletion serializes against workspace/report writes, stages all referenced generated reports and active or archived file evidences, and allows the database cascade only after every file has been verified and moved. Client logos use the same path; restricted foreign keys restore staged files and produce an Italian failure without a success notification. Visible, edit-page, and right-click actions share the same implementation, while unstaged delete/force-delete bulk bypasses were removed and an architecture test prevents their reintroduction. Accepted evidence is `composer quality` with 134 tests/1,340 assertions, Pint clean, PHPStan over 217 files with zero errors, Canary strict 34/34 with zero skips, and locked audit with zero advisories; aggregate Dusk passed 5 tests/101 assertions including visible/right-click “Archivia” parity and no severe console errors. Diagnostics and storage audit are fully green. The definitive 50-finding benchmark passed at 1.1380 s first render, 2,701,579 response bytes, 0.0493 s explicit save, 0.0549 s reorder, 2.0196 s PDF, and 0.2331 s XLSX. Milestone 5 remains in progress.
 
@@ -3139,6 +3169,14 @@ Milestone 3 completed with the complete assessment/finding schema, native Filame
 ## 23. Discoveries and deviations
 
 Record unexpected package behavior, version incompatibilities, and material design corrections here.
+
+- 2026-07-15: A closure audit reproduced that `assestme:benchmark --findings=50` failed when the configured database had no enabled organization-scope template. The command created its assessment and factory client before loading that template and before entering its `try/finally`, so the failure left both records behind. This was not unavoidable framework behavior: it resulted from treating a previously seeded development database as a fixture source and from placing setup outside the cleanup boundary. The audit-created records were identified exactly and removed. The remediated command now creates, migrates, seeds, measures, and removes its own temporary database/storage and a regression test proves the caller's configured connection and records are restored unchanged.
+- 2026-07-15: The current local database is not an installation authority and contains development-test residue rather than the required domain seed. D-041 now makes the maintained verification paths independent from it. Tests and benchmarks neither repair nor depend on that database; repeated SHA-256 and record-count comparisons around all accepted gates proved no mutation.
+- 2026-07-15: The user approved deferring manual Edge, Firefox, iOS Safari, Android Chrome, camera, and device-specific verification until a reference installation and suitable devices exist. Existing automated tests, Canary, and maintained Dusk/Chromium coverage remain the development gates; deferred checks must not be claimed as passed.
+- 2026-07-15: `DatabaseSeeder` called `MilestoneZeroSeeder`, which created a sample client, assessment, and 50 findings. This contradicted the domain-only seed contract and explained why benchmark/CI behavior accidentally depended on seeded sample state. `DatabaseSeeder` now runs only the domain seeders, while the explicit production-guarded `SampleDataSeeder` owns demonstration records; focused tests assert both inventories.
+- 2026-07-15: Laravel's development server command only forwards environment values present in `$_ENV`; on this host, shell exports were available through `getenv()`/`$_SERVER` but not `$_ENV`. The first isolated Dusk attempt therefore kept its temporary database but wrote generated files to the configured application storage. The maintained runner now starts PHP's local server with `variables_order=EGPCS`, so the web process and Dusk process resolve the same marked disposable storage. The browser test asserts that generated/deleted report paths are under that root, and the accepted before/after storage manifest is unchanged.
+- 2026-07-15: A valid ODS generated by the locked PhpSpreadsheet writer is reported as `application/zip` by this Ubuntu `fileinfo`, so a simple MIME allow-list incorrectly rejected an approved evidence type. The evidence action now opens ZIP-reported ODS/DOCX/XLSX files read-only, bounds the inspected entries, verifies the expected ODF/OOXML structure, and stores the canonical MIME. Tests exercise JPEG, PNG, WebP, PDF, TXT, LOG, CSV, DOCX, XLSX, and ODS content plus a generic ZIP renamed to `.ods`, which remains rejected.
+- 2026-07-15: The required action inventory was compared class-by-class rather than inferred from names. `CompleteAssessment`, `ReopenAssessment`, and `ArchiveAssessment` are consolidated in `TransitionAssessment`; reorder and patch persistence are in `SaveAssessmentWorkspace`/`SaveFindingDetails`; priority override recalculation is in `RecalculateFindingPriority`; recommended/implemented references are in `SetFindingSolutionReference`; finding state changes are in `TransitionFinding`; and evidence creation is split into `StoreEvidenceFile`/`StoreEvidenceUrl`. These implementations are exercised and are not placeholder or dead logic, so introducing duplicate facades during Milestone 4 would add regression surface without fixing behavior. The exact approved class inventory and invokable convention nevertheless remain unmet architecture work, not silently reinterpreted. The absence of `app/Policies` and of dashboard persistence for backup/integrity failures is also confirmed and remains Milestone 5 work.
 
 - 2026-07-13: The initial repository contains the specification package only; no Laravel application, `composer.json`, or `composer.lock` exists yet.
 - 2026-07-13: The available development host is Windows with PHP 8.3.28, Composer 2.9.2, and Git 2.54.0. Ubuntu package commands were not run because Ubuntu 24.04 is the normative reference environment. The standalone SQLite CLI is not currently available on this host.

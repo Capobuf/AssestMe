@@ -77,8 +77,9 @@ final class MilestoneFourPdfTest extends DuskTestCase
                 ->press('Elimina definitivamente')
                 ->waitUsing(10, 100, static fn (): bool => ! GeneratedReport::query()->whereKey($workbook->getKey())->exists())
                 ->waitForText('File generato eliminato definitivamente')
-                ->assertDontSee($workbook->file_name)
-                ->assertSee($pdfReport->file_name);
+                ->waitUntilMissing('[data-generated-report-id="'.$workbook->getKey().'"]')
+                ->assertMissing('[data-generated-report-id="'.$workbook->getKey().'"]')
+                ->assertSeeIn('[data-generated-report-id="'.$pdfReport->getKey().'"]', $pdfReport->file_name);
 
             $operation = DeletionOperation::query()
                 ->where('entity_type', GeneratedReport::class)
@@ -86,8 +87,16 @@ final class MilestoneFourPdfTest extends DuskTestCase
                 ->sole();
 
             Assert::assertSame(DeletionOperationStatus::Cleaned, $operation->status);
+            Assert::assertSame(
+                config('assestme.backup.private_storage_path'),
+                config('filesystems.disks.local.root'),
+                'Dusk deletion and generated-report storage must resolve to the same isolated private root.',
+            );
             Assert::assertFalse(Storage::disk('local')->exists($workbook->file_path));
-            Assert::assertTrue(Storage::disk('local')->exists($pdfReport->file_path));
+            Assert::assertTrue(
+                Storage::disk('local')->exists($pdfReport->file_path),
+                'The PDF must remain at '.Storage::disk('local')->path($pdfReport->file_path),
+            );
 
             $severeLogs = array_values(array_filter(
                 $browser->driver->manage()->getLog('browser'),

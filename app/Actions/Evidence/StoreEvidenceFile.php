@@ -16,6 +16,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Throwable;
+use ZipArchive;
 
 final class StoreEvidenceFile
 {
@@ -51,15 +52,15 @@ final class StoreEvidenceFile
         ])->validate();
 
         $extension = strtolower($file->getClientOriginalExtension());
-        $mime = $file->getMimeType();
-        if (! is_string($mime) || ! isset(self::MIME_BY_EXTENSION[$extension]) || ! in_array($mime, self::MIME_BY_EXTENSION[$extension], true)) {
-            throw ValidationException::withMessages(['file' => __('assestme.evidence.errors.unsupported_type')]);
-        }
-
         $settings = app(GeneralSettings::class);
         $size = $file->getSize();
         if (! is_int($size) || $size <= 0 || $size > $settings->max_evidence_file_mb * 1024 * 1024) {
             throw ValidationException::withMessages(['file' => __('assestme.evidence.errors.file_size')]);
+        }
+
+        $mime = $this->normalizedMime($file, $extension);
+        if (! is_string($mime) || ! isset(self::MIME_BY_EXTENSION[$extension]) || ! in_array($mime, self::MIME_BY_EXTENSION[$extension], true)) {
+            throw ValidationException::withMessages(['file' => __('assestme.evidence.errors.unsupported_type')]);
         }
 
         $assessmentBytes = Evidence::query()
@@ -117,5 +118,75 @@ final class StoreEvidenceFile
 
             throw $exception;
         }
+    }
+
+    private function normalizedMime(UploadedFile $file, string $extension): ?string
+    {
+        $mime = $file->getMimeType();
+        if ($mime !== 'application/zip') {
+            return $mime;
+        }
+
+        $archive = new ZipArchive;
+        if ($archive->open($file->getRealPath(), ZipArchive::RDONLY) !== true) {
+            return $mime;
+        }
+
+        try {
+            return match ($extension) {
+                'docx' => $this->archiveContains($archive, 'word/document.xml')
+                    && $this->archiveEntryContains(
+                        $archive,
+                        '[Content_Types].xml',
+                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml',
+                    )
+                        ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                        : $mime,
+                'xlsx' => $this->archiveContains($archive, 'xl/workbook.xml')
+                    && $this->archiveEntryContains(
+                        $archive,
+                        '[Content_Types].xml',
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml',
+                    )
+                        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                        : $mime,
+                'ods' => $this->archiveContains($archive, 'content.xml')
+                    && trim($this->boundedArchiveEntry($archive, 'mimetype') ?? '') === 'application/vnd.oasis.opendocument.spreadsheet'
+                        ? 'application/vnd.oasis.opendocument.spreadsheet'
+                        : $mime,
+                default => $mime,
+            };
+        } finally {
+            $archive->close();
+        }
+    }
+
+    private function archiveContains(ZipArchive $archive, string $name): bool
+    {
+        return $archive->locateName($name, ZipArchive::FL_NOCASE) !== false;
+    }
+
+    private function archiveEntryContains(ZipArchive $archive, string $name, string $expected): bool
+    {
+        $contents = $this->boundedArchiveEntry($archive, $name);
+
+        return is_string($contents) && str_contains($contents, $expected);
+    }
+
+    private function boundedArchiveEntry(ZipArchive $archive, string $name): ?string
+    {
+        $index = $archive->locateName($name, ZipArchive::FL_NOCASE);
+        if ($index === false) {
+            return null;
+        }
+
+        $stat = $archive->statIndex($index);
+        if ($stat === false || $stat['size'] > 262_144) {
+            return null;
+        }
+
+        $contents = $archive->getFromIndex($index, 262_145);
+
+        return is_string($contents) ? $contents : null;
     }
 }

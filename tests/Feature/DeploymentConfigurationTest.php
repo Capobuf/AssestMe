@@ -2,6 +2,12 @@
 
 declare(strict_types=1);
 
+it('includes SQLite integrity verification in application diagnostics', function (): void {
+    $this->artisan('assestme:diagnose')
+        ->expectsOutputToContain('"sqlite_integrity_check": true')
+        ->assertSuccessful();
+});
+
 it('ships a hardened nginx front controller with ACME-safe HTTPS redirection', function (): void {
     $configuration = (string) file_get_contents(base_path('stubs/nginx/assestme.conf'));
 

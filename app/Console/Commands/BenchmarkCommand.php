@@ -15,10 +15,14 @@ use App\Models\FindingTemplate;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Throwable;
 
 final class BenchmarkCommand extends Command
@@ -39,29 +43,26 @@ final class BenchmarkCommand extends Command
             return self::INVALID;
         }
 
-        $createdAdministrator = false;
-        $administrator = User::query()->first();
+        $environment = $this->activateIsolatedEnvironment();
 
-        if (! $administrator) {
+        try {
+            $this->initializeIsolatedDatabase();
+
             $administrator = User::query()->create([
                 'name' => 'Benchmark Administrator',
                 'email' => 'benchmark@assestme.local',
                 'password' => Str::password(24, symbols: true),
             ]);
-            $createdAdministrator = true;
-        }
+            $assessment = Assessment::factory()->create(['title' => 'Benchmark definitivo']);
+            $template = FindingTemplate::query()
+                ->where('is_enabled', true)
+                ->where('default_scope_type', 'organization')
+                ->firstOrFail();
+            foreach (range(1, $count) as $number) {
+                $finding = app(CopyTemplateToAssessment::class)->handle($assessment, $template);
+                $finding->update(['title' => sprintf('Benchmark finding %03d', $number)]);
+            }
 
-        $assessment = Assessment::factory()->create(['title' => 'Benchmark definitivo']);
-        $template = FindingTemplate::query()
-            ->where('is_enabled', true)
-            ->where('default_scope_type', 'organization')
-            ->firstOrFail();
-        foreach (range(1, $count) as $number) {
-            $finding = app(CopyTemplateToAssessment::class)->handle($assessment, $template);
-            $finding->update(['title' => sprintf('Benchmark finding %03d', $number)]);
-        }
-
-        try {
             [$renderSeconds, $response] = $this->measure(function () use ($administrator, $assessment) {
                 Auth::login($administrator);
                 $request = Request::create(route('filament.admin.resources.assessments.workspace', $assessment), 'GET');
@@ -114,7 +115,12 @@ final class BenchmarkCommand extends Command
                 'pdf' => $pdfSeconds <= 30.0,
                 'xlsx' => $xlsxSeconds <= 10.0,
             ];
-            $result = ['ok' => ! in_array(false, $checks, true), 'metrics' => $metrics, 'checks' => $checks];
+            $result = [
+                'ok' => ! in_array(false, $checks, true),
+                'isolated' => true,
+                'metrics' => $metrics,
+                'checks' => $checks,
+            ];
             $this->line((string) json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
             return $result['ok'] ? self::SUCCESS : self::FAILURE;
@@ -124,13 +130,118 @@ final class BenchmarkCommand extends Command
             return self::FAILURE;
         } finally {
             Auth::logout();
-            Storage::disk('local')->deleteDirectory("reports/{$assessment->getKey()}");
-            $assessment->forceDelete();
-
-            if ($createdAdministrator) {
-                $administrator->delete();
-            }
+            $this->restoreEnvironment($environment);
         }
+    }
+
+    /**
+     * @return array{
+     *     root: string,
+     *     storage_path: string,
+     *     database_default: string,
+     *     database: string,
+     *     local_disk_root: string,
+     *     backup_root: string,
+     *     backup_private_root: string,
+     *     trash_root: string,
+     *     cache_default: string,
+     *     session_driver: string
+     * }
+     */
+    private function activateIsolatedEnvironment(): array
+    {
+        $root = sys_get_temp_dir().'/assestme-benchmark-'.bin2hex(random_bytes(12));
+        $storage = $root.'/storage';
+        $database = $root.'/database.sqlite';
+        $filesystem = new Filesystem;
+        $directories = [
+            $storage.'/app/private',
+            $storage.'/framework/cache/data',
+            $storage.'/framework/sessions',
+            $storage.'/framework/views',
+            $storage.'/logs',
+            $storage.'/backups',
+        ];
+
+        foreach ($directories as $directory) {
+            $filesystem->ensureDirectoryExists($directory);
+        }
+
+        if (! touch($database)) {
+            $filesystem->deleteDirectory($root);
+
+            throw new RuntimeException('The isolated benchmark database could not be created.');
+        }
+
+        $environment = [
+            'root' => $root,
+            'storage_path' => $this->laravel->storagePath(),
+            'database_default' => (string) config('database.default'),
+            'database' => (string) config('database.connections.sqlite.database'),
+            'local_disk_root' => (string) config('filesystems.disks.local.root'),
+            'backup_root' => (string) config('assestme.backup.root'),
+            'backup_private_root' => (string) config('assestme.backup.private_storage_path'),
+            'trash_root' => (string) config('assestme.deletion.trash_root'),
+            'cache_default' => (string) config('cache.default'),
+            'session_driver' => (string) config('session.driver'),
+        ];
+
+        $this->laravel->useStoragePath($storage);
+        config()->set('database.default', 'sqlite');
+        config()->set('database.connections.sqlite.database', $database);
+        config()->set('filesystems.disks.local.root', $storage.'/app/private');
+        config()->set('assestme.backup.root', $storage.'/backups');
+        config()->set('assestme.backup.private_storage_path', $storage.'/app/private');
+        config()->set('assestme.deletion.trash_root', $storage.'/app/private/.trash');
+        config()->set('cache.default', 'array');
+        config()->set('session.driver', 'array');
+        DB::purge('sqlite');
+        Storage::forgetDisk('local');
+
+        return $environment;
+    }
+
+    private function initializeIsolatedDatabase(): void
+    {
+        $exitCode = Artisan::call('migrate:fresh', [
+            '--database' => 'sqlite',
+            '--seed' => true,
+            '--force' => true,
+        ]);
+
+        if ($exitCode !== self::SUCCESS) {
+            throw new RuntimeException('The isolated benchmark database could not be initialized.');
+        }
+    }
+
+    /**
+     * @param array{
+     *     root: string,
+     *     storage_path: string,
+     *     database_default: string,
+     *     database: string,
+     *     local_disk_root: string,
+     *     backup_root: string,
+     *     backup_private_root: string,
+     *     trash_root: string,
+     *     cache_default: string,
+     *     session_driver: string
+     * } $environment
+     */
+    private function restoreEnvironment(array $environment): void
+    {
+        DB::purge('sqlite');
+        Storage::forgetDisk('local');
+        $this->laravel->useStoragePath($environment['storage_path']);
+        config()->set('database.default', $environment['database_default']);
+        config()->set('database.connections.sqlite.database', $environment['database']);
+        config()->set('filesystems.disks.local.root', $environment['local_disk_root']);
+        config()->set('assestme.backup.root', $environment['backup_root']);
+        config()->set('assestme.backup.private_storage_path', $environment['backup_private_root']);
+        config()->set('assestme.deletion.trash_root', $environment['trash_root']);
+        config()->set('cache.default', $environment['cache_default']);
+        config()->set('session.driver', $environment['session_driver']);
+        (new Filesystem)->deleteDirectory($environment['root']);
     }
 
     /** @return array{0: float, 1: mixed} */

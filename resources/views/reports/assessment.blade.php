@@ -84,7 +84,7 @@
         @if ($report->introduction !== null)
             <div class="content-block"><div class="label">{{ __('assestme.reports.document.introduction') }}</div><div class="pre-line">{{ $report->introduction }}</div></div>
         @endif
-        <div class="estimate-note">{{ __('assestme.reports.document.vat_note') }}</div>
+        @include('reports.partials.estimate-note')
     </section>
 
     @if (collect(['consultant_name', 'business_name', 'consultant_role', 'consultant_email', 'consultant_phone', 'consultant_website', 'consultant_address', 'consultant_vat_number', 'consultant_pec', 'consultant_tax_code'])->contains(fn (string $key): bool => filled($report->setting($key))))
