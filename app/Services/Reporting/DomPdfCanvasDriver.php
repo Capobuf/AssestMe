@@ -24,7 +24,10 @@ final class DomPdfCanvasDriver extends DomPdfDriver
 
         $header = (string) ($this->config['page_chrome']['header'] ?? 'AssestMe');
         $footer = (string) ($this->config['page_chrome']['footer'] ?? 'Riservato');
+        $confidentiality = (string) ($this->config['page_chrome']['confidentiality'] ?? '');
         $showCover = (bool) ($this->config['page_chrome']['show_cover'] ?? false);
+        $showHeaderFooter = (bool) ($this->config['page_chrome']['show_header_footer'] ?? true);
+        $showPageNumbers = (bool) ($this->config['page_chrome']['show_page_numbers'] ?? true);
 
         $dompdf->getCanvas()->page_script(
             static function (
@@ -32,7 +35,7 @@ final class DomPdfCanvasDriver extends DomPdfDriver
                 int $pageCount,
                 Canvas $canvas,
                 FontMetrics $fontMetrics,
-            ) use ($header, $footer, $showCover): void {
+            ) use ($header, $footer, $confidentiality, $showCover, $showHeaderFooter, $showPageNumbers): void {
                 if ($showCover && $pageNumber === 1) {
                     return;
                 }
@@ -42,19 +45,53 @@ final class DomPdfCanvasDriver extends DomPdfDriver
                 $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
                 $fontSize = 9.0;
                 $left = 42.0;
-                $pageText = "Pagina {$contentPage} di {$contentPages}";
-                $pageTextWidth = $fontMetrics->getTextWidth($pageText, $font, $fontSize);
+                $right = $canvas->get_width() - $left;
+                $pageText = __('assestme.reports.document.page_number', [
+                    'current' => $contentPage,
+                    'total' => $contentPages,
+                ]);
+                $fitText = static function (string $text, float $maxWidth) use ($fontMetrics, $font, $fontSize): string {
+                    if ($fontMetrics->getTextWidth($text, $font, $fontSize) <= $maxWidth) {
+                        return $text;
+                    }
 
-                $canvas->text($left, 22.0, $header, $font, $fontSize, [0.12, 0.25, 0.45]);
-                $canvas->text($left, $canvas->get_height() - 28.0, $footer, $font, $fontSize, [0.35, 0.35, 0.35]);
-                $canvas->text(
-                    $canvas->get_width() - $left - $pageTextWidth,
-                    $canvas->get_height() - 28.0,
-                    $pageText,
-                    $font,
-                    $fontSize,
-                    [0.35, 0.35, 0.35],
-                );
+                    $suffix = '…';
+                    while ($text !== '' && $fontMetrics->getTextWidth($text.$suffix, $font, $fontSize) > $maxWidth) {
+                        $text = mb_substr($text, 0, -1);
+                    }
+
+                    return $text === '' ? '' : $text.$suffix;
+                };
+
+                if ($showHeaderFooter && $header !== '') {
+                    $canvas->text($left, 22.0, $fitText($header, $right - $left), $font, $fontSize, [0.12, 0.25, 0.45]);
+                }
+
+                $rightParts = [];
+                if ($confidentiality !== '') {
+                    $rightParts[] = $confidentiality;
+                }
+                if ($showPageNumbers) {
+                    $rightParts[] = $pageText;
+                }
+                $rightText = implode(' — ', $rightParts);
+                $rightText = $fitText($rightText, ($right - $left) * 0.55);
+                $rightTextWidth = $fontMetrics->getTextWidth($rightText, $font, $fontSize);
+                $footerWidth = max(0.0, ($right - $left) - $rightTextWidth - 12.0);
+
+                if ($showHeaderFooter && $footer !== '') {
+                    $canvas->text($left, $canvas->get_height() - 28.0, $fitText($footer, $footerWidth), $font, $fontSize, [0.35, 0.35, 0.35]);
+                }
+                if ($rightText !== '') {
+                    $canvas->text(
+                        $right - $rightTextWidth,
+                        $canvas->get_height() - 28.0,
+                        $rightText,
+                        $font,
+                        $fontSize,
+                        [0.35, 0.35, 0.35],
+                    );
+                }
             },
         );
 

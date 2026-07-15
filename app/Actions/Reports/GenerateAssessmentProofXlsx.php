@@ -16,7 +16,7 @@ final class GenerateAssessmentProofXlsx
 {
     public function build(Assessment $assessment): Spreadsheet
     {
-        $assessment->load(['findings' => fn ($query) => $query->orderBy('sort_order')]);
+        $assessment->load(['findings' => fn ($query) => $query->with(['priorityLevel', 'recommendedSolution.effortLevel'])->orderBy('sort_order')]);
 
         $spreadsheet = new Spreadsheet;
         $findingSheet = $spreadsheet->getActiveSheet();
@@ -32,9 +32,9 @@ final class GenerateAssessmentProofXlsx
             $row = $index + 2;
             $values = [
                 $index + 1, $finding->title, null, null, null, null, $finding->problem,
-                $finding->entrepreneur_notes, $finding->recommended_solution_summary, null,
-                $finding->priority?->value, null, $finding->effort?->value,
-                $finding->estimate_notes, $finding->status->value, null, null,
+                $finding->entrepreneur_notes, $finding->recommendedSolution?->description, null,
+                $finding->priorityLevel?->label, null, $finding->recommendedSolution?->effortLevel?->label,
+                $finding->recommendedSolution?->estimate_notes, $finding->status->value, null, null,
             ];
 
             foreach ($values as $columnIndex => $value) {

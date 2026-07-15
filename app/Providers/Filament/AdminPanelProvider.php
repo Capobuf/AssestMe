@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Auth\EditProfile;
+use Filament\Auth\MultiFactor\App\AppAuthentication;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -21,6 +23,8 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Leek\FilamentRightClick\FilamentRightClickPlugin;
+use OccTherapist\AdvancedTableExportForFilament\AdvancedTableExportForFilamentPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -31,6 +35,12 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->profile(EditProfile::class)
+            ->multiFactorAuthentication([
+                AppAuthentication::make()
+                    ->recoverable()
+                    ->recoveryCodeCount(8),
+            ])
             ->brandName(__('assestme.app.name'))
             ->darkMode()
             ->assets([
@@ -39,6 +49,12 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->colors([
                 'primary' => Color::Blue,
+            ])
+            ->plugins([
+                FilamentRightClickPlugin::make(),
+                AdvancedTableExportForFilamentPlugin::make()
+                    ->maxExportRows(2000)
+                    ->previewPerPage(25),
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

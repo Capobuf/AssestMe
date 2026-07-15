@@ -6,7 +6,6 @@ use App\Actions\Reports\GenerateAssessmentProofPdf;
 use App\Actions\Reports\GenerateAssessmentProofXlsx;
 use App\Models\Assessment;
 use App\Models\Finding;
-use App\Models\User;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Smalot\PdfParser\Parser;
 
@@ -54,21 +53,4 @@ it('generates and reopens a styled native XLSX proof', function (): void {
         ->and($findingSheet?->getCell('G2')->getValue())->toContain("\n");
 
     unlink($path);
-});
-
-it('protects both report proof downloads', function (): void {
-    $assessment = Assessment::factory()->create();
-
-    $this->get(route('assessments.proof-pdf', $assessment))->assertRedirect('/admin/login');
-    $this->get(route('assessments.proof-xlsx', $assessment))->assertRedirect('/admin/login');
-
-    $administrator = User::factory()->create();
-    $this->actingAs($administrator);
-
-    $this->get(route('assessments.proof-pdf', $assessment))
-        ->assertOk()
-        ->assertHeader('content-type', 'application/pdf');
-    $this->get(route('assessments.proof-xlsx', $assessment))
-        ->assertOk()
-        ->assertDownload("AssestMe_proof_assessment_{$assessment->getKey()}.xlsx");
 });

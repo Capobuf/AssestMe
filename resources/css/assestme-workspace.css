@@ -2,11 +2,110 @@
     overflow-x: auto;
 }
 
-.fi-fo-table-repeater > table {
-    min-width: 154rem;
-    table-layout: fixed;
+.fi-fo-table-repeater.assestme-workspace-findings {
+    scrollbar-color: var(--gray-400) transparent;
+    scrollbar-width: thin;
+}
+
+.fi-fo-table-repeater.assestme-workspace-findings::-webkit-scrollbar {
+    width: 0.75rem;
+    height: 0.75rem;
+}
+
+.fi-fo-table-repeater.assestme-workspace-findings::-webkit-scrollbar-thumb {
+    border: 0.2rem solid transparent;
+    border-radius: 9999px;
+    background: var(--gray-400);
+    background-clip: padding-box;
+}
+
+@media (min-width: 48rem) {
+    .fi-fo-table-repeater.assestme-workspace-findings {
+        max-height: 65vh;
+        overflow: auto;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+    }
 }
 
 .fi-fo-table-repeater textarea {
     min-height: 5rem;
+    max-height: 12rem;
+    overflow-y: auto;
+}
+
+@container (min-width: 36rem) {
+    .fi-fo-table-repeater.assestme-workspace-findings > table {
+        min-width: 117.5rem;
+        table-layout: fixed;
+    }
+
+    .fi-fo-table-repeater.assestme-workspace-findings > table > thead > tr > th {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+    }
+
+    .fi-fo-table-repeater.assestme-workspace-findings > table > tbody > tr {
+        background: var(--color-white);
+    }
+
+    .dark .fi-fo-table-repeater.assestme-workspace-findings > table > tbody > tr {
+        background: var(--gray-900);
+    }
+
+    .fi-fo-table-repeater.assestme-workspace-findings > table > tbody > tr:nth-child(even) {
+        background: var(--gray-50);
+    }
+
+    .dark .fi-fo-table-repeater.assestme-workspace-findings > table > tbody > tr:nth-child(even) {
+        background: color-mix(in oklab, var(--gray-900) 88%, var(--gray-800));
+    }
+
+    .fi-fo-table-repeater.assestme-workspace-findings > table > tbody > tr:focus-within {
+        outline: 2px solid var(--primary-500);
+        outline-offset: -2px;
+    }
+
+    .fi-fo-table-repeater.assestme-workspace-findings > table > thead > tr > th:first-of-type,
+    .fi-fo-table-repeater.assestme-workspace-findings > table > tbody > tr > td:first-of-type {
+        position: sticky;
+        left: 0;
+        width: 7rem;
+        min-width: 7rem;
+    }
+
+    .fi-fo-table-repeater.assestme-workspace-findings > table > thead > tr > th:nth-of-type(2),
+    .fi-fo-table-repeater.assestme-workspace-findings > table > tbody > tr > td:nth-of-type(2) {
+        position: sticky;
+        left: 7rem;
+        z-index: 10;
+        box-shadow: 0.75rem 0 0.9rem -1rem rgb(0 0 0 / 45%);
+    }
+
+    .fi-fo-table-repeater.assestme-workspace-findings > table > thead > tr > th:last-child,
+    .fi-fo-table-repeater.assestme-workspace-findings > table > tbody > tr > td:last-child {
+        position: sticky;
+        right: 0;
+        z-index: 10;
+        width: 6rem;
+        min-width: 6rem;
+        box-shadow: -0.75rem 0 0.9rem -1rem rgb(0 0 0 / 45%);
+    }
+
+    .fi-fo-table-repeater.assestme-workspace-findings > table > tbody > tr > td:first-of-type,
+    .fi-fo-table-repeater.assestme-workspace-findings > table > tbody > tr > td:nth-of-type(2),
+    .fi-fo-table-repeater.assestme-workspace-findings > table > tbody > tr > td:last-child {
+        background: inherit;
+    }
+
+    .fi-fo-table-repeater.assestme-workspace-findings > table > thead > tr > th:first-of-type,
+    .fi-fo-table-repeater.assestme-workspace-findings > table > thead > tr > th:nth-of-type(2),
+    .fi-fo-table-repeater.assestme-workspace-findings > table > thead > tr > th:last-child {
+        z-index: 30;
+    }
+
+    .fi-fo-table-repeater.assestme-workspace-findings > table > tbody > tr > td:last-child > .fi-fo-table-repeater-actions {
+        justify-content: center;
+    }
 }

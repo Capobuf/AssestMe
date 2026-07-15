@@ -4,26 +4,43 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Assessments\Pages;
 
+use App\Actions\Assessments\CopyTemplateToAssessment;
+use App\Actions\Assessments\CreateBlankFinding;
+use App\Actions\Assessments\DuplicateFinding;
 use App\Actions\Assessments\SaveAssessmentWorkspace;
+use App\Actions\Assessments\SaveFindingDetails;
+use App\Actions\Assessments\TransitionAssessment;
+use App\Actions\Evidence\StoreEvidenceFile;
+use App\Actions\Evidence\StoreEvidenceUrl;
+use App\Actions\Reports\GenerateAssessmentPdf;
 use App\Data\Assessments\WorkspaceSaveData;
+use App\Enums\AssessmentStatus;
+use App\Enums\ScopeType;
 use App\Exceptions\AssessmentVersionConflict;
 use App\Exceptions\IdempotencyKeyMismatch;
 use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Resources\Assessments\Schemas\AssessmentWorkspaceForm;
 use App\Models\Assessment;
+use App\Models\FindingTemplate;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
 final class WorkspaceAssessment extends EditRecord
 {
+    protected Width|string|null $maxContentWidth = Width::Full;
+
     public const STATUS_SAVED = 'saved';
 
     public const STATUS_UNSAVED = 'unsaved';
@@ -97,21 +114,109 @@ final class WorkspaceAssessment extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('add_blank')
+                ->label(__('assestme.workspace.add_finding'))
+                ->icon('heroicon-o-plus')
+                ->extraAttributes(['data-dusk' => 'add-finding'])
+                ->visible(fn (): bool => ! $this->isWorkspaceReadOnly())
+                ->action(function (): void {
+                    app(CreateBlankFinding::class)->handle($this->assessment());
+                    $this->fillForm();
+                }),
+            Action::make('add_template')
+                ->label(__('assestme.workspace.add_template'))
+                ->icon('heroicon-o-book-open')
+                ->extraAttributes(['data-dusk' => 'add-template'])
+                ->visible(fn (): bool => ! $this->isWorkspaceReadOnly())
+                ->schema([
+                    Select::make('template_id')
+                        ->label(__('assestme.workspace.template'))
+                        ->options(fn (): array => FindingTemplate::query()
+                            ->where('is_enabled', true)
+                            ->orderBy('title')
+                            ->pluck('title', 'id')
+                            ->all())
+                        ->searchable()
+                        ->required(),
+                ])
+                ->action(function (array $data): void {
+                    $template = FindingTemplate::query()->findOrFail($data['template_id']);
+                    app(CopyTemplateToAssessment::class)->handle($this->assessment(), $template);
+                    $this->fillForm();
+                }),
+            Action::make('complete')
+                ->label(__('assestme.workspace.complete'))
+                ->icon('heroicon-o-check-circle')
+                ->color('success')
+                ->requiresConfirmation()
+                ->visible(fn (): bool => $this->assessment()->status === AssessmentStatus::Draft)
+                ->action(function (): void {
+                    $assessment = app(TransitionAssessment::class)->handle($this->assessment(), AssessmentStatus::Completed);
+                    // A full reload clears every modal Alpine scope before switching the entire workspace to read-only.
+                    $this->redirect(AssessmentResource::getUrl('workspace', ['record' => $assessment]), navigate: false);
+                }),
+            Action::make('reopen')
+                ->label(__('assestme.workspace.reopen'))
+                ->icon('heroicon-o-lock-open')
+                ->requiresConfirmation()
+                ->visible(fn (): bool => $this->assessment()->status !== AssessmentStatus::Draft)
+                ->action(function (): void {
+                    $assessment = app(TransitionAssessment::class)->handle($this->assessment(), AssessmentStatus::Draft);
+                    $this->redirect(AssessmentResource::getUrl('workspace', ['record' => $assessment]), navigate: false);
+                }),
             Action::make('download_pdf')
                 ->label(__('assestme.workspace.download_pdf'))
                 ->icon('heroicon-o-document-arrow-down')
-                ->url(fn (): string => route('assessments.proof-pdf', $this->assessment())),
-            Action::make('download_xlsx')
-                ->label(__('assestme.workspace.download_xlsx'))
-                ->icon('heroicon-o-table-cells')
-                ->url(fn (): string => route('assessments.proof-xlsx', $this->assessment())),
+                ->extraAttributes(['data-dusk' => 'generate-pdf'])
+                ->action(function (): void {
+                    $this->generatePdf();
+                }),
         ];
+    }
+
+    private function generatePdf(): void
+    {
+        try {
+            $report = app(GenerateAssessmentPdf::class)->handle($this->assessment());
+
+            Notification::make()
+                ->success()
+                ->title(__('assestme.reports.generated'))
+                ->body($report->file_name)
+                ->send();
+
+            // Reloading applies a possible freeze atomically and exposes the immutable file in history.
+            $this->redirect(AssessmentResource::getUrl('workspace', ['record' => $this->assessment()]), navigate: false);
+        } catch (ValidationException $exception) {
+            Notification::make()
+                ->danger()
+                ->title(__('assestme.reports.errors.generation'))
+                ->body(collect($exception->errors())->flatten()->join(' '))
+                ->persistent()
+                ->send();
+
+        } catch (Throwable $exception) {
+            Log::error('Assessment PDF generation failed.', [
+                'assessment_id' => $this->assessment()->getKey(),
+                'exception' => $exception,
+            ]);
+
+            Notification::make()
+                ->danger()
+                ->title(__('assestme.reports.errors.generation'))
+                ->body(__('assestme.reports.errors.retry'))
+                ->persistent()
+                ->send();
+
+        }
     }
 
     protected function getSaveFormAction(): Action
     {
         return parent::getSaveFormAction()
-            ->label(__('assestme.workspace.explicit_save'));
+            ->label(__('assestme.workspace.explicit_save'))
+            ->extraAttributes(['data-dusk' => 'save-assessment'])
+            ->visible(fn (): bool => ! $this->isWorkspaceReadOnly());
     }
 
     private function persistWorkspace(bool $isAutosave, bool $shouldNotify): void
@@ -150,7 +255,7 @@ final class WorkspaceAssessment extends EditRecord
             }
 
             /** @var array{
-             *     assessment: array{title: string, assessment_date: string},
+             *     assessment: array<string, mixed>,
              *     findings: list<array<string, mixed>>
              * } $payload
              */
@@ -158,6 +263,13 @@ final class WorkspaceAssessment extends EditRecord
                 'assessment' => [
                     'title' => (string) ($state['title'] ?? ''),
                     'assessment_date' => (string) ($state['assessment_date'] ?? ''),
+                    'report_title_override' => $state['report_title_override'] ?? null,
+                    'scope_type' => $state['scope_type'] ?? ScopeType::Organization->value,
+                    'scope_description' => $state['scope_description'] ?? null,
+                    'introduction' => $state['introduction'] ?? null,
+                    'executive_summary' => $state['executive_summary'] ?? null,
+                    'methodology_notes' => $state['methodology_notes'] ?? null,
+                    'site_ids' => is_array($state['site_ids'] ?? null) ? $state['site_ids'] : [],
                 ],
                 'findings' => $findings,
             ];
@@ -262,8 +374,81 @@ final class WorkspaceAssessment extends EditRecord
         return $record;
     }
 
+    public function isWorkspaceReadOnly(): bool
+    {
+        return $this->assessment()->status !== AssessmentStatus::Draft;
+    }
+
+    public function duplicateFinding(int $findingId): void
+    {
+        $finding = $this->assessment()->findings()->findOrFail($findingId);
+        app(DuplicateFinding::class)->handle($finding);
+        $this->fillForm();
+    }
+
+    /** @param array<string, mixed> $data */
+    public function saveFindingDetails(int $findingId, array $data): void
+    {
+        $finding = $this->assessment()->findings()->findOrFail($findingId);
+        $uploads = is_array($data['evidence_uploads'] ?? null) ? $data['evidence_uploads'] : [];
+        $originalNames = is_array($data['evidence_original_names'] ?? null) ? $data['evidence_original_names'] : [];
+        $evidenceUrl = is_string($data['evidence_url'] ?? null) ? trim($data['evidence_url']) : '';
+        $evidenceTitle = is_string($data['evidence_title'] ?? null) ? trim($data['evidence_title']) : '';
+
+        try {
+            app(SaveFindingDetails::class)->handle(
+                $finding,
+                collect($data)->except(['evidence_uploads', 'evidence_original_names', 'evidence_url', 'evidence_title'])->all(),
+            );
+
+            foreach ($uploads as $key => $upload) {
+                if ($upload instanceof UploadedFile) {
+                    $uploadedFile = $upload;
+                } elseif (is_string($upload) && Storage::disk('local')->exists($upload)) {
+                    $uploadedFile = new UploadedFile(
+                        Storage::disk('local')->path($upload),
+                        is_string($originalNames[$key] ?? null) ? $originalNames[$key] : basename($upload),
+                        Storage::disk('local')->mimeType($upload),
+                        null,
+                        true,
+                    );
+                } else {
+                    continue;
+                }
+
+                app(StoreEvidenceFile::class)->handle($finding, $uploadedFile, [
+                    'title' => $uploadedFile->getClientOriginalName(),
+                    'include_in_report' => true,
+                ]);
+            }
+            if ($evidenceUrl !== '') {
+                app(StoreEvidenceUrl::class)->handle($finding, [
+                    'title' => $evidenceTitle,
+                    'url' => $evidenceUrl,
+                    'include_in_report' => true,
+                ]);
+            }
+        } finally {
+            // Filament stores modal uploads before the action runs; every pending file is removed after adoption or failure.
+            Storage::disk('local')->delete(array_values(array_filter($uploads, 'is_string')));
+        }
+
+        $this->fillForm();
+    }
+
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         return $record;
+    }
+
+    /** @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        return [
+            ...$data,
+            'site_ids' => $this->assessment()->sites()->pluck('sites.id')->all(),
+        ];
     }
 }

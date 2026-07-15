@@ -1,6 +1,6 @@
 # AssestMe — Deterministic Executable Development Plan
 
-Specification version: **2.1**  
+Specification version: **2.2**
 Status: **approved for implementation**  
 Application name: **AssestMe**  
 Reference environment: **Ubuntu Server 24.04 LTS**  
@@ -72,7 +72,7 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-011 | APPROVED | Italian v1 UI/report, translation keys from the first commit |
 | D-012 | APPROVED | JSON Schema v1 is the canonical template interchange contract |
 | D-013 | APPROVED | Priority = consequence × likelihood, with reasoned manual override |
-| D-014 | APPROVED | Economic values are indicative and never totaled as a quotation |
+| D-014 | APPROVED | Economic values are indicative, never totaled as a quotation, and always understood as excluding VAT |
 | D-015 | APPROVED | Asset association is optional and scope can be organization-wide |
 | D-016 | APPROVED | Autosave plus explicit draft save, both using the same persistence layer |
 | D-017 | APPROVED | Archive/permanent-delete behavior follows one global setting |
@@ -96,6 +96,9 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-035 | APPROVED | API, MCP server, Jira, runZero, and scanner imports are outside v1 |
 | D-036 | APPROVED | Univer Sheet is not installed and never stores assessment findings |
 | D-037 | APPROVED | Right Click and Advanced Table Export enhance standard resource tables only |
+| D-038 | APPROVED | Risk profiles own consequence, likelihood, priority, and matrix records; effort levels are global |
+| D-039 | APPROVED | VAT treatment is not modeled or configurable; reports and XLSX contain one mandatory VAT-excluded estimate note |
+| D-040 | APPROVED | Optional consultant identity/contact/logo and text-only signature fields are explicitly defined for reports |
 
 ### D-001 — Framework
 
@@ -1317,7 +1320,41 @@ Tables:
 - `priority_levels`;
 - `risk_matrix_entries`.
 
-`risk_profiles` has `is_enabled`, not `is_active`.
+`risk_profiles` contains:
+
+- `code varchar(40)` unique;
+- `label varchar(120)`;
+- `description text` nullable;
+- `is_default boolean`;
+- `is_enabled boolean`, not `is_active`;
+- timestamps.
+
+Exactly one risk profile is default. Replacing the default is one transaction. The default profile cannot be disabled until another enabled profile becomes default.
+
+`consequence_levels` and `likelihood_levels` each contain:
+
+- risk profile FK with restricted deletion;
+- `code varchar(40)`, unique inside the profile;
+- `label varchar(120)`;
+- `description text` nullable;
+- integer `score` from 1 through 4, unique inside the profile;
+- strict uppercase `#RRGGBB` color;
+- integer `sort_order`;
+- `is_enabled boolean`;
+- timestamps.
+
+`priority_levels` contains:
+
+- risk profile FK with restricted deletion;
+- `code varchar(40)`, unique inside the profile;
+- `label varchar(120)`;
+- `description text` nullable;
+- strict uppercase `#RRGGBB` color;
+- integer `sort_order`;
+- `is_enabled boolean`;
+- timestamps.
+
+`risk_matrix_entries` contains risk profile, consequence, likelihood, and priority FKs, all with restricted deletion, plus timestamps. The three referenced levels must belong to the same profile as the entry. The profile/consequence/likelihood tuple is unique.
 
 `GeneralSettings.active_risk_profile_id` is the only source of truth for new calculations.
 
@@ -1355,9 +1392,9 @@ Default matrix:
 
 Constraints:
 
-- one matrix entry per consequence/likelihood pair;
+- one matrix entry per profile/consequence/likelihood tuple;
 - exactly 16 entries for an enabled 4×4 profile;
-- referenced levels cannot be deleted;
+- referenced profiles and levels cannot be deleted and are disabled instead;
 - editing a matrix does not automatically recalculate existing findings;
 - recalculation occurs when consequence/likelihood changes or the user invokes recalculation;
 - current UI uses live labels/colors;
@@ -1368,10 +1405,15 @@ Constraints:
 `effort_levels`:
 
 - `code varchar(40)` unique;
-- label, description, color, order, enabled;
+- `label varchar(120)`;
+- `description text` nullable;
+- strict uppercase `#RRGGBB` color;
+- integer `sort_order`;
+- `is_enabled boolean`;
+- timestamps;
 - no soft delete after use.
 
-Seed low, moderate, high, very_high.
+Effort levels are global and independent from risk profiles. Seed low, moderate, high, very_high.
 
 Effort belongs to a solution.
 
@@ -1603,7 +1645,6 @@ Defaults:
 | currency symbol | € |
 | symbol position | after |
 | decimals | 2 |
-| VAT display | not specified |
 | deletion policy | archive |
 | max evidence file | 25 MB |
 | max assessment evidence | 250 MB |
@@ -1619,11 +1660,23 @@ Defaults:
 | dark mode | enabled |
 | report excluded findings in XLSX | false |
 
+VAT treatment is not an application setting. No VAT status, display mode, rate, taxable amount, tax amount, enum, configurable label, or fiscal calculation exists. Every entered economic amount is understood as VAT excluded. Client and consultant VAT numbers remain permitted only as explicitly required anagraphic identifiers and never participate in calculations.
+
 ### 8.2 ReportSettings
 
 - default title pattern: `Assessment IT — {client}`;
-- consultant/business contact fields;
-- consultant logo;
+- optional `consultant_name`;
+- optional `business_name`;
+- optional `consultant_role`;
+- optional `consultant_email`;
+- optional `consultant_phone`;
+- optional HTTP/HTTPS `consultant_website`;
+- optional multiline `consultant_address`;
+- optional `consultant_vat_number`, used only as an anagraphic identifier;
+- optional `consultant_pec` with email shape;
+- optional `consultant_tax_code`;
+- optional private `consultant_logo_path`;
+- optional text-only `signature_name` and `signature_role`; no handwritten-signature upload in v1;
 - primary color, strict six-digit hex;
 - branding: consultant, client, both;
 - cover;
@@ -1666,6 +1719,8 @@ Defaults:
 
 - colors normalize uppercase `#RRGGBB`;
 - logo accepts PNG/JPEG only, max 5 MB;
+- consultant email and PEC use email validation; consultant website accepts HTTP/HTTPS only;
+- consultant VAT number and tax code are normalized uppercase without spaces and are never used for tax calculation;
 - currency must be uppercase ISO 4217 shape;
 - numeric limits are bounded;
 - report header and footer text max 120 characters; confidentiality label max 40 characters;
@@ -2323,6 +2378,12 @@ Format examples:
 - `Variabile in base alla soluzione`;
 - `Nessun costo diretto previsto`.
 
+The report contains exactly once, as a general note and never beside each amount:
+
+`Tutti gli importi indicati sono stime orientative e si intendono IVA esclusa.`
+
+The note is fixed, not configurable, and present even when an assessment currently has no numeric estimate.
+
 ### 13.7 Evidence
 
 - images embedded from verified local files/data URI;
@@ -2335,7 +2396,7 @@ Format examples:
 
 ### 13.8 Signature/disclaimer
 
-Signature is a text block with name, role, date line, and empty signature line. No image-signature support in v1.
+Signature is an optional text block with the configured signature name, role, date line, and empty signature line. No image-signature support in v1.
 
 Default confidentiality label: `Riservato`.
 
@@ -2408,6 +2469,12 @@ Workbook versioning is independent from PDF versioning.
 ### 14.1 Sheet `Finding`
 
 One row per exported finding.
+
+Row 1 is one merged general-note cell across all exported columns containing exactly:
+
+`Tutti gli importi indicati sono stime orientative e si intendono IVA esclusa.`
+
+The note is fixed, not configurable, and not repeated per finding or amount. Column headers are on row 2, data starts on row 3, the frozen pane is `A3`, and the auto filter starts on row 2.
 
 Columns:
 
@@ -2527,6 +2594,8 @@ Fixture coverage is separate from the user-facing template library and must incl
 - long text;
 - corrupt image;
 - all evidence types.
+
+Report/XLSX fixtures include the exact mandatory VAT-excluded estimate note once and contain no VAT treatment/display/rate/tax-calculation field. Anagraphic VAT-number fields remain allowed for clients and consultant contacts only.
 
 ## 16. Testing, CI, browser QA, and performance
 
@@ -3043,13 +3112,21 @@ No unresolved product or architecture decision remains at implementation handoff
 The implementation agent must maintain this section.
 
 - [x] Milestone 0 — Native Filament table Repeater and compatibility proof completed on 2026-07-13
-- [ ] Milestone 1 — Foundation and settings
-- [ ] Milestone 2 — Template library
-- [ ] Milestone 3 — Assessment workspace
+- [x] Milestone 1 — Foundation and settings completed on 2026-07-13
+- [x] Milestone 2 — Template library completed on 2026-07-13
+- [x] Milestone 3 — Assessment workspace completed on 2026-07-13
 - [ ] Milestone 4 — Reporting and exports
 - [ ] Milestone 5 — Completion and hardening
 
-Current state: Milestone 0 is complete. The native Filament table Repeater, transactional workspace persistence, local administrator login, DOMPDF, XLSX, JSON Schema, Canary, Dusk, diagnostics, benchmark, and local URL gates passed. Milestone 1 has not started.
+Current state: Milestones 0 through 3 are complete. Milestone 4 is in progress. The application now includes the singleton administrator, optional TOTP MFA, clients/sites/assets, classifications, owned risk profiles and matrices, global effort levels, typed settings, application-aware backup/restore, actionable dashboard, recoverable deletion, the versioned template library, and the definitive assessment workspace. The workspace uses the approved native table Repeater with detached template snapshots, lifecycle validation, signed idempotent optimistic persistence, explicit conflict/offline/save states, scope and risk editing, nested solutions, private evidence, accessible actions and keyboard shortcuts, and the four approved workspace tabs. D-037 remains limited to standard resource tables with visible-action parity and generic CSV/XLSX export. Milestone 5 clean-machine bootstrap and CI verification work is also in progress.
+
+Milestone 4 PDF vertical slice implemented and verified on 2026-07-15: definitive A4 DOMPDF generation now uses a normalized readonly assessment/settings snapshot, persisted independent PDF versions and payload/file hashes, private generated-file storage, authenticated hash-verified download, complete report sections, verified image/file/URL evidence, consultant/client branding, Canvas page chrome, visible failure handling, freeze-safe workspace reload, storage audit integration, and generated-file history. The obsolete user-accessible Milestone 0 proof routes were removed. Milestone 4 remains in progress: explicit confirmed generated-file deletion with staged filesystem recovery, the dedicated three-sheet XLSX implementation, the definitive benchmark-command migration, and the manual visual/browser acceptance checklist are not claimed by this slice.
+
+Milestone 1 completed in the Ubuntu 24.04 reference environment with the approved owned risk-profile schema, 16-entry matrix, global effort levels, typed general/report settings, native Filament management, and failure-path tests. Accepted evidence is 87 application tests with 774 assertions, Pint clean, Larastan level 6 with zero errors, Canary strict 31/31 with zero skips, locked audit with zero advisories, and Dusk Chromium 150 with 1 test/28 assertions covering every Milestone 1 browser surface and no severe console errors.
+
+Milestone 2 completed with native template and nested-solution CRUD, stable external identifiers, semantic aggregate validation, versioned JSON Schema validation, two-stage import preview, deterministic replace/skip behavior, atomic failure handling, equivalent export round trips, and an eight-template/eight-solution Italian base library. Accepted evidence is 99 application tests with 851 assertions, Pint clean, Larastan level 6 with zero errors, Canary strict 34/34 with zero skips, locked audit with zero advisories, and a focused Dusk Chromium run with 1 test/5 assertions and no severe console errors.
+
+Milestone 3 completed with the complete assessment/finding schema, native Filament table Repeater workspace, immediate blank/template/duplicate persistence, detached finding and solution snapshots, lifecycle and row-numbered completion validation, signed idempotent optimistic saves, explicit save/conflict/offline states, four approved tabs, row slide-over scope/risk/solutions/evidence editing, private evidence validation and authorized delivery, storage audit, visible action parity, and keyboard shortcuts. Accepted evidence is 111 application tests with 1,001 assertions, Pint clean, Larastan level 6 with zero errors, Canary strict 34/34 with zero skips, locked audit with zero advisories, focused Dusk Chromium with 1 test/8 assertions and no severe console errors, diagnostics fully green, and the 50-finding benchmark passing at 1.1605 s first render, 0.0527 s explicit save, 0.0601 s reorder, 0.2245 s PDF, and 0.1060 s XLSX.
 
 ---
 
@@ -3071,6 +3148,28 @@ Record unexpected package behavior, version incompatibilities, and material desi
 - 2026-07-13: The native table requires a 512 MB PHP memory limit to render the 50-finding proof on this Windows host; the approved PHP configuration already specifies 512 MB, the local PHP configuration was aligned, and `assestme:diagnose` enforces it. The final 50-finding benchmark passed: first render 2.3328 s, response 3,291,784 bytes, explicit save 0.1543 s, reorder 0.1503 s, PDF 0.2898 s, and XLSX 0.1384 s.
 - 2026-07-13: Automated evidence is green: 26 Pest tests with 180 assertions; Pint clean; Larastan level 6 with no baseline or ignored errors; Canary strict 5/5 pages with zero failures/skips; Composer validation strict; locked audit with zero advisories; and Dusk Chrome 150.0.7871.101 at 1920×1080 with 1 test/16 assertions covering real login, multiline blur-save, explicit-save presence, add, native clone, confirmed delete, native accessible reorder, offline/unsaved status, and a console free of severe errors.
 - 2026-07-13: Manual/browser checklist for Milestone 0: Windows 11, Chrome 150.0.7871.101, 1920×1080, dark mode, login/workspace/PDF/XLSX actions and horizontal table layout visually inspected; pass. A separate real login used the final local administrator and reached assessment workspace 1; pass. ChromeDriver's synthetic drag-and-drop did not trigger Filament's SortableJS reorder on this Windows host, so physical drag-and-drop is not claimed as manually verified. Reordering itself is verified through Filament's native accessible move-down action and the drag handle remains enabled. Keyboard shortcuts, Edge, Firefox, iOS Safari, and Android Chrome are not claimed in Milestone 0 and remain part of the later full blocking QA matrix.
+- 2026-07-13: Milestone 1 client/site slice added normalized client fiscal identifiers, non-blocking duplicate warnings, HTTP/HTTPS-only website validation, archived-client protection for new sites, native searchable Filament resources, private PNG/JPEG logo upload constraints, and soft-delete archive actions. Evidence is green: 32 Pest tests with 259 assertions, Canary strict 11/11 pages, Pint, Larastan level 6, and a Chrome browser proof with 1 test/7 assertions and no severe console errors. Dusk's PHP downloader could not use the local PHP CA trust store (`cURL error 60`), so ChromeDriver 150.0.7871.115 was installed from the exact official Chrome-for-Testing milestone manifest URL through the Windows trust store; the binary remains an ignored local test dependency.
+- 2026-07-13: The Windows browser proof currently targets the configured local file SQLite database. Dusk's `DatabaseMigrations` reset test data but left that database with migrations rolled back afterward; local schema, domain seed, and administrator were explicitly restored before rerunning Canary. A Canary result obtained while the schema was absent showed 11 skips despite a zero process exit and was rejected; the accepted rerun is 11 passed and zero skipped.
+- 2026-07-13: Milestone 1 asset slice added the exact ordered 13-type seed, reserved collision-safe slugs, client/site/type foreign-key constraints, client-site ownership validation, at-least-one-identifier validation, IPv4/IPv6 validation, uppercase colon-separated MAC normalization, and disabled-type protection that preserves existing references. Evidence is green: 39 Pest tests with 328 assertions, Pint, Larastan level 6, diagnostics, Canary strict 17/17 pages, and the expanded Chrome proof with 1 test/11 assertions and no severe console errors.
+- 2026-07-13: Milestone 1 classification slice added the exact ordered 18-category seed, archived-record-safe slug reservation with deterministic suffixes, strict uppercase `#RRGGBB` normalization, archive/restore resources for categories and tags, and no premature finding/template associations. Evidence is green: 44 Pest tests with 396 assertions, Pint, Larastan level 6, Canary strict 23/23 pages, and the expanded Chrome proof with 1 test/13 assertions and no severe console errors.
+- 2026-07-13: Filament 5.6.8's native `AppAuthentication` provider met D-028 without an extra package. The user model now implements its TOTP/recovery contracts while synchronizing `mfa_enabled_at`; profile enrollment uses exactly eight hashed single-use recovery codes stored through encrypted casts, login requires the TOTP challenge when enabled, profile password changes enforce the approved 14–128 mixed-case/number/symbol policy, and `assestme:reset-mfa` requires confirmation unless explicitly forced. Evidence is green: 49 Pest tests with 432 assertions, including a real primary-credential-plus-TOTP login flow and single-use recovery, Pint, Larastan level 6, Canary strict 23/23 pages, and the Chrome profile proof with 1 test/15 assertions and no severe console errors.
+- 2026-07-13: The risk/effort section specifies table names, default labels, matrix values, and high-level constraints but does not define the required columns, keys, color fields, or ownership relations for the five risk tables and only partially defines `effort_levels`. Implementation was not guessed and was deferred while independent Milestone 1 slices continued.
+- 2026-07-13: The approved settings dependencies resolved to `filament/spatie-laravel-settings-plugin` 5.6.8 and `spatie/laravel-settings` 3.9.0, both MIT licensed, with zero locked advisories and no broad package updates. An initial Windows-shell command incorrectly reduced `^5.0` to exact `5.0`; Composer rejected the vulnerable initial release and reverted its files. The approved caret constraint was then applied to `composer.json`, and Composer generated the successful lock update.
+- 2026-07-13: General/report settings cannot yet be completed without inventing values: `GeneralSettings.active_risk_profile_id` requires the undefined risk schema/seed, while the report specification says “consultant/business contact fields” without naming or typing those properties. The dependency infrastructure is locked, but no incomplete settings class or placeholder UI was added.
+- 2026-07-13: The application-aware backup slice now creates a checkpointed SQLite `VACUUM INTO` snapshot, copies private storage including generated reports, records application/settings metadata, writes and verifies a per-file SHA-256 manifest, restricts archives to mode 0600, and applies 7-daily/4-weekly/6-monthly retention to managed archives. Restore rejects non-maintenance execution, verifies the archive before replacement, creates an unpruned safety backup, replaces database and private storage with filesystem compensation, reconnects SQLite, and runs `assestme:diagnose`. The Laravel Scheduler registers the backup for 02:30 Europe/Rome and the existing single system cron entry remains authoritative. The production deployment script was aligned with the implemented restore and diagnostics signatures. CI-visible tests restore both populated and empty private storage against isolated temporary database/storage paths and prove a tampered archive exits non-zero. Evidence is green: 54 Pest tests with 491 assertions, Pint, Larastan level 6, diagnostics, Canary strict 23/23 with zero skips, Composer validation strict, and locked audit with zero advisories. No browser run was claimed because this slice has no browser surface.
+- 2026-07-13: The Milestone 1 dashboard now shows real draft/completed assessment counts, open and high/critical included finding counts, the latest five assessments, unresolved cleanup failures, and the timestamp of the newest managed successful backup. Recoverable deletion operations persist UUID, entity, state, trash path, and a size/SHA-256 file manifest. Archive mode retains files; permanent mode moves private files into a same-tree operation directory before the database transaction, restores them when a restricted database delete fails, and records completed or failed post-commit cleanup without false success. Path traversal, duplicate paths, symlinks, and missing referenced files are rejected before deletion. Evidence is green: 62 Pest tests with 545 assertions, Pint, Larastan level 6, diagnostics, Canary strict 23/23 with zero skips, Composer validation/audit, and Dusk Chrome with 1 test/17 assertions covering the dashboard plus existing Milestone 1 pages with no severe console errors.
+- 2026-07-13: `assestme:storage:cleanup` now retries only committed or previously failed deletion operations, validates that each persisted trash path exactly matches the configured private-trash root and operation UUID before removal, treats an already absent committed directory as cleaned, and exits non-zero while preserving a visible `cleanup_failed` record when removal fails. Focused success, invalid-path, and mocked filesystem-failure tests are included. Evidence is green: 65 Pest tests with 569 assertions, Pint, and Larastan level 6.
+- 2026-07-13: The CI workflow and its maintained stub now keep the SQLite environment across steps, run every current quality/diagnostic/benchmark gate, run Dusk against a readiness-checked local server, retain failure artifacts, and include a separate Ubuntu 24.04 clean-checkout bootstrap job that verifies exactly one administrator and all 18 seeded categories. `bootstrap-local.sh` now runs domain seeds and diagnostics; `verify.sh` runs Dusk by default unless explicitly disabled by CI before its dedicated browser step. All shell scripts are committed executable. Both YAML files parse successfully with Symfony YAML and the embedded Tinker assertions were executed locally. The Ubuntu-only bootstrap itself cannot run on the Windows development host because the required Linux shell/reference environment is absent; its definitive execution evidence remains the GitHub Actions job.
+- 2026-07-13: D-037 resolved to `leek/filament-right-click` 1.3.5 and `occtherapist/advanced-table-export-for-filament` 1.0.1, both MIT licensed and compatible with the locked Laravel 13/Filament 5 stack. Package metadata, service providers, Composer hooks, registered assets, views, translations, actions, and relevant source paths were inspected before activation; neither package adds a Composer plugin or install script, and the exporter reuses locked OpenSpout 4.32.0. Right Click adds one lazily loaded JavaScript asset and stylesheet, published through the native `filament:assets` command without Node or a frontend build. Advanced Table Export has no frontend build requirement. No vendor file was edited.
+- 2026-07-13: The application-owned standard-table enhancement applies Right Click only to the seven currently existing standard resource lists and keeps every context action duplicated by a visible Filament record action; it is absent from the assessment workspace. Generic export is intentionally limited to CSV and XLSX, with Italian controls and a 2,000-row cap; plugin PDF/JSON/XML/clipboard paths are disabled, so assessment PDF/workbook generation remains dedicated. A focused test reopens a real XLSX download, and Dusk dispatches a real `contextmenu` event, invokes the contextual edit modal, proves the visible edit path, and reports no severe console errors. Accepted evidence is green: 75 Pest tests with 608 assertions; Pint; Larastan level 6; Composer validation/audit; Canary strict 23/23 with zero skips; and Dusk Chrome 150.0.7871.101 at 1920×1080 with 1 test/23 assertions. The database, domain seed, and local administrator were restored after Dusk.
+- 2026-07-13: The user approved the missing Milestone 1 decisions and specification 2.2 records them as D-038 through D-040. Risk profiles own their consequence, likelihood, priority, and matrix rows; effort levels are global. VAT treatment, rates, and calculations are absent and non-configurable, while VAT numbers remain anagraphic identifiers only. PDF and XLSX each show the fixed VAT-excluded estimate note once. Optional consultant identity/contact fields now include logo, PEC, tax code, and a text-only name/role signature block.
+- 2026-07-13: The native Filament 5 table Repeater layout was remediated without replacing the approved component or editing vendor files. `compact()`, wrapped headers, top-aligned cells, bounded three-row multiline controls, and Filament's native container-responsive vertical rendering replace the previous forced fixed table layout. The trailing clone/delete cell previously collapsed to 34 px and allowed both 32 px actions to overflow; the workspace-scoped published stylesheet now reserves a 96 px native action column. Browser geometry confirms both actions remain inside that cell, the document has no horizontal overflow, and the first long-content row remains 93 px high. Evidence is green: `composer quality` with 78 application tests/655 assertions, PHPStan with zero errors, Canary strict 23/23 with zero skips, and locked audit with zero advisories; focused Dusk adds 1 test/34 assertions for desktop containment, mobile rendering, persistence actions, offline state, and zero severe console errors. Dusk now uses file-SQLite `DatabaseTruncation` across both browser classes so the aggregate run no longer leaves stale WAL/schema state between classes.
+- 2026-07-13: Milestone 1 risk, effort, and settings are complete. Risk-profile ownership and same-profile matrix constraints are enforced by foreign keys and one aggregate transaction; referenced levels are disabled instead of deleted, the active/default profile remains enabled, and all 16 consequence/likelihood combinations are required. General and report settings use typed Spatie settings classes and private consultant-logo storage; VAT identifiers are normalized anagraphic values and no fiscal setting or calculation exists. Accepted evidence is 87 application tests/774 assertions, Pint clean, Larastan level 6 with zero errors, Canary strict 31/31 with zero skips, locked audit with zero advisories, and Dusk Chromium 150 with 1 test/28 assertions and no severe console errors.
+- 2026-07-13: The Ubuntu host provides Chromium as a confined snap. ChromeDriver session creation stalled while discovering an ephemeral debugging port and running as root was rejected by Chrome's sandbox. The Dusk harness now adds `--no-sandbox` only when the effective user is root and uses ChromeDriver's supported `--remote-debugging-pipe` transport; the resulting browser run passes. This affects development/CI browser transport only and adds no production runtime dependency.
+- 2026-07-13: Milestone 2 template management is complete. Aggregate saves enforce same-profile risk references, solution ownership, estimate/billing invariants, exactly one recommended solution, and soft deletion of omitted nested solutions. Import preview reports create/replace/unchanged state and field-level differences before the confirmed atomic apply; invalid or duplicate payloads leave the database unchanged, and JSON export re-imports as data-equivalent. The domain seeder installs eight Italian templates with eight solutions. Accepted evidence is 99 Pest tests/851 assertions, Pint, Larastan level 6, Canary strict 34/34 with zero skips, Composer validation/audit, and focused Dusk with 1 test/5 assertions and no severe console errors.
+- 2026-07-13: Milestone 3 replaced the temporary proof projections with the definitive related finding-solution, risk, effort, scope, and evidence records. Native Filament file upload state is adopted from a private pending directory only after application-level extension, MIME, size, image-dimension, duplicate-hash, and aggregate-limit validation; downloads remain authenticated with defensive response headers. Closing a slide-over and mutating lifecycle state in the same Livewire page exposed an Alpine action-state reference after the component tree changed; successful complete/reopen transitions now perform a full workspace redirect, preserving the approved component and avoiding vendor changes. Completed-to-archived transitions preserve `completed_at`, while reopening clears it. Accepted evidence is 111 Pest tests/1,001 assertions, Pint, Larastan level 6, Canary strict 34/34 with zero skips, Composer validation/audit, focused Dusk with 1 test/8 assertions and no severe console errors, diagnostics fully green, and every 50-finding performance budget passing.
+- 2026-07-15: The first Milestone 4 reporting slice replaced the user-facing proof PDF with the definitive Spatie Laravel PDF/DOMPDF pipeline. Immutable normalized payload and complete settings snapshots, PDF version rows, physical UUID filenames, SHA-256 verification, completion validation, verified embedded evidence, PNG/JPEG logo revalidation including the 5 MB limit, archived master-data labels, the fixed VAT-excluded note exactly once, authenticated downloads, history, freeze-safe reload, and generated-report storage audit are implemented. The direct proof PDF/XLSX routes were removed so incomplete Milestone 0 artifacts cannot be downloaded as reports. Automated PDF coverage parses Italian output, first/final content page labels excluding the cover, long text, page breaks, 50 findings, alternatives, real image/caption embedding, non-image type references, clickable URL annotations, consultant/client logos, missing/corrupt evidence, invalid/oversized logos, immutable versions, tamper rejection, and freeze only after successful persistence. Accepted current evidence is `composer quality` with 120 application tests/1,101 assertions, Pint clean, PHPStan over 212 files with zero errors, Canary strict 34/34 with zero skips, locked audit with zero advisories, aggregate Dusk Chromium with 5 tests/91 assertions and no severe console errors, and a complete successful `scripts/verify.sh` run. The definitive 50-finding PDF gate passes the 30-second and 50 MB limits. The maintained general benchmark is green at 1.1782 s first render, 0.0521 s explicit save, and 0.0568 s reorder, but its PDF/XLSX metrics still time the internal Milestone 0 proof generators until the XLSX slice can migrate both report metrics together.
+- 2026-07-15: Laravel `DatabaseTruncation` preserves the framework migrations table but normally truncates Spatie's `settings` values, so an aggregate Dusk run left later classes unable to reconstruct typed settings whose settings migration was already marked as run. The shared browser harness now preserves only the `settings` table; browser tests do not mutate it, while all domain/test records continue to be truncated. The accepted aggregate rerun is 5 passed with 91 assertions.
 
 ---
 

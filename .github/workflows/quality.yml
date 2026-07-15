@@ -55,6 +55,7 @@ jobs:
           php artisan canary:check --strict
           php artisan assestme:diagnose
           php artisan assestme:benchmark --findings=50
+          RUN_DUSK=0 scripts/verify.sh
 
       - name: Install matching ChromeDriver
         run: php artisan dusk:chrome-driver --detect
@@ -82,3 +83,36 @@ jobs:
             tests/Browser/screenshots
             tests/Browser/console
           if-no-files-found: ignore
+
+  clean-bootstrap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      DEV_ADMIN_NAME: CI Administrator
+      DEV_ADMIN_EMAIL: admin@assestme.local
+      DEV_ADMIN_PASSWORD: CI-Only!AssestMe-2026
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip
+          ini-values: memory_limit=512M
+          tools: composer:v2
+
+      - name: Install clean-bootstrap system tools
+        run: sudo apt-get update && sudo apt-get install -y lsb-release sqlite3
+
+      - name: Bootstrap a clean checkout
+        run: scripts/bootstrap-local.sh "${GITHUB_WORKSPACE}"
+
+      - name: Verify bootstrapped application
+        run: |
+          php artisan assestme:diagnose
+          test "$(php artisan tinker --execute='echo App\Models\User::query()->count();')" = "1"
+          test "$(php artisan tinker --execute='echo App\Models\Category::query()->count();')" = "18"

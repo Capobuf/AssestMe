@@ -14,7 +14,7 @@ final class GenerateAssessmentProofPdf
 {
     public function __invoke(Assessment $assessment): PdfBuilder
     {
-        $assessment->load(['findings' => fn ($query) => $query->orderBy('sort_order')]);
+        $assessment->load(['findings' => fn ($query) => $query->with(['priorityLevel', 'recommendedSolution'])->orderBy('sort_order')]);
 
         return Pdf::view('reports.milestone-zero-proof', [
             'assessment' => $assessment,

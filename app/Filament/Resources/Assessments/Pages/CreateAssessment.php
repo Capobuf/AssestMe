@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Assessments\Pages;
 
+use App\Actions\Assessments\CreateAssessment as CreateAssessmentAction;
 use App\Filament\Resources\Assessments\AssessmentResource;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Model;
 
 class CreateAssessment extends CreateRecord
 {
@@ -14,5 +16,11 @@ class CreateAssessment extends CreateRecord
     protected function getRedirectUrl(): string
     {
         return AssessmentResource::getUrl('workspace', ['record' => $this->getRecord()]);
+    }
+
+    /** @param array<string, mixed> $data */
+    protected function handleRecordCreation(array $data): Model
+    {
+        return app(CreateAssessmentAction::class)->handle($data);
     }
 }

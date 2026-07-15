@@ -1,6 +1,6 @@
 # AGENTS.md — AssestMe
 
-Read `plan.md` completely before changing code. `plan.md` version 2.1 is the authoritative product, architecture, deployment, data, UI, persistence, import, report, test, and acceptance specification.
+Read `plan.md` completely before changing code. `plan.md` version 2.2 is the authoritative product, architecture, deployment, data, UI, persistence, import, report, test, and acceptance specification.
 
 ## Authority
 
@@ -84,6 +84,11 @@ Never:
 - Do not invent implicit merge behavior for JSON import.
 - Do not delete a referenced solution.
 - Do not create more than one user.
+- Risk profiles own consequence, likelihood, priority, and matrix records; effort levels are global.
+- Referenced risk/effort records are disabled, never deleted.
+- Do not add VAT treatment/display fields, enums, settings, rates, taxable amounts, tax amounts, or fiscal calculations. VAT numbers are anagraphic identifiers only.
+- PDF and XLSX each contain the fixed note `Tutti gli importi indicati sono stime orientative e si intendono IVA esclusa.` exactly once, never per amount.
+- Report consultant fields are optional name, business name, role, email, phone, website, address, VAT number, PEC, tax code, private logo, and text-only signature name/role. Do not add handwritten-signature upload in v1.
 
 ## UI
 

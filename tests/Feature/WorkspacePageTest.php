@@ -5,16 +5,19 @@ declare(strict_types=1);
 use App\Filament\Resources\Assessments\Pages\CreateAssessment;
 use App\Filament\Resources\Assessments\Pages\WorkspaceAssessment;
 use App\Models\Assessment;
+use App\Models\Client;
 use App\Models\Finding;
 use App\Models\User;
 use Livewire\Livewire;
 
 it('creates an assessment through the Filament resource', function (): void {
     $administrator = User::factory()->create();
+    $client = Client::factory()->create();
     $this->actingAs($administrator);
 
     Livewire::test(CreateAssessment::class)
         ->fillForm([
+            'client_id' => $client->getKey(),
             'title' => 'Assessment creato da Filament',
             'assessment_date' => '2026-07-13',
         ])
@@ -37,7 +40,10 @@ it('mounts the native table repeater workspace with fifty related findings', fun
         ->assertOk()
         ->assertSet('expectedVersion', 0)
         ->assertSet('saveStatus', WorkspaceAssessment::STATUS_SAVED)
-        ->assertSee('Finding');
+        ->assertSee('Finding')
+        ->assertSee('Dettagli assessment')
+        ->assertSee('Anteprima riepilogo')
+        ->assertSee('File generati');
 });
 
 it('uses the same persistence path for explicit save and autosave', function (): void {
@@ -68,4 +74,16 @@ it('keeps invalid form state visible after an autosave validation failure', func
         ->assertHasErrors(['data.assessment.title']);
 
     expect($assessment->fresh()->title)->not->toBe('');
+});
+
+it('mounts the finding details slide-over for a persisted row', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->mountFormComponentAction('findings', 'details', ['item' => "record-{$finding->id}"])
+        ->assertHasNoErrors()
+        ->assertSee(__('assestme.workspace.finding_details'));
 });

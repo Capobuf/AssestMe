@@ -6,10 +6,9 @@ namespace App\Actions\Assessments;
 
 use App\Data\Assessments\WorkspaceSaveData;
 use App\Data\Assessments\WorkspaceSaveResult;
-use App\Enums\EffortLevel;
-use App\Enums\EstimateType;
-use App\Enums\FindingPriority;
+use App\Enums\AssessmentStatus;
 use App\Enums\FindingStatus;
+use App\Enums\ScopeType;
 use App\Exceptions\AssessmentVersionConflict;
 use App\Exceptions\IdempotencyKeyMismatch;
 use App\Models\Assessment;
@@ -50,6 +49,12 @@ final class SaveAssessmentWorkspace
     /** @throws ValidationException */
     private function validateRequest(Assessment $assessment, WorkspaceSaveData $request): void
     {
+        if ($assessment->status !== AssessmentStatus::Draft) {
+            throw ValidationException::withMessages([
+                'assessment_id' => __('assestme.assessments.errors.read_only'),
+            ]);
+        }
+
         Validator::make([
             'request_id' => $request->requestId,
             'tab_id' => $request->tabId,
@@ -63,17 +68,20 @@ final class SaveAssessmentWorkspace
             'payload_sha256' => ['required', 'regex:/^[a-f0-9]{64}$/'],
             'payload.assessment.title' => ['required', 'string', 'max:255'],
             'payload.assessment.assessment_date' => ['required', 'date_format:Y-m-d'],
+            'payload.assessment.report_title_override' => ['nullable', 'string', 'max:255'],
+            'payload.assessment.scope_type' => ['required', Rule::enum(ScopeType::class)],
+            'payload.assessment.scope_description' => ['nullable', 'string', 'max:20000'],
+            'payload.assessment.introduction' => ['nullable', 'string', 'max:20000'],
+            'payload.assessment.executive_summary' => ['nullable', 'string', 'max:20000'],
+            'payload.assessment.methodology_notes' => ['nullable', 'string', 'max:20000'],
+            'payload.assessment.site_ids' => ['array'],
+            'payload.assessment.site_ids.*' => ['integer', 'distinct', 'exists:sites,id'],
             'payload.findings' => ['present', 'array', 'max:100'],
             'payload.findings.*.id' => ['nullable', 'integer', 'min:1', 'distinct'],
             'payload.findings.*._temporary_uuid' => ['required', 'uuid', 'distinct'],
             'payload.findings.*.title' => ['nullable', 'string', 'max:255'],
             'payload.findings.*.problem' => ['nullable', 'string', 'max:20000'],
             'payload.findings.*.entrepreneur_notes' => ['nullable', 'string', 'max:20000'],
-            'payload.findings.*.recommended_solution_summary' => ['nullable', 'string', 'max:20000'],
-            'payload.findings.*.priority' => ['nullable', Rule::enum(FindingPriority::class)],
-            'payload.findings.*.effort' => ['nullable', Rule::enum(EffortLevel::class)],
-            'payload.findings.*.estimate_type' => ['nullable', Rule::enum(EstimateType::class)],
-            'payload.findings.*.estimate_notes' => ['nullable', 'string', 'max:20000'],
             'payload.findings.*.status' => ['required', Rule::enum(FindingStatus::class)],
             'payload.findings.*.include_in_report' => ['required', 'boolean'],
         ])->validate();
@@ -93,6 +101,13 @@ final class SaveAssessmentWorkspace
         if (! $assessment->exists) {
             throw ValidationException::withMessages([
                 'assessment_id' => __('assestme.workspace.errors.assessment_missing'),
+            ]);
+        }
+
+        $siteIds = $request->payload['assessment']['site_ids'] ?? [];
+        if ($assessment->client->sites()->whereIn('id', $siteIds)->count() !== count($siteIds)) {
+            throw ValidationException::withMessages([
+                'assessment.site_ids' => __('assestme.assessments.errors.site_ownership'),
             ]);
         }
     }
@@ -142,6 +157,12 @@ final class SaveAssessmentWorkspace
             ->update([
                 'title' => $request->payload['assessment']['title'],
                 'assessment_date' => $request->payload['assessment']['assessment_date'],
+                'report_title_override' => $request->payload['assessment']['report_title_override'] ?? null,
+                'scope_type' => $request->payload['assessment']['scope_type'],
+                'scope_description' => $request->payload['assessment']['scope_description'] ?? null,
+                'introduction' => $request->payload['assessment']['introduction'] ?? null,
+                'executive_summary' => $request->payload['assessment']['executive_summary'] ?? null,
+                'methodology_notes' => $request->payload['assessment']['methodology_notes'] ?? null,
                 'lock_version' => $appliedVersion,
                 'updated_at' => now(),
             ]);
@@ -153,6 +174,8 @@ final class SaveAssessmentWorkspace
 
             throw new AssessmentVersionConflict($request->expectedVersion, $actualVersion);
         }
+
+        $assessment->sites()->sync($request->payload['assessment']['site_ids'] ?? []);
 
         /** @var array<string, int> $idMap */
         $idMap = [];
@@ -173,11 +196,6 @@ final class SaveAssessmentWorkspace
                 'title' => $findingData['title'] ?? null,
                 'problem' => $findingData['problem'] ?? null,
                 'entrepreneur_notes' => $findingData['entrepreneur_notes'] ?? null,
-                'recommended_solution_summary' => $findingData['recommended_solution_summary'] ?? null,
-                'priority' => $findingData['priority'] ?? null,
-                'effort' => $findingData['effort'] ?? null,
-                'estimate_type' => $findingData['estimate_type'] ?? null,
-                'estimate_notes' => $findingData['estimate_notes'] ?? null,
                 'status' => $findingData['status'],
                 'include_in_report' => $findingData['include_in_report'],
                 'sort_order' => $index + 1,

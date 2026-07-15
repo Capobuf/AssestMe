@@ -2,6 +2,7 @@
     'use strict';
 
     let dirty = false;
+    let activeFindingRow = null;
 
     const statusElement = () => document.querySelector('[data-assestme-save-status]');
 
@@ -29,6 +30,34 @@
 
         dirty = true;
         showStatus(navigator.onLine ? 'unsaved' : 'offline');
+    });
+
+    document.addEventListener('focusin', (event) => {
+        activeFindingRow = event.target.closest('.assestme-workspace-findings tbody tr') ?? activeFindingRow;
+    });
+
+    document.addEventListener('pointerdown', (event) => {
+        activeFindingRow = event.target.closest('.assestme-workspace-findings tbody tr') ?? activeFindingRow;
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (document.querySelector('.fi-modal-open')) {
+            return;
+        }
+
+        const key = event.key.toLowerCase();
+        const target = event.ctrlKey || event.metaKey
+            ? (key === 's' ? document.querySelector('[data-dusk="save-assessment"]') : null)
+            : (event.altKey && key === 'n' ? document.querySelector('[data-dusk="add-finding"]')
+                : event.altKey && key === 't' ? document.querySelector('[data-dusk="add-template"]')
+                    : event.altKey && key === 'd' ? activeFindingRow?.querySelector('[data-dusk="clone-finding"]') : null);
+
+        if (!target) {
+            return;
+        }
+
+        event.preventDefault();
+        target.click();
     });
 
     window.addEventListener('offline', () => {

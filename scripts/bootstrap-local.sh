@@ -55,7 +55,7 @@ if ! grep -Eq '^APP_KEY=base64:.+' .env; then
     php artisan key:generate --force
 fi
 
-php artisan migrate --force
+php artisan migrate --seed --force
 php artisan filament:assets
 php artisan storage:unlink >/dev/null 2>&1 || true
 
@@ -78,6 +78,7 @@ else
 fi
 
 php artisan optimize:clear
+php artisan assestme:diagnose
 
 cat <<EOF
 

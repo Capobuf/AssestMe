@@ -18,7 +18,7 @@ final class DiagnoseCommand extends Command
     {
         $requiredExtensions = [
             'bcmath', 'ctype', 'curl', 'dom', 'fileinfo', 'filter', 'gd', 'iconv',
-            'intl', 'libxml', 'mbstring', 'openssl', 'pdo', 'pdo_sqlite', 'session',
+            'intl', 'libxml', 'mbstring', 'openssl', 'pdo', 'pdo_sqlite', 'phar', 'session',
             'simplexml', 'tokenizer', 'xml', 'xmlreader', 'xmlwriter', 'zip', 'zlib',
         ];
         $missingExtensions = array_values(array_filter(

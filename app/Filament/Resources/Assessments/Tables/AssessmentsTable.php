@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Assessments\Tables;
 
 use App\Enums\AssessmentStatus;
 use App\Filament\Resources\Assessments\AssessmentResource;
+use App\Filament\Support\StandardTableEnhancements;
 use App\Models\Assessment;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -21,7 +22,7 @@ class AssessmentsTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
+        $table = $table
             ->columns([
                 TextColumn::make('title')
                     ->label(__('assestme.assessments.fields.title'))
@@ -56,5 +57,13 @@ class AssessmentsTable
                     RestoreBulkAction::make(),
                 ]),
             ]);
+
+        return StandardTableEnhancements::apply($table, [
+            Action::make('contextWorkspace')
+                ->label(__('assestme.workspace.open'))
+                ->icon('heroicon-o-table-cells')
+                ->url(fn (Assessment $record): string => AssessmentResource::getUrl('workspace', ['record' => $record])),
+            ...StandardTableEnhancements::editable(),
+        ]);
     }
 }
