@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Assessments\Pages;
 
 use App\Filament\Resources\Assessments\AssessmentResource;
+use App\Filament\Support\DeleteAccordingToPolicyAction;
 use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditAssessment extends EditRecord
@@ -19,7 +19,7 @@ class EditAssessment extends EditRecord
             Action::make('workspace')
                 ->label(__('assestme.workspace.open'))
                 ->url(AssessmentResource::getUrl('workspace', ['record' => $this->getRecord()])),
-            DeleteAction::make(),
+            DeleteAccordingToPolicyAction::make(successRedirectUrl: AssessmentResource::getUrl('index')),
         ];
     }
 }

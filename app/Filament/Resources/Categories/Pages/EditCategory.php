@@ -6,8 +6,8 @@ namespace App\Filament\Resources\Categories\Pages;
 
 use App\Actions\Categories\SaveCategory;
 use App\Filament\Resources\Categories\CategoryResource;
+use App\Filament\Support\DeleteAccordingToPolicyAction;
 use App\Models\Category;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
@@ -18,7 +18,7 @@ class EditCategory extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [DeleteAction::make()];
+        return [DeleteAccordingToPolicyAction::make(successRedirectUrl: CategoryResource::getUrl('index'))];
     }
 
     /** @param array<string, mixed> $data */

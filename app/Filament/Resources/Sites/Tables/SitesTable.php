@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Sites\Tables;
 
+use App\Filament\Support\DeleteAccordingToPolicyAction;
 use App\Filament\Support\StandardTableEnhancements;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
@@ -40,12 +39,11 @@ final class SitesTable
             ->filters([TrashedFilter::make()])
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make(),
+                DeleteAccordingToPolicyAction::make(),
                 RestoreAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                 ]),
             ]);

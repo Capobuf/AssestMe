@@ -330,6 +330,26 @@ return [
             'result' => 'Operazioni elaborate: :processed; pulite: :cleaned; non riuscite: :failed.',
         ],
     ],
+    'deletion' => [
+        'actions' => [
+            'archive' => 'Archivia',
+            'permanent' => 'Elimina definitivamente',
+        ],
+        'confirmation' => [
+            'archive_heading' => 'Archiviare il record?',
+            'archive_description' => 'Il record non sarà più disponibile nelle viste attive e potrà essere ripristinato.',
+            'permanent_heading' => 'Eliminare definitivamente il record?',
+            'permanent_description' => 'Il record e tutti i file privati di sua proprietà saranno eliminati definitivamente. Questa operazione non può essere annullata.',
+        ],
+        'notifications' => [
+            'archived' => 'Record archiviato',
+            'permanently_deleted' => 'Record eliminato definitivamente',
+            'failed' => 'Eliminazione non riuscita',
+            'failed_body' => 'Il record non è stato eliminato. Verifica eventuali riferimenti e lo stato dello storage, quindi riprova.',
+            'cleanup_pending' => 'Record eliminato, pulizia storage da completare',
+            'cleanup_pending_body' => 'I dati sono stati eliminati e la pulizia dei file è registrata per un nuovo tentativo.',
+        ],
+    ],
     'exports' => [
         'action' => 'Esporta tabella',
         'heading' => 'Esporta i dati della tabella',

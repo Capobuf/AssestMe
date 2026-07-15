@@ -6,8 +6,8 @@ namespace App\Filament\Resources\Clients\Pages;
 
 use App\Actions\Clients\SaveClient;
 use App\Filament\Resources\Clients\ClientResource;
+use App\Filament\Support\DeleteAccordingToPolicyAction;
 use App\Models\Client;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
@@ -20,7 +20,7 @@ class EditClient extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [DeleteAction::make()];
+        return [DeleteAccordingToPolicyAction::make(successRedirectUrl: ClientResource::getUrl('index'))];
     }
 
     /** @param array<string, mixed> $data */

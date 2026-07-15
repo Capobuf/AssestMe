@@ -6,13 +6,12 @@ namespace App\Filament\Resources\Assessments\Tables;
 
 use App\Enums\AssessmentStatus;
 use App\Filament\Resources\Assessments\AssessmentResource;
+use App\Filament\Support\DeleteAccordingToPolicyAction;
 use App\Filament\Support\StandardTableEnhancements;
 use App\Models\Assessment;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TrashedFilter;
@@ -49,11 +48,10 @@ class AssessmentsTable
                     ->icon('heroicon-o-table-cells')
                     ->url(fn (Assessment $record): string => AssessmentResource::getUrl('workspace', ['record' => $record])),
                 EditAction::make(),
+                DeleteAccordingToPolicyAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                 ]),
             ]);

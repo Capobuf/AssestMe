@@ -98,11 +98,13 @@ final class MilestoneOneFoundationTest extends DuskTestCase
 
             $browser->waitFor('.fi-right-click-menu.fi-open')
                 ->assertSeeIn('.fi-right-click-menu.fi-open', 'Modifica')
+                ->assertSeeIn('.fi-right-click-menu.fi-open', 'Archivia')
                 ->click('.fi-right-click-menu.fi-open [data-action="contextEdit"]')
                 ->waitForText('Modifica cliente')
                 ->assertSee('Ragione sociale')
                 ->visit("/admin/clients/{$client->getKey()}/edit")
-                ->waitForText('Ragione sociale');
+                ->waitForText('Ragione sociale')
+                ->assertSee('Archivia');
 
             $clientInputValues = $browser->script(
                 'return Array.from(document.querySelectorAll("input")).map((element) => element.value);',

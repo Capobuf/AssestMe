@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\DeletionOperationStatus;
+use App\Enums\DeletionPolicy;
 use App\Filament\Resources\Assessments\Pages\ListAssessments;
 use App\Filament\Resources\Assets\Pages\ListAssets;
 use App\Filament\Resources\AssetTypes\Pages\ListAssetTypes;
@@ -10,7 +12,10 @@ use App\Filament\Resources\Clients\Pages\ListClients;
 use App\Filament\Resources\Sites\Pages\ListSites;
 use App\Filament\Resources\Tags\Pages\ListTags;
 use App\Models\Client;
+use App\Models\DeletionOperation;
+use App\Models\Site;
 use App\Models\User;
+use App\Settings\GeneralSettings;
 use Filament\Actions\Testing\TestAction;
 use Livewire\Livewire;
 
@@ -25,6 +30,39 @@ it('provides right click actions only as duplicates of visible client actions', 
         ->assertActionVisible(TestAction::make('delete')->table($client))
         ->assertActionExists(TestAction::make('contextEdit')->table($client))
         ->assertActionExists(TestAction::make('contextDelete')->table($client));
+});
+
+it('executes the configured archive policy through the visible resource action', function (): void {
+    $administrator = User::factory()->create();
+    $client = Client::factory()->create();
+    $settings = app(GeneralSettings::class);
+    $settings->deletion_policy = DeletionPolicy::Archive->value;
+    $settings->save();
+    $this->actingAs($administrator);
+
+    Livewire::test(ListClients::class)
+        ->callAction(TestAction::make('delete')->table($client))
+        ->assertNotified(__('assestme.deletion.notifications.archived'));
+
+    expect(Client::withTrashed()->find($client->id)?->trashed())->toBeTrue();
+});
+
+it('shows a failure and no success when permanent deletion is restricted', function (): void {
+    $administrator = User::factory()->create();
+    $client = Client::factory()->create();
+    Site::factory()->for($client)->create();
+    $settings = app(GeneralSettings::class);
+    $settings->deletion_policy = DeletionPolicy::Permanent->value;
+    $settings->save();
+    $this->actingAs($administrator);
+
+    Livewire::test(ListClients::class)
+        ->callAction(TestAction::make('delete')->table($client))
+        ->assertNotified(__('assestme.deletion.notifications.failed'))
+        ->assertNotNotified(__('assestme.deletion.notifications.permanently_deleted'));
+
+    expect(Client::query()->find($client->id))->not->toBeNull()
+        ->and(DeletionOperation::query()->sole()->status)->toBe(DeletionOperationStatus::Restored);
 });
 
 it('limits generic table exports to CSV and XLSX with Italian controls', function (): void {

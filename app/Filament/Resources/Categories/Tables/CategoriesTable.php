@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Categories\Tables;
 
+use App\Filament\Support\DeleteAccordingToPolicyAction;
 use App\Filament\Support\StandardTableEnhancements;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\RestoreBulkAction;
@@ -31,9 +30,9 @@ final class CategoriesTable
                 IconColumn::make('is_enabled')->label(__('assestme.common.enabled'))->boolean(),
             ])
             ->filters([TrashedFilter::make()])
-            ->recordActions([EditAction::make(), DeleteAction::make(), RestoreAction::make()])
+            ->recordActions([EditAction::make(), DeleteAccordingToPolicyAction::make(), RestoreAction::make()])
             ->toolbarActions([
-                BulkActionGroup::make([DeleteBulkAction::make(), RestoreBulkAction::make()]),
+                BulkActionGroup::make([RestoreBulkAction::make()]),
             ]);
 
         return StandardTableEnhancements::apply($table, StandardTableEnhancements::editableArchivables());

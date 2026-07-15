@@ -6,8 +6,8 @@ namespace App\Filament\Resources\Assets\Pages;
 
 use App\Actions\Assets\SaveAsset;
 use App\Filament\Resources\Assets\AssetResource;
+use App\Filament\Support\DeleteAccordingToPolicyAction;
 use App\Models\Asset;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
@@ -18,7 +18,7 @@ class EditAsset extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [DeleteAction::make()];
+        return [DeleteAccordingToPolicyAction::make(successRedirectUrl: AssetResource::getUrl('index'))];
     }
 
     /** @param array<string, mixed> $data */

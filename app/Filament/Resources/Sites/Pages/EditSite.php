@@ -6,8 +6,8 @@ namespace App\Filament\Resources\Sites\Pages;
 
 use App\Actions\Sites\SaveSite;
 use App\Filament\Resources\Sites\SiteResource;
+use App\Filament\Support\DeleteAccordingToPolicyAction;
 use App\Models\Site;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
@@ -18,7 +18,7 @@ class EditSite extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [DeleteAction::make()];
+        return [DeleteAccordingToPolicyAction::make(successRedirectUrl: SiteResource::getUrl('index'))];
     }
 
     /** @param array<string, mixed> $data */

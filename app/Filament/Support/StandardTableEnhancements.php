@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Filament\Support;
 
 use Filament\Actions\Action;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\RestoreAction;
 use Filament\Support\Icons\Heroicon;
@@ -46,8 +45,7 @@ final class StandardTableEnhancements
         return [
             self::editMenuItem(),
             ContextMenuItem::for(
-                DeleteAction::make('contextDelete')
-                    ->label(__('filament-actions::delete.single.label')),
+                DeleteAccordingToPolicyAction::make('contextDelete'),
             )
                 ->icon(Heroicon::OutlinedTrash)
                 ->color('danger'),

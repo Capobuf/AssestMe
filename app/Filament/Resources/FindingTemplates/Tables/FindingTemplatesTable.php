@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\FindingTemplates\Tables;
 
+use App\Filament\Support\DeleteAccordingToPolicyAction;
 use App\Filament\Support\StandardTableEnhancements;
-use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\RestoreAction;
 use Filament\Tables\Columns\IconColumn;
@@ -23,7 +23,7 @@ final class FindingTemplatesTable
             TextColumn::make('category.name')->label(__('assestme.templates.fields.category'))->sortable(),
             TextColumn::make('solutions_count')->label(__('assestme.templates.fields.solution_count'))->counts('solutions'),
             IconColumn::make('is_enabled')->label(__('assestme.common.enabled'))->boolean(),
-        ])->filters([TrashedFilter::make()])->recordActions([EditAction::make(), DeleteAction::make(), RestoreAction::make()]);
+        ])->filters([TrashedFilter::make()])->recordActions([EditAction::make(), DeleteAccordingToPolicyAction::make(), RestoreAction::make()]);
 
         return StandardTableEnhancements::apply($table, StandardTableEnhancements::editableArchivables());
     }

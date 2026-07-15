@@ -6,9 +6,9 @@ namespace App\Filament\Resources\FindingTemplates\Pages;
 
 use App\Actions\Templates\SaveFindingTemplate;
 use App\Filament\Resources\FindingTemplates\FindingTemplateResource;
+use App\Filament\Support\DeleteAccordingToPolicyAction;
 use App\Models\FindingTemplate;
 use App\Models\FindingTemplateSolution;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
@@ -19,7 +19,7 @@ final class EditFindingTemplate extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [DeleteAction::make()];
+        return [DeleteAccordingToPolicyAction::make(successRedirectUrl: FindingTemplateResource::getUrl('index'))];
     }
 
     /** @param array<string, mixed> $data @return array<string, mixed> */

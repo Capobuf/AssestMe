@@ -27,3 +27,11 @@ it('keeps business actions independent from Filament', function (): void {
 it('does not contain a PHPStan baseline', function (): void {
     expect(base_path('phpstan-baseline.neon'))->not->toBeFile();
 });
+
+it('does not bypass the staged deletion policy in Filament resources', function (): void {
+    foreach (File::allFiles(app_path('Filament/Resources')) as $file) {
+        $contents = (string) file_get_contents($file->getPathname());
+
+        expect($contents)->not->toMatch('/\b(?:DeleteAction|DeleteBulkAction|ForceDeleteAction|ForceDeleteBulkAction)::make\(/');
+    }
+});

@@ -3,12 +3,21 @@
 declare(strict_types=1);
 
 use App\Actions\Storage\CleanupDeletionOperations;
+use App\Actions\Storage\DeleteArchivableEntity;
 use App\Actions\Storage\DeleteEntityAccordingToPolicy;
 use App\Enums\DeletionOperationStatus;
 use App\Enums\DeletionPolicy;
+use App\Enums\EvidenceType;
+use App\Enums\GeneratedReportFormat;
+use App\Models\Assessment;
 use App\Models\Client;
 use App\Models\DeletionOperation;
+use App\Models\Evidence;
+use App\Models\Finding;
+use App\Models\GeneratedReport;
 use App\Models\Site;
+use App\Models\User;
+use App\Settings\GeneralSettings;
 use Illuminate\Database\QueryException;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\File;
@@ -62,6 +71,103 @@ it('stages files, permanently deletes the entity, and records completed cleanup'
         ->and(Client::withTrashed()->find($client->id))->toBeNull()
         ->and(File::exists($absolute))->toBeFalse()
         ->and(File::isDirectory($this->privateRoot.DIRECTORY_SEPARATOR.$operation?->trash_path))->toBeFalse();
+});
+
+it('applies the configured permanent policy to every private file owned by an assessment', function (): void {
+    $settings = app(GeneralSettings::class);
+    $settings->deletion_policy = DeletionPolicy::Permanent->value;
+    $settings->save();
+
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create();
+    $evidencePath = "clients/{$assessment->client_id}/assessments/{$assessment->id}/findings/{$finding->id}/evidence/evidence.txt";
+    $reportPath = "reports/assessments/{$assessment->id}/report.pdf";
+
+    foreach ([$evidencePath => 'evidence', $reportPath => '%PDF-report'] as $relative => $contents) {
+        $absolute = $this->privateRoot.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relative);
+        File::ensureDirectoryExists(dirname($absolute));
+        File::put($absolute, $contents);
+    }
+
+    Evidence::query()->create([
+        'finding_id' => $finding->id,
+        'type' => EvidenceType::File,
+        'title' => 'Evidenza privata',
+        'file_path' => $evidencePath,
+        'original_filename' => 'evidence.txt',
+        'mime_type' => 'text/plain',
+        'size_bytes' => strlen('evidence'),
+        'sha256' => hash('sha256', 'evidence'),
+        'include_in_report' => true,
+        'sort_order' => 0,
+    ]);
+    GeneratedReport::query()->create([
+        'assessment_id' => $assessment->id,
+        'format' => GeneratedReportFormat::Pdf,
+        'version' => 1,
+        'file_path' => $reportPath,
+        'file_name' => 'report.pdf',
+        'file_size_bytes' => strlen('%PDF-report'),
+        'file_sha256' => hash('sha256', '%PDF-report'),
+        'payload_sha256' => hash('sha256', '{}'),
+        'payload_snapshot' => [],
+        'settings_snapshot' => [],
+        'generated_at' => now(),
+    ]);
+
+    $operation = app(DeleteArchivableEntity::class)->handle($assessment);
+
+    expect($operation?->status)->toBe(DeletionOperationStatus::Cleaned)
+        ->and(collect($operation?->manifest)->pluck('source')->all())->toBe([$evidencePath, $reportPath])
+        ->and(Assessment::withTrashed()->find($assessment->id))->toBeNull()
+        ->and(Evidence::withTrashed()->where('finding_id', $finding->id)->exists())->toBeFalse()
+        ->and(GeneratedReport::query()->where('assessment_id', $assessment->id)->exists())->toBeFalse()
+        ->and(File::exists($this->privateRoot.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $evidencePath)))->toBeFalse()
+        ->and(File::exists($this->privateRoot.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $reportPath)))->toBeFalse();
+});
+
+it('uses the configured archive policy without deleting assessment files', function (): void {
+    $settings = app(GeneralSettings::class);
+    $settings->deletion_policy = DeletionPolicy::Archive->value;
+    $settings->save();
+
+    $assessment = Assessment::factory()->create();
+    $reportPath = "reports/assessments/{$assessment->id}/retained.pdf";
+    $absolute = $this->privateRoot.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $reportPath);
+    File::ensureDirectoryExists(dirname($absolute));
+    File::put($absolute, '%PDF-retained');
+
+    GeneratedReport::query()->create([
+        'assessment_id' => $assessment->id,
+        'format' => GeneratedReportFormat::Pdf,
+        'version' => 1,
+        'file_path' => $reportPath,
+        'file_name' => 'retained.pdf',
+        'file_size_bytes' => strlen('%PDF-retained'),
+        'file_sha256' => hash('sha256', '%PDF-retained'),
+        'payload_sha256' => hash('sha256', '{}'),
+        'payload_snapshot' => [],
+        'settings_snapshot' => [],
+        'generated_at' => now(),
+    ]);
+
+    $operation = app(DeleteArchivableEntity::class)->handle($assessment);
+
+    expect($operation)->toBeNull()
+        ->and(Assessment::withTrashed()->find($assessment->id)?->trashed())->toBeTrue()
+        ->and(GeneratedReport::query()->where('assessment_id', $assessment->id)->exists())->toBeTrue()
+        ->and(File::get($absolute))->toBe('%PDF-retained')
+        ->and(DeletionOperation::query()->count())->toBe(0);
+});
+
+it('rejects a non-archivable model before applying the configured policy', function (): void {
+    $user = User::factory()->create();
+
+    expect(fn () => app(DeleteArchivableEntity::class)->handle($user))
+        ->toThrow(InvalidArgumentException::class, 'does not support archival deletion');
+
+    expect(User::query()->find($user->id))->not->toBeNull()
+        ->and(DeletionOperation::query()->count())->toBe(0);
 });
 
 it('restores staged files when the database deletion is rejected', function (): void {

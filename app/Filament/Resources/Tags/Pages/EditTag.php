@@ -6,8 +6,8 @@ namespace App\Filament\Resources\Tags\Pages;
 
 use App\Actions\Tags\SaveTag;
 use App\Filament\Resources\Tags\TagResource;
+use App\Filament\Support\DeleteAccordingToPolicyAction;
 use App\Models\Tag;
-use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
@@ -18,7 +18,7 @@ class EditTag extends EditRecord
 
     protected function getHeaderActions(): array
     {
-        return [DeleteAction::make()];
+        return [DeleteAccordingToPolicyAction::make(successRedirectUrl: TagResource::getUrl('index'))];
     }
 
     /** @param array<string, mixed> $data */
