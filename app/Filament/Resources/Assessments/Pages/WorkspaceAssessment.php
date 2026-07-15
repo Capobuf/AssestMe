@@ -14,6 +14,7 @@ use App\Actions\Evidence\StoreEvidenceFile;
 use App\Actions\Evidence\StoreEvidenceUrl;
 use App\Actions\Reports\DeleteGeneratedReport;
 use App\Actions\Reports\GenerateAssessmentPdf;
+use App\Actions\Reports\GenerateAssessmentWorkbook;
 use App\Data\Assessments\WorkspaceSaveData;
 use App\Enums\AssessmentStatus;
 use App\Enums\DeletionOperationStatus;
@@ -24,8 +25,10 @@ use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Resources\Assessments\Schemas\AssessmentWorkspaceForm;
 use App\Models\Assessment;
 use App\Models\FindingTemplate;
+use App\Settings\GeneralSettings;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Schema;
@@ -173,6 +176,20 @@ final class WorkspaceAssessment extends EditRecord
                 ->action(function (): void {
                     $this->generatePdf();
                 }),
+            Action::make('download_xlsx')
+                ->label(__('assestme.workspace.download_xlsx'))
+                ->icon('heroicon-o-table-cells')
+                ->extraAttributes(['data-dusk' => 'generate-xlsx'])
+                ->modalHeading(__('assestme.workspace.generate_xlsx_heading'))
+                ->modalSubmitActionLabel(__('assestme.workspace.generate_xlsx_confirm'))
+                ->schema([
+                    Toggle::make('include_excluded_findings')
+                        ->label(__('assestme.workspace.include_excluded_findings_in_xlsx'))
+                        ->default(fn (): bool => app(GeneralSettings::class)->report_excluded_findings_in_xlsx),
+                ])
+                ->action(function (array $data): void {
+                    $this->generateWorkbook((bool) ($data['include_excluded_findings'] ?? false));
+                }),
         ];
     }
 
@@ -210,6 +227,43 @@ final class WorkspaceAssessment extends EditRecord
                 ->persistent()
                 ->send();
 
+        }
+    }
+
+    private function generateWorkbook(bool $includeExcludedFindings): void
+    {
+        try {
+            $report = app(GenerateAssessmentWorkbook::class)->handle(
+                $this->assessment(),
+                $includeExcludedFindings,
+            );
+
+            Notification::make()
+                ->success()
+                ->title(__('assestme.reports.generated_xlsx'))
+                ->body($report->file_name)
+                ->send();
+
+            $this->redirect(AssessmentResource::getUrl('workspace', ['record' => $this->assessment()]), navigate: false);
+        } catch (ValidationException $exception) {
+            Notification::make()
+                ->danger()
+                ->title(__('assestme.reports.errors.generation_xlsx'))
+                ->body(collect($exception->errors())->flatten()->join(' '))
+                ->persistent()
+                ->send();
+        } catch (Throwable $exception) {
+            Log::error('Assessment XLSX generation failed.', [
+                'assessment_id' => $this->assessment()->getKey(),
+                'exception' => $exception,
+            ]);
+
+            Notification::make()
+                ->danger()
+                ->title(__('assestme.reports.errors.generation_xlsx'))
+                ->body(__('assestme.reports.errors.retry_xlsx'))
+                ->persistent()
+                ->send();
         }
     }
 

@@ -51,6 +51,11 @@ it('backs up, verifies, and restores the SQLite database and private storage tog
     $reportPath = $this->privateStoragePath.DIRECTORY_SEPARATOR.'reports'.DIRECTORY_SEPARATOR.'proof.txt';
     File::ensureDirectoryExists(dirname($reportPath));
     File::put($reportPath, "Report originale\nSeconda riga");
+    $hiddenTrashPath = $this->privateStoragePath.DIRECTORY_SEPARATOR.'.trash'.DIRECTORY_SEPARATOR.'operation-1'.DIRECTORY_SEPARATOR.'staged.txt';
+    File::ensureDirectoryExists(dirname($hiddenTrashPath));
+    File::put($hiddenTrashPath, 'File staged originale');
+    $hiddenPlaceholderPath = $this->privateStoragePath.DIRECTORY_SEPARATOR.'.gitignore';
+    File::put($hiddenPlaceholderPath, "*\n!.gitignore\n");
     $archive = $this->backupRoot.DIRECTORY_SEPARATOR.'restore-source.tar.gz';
 
     expect(Artisan::call('assestme:backup', ['--output' => $archive]))->toBe(0)
@@ -59,6 +64,8 @@ it('backs up, verifies, and restores the SQLite database and private storage tog
 
     $administrator->update(['name' => 'After backup']);
     File::put($reportPath, 'Report modificato');
+    File::put($hiddenTrashPath, 'File staged modificato');
+    File::delete($hiddenPlaceholderPath);
     File::put($this->privateStoragePath.DIRECTORY_SEPARATOR.'remove-me.txt', 'newer file');
 
     expect(Artisan::call('assestme:restore-backup', ['archive' => $archive]))->toBe(1);
@@ -74,6 +81,8 @@ it('backs up, verifies, and restores the SQLite database and private storage tog
     expect($restoreExit)->toBe(0)
         ->and(User::query()->firstOrFail()->name)->toBe('Before backup')
         ->and(File::get($reportPath))->toBe("Report originale\nSeconda riga")
+        ->and(File::get($hiddenTrashPath))->toBe('File staged originale')
+        ->and(File::get($hiddenPlaceholderPath))->toBe("*\n!.gitignore\n")
         ->and(File::exists($this->privateStoragePath.DIRECTORY_SEPARATOR.'remove-me.txt'))->toBeFalse()
         ->and(File::glob($this->backupRoot.DIRECTORY_SEPARATOR.'assestme-safety-*.tar.gz'))->toHaveCount(1);
 });

@@ -6,6 +6,7 @@ namespace Tests\Browser;
 
 use App\Actions\Assessments\CopyTemplateToAssessment;
 use App\Enums\DeletionOperationStatus;
+use App\Enums\GeneratedReportFormat;
 use App\Models\Assessment;
 use App\Models\DeletionOperation;
 use App\Models\FindingTemplate;
@@ -22,7 +23,7 @@ final class MilestoneFourPdfTest extends DuskTestCase
 {
     use DatabaseTruncation;
 
-    public function test_pdf_generation_and_history_are_accessible_without_console_errors(): void
+    public function test_pdf_and_xlsx_generation_history_are_accessible_without_console_errors(): void
     {
         $this->seed(DatabaseSeeder::class);
         $administrator = User::factory()->create();
@@ -40,33 +41,53 @@ final class MilestoneFourPdfTest extends DuskTestCase
                 ->click('[data-dusk="generate-pdf"]')
                 ->waitUsing(15, 100, static fn (): bool => GeneratedReport::query()
                     ->where('assessment_id', $assessment->getKey())
+                    ->where('format', GeneratedReportFormat::Pdf)
+                    ->exists())
+                ->waitFor('[data-dusk="generate-xlsx"]')
+                ->click('[data-dusk="generate-xlsx"]')
+                ->waitForText('Includi i finding esclusi dal report')
+                ->assertSee('Genera file XLSX')
+                ->press('Genera file XLSX')
+                ->waitUsing(15, 100, static fn (): bool => GeneratedReport::query()
+                    ->where('assessment_id', $assessment->getKey())
+                    ->where('format', GeneratedReportFormat::Xlsx)
                     ->exists());
 
-            $report = GeneratedReport::query()->where('assessment_id', $assessment->getKey())->sole();
+            $pdfReport = GeneratedReport::query()
+                ->where('assessment_id', $assessment->getKey())
+                ->where('format', GeneratedReportFormat::Pdf)
+                ->sole();
+            $workbook = GeneratedReport::query()
+                ->where('assessment_id', $assessment->getKey())
+                ->where('format', GeneratedReportFormat::Xlsx)
+                ->sole();
             $browser->visit("/admin/assessments/{$assessment->getKey()}/workspace")
                 ->waitForText('File generati')
                 ->press('File generati')
-                ->waitForText($report->file_name)
-                ->assertSee($report->file_name)
+                ->waitForText($workbook->file_name)
+                ->assertSee($pdfReport->file_name)
+                ->assertSee($workbook->file_name)
                 ->assertSee('Scarica file')
-                ->click('[data-dusk="download-generated-report"]')
+                ->click('[data-dusk="download-generated-report"][data-report-id="'.$workbook->getKey().'"]')
                 ->pause(500)
                 ->assertPathIs("/admin/assessments/{$assessment->getKey()}/workspace")
-                ->click('[data-dusk="delete-generated-report"]')
+                ->click('[data-report-id="'.$workbook->getKey().'"] [data-dusk="delete-generated-report"]')
                 ->waitForText('Eliminare definitivamente il file generato?')
                 ->assertSee('Questa operazione non può essere annullata.')
                 ->press('Elimina definitivamente')
-                ->waitUsing(10, 100, static fn (): bool => ! GeneratedReport::query()->whereKey($report->getKey())->exists())
+                ->waitUsing(10, 100, static fn (): bool => ! GeneratedReport::query()->whereKey($workbook->getKey())->exists())
                 ->waitForText('File generato eliminato definitivamente')
-                ->assertDontSee($report->file_name);
+                ->assertDontSee($workbook->file_name)
+                ->assertSee($pdfReport->file_name);
 
             $operation = DeletionOperation::query()
                 ->where('entity_type', GeneratedReport::class)
-                ->where('entity_id', $report->getKey())
+                ->where('entity_id', $workbook->getKey())
                 ->sole();
 
             Assert::assertSame(DeletionOperationStatus::Cleaned, $operation->status);
-            Assert::assertFalse(Storage::disk('local')->exists($report->file_path));
+            Assert::assertFalse(Storage::disk('local')->exists($workbook->file_path));
+            Assert::assertTrue(Storage::disk('local')->exists($pdfReport->file_path));
 
             $severeLogs = array_values(array_filter(
                 $browser->driver->manage()->getLog('browser'),

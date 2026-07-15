@@ -39,14 +39,20 @@ final class BuildAssessmentSnapshot
         private readonly ReportSettings $reportSettings,
     ) {}
 
-    public function handle(Assessment $assessment, ?Carbon $generatedAt = null): AssessmentReportData
-    {
+    public function handle(
+        Assessment $assessment,
+        ?Carbon $generatedAt = null,
+        bool $includeExcludedFindings = false,
+    ): AssessmentReportData {
         $this->validateCompletion->handle($assessment);
         $assessment->load($this->relations());
         $generatedAt ??= now();
 
         $findings = $assessment->findings
-            ->where('include_in_report', true)
+            ->when(
+                ! $includeExcludedFindings,
+                static fn (Collection $findings): Collection => $findings->where('include_in_report', true),
+            )
             ->values()
             ->map(fn (Finding $finding, int $index): ReportFindingData => $this->finding($finding, $index + 1))
             ->all();
@@ -148,6 +154,7 @@ final class BuildAssessmentSnapshot
         return new ReportFindingData(
             id: (int) $finding->getKey(),
             number: $number,
+            includeInReport: $finding->include_in_report,
             title: (string) $finding->title,
             category: (string) $finding->category?->name,
             tags: $finding->tags->pluck('name')->values()->all(),

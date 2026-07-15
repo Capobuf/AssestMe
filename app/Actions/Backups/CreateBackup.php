@@ -160,7 +160,7 @@ final readonly class CreateBackup
             return;
         }
 
-        foreach ($this->files->allFiles($source) as $file) {
+        foreach ($this->files->allFiles($source, true) as $file) {
             if ($file->isLink()) {
                 throw new RuntimeException("Private storage contains an unsupported symbolic link: {$file->getPathname()}");
             }
@@ -205,7 +205,7 @@ final readonly class CreateBackup
     {
         $entries = [];
 
-        foreach ($this->files->allFiles($stage) as $file) {
+        foreach ($this->files->allFiles($stage, true) as $file) {
             $entries[] = $this->manifestEntry($stage, $file);
         }
 
@@ -241,7 +241,7 @@ final readonly class CreateBackup
             $archive->addEmptyDir('storage');
             $archive->addEmptyDir('storage/private');
 
-            foreach ($this->files->allFiles($stage) as $file) {
+            foreach ($this->files->allFiles($stage, true) as $file) {
                 $relative = str_replace('\\', '/', ltrim(substr($file->getPathname(), strlen($stage)), '/\\'));
                 $archive->addFile($file->getPathname(), $relative);
             }

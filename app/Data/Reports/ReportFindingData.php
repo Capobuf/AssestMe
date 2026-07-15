@@ -16,6 +16,7 @@ final readonly class ReportFindingData
     public function __construct(
         public int $id,
         public int $number,
+        public bool $includeInReport,
         public string $title,
         public string $category,
         public array $tags,
@@ -46,13 +47,23 @@ final readonly class ReportFindingData
 
     public function recommendedSolution(): ReportSolutionData
     {
+        $solution = $this->recommendedSolutionOrNull();
+        if ($solution instanceof ReportSolutionData) {
+            return $solution;
+        }
+
+        throw new \LogicException('A report finding must contain one recommended solution.');
+    }
+
+    public function recommendedSolutionOrNull(): ?ReportSolutionData
+    {
         foreach ($this->solutions as $solution) {
             if ($solution->recommended) {
                 return $solution;
             }
         }
 
-        throw new \LogicException('A report finding must contain one recommended solution.');
+        return null;
     }
 
     /** @return list<ReportSolutionData> */
@@ -108,6 +119,7 @@ final readonly class ReportFindingData
         return [
             'id' => $this->id,
             'number' => $this->number,
+            'include_in_report' => $this->includeInReport,
             'title' => $this->title,
             'category' => $this->category,
             'tags' => $this->tags,

@@ -14,11 +14,14 @@
                     <a
                         href="{{ route('generated-reports.download', $generatedReport) }}"
                         data-dusk="download-generated-report"
+                        data-report-id="{{ $generatedReport->getKey() }}"
                         class="fi-btn fi-btn-size-md fi-color fi-color-primary"
                     >
                         {{ __('assestme.reports.download_existing') }}
                     </a>
-                    {{ ($this->deleteGeneratedReportAction)(['report' => $generatedReport->getKey()]) }}
+                    <div data-report-id="{{ $generatedReport->getKey() }}">
+                        {{ ($this->deleteGeneratedReportAction)(['report' => $generatedReport->getKey()]) }}
+                    </div>
                 </div>
             </div>
         @endforeach

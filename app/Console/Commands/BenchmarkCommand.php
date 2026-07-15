@@ -4,18 +4,20 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Actions\Assessments\CopyTemplateToAssessment;
 use App\Actions\Assessments\SaveAssessmentWorkspace;
-use App\Actions\Reports\GenerateAssessmentProofPdf;
-use App\Actions\Reports\GenerateAssessmentProofXlsx;
+use App\Actions\Reports\GenerateAssessmentPdf;
+use App\Actions\Reports\GenerateAssessmentWorkbook;
 use App\Data\Assessments\WorkspaceSaveData;
 use App\Models\Assessment;
 use App\Models\Finding;
+use App\Models\FindingTemplate;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -23,7 +25,7 @@ final class BenchmarkCommand extends Command
 {
     protected $signature = 'assestme:benchmark {--findings=50 : Number of findings from 1 to 100}';
 
-    protected $description = 'Run the isolated Milestone 0 workspace and report performance proof';
+    protected $description = 'Run the isolated definitive workspace, PDF, and XLSX performance benchmark';
 
     public function handle(): int
     {
@@ -49,15 +51,15 @@ final class BenchmarkCommand extends Command
             $createdAdministrator = true;
         }
 
-        $assessment = Assessment::factory()->create(['title' => 'Benchmark M0']);
-        Finding::factory()->count($count)->for($assessment)->sequence(
-            fn ($sequence): array => ['sort_order' => $sequence->index + 1],
-        )->create();
-
-        $directory = storage_path('app/private/benchmark');
-        File::ensureDirectoryExists($directory);
-        $pdfPath = $directory.DIRECTORY_SEPARATOR.'proof.pdf';
-        $xlsxPath = $directory.DIRECTORY_SEPARATOR.'proof.xlsx';
+        $assessment = Assessment::factory()->create(['title' => 'Benchmark definitivo']);
+        $template = FindingTemplate::query()
+            ->where('is_enabled', true)
+            ->where('default_scope_type', 'organization')
+            ->firstOrFail();
+        foreach (range(1, $count) as $number) {
+            $finding = app(CopyTemplateToAssessment::class)->handle($assessment, $template);
+            $finding->update(['title' => sprintf('Benchmark finding %03d', $number)]);
+        }
 
         try {
             [$renderSeconds, $response] = $this->measure(function () use ($administrator, $assessment) {
@@ -86,11 +88,11 @@ final class BenchmarkCommand extends Command
                 );
             });
 
-            [$pdfSeconds] = $this->measure(function () use ($assessment, $pdfPath): void {
-                app(GenerateAssessmentProofPdf::class)($assessment->fresh())->save($pdfPath);
+            [$pdfSeconds] = $this->measure(function () use ($assessment): void {
+                app(GenerateAssessmentPdf::class)->handle($assessment->fresh());
             });
-            [$xlsxSeconds] = $this->measure(function () use ($assessment, $xlsxPath): void {
-                app(GenerateAssessmentProofXlsx::class)->save($assessment->fresh(), $xlsxPath);
+            [$xlsxSeconds] = $this->measure(function () use ($assessment): void {
+                app(GenerateAssessmentWorkbook::class)->handle($assessment->fresh(), false);
             });
 
             $metrics = [
@@ -122,7 +124,7 @@ final class BenchmarkCommand extends Command
             return self::FAILURE;
         } finally {
             Auth::logout();
-            File::delete([$pdfPath, $xlsxPath]);
+            Storage::disk('local')->deleteDirectory("reports/{$assessment->getKey()}");
             $assessment->forceDelete();
 
             if ($createdAdministrator) {
