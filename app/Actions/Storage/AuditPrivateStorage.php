@@ -9,6 +9,7 @@ use App\Enums\DeletionOperationStatus;
 use App\Enums\EvidenceType;
 use App\Models\DeletionOperation;
 use App\Models\Evidence;
+use App\Models\GeneratedReport;
 use Illuminate\Support\Facades\Storage;
 
 final class AuditPrivateStorage
@@ -17,13 +18,21 @@ final class AuditPrivateStorage
     {
         $disk = Storage::disk('local');
         $evidences = Evidence::withTrashed()->where('type', EvidenceType::File)->get();
-        $referenced = $evidences->pluck('file_path')->filter()->mapWithKeys(
+        $generatedReports = GeneratedReport::query()->get();
+        $referencedEvidence = $evidences->pluck('file_path')->filter()->mapWithKeys(
+            static fn (string $path): array => [$path => true],
+        );
+        $referencedReports = $generatedReports->pluck('file_path')->mapWithKeys(
             static fn (string $path): array => [$path => true],
         );
 
-        $orphanFiles = collect($disk->allFiles('clients'))
+        $orphanEvidence = collect($disk->allFiles('clients'))
             ->filter(static fn (string $path): bool => str_contains($path, '/evidence/'))
-            ->reject(static fn (string $path): bool => $referenced->has($path))
+            ->reject(static fn (string $path): bool => $referencedEvidence->has($path));
+        $orphanReports = collect($disk->allFiles('reports'))
+            ->reject(static fn (string $path): bool => $referencedReports->has($path));
+        $orphanFiles = $orphanEvidence
+            ->concat($orphanReports)
             ->sort()
             ->values()
             ->all();
@@ -40,6 +49,19 @@ final class AuditPrivateStorage
             $hash = hash_file('sha256', $disk->path($evidence->file_path));
             if ($hash === false || ! hash_equals((string) $evidence->sha256, $hash)) {
                 $hashMismatches[] = "evidence:{$evidence->id}";
+            }
+        }
+
+        foreach ($generatedReports as $generatedReport) {
+            if (! $disk->exists($generatedReport->file_path)) {
+                $missingFiles[] = "generated_report:{$generatedReport->id}";
+
+                continue;
+            }
+
+            $hash = hash_file('sha256', $disk->path($generatedReport->file_path));
+            if ($hash === false || ! hash_equals($generatedReport->file_sha256, $hash)) {
+                $hashMismatches[] = "generated_report:{$generatedReport->id}";
             }
         }
 

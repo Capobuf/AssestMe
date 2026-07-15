@@ -12,6 +12,7 @@ use App\Actions\Assessments\SaveFindingDetails;
 use App\Actions\Assessments\TransitionAssessment;
 use App\Actions\Evidence\StoreEvidenceFile;
 use App\Actions\Evidence\StoreEvidenceUrl;
+use App\Actions\Reports\GenerateAssessmentPdf;
 use App\Data\Assessments\WorkspaceSaveData;
 use App\Enums\AssessmentStatus;
 use App\Enums\ScopeType;
@@ -166,12 +167,48 @@ final class WorkspaceAssessment extends EditRecord
             Action::make('download_pdf')
                 ->label(__('assestme.workspace.download_pdf'))
                 ->icon('heroicon-o-document-arrow-down')
-                ->url(fn (): string => route('assessments.proof-pdf', $this->assessment())),
-            Action::make('download_xlsx')
-                ->label(__('assestme.workspace.download_xlsx'))
-                ->icon('heroicon-o-table-cells')
-                ->url(fn (): string => route('assessments.proof-xlsx', $this->assessment())),
+                ->extraAttributes(['data-dusk' => 'generate-pdf'])
+                ->action(function (): void {
+                    $this->generatePdf();
+                }),
         ];
+    }
+
+    private function generatePdf(): void
+    {
+        try {
+            $report = app(GenerateAssessmentPdf::class)->handle($this->assessment());
+
+            Notification::make()
+                ->success()
+                ->title(__('assestme.reports.generated'))
+                ->body($report->file_name)
+                ->send();
+
+            // Reloading applies a possible freeze atomically and exposes the immutable file in history.
+            $this->redirect(AssessmentResource::getUrl('workspace', ['record' => $this->assessment()]), navigate: false);
+        } catch (ValidationException $exception) {
+            Notification::make()
+                ->danger()
+                ->title(__('assestme.reports.errors.generation'))
+                ->body(collect($exception->errors())->flatten()->join(' '))
+                ->persistent()
+                ->send();
+
+        } catch (Throwable $exception) {
+            Log::error('Assessment PDF generation failed.', [
+                'assessment_id' => $this->assessment()->getKey(),
+                'exception' => $exception,
+            ]);
+
+            Notification::make()
+                ->danger()
+                ->title(__('assestme.reports.errors.generation'))
+                ->body(__('assestme.reports.errors.retry'))
+                ->persistent()
+                ->send();
+
+        }
     }
 
     protected function getSaveFormAction(): Action

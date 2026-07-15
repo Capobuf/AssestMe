@@ -32,6 +32,7 @@ use Illuminate\Support\Collection;
  * @property Carbon|null $completed_at
  * @property-read Client $client
  * @property-read Collection<int, Site> $sites
+ * @property-read Collection<int, GeneratedReport> $generatedReports
  */
 class Assessment extends Model
 {
@@ -73,6 +74,12 @@ class Assessment extends Model
     public function findings(): HasMany
     {
         return $this->hasMany(Finding::class)->orderBy('sort_order');
+    }
+
+    /** @return HasMany<GeneratedReport, $this> */
+    public function generatedReports(): HasMany
+    {
+        return $this->hasMany(GeneratedReport::class);
     }
 
     /** @return array<string, string> */

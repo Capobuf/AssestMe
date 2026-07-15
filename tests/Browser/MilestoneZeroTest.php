@@ -169,6 +169,7 @@ final class MilestoneZeroTest extends DuskTestCase
                 ->waitUntil('return document.querySelectorAll(\'[data-dusk="clone-finding"]\').length === 11')
                 ->waitUntil('return document.querySelector(\'[data-assestme-save-status]\').dataset.status === "saved"')
                 ->assertSee('Salva assessment')
+                ->press('Dettagli assessment')
                 ->assertSee('Salvato');
 
             $browser->script('window.dispatchEvent(new Event("offline"))');
@@ -176,6 +177,7 @@ final class MilestoneZeroTest extends DuskTestCase
             $browser->script('window.dispatchEvent(new Event("online"))');
             $browser->waitForText('Modifiche non salvate');
 
+            $browser->press('Finding');
             $browser->resize(390, 844)->pause(500);
             $mobileLayout = $browser->script(<<<'JS'
                 const wrapper = document.querySelector('.fi-fo-table-repeater');

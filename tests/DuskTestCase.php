@@ -14,6 +14,14 @@ use PHPUnit\Framework\Attributes\BeforeClass;
 abstract class DuskTestCase extends BaseTestCase
 {
     /**
+     * Settings migrations are tracked in Laravel's migrations table, so truncating
+     * their values would leave later browser tests unable to rebuild typed settings.
+     *
+     * @var list<string>
+     */
+    protected array $exceptTables = ['settings'];
+
+    /**
      * Prepare for Dusk test execution.
      */
     #[BeforeClass]

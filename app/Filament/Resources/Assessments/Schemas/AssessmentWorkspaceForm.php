@@ -230,7 +230,12 @@ final class AssessmentWorkspaceForm
                             ->schema([
                                 Placeholder::make('generated_files_summary')
                                     ->hiddenLabel()
-                                    ->content(__('assestme.workspace.no_generated_files')),
+                                    ->content(fn (WorkspaceAssessment $livewire): View => view('filament.generated-report-history', [
+                                        'reports' => self::workspaceAssessment($livewire)
+                                            ->generatedReports()
+                                            ->latest('generated_at')
+                                            ->get(),
+                                    ])),
                             ]),
                     ])
                     ->persistTabInQueryString('workspace-tab')
