@@ -118,9 +118,8 @@ final class SaveFindingDetails
                 throw ValidationException::withMessages(['solutions' => __('assestme.findings.errors.referenced_solution')]);
             }
             $finding->solutions()->whereNotIn('id', $keptIds)->delete();
-            $finding->recommended_solution_id = $recommended?->getKey();
-            $finding->implemented_solution_id = $implemented?->getKey();
-            $finding->save();
+            app(SetRecommendedSolution::class)($finding, $recommended);
+            app(SetImplementedSolution::class)($finding, $implemented);
 
             if ($targetStatus !== $originalStatus) {
                 app(TransitionFinding::class)->handle($finding->refresh(), $targetStatus);

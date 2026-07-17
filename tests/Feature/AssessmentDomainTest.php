@@ -12,7 +12,8 @@ use App\Actions\Assessments\DuplicateFinding;
 use App\Actions\Assessments\RecalculateFindingPriority;
 use App\Actions\Assessments\ReopenAssessment;
 use App\Actions\Assessments\SaveFindingDetails;
-use App\Actions\Assessments\SetFindingSolutionReference;
+use App\Actions\Assessments\SetImplementedSolution;
+use App\Actions\Assessments\SetRecommendedSolution;
 use App\Actions\Assessments\TransitionFinding;
 use App\Enums\AssessmentStatus;
 use App\Enums\BillingFrequency;
@@ -103,7 +104,7 @@ it('duplicates the complete editable finding aggregate without resolution state'
         ->and($copy->recommendedSolution?->finding_id)->toBe($copy->id);
 });
 
-it('calculates matrix priority and enforces solution ownership and deletion rules', function (): void {
+it('calculates matrix priority', function (): void {
     $entry = RiskMatrixEntry::query()->firstOrFail();
     $finding = Finding::factory()->create([
         'consequence_level_id' => $entry->consequence_level_id,
@@ -116,13 +117,43 @@ it('calculates matrix priority and enforces solution ownership and deletion rule
     expect($finding->priority_level_id)->toBe($entry->priority_level_id)
         ->and($finding->priority_is_overridden)->toBeFalse()
         ->and($finding->priority_rationale)->toBeNull();
+});
 
+it('sets and clears solution references while rejecting invalid assignments', function (): void {
+    $finding = Finding::factory()->create();
     $solution = createFindingSolution($finding, 'manuale');
-    app(SetFindingSolutionReference::class)->handle($finding, $solution);
+
+    $recommended = app(SetRecommendedSolution::class)($finding, $solution);
+    $implemented = app(SetImplementedSolution::class)($recommended, $solution);
+
+    expect($implemented->recommended_solution_id)->toBe($solution->id)
+        ->and($implemented->implemented_solution_id)->toBe($solution->id)
+        ->and(method_exists(SetRecommendedSolution::class, '__invoke'))->toBeTrue()
+        ->and(method_exists(SetImplementedSolution::class, '__invoke'))->toBeTrue();
     expect(fn () => app(DeleteFindingSolution::class)->handle($solution))->toThrow(ValidationException::class);
 
     $foreign = createFindingSolution(Finding::factory()->create(), 'altra');
-    expect(fn () => app(SetFindingSolutionReference::class)->handle($finding, $foreign))->toThrow(ValidationException::class);
+    expect(fn () => app(SetRecommendedSolution::class)($implemented, $foreign))->toThrow(ValidationException::class)
+        ->and(fn () => app(SetImplementedSolution::class)($implemented, $foreign))->toThrow(ValidationException::class);
+
+    $deleted = createFindingSolution($finding, 'eliminata');
+    $deleted->delete();
+    expect(fn () => app(SetRecommendedSolution::class)($implemented, $deleted))->toThrow(ValidationException::class)
+        ->and(fn () => app(SetImplementedSolution::class)($implemented, $deleted))->toThrow(ValidationException::class);
+
+    $clearedRecommended = app(SetRecommendedSolution::class)($implemented, null);
+    $cleared = app(SetImplementedSolution::class)($clearedRecommended, null);
+    expect($cleared->recommended_solution_id)->toBeNull()
+        ->and($cleared->implemented_solution_id)->toBeNull();
+
+    app(DeleteFindingSolution::class)->handle($solution);
+    expect($solution->fresh()->trashed())->toBeTrue();
+
+    $readOnlyFinding = Finding::factory()->create();
+    $readOnlySolution = createFindingSolution($readOnlyFinding, 'sola lettura');
+    $readOnlyFinding->assessment()->update(['status' => AssessmentStatus::Completed]);
+    expect(fn () => app(SetRecommendedSolution::class)($readOnlyFinding->fresh(), $readOnlySolution))->toThrow(ValidationException::class)
+        ->and(fn () => app(SetImplementedSolution::class)($readOnlyFinding->fresh(), $readOnlySolution))->toThrow(ValidationException::class);
 });
 
 it('returns row-numbered completion errors and enforces the assessment lifecycle', function (): void {
