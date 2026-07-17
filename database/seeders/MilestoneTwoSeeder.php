@@ -18,6 +18,6 @@ final class MilestoneTwoSeeder extends Seeder
             throw new \RuntimeException("Unable to read the base finding library at {$path}.");
         }
 
-        app(ImportFindingTemplates::class)->handle($json, 'replace');
+        app(ImportFindingTemplates::class)($json, 'replace');
     }
 }

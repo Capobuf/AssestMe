@@ -21,7 +21,7 @@ use Opis\JsonSchema\Validator;
 final class ImportFindingTemplates
 {
     /** @return array{created:int,replaced:int,skipped:int} */
-    public function handle(string $json, string $conflictMode): array
+    public function __invoke(string $json, string $conflictMode): array
     {
         if (! in_array($conflictMode, ['replace', 'skip'], true)) {
             throw ValidationException::withMessages(['conflict_mode' => __('assestme.templates.errors.conflict_mode')]);

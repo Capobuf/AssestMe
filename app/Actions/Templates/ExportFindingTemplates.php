@@ -11,7 +11,7 @@ use JsonException;
 final class ExportFindingTemplates
 {
     /** @throws JsonException */
-    public function handle(bool $includeInactive = false): string
+    public function __invoke(bool $includeInactive = false): string
     {
         $templates = FindingTemplate::query()
             ->with(['category', 'tags', 'solutions.effortLevel', 'defaultConsequenceLevel', 'defaultLikelihoodLevel', 'defaultPriorityLevel'])

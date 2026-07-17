@@ -15,28 +15,28 @@ beforeEach(function (): void {
 
 it('imports every valid template atomically and exports a data-equivalent document', function (): void {
     $json = (string) file_get_contents(base_path('fixtures/imports/valid-all-branches.json'));
-    $result = app(ImportFindingTemplates::class)->handle($json, 'replace');
+    $result = app(ImportFindingTemplates::class)($json, 'replace');
 
     expect($result)->toBe(['created' => 5, 'replaced' => 0, 'skipped' => 0])
         ->and(FindingTemplate::query()->count())->toBe(5)
         ->and(FindingTemplateSolution::query()->count())->toBe(11)
         ->and(FindingTemplate::query()->whereHas('solutions', fn ($query) => $query->where('is_recommended', true))->count())->toBe(5);
 
-    $export = app(ExportFindingTemplates::class)->handle();
-    $roundTrip = app(ImportFindingTemplates::class)->handle($export, 'replace');
+    $export = app(ExportFindingTemplates::class)();
+    $roundTrip = app(ImportFindingTemplates::class)($export, 'replace');
 
     expect($roundTrip)->toBe(['created' => 0, 'replaced' => 5, 'skipped' => 0])
-        ->and(json_decode(app(ExportFindingTemplates::class)->handle(), true, flags: JSON_THROW_ON_ERROR))
+        ->and(json_decode(app(ExportFindingTemplates::class)(), true, flags: JSON_THROW_ON_ERROR))
         ->toBe(json_decode($export, true, flags: JSON_THROW_ON_ERROR));
 });
 
 it('previews conflicts and skips existing templates without changing them', function (): void {
     $json = (string) file_get_contents(base_path('fixtures/imports/valid-all-branches.json'));
-    app(ImportFindingTemplates::class)->handle($json, 'replace');
+    app(ImportFindingTemplates::class)($json, 'replace');
     $originalTitle = FindingTemplate::query()->where('external_id', 'fixture.exact.monthly')->value('title');
 
     $preview = app(ImportFindingTemplates::class)->preview($json);
-    $result = app(ImportFindingTemplates::class)->handle($json, 'skip');
+    $result = app(ImportFindingTemplates::class)($json, 'skip');
 
     expect(array_unique(array_column($preview, 'status')))->toBe(['unchanged'])
         ->and($result)->toBe(['created' => 0, 'replaced' => 0, 'skipped' => 5])
@@ -44,7 +44,7 @@ it('previews conflicts and skips existing templates without changing them', func
 });
 
 it('rejects invalid and duplicate input with zero database changes', function (string $fixture): void {
-    expect(fn () => app(ImportFindingTemplates::class)->handle(
+    expect(fn () => app(ImportFindingTemplates::class)(
         (string) file_get_contents(base_path("fixtures/imports/{$fixture}")),
         'replace',
     ))->toThrow(ValidationException::class)

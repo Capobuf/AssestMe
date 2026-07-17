@@ -64,7 +64,7 @@ final class ListFindingTemplates extends ListRecords
                     if ($path === null) {
                         return;
                     }
-                    $result = app(ImportFindingTemplates::class)->handle(Storage::disk('local')->get($path), $this->pendingConflictMode);
+                    $result = app(ImportFindingTemplates::class)(Storage::disk('local')->get($path), $this->pendingConflictMode);
                     Storage::disk('local')->delete($path);
                     $this->pendingImportPath = null;
                     $this->importPreview = [];
@@ -73,7 +73,7 @@ final class ListFindingTemplates extends ListRecords
             Action::make('exportTemplates')
                 ->label(__('assestme.templates.actions.export'))
                 ->action(fn (): StreamedResponse => response()->streamDownload(
-                    static fn () => print app(ExportFindingTemplates::class)->handle(),
+                    static fn () => print app(ExportFindingTemplates::class)(),
                     'assestme-finding-templates-v1.json',
                     ['Content-Type' => 'application/json; charset=UTF-8'],
                 )),
