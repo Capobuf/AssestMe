@@ -12,7 +12,7 @@ use DomainException;
 
 final class CalculateFindingPriority
 {
-    public function handle(ConsequenceLevel $consequence, LikelihoodLevel $likelihood): PriorityLevel
+    public function __invoke(ConsequenceLevel $consequence, LikelihoodLevel $likelihood): PriorityLevel
     {
         if ($consequence->risk_profile_id !== $likelihood->risk_profile_id) {
             throw new DomainException('Consequence and likelihood levels must belong to the same risk profile.');

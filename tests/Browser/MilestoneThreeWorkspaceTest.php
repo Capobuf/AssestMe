@@ -23,7 +23,7 @@ final class MilestoneThreeWorkspaceTest extends DuskTestCase
         $this->seed(DatabaseSeeder::class);
         $administrator = User::factory()->create();
         $assessment = Assessment::factory()->create(['title' => 'Dusk workspace M3']);
-        app(CopyTemplateToAssessment::class)->handle($assessment, FindingTemplate::query()->where('default_scope_type', 'organization')->firstOrFail());
+        app(CopyTemplateToAssessment::class)($assessment, FindingTemplate::query()->where('default_scope_type', 'organization')->firstOrFail());
 
         $this->browse(function (Browser $browser) use ($administrator, $assessment): void {
             $browser->loginAs($administrator)

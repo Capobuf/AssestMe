@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 
 final class DuplicateFinding
 {
-    public function handle(Finding $source): Finding
+    public function __invoke(Finding $source): Finding
     {
         $source->loadMissing(['assessment', 'tags', 'sites', 'assets', 'solutions']);
         if ($source->assessment->status !== AssessmentStatus::Draft) {

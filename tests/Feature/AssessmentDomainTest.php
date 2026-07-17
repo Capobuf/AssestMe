@@ -43,7 +43,7 @@ it('creates a typed draft assessment and rejects sites owned by another client',
     $client = Client::factory()->create();
     $site = Site::factory()->for($client)->create();
 
-    $assessment = app(CreateAssessment::class)->handle([
+    $assessment = app(CreateAssessment::class)([
         'client_id' => $client->getKey(),
         'title' => 'Assessment infrastruttura',
         'assessment_date' => '2026-07-13',
@@ -58,7 +58,7 @@ it('creates a typed draft assessment and rejects sites owned by another client',
         ->and($assessment->sites->sole()->is($site))->toBeTrue();
 
     $otherSite = Site::factory()->create();
-    expect(fn () => app(CreateAssessment::class)->handle([
+    expect(fn () => app(CreateAssessment::class)([
         'client_id' => $client->getKey(),
         'title' => 'Assessment non valido',
         'assessment_date' => '2026-07-13',
@@ -69,7 +69,7 @@ it('creates a typed draft assessment and rejects sites owned by another client',
 
 it('persists blank findings immediately and copies detached template snapshots', function (): void {
     $assessment = Assessment::factory()->create();
-    $blank = app(CreateBlankFinding::class)->handle($assessment);
+    $blank = app(CreateBlankFinding::class)($assessment);
 
     expect($blank->exists)->toBeTrue()
         ->and($blank->sort_order)->toBe(1)
@@ -77,7 +77,7 @@ it('persists blank findings immediately and copies detached template snapshots',
 
     $template = FindingTemplate::query()->with('solutions')->firstOrFail();
     $originalTitle = $template->title;
-    $finding = app(CopyTemplateToAssessment::class)->handle($assessment, $template);
+    $finding = app(CopyTemplateToAssessment::class)($assessment, $template);
 
     expect($finding->source_template_id)->toBe($template->id)
         ->and($finding->title)->toBe($originalTitle)
@@ -94,10 +94,10 @@ it('persists blank findings immediately and copies detached template snapshots',
 
 it('duplicates the complete editable finding aggregate without resolution state', function (): void {
     $assessment = Assessment::factory()->create();
-    $source = app(CopyTemplateToAssessment::class)->handle($assessment, FindingTemplate::query()->firstOrFail());
+    $source = app(CopyTemplateToAssessment::class)($assessment, FindingTemplate::query()->firstOrFail());
     $source->update(['resolution_notes' => 'Risoluzione precedente', 'resolved_at' => now()]);
 
-    $copy = app(DuplicateFinding::class)->handle($source);
+    $copy = app(DuplicateFinding::class)($source);
 
     expect($copy->id)->not->toBe($source->id)
         ->and($copy->status)->toBe(FindingStatus::Open)
@@ -206,7 +206,7 @@ it('sets and clears solution references while rejecting invalid assignments', fu
 
 it('returns row-numbered completion errors and enforces the assessment lifecycle', function (): void {
     $assessment = Assessment::factory()->create();
-    app(CreateBlankFinding::class)->handle($assessment);
+    app(CreateBlankFinding::class)($assessment);
 
     try {
         app(CompleteAssessment::class)($assessment);
@@ -216,7 +216,7 @@ it('returns row-numbered completion errors and enforces the assessment lifecycle
     }
 
     $assessment->findings()->delete();
-    $completeFinding = app(CopyTemplateToAssessment::class)->handle($assessment, FindingTemplate::query()->firstOrFail());
+    $completeFinding = app(CopyTemplateToAssessment::class)($assessment, FindingTemplate::query()->firstOrFail());
     $completeFinding->update(['scope_type' => ScopeType::Organization, 'scope_description' => null]);
     expect($completeFinding->priority_level_id)->not->toBeNull();
 
@@ -224,7 +224,7 @@ it('returns row-numbered completion errors and enforces the assessment lifecycle
     expect($completed->status)->toBe(AssessmentStatus::Completed)
         ->and($completed->completed_at)->not->toBeNull()
         ->and($completed->lock_version)->toBe(1)
-        ->and(fn () => app(CreateBlankFinding::class)->handle($completed))->toThrow(ValidationException::class);
+        ->and(fn () => app(CreateBlankFinding::class)($completed))->toThrow(ValidationException::class);
 
     expect(fn () => app(CompleteAssessment::class)($completed))
         ->toThrow(ValidationException::class);
@@ -291,7 +291,7 @@ it('rejects finding transitions from stale or read-only state', function (): voi
 
 it('saves the row slide-over aggregate and rejects cross-client scope relations', function (): void {
     $assessment = Assessment::factory()->create();
-    $finding = app(CopyTemplateToAssessment::class)->handle($assessment, FindingTemplate::query()->firstOrFail());
+    $finding = app(CopyTemplateToAssessment::class)($assessment, FindingTemplate::query()->firstOrFail());
     $site = Site::factory()->for($assessment->client)->create();
     $payload = findingDetailsPayload($finding);
     $payload['technical_notes'] = "Dettaglio tecnico\ncon più righe.";

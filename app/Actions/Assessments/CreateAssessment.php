@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 final class CreateAssessment
 {
     /** @param array<string, mixed> $data */
-    public function handle(array $data): Assessment
+    public function __invoke(array $data): Assessment
     {
         /** @var array<string, mixed> $validated */
         $validated = Validator::make($data, [

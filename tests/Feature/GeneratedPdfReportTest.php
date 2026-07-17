@@ -288,7 +288,7 @@ it('generates a parsable definitive PDF with fifty findings inside the operation
     $template = FindingTemplate::query()->with('solutions')->firstOrFail();
 
     foreach (range(1, 50) as $number) {
-        $finding = app(CopyTemplateToAssessment::class)->handle($assessment, $template);
+        $finding = app(CopyTemplateToAssessment::class)($assessment, $template);
         $finding->update([
             'title' => sprintf('Finding definitivo %02d', $number),
             'scope_type' => ScopeType::Organization,
@@ -322,7 +322,7 @@ function createPdfReadyAssessment(): array
         'methodology_notes' => 'Analisi documentale e verifica tecnica.',
     ]);
     $template = FindingTemplate::query()->with('solutions')->firstOrFail();
-    $finding = app(CopyTemplateToAssessment::class)->handle($assessment, $template);
+    $finding = app(CopyTemplateToAssessment::class)($assessment, $template);
     $finding->update([
         'scope_type' => ScopeType::Organization,
         'scope_description' => null,

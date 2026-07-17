@@ -28,7 +28,7 @@ final class MilestoneFourPdfTest extends DuskTestCase
         $this->seed(DatabaseSeeder::class);
         $administrator = User::factory()->create();
         $assessment = Assessment::factory()->create(['title' => 'Dusk report M4']);
-        app(CopyTemplateToAssessment::class)->handle(
+        app(CopyTemplateToAssessment::class)(
             $assessment,
             FindingTemplate::query()->where('default_scope_type', 'organization')->firstOrFail(),
         );

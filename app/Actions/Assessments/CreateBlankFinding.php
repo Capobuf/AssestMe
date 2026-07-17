@@ -13,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 final class CreateBlankFinding
 {
-    public function handle(Assessment $assessment): Finding
+    public function __invoke(Assessment $assessment): Finding
     {
         if ($assessment->status !== AssessmentStatus::Draft) {
             throw ValidationException::withMessages([

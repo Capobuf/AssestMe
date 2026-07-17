@@ -21,6 +21,6 @@ class CreateAssessment extends CreateRecord
     /** @param array<string, mixed> $data */
     protected function handleRecordCreation(array $data): Model
     {
-        return app(CreateAssessmentAction::class)->handle($data);
+        return app(CreateAssessmentAction::class)($data);
     }
 }

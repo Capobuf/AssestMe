@@ -126,7 +126,7 @@ final class WorkspaceAssessment extends EditRecord
                 ->extraAttributes(['data-dusk' => 'add-finding'])
                 ->visible(fn (): bool => ! $this->isWorkspaceReadOnly())
                 ->action(function (): void {
-                    app(CreateBlankFinding::class)->handle($this->assessment());
+                    app(CreateBlankFinding::class)($this->assessment());
                     $this->fillForm();
                 }),
             Action::make('add_template')
@@ -147,7 +147,7 @@ final class WorkspaceAssessment extends EditRecord
                 ])
                 ->action(function (array $data): void {
                     $template = FindingTemplate::query()->findOrFail($data['template_id']);
-                    app(CopyTemplateToAssessment::class)->handle($this->assessment(), $template);
+                    app(CopyTemplateToAssessment::class)($this->assessment(), $template);
                     $this->fillForm();
                 }),
             Action::make('complete')
@@ -506,7 +506,7 @@ final class WorkspaceAssessment extends EditRecord
     public function duplicateFinding(int $findingId): void
     {
         $finding = $this->assessment()->findings()->findOrFail($findingId);
-        app(DuplicateFinding::class)->handle($finding);
+        app(DuplicateFinding::class)($finding);
         $this->fillForm();
     }
 

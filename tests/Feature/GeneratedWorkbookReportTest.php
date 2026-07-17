@@ -225,7 +225,7 @@ it('exports every estimate type and billing frequency as native workbook values'
     ];
 
     foreach ($cases as $index => [$type, $frequency, $minimum, $maximum, $currency, $custom, $expected]) {
-        $finding = app(CopyTemplateToAssessment::class)->handle($assessment, $template);
+        $finding = app(CopyTemplateToAssessment::class)($assessment, $template);
         $finding->update([
             'title' => 'Stima '.($index + 1),
             'scope_type' => ScopeType::Organization,
@@ -293,7 +293,7 @@ it('generates and reopens fifty definitive findings inside the XLSX budget', fun
     $assessment = Assessment::factory()->create(['title' => 'Assessment cinquanta finding XLSX']);
     $template = FindingTemplate::query()->with('solutions')->firstOrFail();
     foreach (range(1, 50) as $number) {
-        $finding = app(CopyTemplateToAssessment::class)->handle($assessment, $template);
+        $finding = app(CopyTemplateToAssessment::class)($assessment, $template);
         $finding->update([
             'title' => sprintf('Finding XLSX %02d', $number),
             'scope_type' => ScopeType::Organization,
@@ -324,7 +324,7 @@ function createWorkbookReadyAssessment(): array
         'executive_summary' => 'Riepilogo completo per il workbook.',
     ]);
     $template = FindingTemplate::query()->with('solutions')->firstOrFail();
-    $finding = app(CopyTemplateToAssessment::class)->handle($assessment, $template);
+    $finding = app(CopyTemplateToAssessment::class)($assessment, $template);
     $finding->update([
         'problem' => "Problema riga uno\nProblema riga due",
         'scope_type' => ScopeType::Organization,

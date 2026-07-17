@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 
 final class CopyTemplateToAssessment
 {
-    public function handle(Assessment $assessment, FindingTemplate $template): Finding
+    public function __invoke(Assessment $assessment, FindingTemplate $template): Finding
     {
         if ($assessment->status !== AssessmentStatus::Draft) {
             throw ValidationException::withMessages(['assessment' => __('assestme.assessments.errors.read_only')]);

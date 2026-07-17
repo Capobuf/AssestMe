@@ -59,7 +59,7 @@ final class BenchmarkCommand extends Command
                 ->where('default_scope_type', 'organization')
                 ->firstOrFail();
             foreach (range(1, $count) as $number) {
-                $finding = app(CopyTemplateToAssessment::class)->handle($assessment, $template);
+                $finding = app(CopyTemplateToAssessment::class)($assessment, $template);
                 $finding->update(['title' => sprintf('Benchmark finding %03d', $number)]);
             }
 

@@ -33,7 +33,7 @@ it('calculates priority from levels owned by the same risk profile', function ()
     $consequence = $profile->consequenceLevels()->where('code', 'serious')->firstOrFail();
     $likelihood = $profile->likelihoodLevels()->where('code', 'possible')->firstOrFail();
 
-    expect(app(CalculateFindingPriority::class)->handle($consequence, $likelihood)->code)->toBe('high');
+    expect(app(CalculateFindingPriority::class)($consequence, $likelihood)->code)->toBe('high');
 });
 
 it('rejects cross-profile risk calculation without changing the matrix', function (): void {
@@ -56,7 +56,7 @@ it('rejects cross-profile risk calculation without changing the matrix', functio
         'is_enabled' => false,
     ]);
 
-    expect(fn () => app(CalculateFindingPriority::class)->handle(
+    expect(fn () => app(CalculateFindingPriority::class)(
         $original->consequenceLevels()->firstOrFail(),
         $foreignLikelihood,
     ))->toThrow(DomainException::class)
