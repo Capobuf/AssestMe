@@ -9,6 +9,7 @@ use App\Actions\Assessments\CreateAssessment;
 use App\Actions\Assessments\CreateBlankFinding;
 use App\Actions\Assessments\DeleteFindingSolution;
 use App\Actions\Assessments\DuplicateFinding;
+use App\Actions\Assessments\OverrideFindingPriority;
 use App\Actions\Assessments\RecalculateFindingPriority;
 use App\Actions\Assessments\ReopenAssessment;
 use App\Actions\Assessments\SaveFindingDetails;
@@ -25,7 +26,9 @@ use App\Models\Client;
 use App\Models\Finding;
 use App\Models\FindingSolution;
 use App\Models\FindingTemplate;
+use App\Models\PriorityLevel;
 use App\Models\RiskMatrixEntry;
+use App\Models\RiskProfile;
 use App\Models\Site;
 use Database\Seeders\MilestoneOneSeeder;
 use Database\Seeders\MilestoneTwoSeeder;
@@ -117,6 +120,51 @@ it('calculates matrix priority', function (): void {
     expect($finding->priority_level_id)->toBe($entry->priority_level_id)
         ->and($finding->priority_is_overridden)->toBeFalse()
         ->and($finding->priority_rationale)->toBeNull();
+});
+
+it('overrides finding priority with a reason and rejects invalid overrides', function (): void {
+    $entry = RiskMatrixEntry::query()->with('priorityLevel')->firstOrFail();
+    $finding = Finding::factory()->create([
+        'consequence_level_id' => $entry->consequence_level_id,
+        'likelihood_level_id' => $entry->likelihood_level_id,
+    ]);
+
+    $overridden = app(OverrideFindingPriority::class)(
+        $finding,
+        $entry->priorityLevel,
+        '  Valutazione contestuale documentata.  ',
+    );
+
+    expect($overridden->priority_level_id)->toBe($entry->priority_level_id)
+        ->and($overridden->priority_is_overridden)->toBeTrue()
+        ->and($overridden->priority_rationale)->toBe('Valutazione contestuale documentata.')
+        ->and(method_exists(OverrideFindingPriority::class, '__invoke'))->toBeTrue();
+
+    expect(fn () => app(OverrideFindingPriority::class)($overridden, $entry->priorityLevel, '  '))
+        ->toThrow(ValidationException::class);
+
+    $otherProfile = RiskProfile::query()->create([
+        'code' => 'override-other',
+        'label' => 'Profilo override esterno',
+        'is_default' => false,
+        'is_enabled' => false,
+    ]);
+    $foreignPriority = PriorityLevel::query()->create([
+        'risk_profile_id' => $otherProfile->getKey(),
+        'code' => 'foreign',
+        'label' => 'Esterna',
+        'color' => '#123456',
+        'sort_order' => 1,
+        'is_enabled' => false,
+    ]);
+
+    expect(fn () => app(OverrideFindingPriority::class)($overridden, $foreignPriority, 'Motivo non valido.'))
+        ->toThrow(ValidationException::class);
+
+    $overridden->assessment()->update(['status' => AssessmentStatus::Completed]);
+    expect(fn () => app(OverrideFindingPriority::class)($overridden, $entry->priorityLevel, 'Stato obsoleto.'))
+        ->toThrow(ValidationException::class)
+        ->and($overridden->fresh()->priority_rationale)->toBe('Valutazione contestuale documentata.');
 });
 
 it('sets and clears solution references while rejecting invalid assignments', function (): void {
@@ -249,11 +297,15 @@ it('saves the row slide-over aggregate and rejects cross-client scope relations'
     $payload['technical_notes'] = "Dettaglio tecnico\ncon più righe.";
     $payload['scope_type'] = ScopeType::SelectedSites->value;
     $payload['site_ids'] = [$site->id];
+    $payload['priority_is_overridden'] = true;
+    $payload['priority_rationale'] = 'Override salvato dallo slide-over.';
 
     $saved = app(SaveFindingDetails::class)->handle($finding, $payload);
     expect($saved->technical_notes)->toBe("Dettaglio tecnico\ncon più righe.")
         ->and($saved->sites)->toHaveCount(1)
-        ->and($saved->recommendedSolution)->not->toBeNull();
+        ->and($saved->recommendedSolution)->not->toBeNull()
+        ->and($saved->priority_is_overridden)->toBeTrue()
+        ->and($saved->priority_rationale)->toBe('Override salvato dallo slide-over.');
 
     $foreignSite = Site::factory()->create();
     $payload['site_ids'] = [$foreignSite->id];

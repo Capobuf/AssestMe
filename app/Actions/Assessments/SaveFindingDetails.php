@@ -14,7 +14,6 @@ use App\Models\Finding;
 use App\Models\FindingSolution;
 use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
-use App\Models\RiskMatrixEntry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -74,18 +73,32 @@ final class SaveFindingDetails
         return DB::transaction(function () use ($finding, $validated): Finding {
             $originalStatus = $finding->status;
             $targetStatus = FindingStatus::from((string) $validated['status']);
-            $finding->fill(collect($validated)->except(['tag_ids', 'site_ids', 'asset_ids', 'solutions', 'status'])->all());
+            $priorityIsOverridden = (bool) $validated['priority_is_overridden'];
+            $priorityLevelId = isset($validated['priority_level_id']) ? (int) $validated['priority_level_id'] : null;
+            $priorityRationale = isset($validated['priority_rationale']) ? (string) $validated['priority_rationale'] : null;
+            $finding->fill(collect($validated)->except([
+                'tag_ids', 'site_ids', 'asset_ids', 'solutions', 'status',
+                'priority_level_id', 'priority_is_overridden', 'priority_rationale',
+            ])->all());
+            $finding->save();
 
-            if (! $finding->priority_is_overridden
+            if ($priorityIsOverridden && $priorityLevelId !== null) {
+                app(OverrideFindingPriority::class)(
+                    $finding,
+                    PriorityLevel::query()->findOrFail($priorityLevelId),
+                    (string) $priorityRationale,
+                );
+            } elseif (! $priorityIsOverridden
                 && $finding->consequence_level_id !== null
                 && $finding->likelihood_level_id !== null) {
-                $finding->priority_level_id = RiskMatrixEntry::query()
-                    ->where('consequence_level_id', $finding->consequence_level_id)
-                    ->where('likelihood_level_id', $finding->likelihood_level_id)
-                    ->value('priority_level_id');
-                $finding->priority_rationale = null;
+                app(RecalculateFindingPriority::class)->handle($finding);
+            } else {
+                $finding->forceFill([
+                    'priority_level_id' => $priorityLevelId,
+                    'priority_is_overridden' => $priorityIsOverridden,
+                    'priority_rationale' => $priorityRationale,
+                ])->save();
             }
-            $finding->save();
             $finding->tags()->sync($validated['tag_ids'] ?? []);
             $finding->sites()->sync($validated['site_ids'] ?? []);
             $finding->assets()->sync($validated['asset_ids'] ?? []);
