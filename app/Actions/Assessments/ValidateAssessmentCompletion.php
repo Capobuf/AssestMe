@@ -13,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 final class ValidateAssessmentCompletion
 {
     /** @throws ValidationException */
-    public function handle(Assessment $assessment): void
+    public function __invoke(Assessment $assessment): void
     {
         $assessment->loadMissing([
             'findings.category',

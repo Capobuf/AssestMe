@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Assessments\Pages;
 
+use App\Actions\Assessments\CompleteAssessment;
 use App\Actions\Assessments\CopyTemplateToAssessment;
 use App\Actions\Assessments\CreateBlankFinding;
 use App\Actions\Assessments\DuplicateFinding;
+use App\Actions\Assessments\ReopenAssessment;
 use App\Actions\Assessments\SaveAssessmentWorkspace;
 use App\Actions\Assessments\SaveFindingDetails;
-use App\Actions\Assessments\TransitionAssessment;
 use App\Actions\Evidence\StoreEvidenceFile;
 use App\Actions\Evidence\StoreEvidenceUrl;
 use App\Actions\Reports\DeleteGeneratedReport;
@@ -156,7 +157,7 @@ final class WorkspaceAssessment extends EditRecord
                 ->requiresConfirmation()
                 ->visible(fn (): bool => $this->assessment()->status === AssessmentStatus::Draft)
                 ->action(function (): void {
-                    $assessment = app(TransitionAssessment::class)->handle($this->assessment(), AssessmentStatus::Completed);
+                    $assessment = app(CompleteAssessment::class)($this->assessment());
                     // A full reload clears every modal Alpine scope before switching the entire workspace to read-only.
                     $this->redirect(AssessmentResource::getUrl('workspace', ['record' => $assessment]), navigate: false);
                 }),
@@ -166,7 +167,7 @@ final class WorkspaceAssessment extends EditRecord
                 ->requiresConfirmation()
                 ->visible(fn (): bool => $this->assessment()->status !== AssessmentStatus::Draft)
                 ->action(function (): void {
-                    $assessment = app(TransitionAssessment::class)->handle($this->assessment(), AssessmentStatus::Draft);
+                    $assessment = app(ReopenAssessment::class)($this->assessment());
                     $this->redirect(AssessmentResource::getUrl('workspace', ['record' => $assessment]), navigate: false);
                 }),
             Action::make('download_pdf')

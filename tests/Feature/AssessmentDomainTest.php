@@ -2,15 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Actions\Assessments\ArchiveAssessment;
+use App\Actions\Assessments\CompleteAssessment;
 use App\Actions\Assessments\CopyTemplateToAssessment;
 use App\Actions\Assessments\CreateAssessment;
 use App\Actions\Assessments\CreateBlankFinding;
 use App\Actions\Assessments\DeleteFindingSolution;
 use App\Actions\Assessments\DuplicateFinding;
 use App\Actions\Assessments\RecalculateFindingPriority;
+use App\Actions\Assessments\ReopenAssessment;
 use App\Actions\Assessments\SaveFindingDetails;
 use App\Actions\Assessments\SetFindingSolutionReference;
-use App\Actions\Assessments\TransitionAssessment;
 use App\Actions\Assessments\TransitionFinding;
 use App\Enums\AssessmentStatus;
 use App\Enums\BillingFrequency;
@@ -128,7 +130,7 @@ it('returns row-numbered completion errors and enforces the assessment lifecycle
     app(CreateBlankFinding::class)->handle($assessment);
 
     try {
-        app(TransitionAssessment::class)->handle($assessment, AssessmentStatus::Completed);
+        app(CompleteAssessment::class)($assessment);
         test()->fail('Completion must reject an included incomplete finding.');
     } catch (ValidationException $exception) {
         expect(collect($exception->errors())->flatten()->join(' '))->toContain('Riga 1');
@@ -139,27 +141,39 @@ it('returns row-numbered completion errors and enforces the assessment lifecycle
     $completeFinding->update(['scope_type' => ScopeType::Organization, 'scope_description' => null]);
     expect($completeFinding->priority_level_id)->not->toBeNull();
 
-    $completed = app(TransitionAssessment::class)->handle($assessment->fresh(), AssessmentStatus::Completed);
+    $completed = app(CompleteAssessment::class)($assessment->fresh());
     expect($completed->status)->toBe(AssessmentStatus::Completed)
         ->and($completed->completed_at)->not->toBeNull()
         ->and($completed->lock_version)->toBe(1)
         ->and(fn () => app(CreateBlankFinding::class)->handle($completed))->toThrow(ValidationException::class);
 
-    expect(fn () => app(TransitionAssessment::class)->handle($completed, AssessmentStatus::Completed))
+    expect(fn () => app(CompleteAssessment::class)($completed))
         ->toThrow(ValidationException::class);
 
     $completedAt = $completed->completed_at?->toISOString();
-    $archived = app(TransitionAssessment::class)->handle($completed, AssessmentStatus::Archived);
+    $archived = app(ArchiveAssessment::class)($completed);
     expect($archived->status)->toBe(AssessmentStatus::Archived)
         ->and($archived->completed_at?->toISOString())->toBe($completedAt)
         ->and($archived->lock_version)->toBe(2)
-        ->and(fn () => app(TransitionAssessment::class)->handle($archived, AssessmentStatus::Completed))
+        ->and(fn () => app(ArchiveAssessment::class)($archived))
         ->toThrow(ValidationException::class);
 
-    $reopened = app(TransitionAssessment::class)->handle($archived, AssessmentStatus::Draft);
+    $reopened = app(ReopenAssessment::class)($archived);
     expect($reopened->status)->toBe(AssessmentStatus::Draft)
         ->and($reopened->completed_at)->toBeNull()
-        ->and($reopened->lock_version)->toBe(3);
+        ->and($reopened->lock_version)->toBe(3)
+        ->and(fn () => app(ReopenAssessment::class)($reopened))
+        ->toThrow(ValidationException::class);
+});
+
+it('rejects a lifecycle transition when the caller holds stale assessment state', function (): void {
+    $staleDraft = Assessment::factory()->create();
+    Assessment::query()->whereKey($staleDraft)->update(['status' => AssessmentStatus::Archived]);
+
+    expect(fn () => app(CompleteAssessment::class)($staleDraft))
+        ->toThrow(ValidationException::class)
+        ->and($staleDraft->fresh()->status)->toBe(AssessmentStatus::Archived)
+        ->and($staleDraft->fresh()->lock_version)->toBe(0);
 });
 
 it('enforces finding state transitions and resolved requirements', function (): void {

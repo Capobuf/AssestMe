@@ -44,7 +44,7 @@ final class BuildAssessmentSnapshot
         ?Carbon $generatedAt = null,
         bool $includeExcludedFindings = false,
     ): AssessmentReportData {
-        $this->validateCompletion->handle($assessment);
+        ($this->validateCompletion)($assessment);
         $assessment->load($this->relations());
         $generatedAt ??= now();
 
