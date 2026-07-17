@@ -11,14 +11,14 @@ use App\Actions\Assessments\DuplicateFinding;
 use App\Actions\Assessments\ReopenAssessment;
 use App\Actions\Assessments\SaveAssessmentWorkspace;
 use App\Actions\Assessments\SaveFindingDetails;
-use App\Actions\Evidence\StoreEvidenceFile;
-use App\Actions\Evidence\StoreEvidenceUrl;
+use App\Actions\Evidence\StoreEvidence;
 use App\Actions\Reports\DeleteGeneratedReport;
 use App\Actions\Reports\GenerateAssessmentPdf;
 use App\Actions\Reports\GenerateAssessmentWorkbook;
 use App\Data\Assessments\WorkspaceSaveData;
 use App\Enums\AssessmentStatus;
 use App\Enums\DeletionOperationStatus;
+use App\Enums\EvidenceType;
 use App\Enums\ScopeType;
 use App\Exceptions\AssessmentVersionConflict;
 use App\Exceptions\IdempotencyKeyMismatch;
@@ -540,13 +540,13 @@ final class WorkspaceAssessment extends EditRecord
                     continue;
                 }
 
-                app(StoreEvidenceFile::class)->handle($finding, $uploadedFile, [
+                app(StoreEvidence::class)($finding, EvidenceType::File, [
                     'title' => $uploadedFile->getClientOriginalName(),
                     'include_in_report' => true,
-                ]);
+                ], $uploadedFile);
             }
             if ($evidenceUrl !== '') {
-                app(StoreEvidenceUrl::class)->handle($finding, [
+                app(StoreEvidence::class)($finding, EvidenceType::Url, [
                     'title' => $evidenceTitle,
                     'url' => $evidenceUrl,
                     'include_in_report' => true,

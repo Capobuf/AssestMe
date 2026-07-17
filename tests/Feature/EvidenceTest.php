@@ -3,13 +3,15 @@
 declare(strict_types=1);
 
 use App\Actions\Evidence\DeleteEvidence;
-use App\Actions\Evidence\StoreEvidenceFile;
-use App\Actions\Evidence\StoreEvidenceUrl;
+use App\Actions\Evidence\StoreEvidence;
 use App\Actions\Storage\AuditPrivateStorage;
+use App\Enums\AssessmentStatus;
 use App\Enums\EvidenceType;
+use App\Models\Evidence;
 use App\Models\Finding;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -25,10 +27,11 @@ afterEach(function (): void {
 
 it('accepts every approved evidence format using detected content MIME', function (string $extension, string $expectedMime): void {
     $finding = Finding::factory()->create();
-    $evidence = app(StoreEvidenceFile::class)->handle(
+    $evidence = app(StoreEvidence::class)(
         $finding,
-        evidenceUpload($extension),
+        EvidenceType::File,
         ['title' => strtoupper($extension), 'include_in_report' => true],
+        evidenceUpload($extension),
     );
 
     expect($evidence->original_filename)->toBe("evidence.{$extension}")
@@ -56,10 +59,11 @@ it('rejects a generic ZIP renamed as an approved office document', function (): 
     $archive->addFromString('payload.txt', 'not an OpenDocument spreadsheet');
     $archive->close();
 
-    expect(fn () => app(StoreEvidenceFile::class)->handle(
+    expect(fn () => app(StoreEvidence::class)(
         $finding,
-        new UploadedFile($path, 'renamed.ods', null, null, true),
+        EvidenceType::File,
         ['title' => 'Archivio rinominato', 'include_in_report' => true],
+        new UploadedFile($path, 'renamed.ods', null, null, true),
     ))->toThrow(ValidationException::class);
 });
 
@@ -67,12 +71,12 @@ it('stores generated private evidence files with a content hash and serves autho
     $finding = Finding::factory()->create();
     $file = UploadedFile::fake()->image('rete.png', 640, 480);
 
-    $evidence = app(StoreEvidenceFile::class)->handle($finding, $file, [
+    $evidence = app(StoreEvidence::class)($finding, EvidenceType::File, [
         'title' => 'Schema rete',
         'caption' => 'Topologia rilevata durante il sopralluogo.',
         'internal_notes' => null,
         'include_in_report' => true,
-    ]);
+    ], $file);
 
     expect($evidence->type)->toBe(EvidenceType::File)
         ->and($evidence->original_filename)->toBe('rete.png')
@@ -91,34 +95,61 @@ it('stores generated private evidence files with a content hash and serves autho
 it('rejects mismatched types, duplicate content, and credential-bearing URLs', function (): void {
     $finding = Finding::factory()->create();
     $file = UploadedFile::fake()->image('evidenza.png');
-    app(StoreEvidenceFile::class)->handle($finding, $file, [
+    app(StoreEvidence::class)($finding, EvidenceType::File, [
         'title' => 'Prima evidenza',
         'include_in_report' => true,
-    ]);
+    ], $file);
 
-    expect(fn () => app(StoreEvidenceFile::class)->handle(
+    expect(fn () => app(StoreEvidence::class)(
         $finding,
-        new UploadedFile($file->getRealPath(), 'duplicata.png', 'image/png', null, true),
+        EvidenceType::File,
         ['title' => 'Duplicata', 'include_in_report' => true],
+        new UploadedFile($file->getRealPath(), 'duplicata.png', 'image/png', null, true),
     ))->toThrow(ValidationException::class);
 
     $html = UploadedFile::fake()->createWithContent('pagina.html', '<script>alert(1)</script>');
-    expect(fn () => app(StoreEvidenceFile::class)->handle(
+    expect(fn () => app(StoreEvidence::class)(
         $finding,
-        $html,
+        EvidenceType::File,
         ['title' => 'HTML', 'include_in_report' => true],
+        $html,
     ))->toThrow(ValidationException::class);
 
-    expect(fn () => app(StoreEvidenceUrl::class)->handle($finding, [
+    expect(fn () => app(StoreEvidence::class)($finding, EvidenceType::Url, [
         'title' => 'URL non valido',
         'url' => 'https://utente:segreto@example.test/prova',
         'include_in_report' => true,
     ]))->toThrow(ValidationException::class);
 });
 
+it('compensates a failed file record and rejects persisted read-only state', function (): void {
+    $finding = Finding::factory()->create();
+    Event::listen('eloquent.creating: '.Evidence::class, static function (): never {
+        throw new RuntimeException('Forced evidence persistence failure.');
+    });
+
+    expect(fn () => app(StoreEvidence::class)(
+        $finding,
+        EvidenceType::File,
+        ['title' => 'Compensata', 'include_in_report' => true],
+        UploadedFile::fake()->image('compensata.png'),
+    ))->toThrow(RuntimeException::class)
+        ->and(Storage::disk('local')->allFiles())->toBeEmpty();
+
+    Event::forget('eloquent.creating: '.Evidence::class);
+    $finding->assessment()->update(['status' => AssessmentStatus::Completed]);
+
+    expect(fn () => app(StoreEvidence::class)($finding, EvidenceType::Url, [
+        'title' => 'Bloccata',
+        'url' => 'https://example.test/evidence',
+        'include_in_report' => true,
+    ]))->toThrow(ValidationException::class)
+        ->and(Evidence::query()->count())->toBe(0);
+});
+
 it('stores URL evidence without a file and archive deletion retains private data', function (): void {
     $finding = Finding::factory()->create();
-    $urlEvidence = app(StoreEvidenceUrl::class)->handle($finding, [
+    $urlEvidence = app(StoreEvidence::class)($finding, EvidenceType::Url, [
         'title' => 'Console apparato',
         'url' => 'https://192.168.1.1/status',
         'include_in_report' => false,
@@ -127,10 +158,11 @@ it('stores URL evidence without a file and archive deletion retains private data
     expect($urlEvidence->type)->toBe(EvidenceType::Url)
         ->and($urlEvidence->file_path)->toBeNull();
 
-    $fileEvidence = app(StoreEvidenceFile::class)->handle(
+    $fileEvidence = app(StoreEvidence::class)(
         $finding,
-        UploadedFile::fake()->image('foto.jpg'),
+        EvidenceType::File,
         ['title' => 'Foto', 'include_in_report' => true],
+        UploadedFile::fake()->image('foto.jpg'),
     );
     app(DeleteEvidence::class)->handle($fileEvidence);
 
@@ -140,15 +172,17 @@ it('stores URL evidence without a file and archive deletion retains private data
 
 it('reports missing corrupt and orphan evidence without deleting it', function (): void {
     $finding = Finding::factory()->create();
-    $valid = app(StoreEvidenceFile::class)->handle(
+    $valid = app(StoreEvidence::class)(
         $finding,
-        UploadedFile::fake()->image('valida.png'),
+        EvidenceType::File,
         ['title' => 'Valida', 'include_in_report' => true],
+        UploadedFile::fake()->image('valida.png'),
     );
-    $missing = app(StoreEvidenceFile::class)->handle(
+    $missing = app(StoreEvidence::class)(
         $finding,
-        UploadedFile::fake()->image('mancante.png', 37, 29),
+        EvidenceType::File,
         ['title' => 'Mancante', 'include_in_report' => true],
+        UploadedFile::fake()->image('mancante.png', 37, 29),
     );
     Storage::disk('local')->delete((string) $missing->file_path);
     Storage::disk('local')->put((string) $valid->file_path, 'contenuto alterato');
