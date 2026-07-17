@@ -19,7 +19,7 @@ final readonly class RestoreBackup
         private VerifyBackup $verifyBackup,
     ) {}
 
-    public function handle(string $archivePath): string
+    public function __invoke(string $archivePath): string
     {
         if (! app()->isDownForMaintenance()) {
             throw new RuntimeException('Backup restore requires maintenance mode.');
@@ -56,7 +56,7 @@ final readonly class RestoreBackup
         $this->assertAbsolutePath($root, 'Backup root');
         $path = rtrim($root, '/\\').DIRECTORY_SEPARATOR.'assestme-safety-'.now('UTC')->format('Ymd-His-u').'.tar.gz';
 
-        return $this->createBackup->handle($path, false);
+        return ($this->createBackup)($path, false);
     }
 
     private function replaceTargets(

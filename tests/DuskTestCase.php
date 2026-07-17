@@ -10,6 +10,7 @@ use Facebook\WebDriver\Remote\RemoteWebDriver;
 use Illuminate\Support\Collection;
 use Laravel\Dusk\TestCase as BaseTestCase;
 use PHPUnit\Framework\Attributes\BeforeClass;
+use RuntimeException;
 
 abstract class DuskTestCase extends BaseTestCase
 {
@@ -27,6 +28,17 @@ abstract class DuskTestCase extends BaseTestCase
     #[BeforeClass]
     public static function prepare(): void
     {
+        $isolatedRoot = getenv('ASSESTME_TEST_ROOT');
+
+        if (getenv('ASSESTME_TEST_ISOLATED') !== '1'
+            || ! is_string($isolatedRoot)
+            || $isolatedRoot === ''
+            || ! is_file($isolatedRoot.'/.assestme-test-root')) {
+            throw new RuntimeException(
+                'Dusk requires the marked disposable environment created by scripts/dusk-isolated.sh.',
+            );
+        }
+
         if (! static::runningInSail()) {
             $driverPath = $_ENV['DUSK_CHROMEDRIVER_PATH'] ?? getenv('DUSK_CHROMEDRIVER_PATH');
 

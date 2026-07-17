@@ -1,8 +1,8 @@
 <?php
 
 declare(strict_types=1);
-use App\Models\User;
-use Filament\Panel;
+
+use App\Support\ResolveCanaryAdministrator;
 
 // config for Baspa/FilamentCanary
 // acting_as / tenant below were proposed by `php artisan canary:install` — review them.
@@ -21,8 +21,7 @@ return [
 
     'acting_as' => [
         // admin — Could not read the access gate confidently; using a plain factory user. Adjust if this panel's pages come back as needs-auth. (confidence: low)
-        'admin' => fn (Panel $panel) => User::query()->first()
-            ?? User::factory()->create(),
+        'admin' => [ResolveCanaryAdministrator::class, 'resolve'],
     ],
 
     'tenant' => null,

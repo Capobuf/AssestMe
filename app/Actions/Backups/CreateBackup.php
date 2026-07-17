@@ -26,7 +26,7 @@ final readonly class CreateBackup
         private VerifyBackup $verifyBackup,
     ) {}
 
-    public function handle(?string $output = null, bool $prune = true): string
+    public function __invoke(?string $output = null, bool $prune = true): string
     {
         $output ??= $this->defaultOutputPath();
         $managedOutput = $this->isManagedOutput($output);

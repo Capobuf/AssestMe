@@ -25,7 +25,7 @@ final class BackupCommand extends Command
         $output = $this->option('output');
 
         try {
-            $path = $createBackup->handle(is_string($output) && $output !== '' ? $output : null);
+            $path = $createBackup(is_string($output) && $output !== '' ? $output : null);
             $recordOperationalCheck(
                 OperationalCheckType::Backup,
                 OperationalCheckStatus::Succeeded,

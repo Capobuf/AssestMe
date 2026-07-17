@@ -24,7 +24,7 @@ final class RestoreBackupCommand extends Command
         }
 
         try {
-            $safetyBackup = $restoreBackup->handle((string) $this->argument('archive'));
+            $safetyBackup = $restoreBackup((string) $this->argument('archive'));
             $diagnosticExit = Artisan::call('assestme:diagnose');
             $this->output->write(Artisan::output());
 

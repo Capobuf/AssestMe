@@ -139,3 +139,49 @@ it('ships a confirmed compensating production rollback', function (): void {
         ->toContain('systemctl reload "$fpm_service"')
         ->not->toContain('|| true');
 });
+
+it('ships an isolated production-like deployment and rollback rehearsal', function (): void {
+    $script = (string) file_get_contents(base_path('scripts/rehearse-production.sh'));
+
+    expect($script)
+        ->toContain('mktemp -d')
+        ->toContain('git -C "$project_dir" diff --binary --no-ext-diff')
+        ->toContain('migrate:fresh --seed --force --no-interaction')
+        ->toContain('scripts/deploy-production.sh')
+        ->toContain('assestme:backup:verify "$rollback_backup"')
+        ->toContain('assestme:restore-backup "$rollback_backup"')
+        ->toContain('scripts/rollback-production.sh')
+        ->toContain("database_marker\" == 'before-second-deploy'")
+        ->toContain("storage_marker\" == 'before-second-deploy'")
+        ->toContain('assestme:diagnose')
+        ->toContain('Host service reload and public HTTPS reachability were simulated and are not certified')
+        ->not->toContain('|| true');
+});
+
+it('keeps production configuration serializable', function (): void {
+    $cache = storage_path('framework/testing/config-cache-'.bin2hex(random_bytes(6)).'.php');
+    $process = new Process(
+        ['php', 'artisan', 'config:cache'],
+        base_path(),
+        ['APP_CONFIG_CACHE' => $cache, 'APP_ENV' => 'production'],
+    );
+
+    try {
+        $process->run();
+
+        expect($process->isSuccessful())->toBeTrue($process->getErrorOutput())
+            ->and($cache)->toBeFile();
+    } finally {
+        File::delete($cache);
+    }
+});
+
+it('refuses browser tests outside the marked disposable environment', function (): void {
+    $testCase = (string) file_get_contents(base_path('tests/DuskTestCase.php'));
+
+    expect($testCase)
+        ->toContain("getenv('ASSESTME_TEST_ISOLATED') !== '1'")
+        ->toContain("getenv('ASSESTME_TEST_ROOT')")
+        ->toContain("\$isolatedRoot.'/.assestme-test-root'")
+        ->toContain('Dusk requires the marked disposable environment created by scripts/dusk-isolated.sh.');
+});
