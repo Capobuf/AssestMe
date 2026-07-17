@@ -13,7 +13,10 @@ jobs:
     timeout-minutes: 25
     env:
       APP_ENV: testing
+      APP_FALLBACK_LOCALE: it
       APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      APP_LOCALE: it
+      APP_TIMEZONE: Europe/Rome
       APP_URL: http://127.0.0.1:8000
       CACHE_STORE: file
       SESSION_DRIVER: file
@@ -30,6 +33,7 @@ jobs:
           php-version: '8.3'
           coverage: none
           extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip
+          ini-values: memory_limit=512M
           tools: composer:v2
 
       - name: Validate and install locked dependencies
@@ -45,7 +49,7 @@ jobs:
       - name: Run isolated quality gates
         run: RUN_DUSK=0 scripts/verify.sh
 
-      - name: Detect ChromeDriver version
+      - name: Install matching ChromeDriver
         run: php artisan dusk:chrome-driver --detect
 
       - name: Run isolated Dusk suite
@@ -62,10 +66,13 @@ jobs:
             tests/Browser/console
           if-no-files-found: ignore
 
-  clean-bootstrap:
+  clean-checkout-bootstrap:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
+      APP_FALLBACK_LOCALE: it
+      APP_LOCALE: it
+      APP_TIMEZONE: Europe/Rome
       DEV_ADMIN_NAME: CI Administrator
       DEV_ADMIN_EMAIL: admin@assestme.local
       DEV_ADMIN_PASSWORD: CI-Only!AssestMe-2026
@@ -82,9 +89,6 @@ jobs:
           extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip
           ini-values: memory_limit=512M
           tools: composer:v2
-
-      - name: Install clean-bootstrap system tools
-        run: sudo apt-get update && sudo apt-get install -y lsb-release sqlite3
 
       - name: Bootstrap a clean checkout
         run: scripts/bootstrap-local.sh "${GITHUB_WORKSPACE}"

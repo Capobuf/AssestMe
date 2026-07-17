@@ -37,14 +37,19 @@ for argument in "$@"; do
     esac
 done
 
-release_root="${ASSESTME_RELEASE_ROOT:-/var/www/assestme}"
-backup_root="${ASSESTME_BACKUP_ROOT:-/var/backups/assestme}"
+release_root="${ASSESTME_RELEASE_ROOT:-}"
+backup_root="${ASSESTME_BACKUP_ROOT:-}"
 current_link="${release_root}/current"
 releases_dir="${release_root}/releases"
 hostname="${ASSESTME_HOSTNAME:-}"
+fpm_service="${ASSESTME_FPM_SERVICE:-}"
 
+[[ -n "$release_root" ]] || fail "ASSESTME_RELEASE_ROOT is required."
 [[ "$release_root" == /* ]] || fail "ASSESTME_RELEASE_ROOT must be an absolute path."
+[[ -n "$backup_root" ]] || fail "ASSESTME_BACKUP_ROOT is required."
 [[ "$backup_root" == /* ]] || fail "ASSESTME_BACKUP_ROOT must be an absolute path."
+[[ -n "$fpm_service" ]] || fail "ASSESTME_FPM_SERVICE is required."
+[[ "$fpm_service" =~ ^[A-Za-z0-9_.@-]+$ ]] || fail "ASSESTME_FPM_SERVICE is invalid."
 [[ -n "$release_input" ]] || fail "--release is required."
 [[ "$backup_path" == /* ]] || fail "--backup must be an absolute path."
 [[ -f "$backup_path" ]] || fail "Backup archive does not exist: $backup_path"
@@ -113,7 +118,7 @@ recover_failed_rollback() {
             fi
         fi
 
-        if ! systemctl reload php8.3-fpm; then
+        if ! systemctl reload "$fpm_service"; then
             printf 'ERROR: PHP-FPM reload failed during rollback recovery.\n' >&2
         fi
         if [[ "$maintenance_enabled" == "1" ]] && ! php "$current_target/artisan" up; then
@@ -134,7 +139,7 @@ ln -sfn "$target_release" "${current_link}.rollback"
 mv -Tf "${current_link}.rollback" "$current_link"
 switched=1
 
-systemctl reload php8.3-fpm
+systemctl reload "$fpm_service"
 php "$target_release/artisan" assestme:diagnose
 php "$target_release/artisan" up
 maintenance_enabled=0

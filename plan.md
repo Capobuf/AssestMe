@@ -1,9 +1,9 @@
 # AssestMe — Deterministic Executable Development Plan
 
-Specification version: **2.2**
+Specification version: **2.3**
 Status: **approved for implementation**  
 Application name: **AssestMe**  
-Reference environment: **Ubuntu Server 24.04 LTS**  
+Reference runtime: **PHP 8.3 capability contract; no normative host distribution**
 Primary development URL: **http://127.0.0.1:8000/admin**  
 Application language for the first release: **Italian**  
 Code, identifiers, commit messages, tests, and code comments: **English**
@@ -60,11 +60,14 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 |---|---|---|
 | D-001 | APPROVED | Laravel 13 and Filament 5 Panel Builder |
 | D-002 | APPROVED | Exactly one administrator account; no registration, roles, or client access |
-| D-003 | APPROVED | Ubuntu Server 24.04 LTS reference environment |
-| D-004 | APPROVED | PHP 8.3 from the official Ubuntu 24.04 repositories |
+| D-003 (v1) | SUPERSEDED | Ubuntu Server 24.04 LTS was the normative reference environment; superseded by D-003 on 2026-07-17 |
+| D-003 | APPROVED | No host operating-system distribution is normative; runtime and bootstrap are capability-based |
+| D-004 (v1) | SUPERSEDED | PHP 8.3 was required from the official Ubuntu 24.04 repositories; superseded by D-004 on 2026-07-17 |
+| D-004 | APPROVED | PHP 8.3 is required without prescribing an operating-system package source |
 | D-005 | APPROVED | SQLite with foreign keys, WAL, and 5-second busy timeout |
 | D-006 | APPROVED | File cache/session and synchronous queue; no Redis or worker |
-| D-007 | APPROVED | No Node.js, npm, pnpm, Vite build, Docker, or external runtime service |
+| D-007 (v1) | SUPERSEDED | Docker was prohibited together with frontend build dependencies; superseded by D-007 on 2026-07-17 |
+| D-007 | APPROVED | No Node.js/npm/pnpm/Vite build or external runtime service; Docker is permitted for future packaging but is not currently required |
 | D-008 (v1) | SUPERSEDED | Advance Table Repeater was the selected assessment-grid component; superseded by D-008 on 2026-07-13 |
 | D-008 | APPROVED | The assessment workspace uses only the native Filament 5 table Repeater |
 | D-009 | APPROVED | Spatie Laravel PDF with DOMPDF; no renderer fallback |
@@ -122,15 +125,22 @@ Requirements:
 
 Enforce the single-user rule with a unique `singleton_key` column fixed to `1`, application validation, and tests.
 
-### D-003 — Linux baseline
+### D-003 — Runtime portability
 
-Development and production documentation target Ubuntu Server 24.04 LTS.
+No host operating-system distribution or CPU architecture is normative for the application.
 
-Supported CPU architectures are `amd64` and `arm64`. CI runs on `amd64`. Stop before executing OS package commands on a different distribution.
+Development and production hosts provide the required runtime capabilities. Application scripts:
+
+- verify capabilities they actually use;
+- do not install operating-system packages;
+- do not reject a host by distribution name, version, or architecture;
+- fail with the exact missing command, PHP extension, permission, or runtime constraint.
+
+The current GitHub Actions workflow may use a hosted Ubuntu runner as CI infrastructure. That runner does not define or certify the production operating system.
 
 ### D-004 — PHP
 
-Use PHP 8.3 from Ubuntu 24.04's official repositories. Do not add a PPA.
+Use PHP 8.3. The operator or future container image supplies PHP; the application does not prescribe an operating-system repository, PPA, or installation mechanism.
 
 Required extensions:
 
@@ -157,7 +167,7 @@ Required extensions:
 - `zip`
 - `zlib`
 
-Laravel 13 requires PHP 8.3 or newer. PHP 8.3 avoids an external package repository while satisfying Laravel and Filament 5.
+Laravel 13 requires PHP 8.3 or newer. AssestMe deliberately targets PHP 8.3 for one reproducible runtime contract across development, CI, production, and future container packaging.
 
 ### D-005 — Database
 
@@ -201,6 +211,8 @@ No Redis, Horizon, queue worker, or asynchronous report generation.
 ### D-007 — Frontend build
 
 Application runtime and normal development must not require Node.js or a frontend build.
+
+Docker is allowed but optional. Current development, CI verification, local startup, and production scripts do not require a container runtime. A future containerization slice may add packaging without changing the application data, persistence, report, backup, or acceptance contracts.
 
 Allowed:
 
@@ -369,12 +381,13 @@ Production:
 
 - Nginx;
 - PHP 8.3 FPM;
-- application releases under `/var/www/assestme/releases`;
-- `/var/www/assestme/current` symlink;
-- shared data under `/var/www/assestme/shared`;
+- an operator-supplied absolute `ASSESTME_RELEASE_ROOT`;
+- application releases under `<ASSESTME_RELEASE_ROOT>/releases`;
+- `<ASSESTME_RELEASE_ROOT>/current` symlink;
+- shared data under `<ASSESTME_RELEASE_ROOT>/shared`;
 - TLS through Certbot when a valid FQDN is supplied.
 
-A production deployment requires the operator to provide `ASSESTME_HOSTNAME`. The development milestone does not depend on a public hostname.
+A production deployment requires the operator to provide `ASSESTME_HOSTNAME`, `ASSESTME_RELEASE_ROOT`, `ASSESTME_BACKUP_ROOT`, `ASSESTME_RUNTIME_GROUP`, `ASSESTME_FPM_SERVICE`, and the PHP-FPM endpoint used to render the Nginx stub. The development milestone does not depend on a public hostname.
 
 ### D-020 — Concurrency
 
@@ -617,64 +630,41 @@ Rules:
 
 ## 5. Installation, development, and production environment
 
-### 5.1 Ubuntu package installation
+### 5.1 Runtime provisioning
 
-On Ubuntu Server 24.04 LTS:
+The host operator or a future container image provides the runtime. AssestMe does not install operating-system packages or prescribe a distribution-specific package source.
 
-```bash
-sudo apt update
-sudo apt install -y \
-    ca-certificates \
-    certbot \
-    composer \
-    curl \
-    git \
-    nginx \
-    php8.3-bcmath \
-    php8.3-cli \
-    php8.3-curl \
-    php8.3-fpm \
-    php8.3-gd \
-    php8.3-intl \
-    php8.3-mbstring \
-    php8.3-sqlite3 \
-    php8.3-xml \
-    php8.3-zip \
-    python3-certbot-nginx \
-    rsync \
-    sqlite3 \
-    unzip
-```
+Required application capabilities:
 
-Do not add `ppa:ondrej/php` or another third-party PHP repository.
+- PHP 8.3 CLI for application commands and PHP 8.3 FPM for production requests;
+- every PHP extension listed by D-004;
+- Composer 2 for installation and development verification;
+- Nginx for the production web tier;
+- a writable private SQLite database path and writable application storage/cache/session paths;
+- standard shell/file utilities only for the supplied bootstrap, deployment, backup, and rollback scripts.
+
+The application runtime does not require the standalone SQLite CLI. SQLite access is provided by PHP's `pdo_sqlite` extension.
 
 ### 5.2 Preflight
 
 Run `scripts/preflight.sh`. It must verify:
 
 ```bash
-uname -m
-cat /etc/os-release
 php -v
 php -m
 php --ini
 composer --version
-git --version
-sqlite3 --version
 ```
 
 Required:
 
-- Ubuntu 24.04;
-- architecture `x86_64`/`amd64` or `aarch64`/`arm64`;
 - PHP `8.3.x`;
 - every required extension from D-004;
 - Composer 2;
-- Git;
-- SQLite CLI;
+- Laravel project markers `artisan`, `composer.json`, and `composer.lock`;
 - writable project directory.
 
-Any failure exits non-zero and states the missing requirement.
+Preflight does not inspect or reject the operating-system distribution, version, or CPU architecture. Any failure exits non-zero and states the missing capability.
 
 ### 5.3 Project creation
 
@@ -848,22 +838,22 @@ Completion evidence:
 
 ### 5.8 Production layout
 
-Canonical paths:
+Canonical layout relative to the required absolute deployment inputs:
 
 ```text
-/var/www/assestme/releases/<UTC_TIMESTAMP>/
-/var/www/assestme/current -> releases/<UTC_TIMESTAMP>
-/var/www/assestme/shared/.env
-/var/www/assestme/shared/database/database.sqlite
-/var/www/assestme/shared/storage/
-/var/backups/assestme/
+<ASSESTME_RELEASE_ROOT>/releases/<UTC_TIMESTAMP>/
+<ASSESTME_RELEASE_ROOT>/current -> releases/<UTC_TIMESTAMP>
+<ASSESTME_RELEASE_ROOT>/shared/.env
+<ASSESTME_RELEASE_ROOT>/shared/database/database.sqlite
+<ASSESTME_RELEASE_ROOT>/shared/storage/
+<ASSESTME_BACKUP_ROOT>/
 ```
 
 Ownership:
 
 ```text
-deploy user: assestme
-web group: www-data
+deploy user: operator supplied
+web group: <ASSESTME_RUNTIME_GROUP>
 ```
 
 Permissions:
@@ -883,9 +873,9 @@ Use the supplied Nginx stub.
 
 Required:
 
-- root `/var/www/assestme/current/public`;
+- root `<ASSESTME_RELEASE_ROOT>/current/public`, rendered as an absolute path in the supplied stub;
 - `try_files $uri $uri/ /index.php?$query_string`;
-- PHP socket `/run/php/php8.3-fpm.sock`;
+- an operator-supplied PHP 8.3 FPM Unix socket or upstream endpoint rendered in the supplied stub;
 - deny dotfiles except `.well-known`;
 - deny direct access to SQLite, `.env`, storage private paths, and source files;
 - client upload limit `25m`;
@@ -959,7 +949,7 @@ Retention:
 - 4 weekly;
 - 6 monthly.
 
-Backups are stored under `/var/backups/assestme` with mode `600`.
+Backups are stored under the required absolute `<ASSESTME_BACKUP_ROOT>` with mode `600`.
 
 Off-host copying and encrypted-volume protection are required operational controls but are outside application code.
 
@@ -2719,7 +2709,7 @@ This checklist is not executable in the current development environment and does
 
 ### 16.3 CI
 
-GitHub Actions on Ubuntu 24.04, PHP 8.3 only.
+GitHub Actions currently uses the hosted `ubuntu-24.04` runner with PHP 8.3 only. This is CI infrastructure, not an application host requirement or a production compatibility claim.
 
 Jobs:
 
@@ -2732,7 +2722,7 @@ Jobs:
 7. Canary strict zero-skip;
 8. Dusk with Chrome;
 9. backup/restore integration;
-10. bootstrap script on clean runner.
+10. bootstrap script from a clean checkout on the runner.
 
 No coverage percentage gate. Acceptance behavior and failure paths are the gate.
 
@@ -2936,7 +2926,7 @@ Local test credentials may be shown once in final handoff. Production credential
 
 Deliver:
 
-- Ubuntu/PHP preflight;
+- capability-based PHP preflight;
 - clean Laravel/Filament install;
 - committed dependency lock;
 - admin login;
@@ -3019,7 +3009,7 @@ Failure of central grid or DOMPDF blocks the project.
 - record the browser/mobile checklist as deferred until a reference installation and devices exist;
 - storage audit;
 - production Nginx/deploy scripts;
-- clean-machine bootstrap;
+- clean-checkout bootstrap;
 - final quality/security review;
 - app running and credentials supplied.
 
@@ -3027,9 +3017,9 @@ Failure of central grid or DOMPDF blocks the project.
 
 ### Environment
 
-- Ubuntu 24.04/PHP 8.3 documented and verified;
+- PHP 8.3 capability contract documented and verified without a normative host distribution;
 - clean `composer install` from lock;
-- no runtime Node/Docker/Redis/external renderer;
+- no runtime Node/Redis/external renderer; Docker remains optional and unused by the current development path;
 - SQLite PRAGMAs verified;
 - local URL reachable;
 - real login works.
@@ -3108,7 +3098,7 @@ This section records how the external blueprint review dated 2026-07-13 was reso
 
 | Review ID | Resolution in specification 2.0 |
 |---|---|
-| B-01 | PHP 8.3 from official Ubuntu 24.04 repositories; exact preflight and package commands |
+| B-01 | SUPERSEDED by specification 2.3: PHP 8.3 remains exact, while runtime provisioning and preflight are capability-based with no normative host distribution or package source |
 | B-02 | Only `LARAVEL_PDF_DRIVER=dompdf`; verified Spatie configuration fragment |
 | B-03 | Nginx/PHP-FPM, paths, ownership, permissions, TLS, release deploy, rollback, cron, and PHP limits defined |
 | B-04 | `lock_version`, request UUID, payload hash, one in-flight request, coalescing, stale-tab conflict protocol |
@@ -3150,11 +3140,13 @@ Milestone 5 operational-status slice completed and verified on 2026-07-17. Succe
 
 Milestone 5 assessment-lifecycle action conformance slice completed and verified on 2026-07-17. The consolidated target-driven `TransitionAssessment` action was removed; the required `CompleteAssessment`, `ReopenAssessment`, and `ArchiveAssessment` operations are distinct typed invokable actions, and the shared completion validator is invokable. Persisted-state validation now runs under the existing assessment save lock and database transaction, so a stale caller cannot apply an obsolete transition. The workspace uses the required complete/reopen actions, while focused domain coverage proves successful completion/archive/reopen, row-numbered completion failure, invalid repeated transitions, and stale-state rejection without a version change. Accepted evidence is strict Composer validation, Pint clean, PHPStan over 226 files with zero errors, 169 application tests/1,484 assertions, Canary strict 34/34 with zero skips, locked audit with zero advisories, focused Dusk 1 test/8 assertions, aggregate Dusk 5 tests/105 assertions with no severe console errors, green diagnostics/storage audit, and a complete successful `scripts/verify.sh`. The final isolated 50-finding benchmark passed with HTTP 200, 1.0866 s first render, 2,697,527 response bytes, 0.0425 s explicit save, 0.0545 s reorder, 2.0485 s PDF, and 0.2307 s XLSX. Before and after the gates, the configured database SHA-256 remained `8b8d7a0ddb7ae0d5a6b79150ae45dc7e29e128018a59b76925602ad47dffe328`; the explicitly defined relative-path/content private-storage manifest remained `f232151aa30eaecfef301508e45c6fefa7fa903205b9c857897dc62090aea9a8`. The approved inventory now has seven absent names, and 8 of 46 current actions are invokable while 38 expose `handle()`. Milestone 5 remains in progress.
 
+Milestone 5 runtime-portability and deterministic-CI slice completed and verified on 2026-07-17 after explicit user approval to supersede the operating-system decisions. Specification 2.3 removes every normative host-distribution and package-source requirement while retaining PHP 8.3 and Nginx/PHP-FPM production deployment; Docker is permitted for future packaging but is not required by current development, verification, or runtime. Preflight now verifies only the application capabilities it uses and has executable success/incomplete-project failure coverage. Deployment paths, runtime group, PHP-FPM service, Nginx public root/upstream, and cron runtime values are operator inputs instead of distribution conventions. The clean-checkout job remains a reproducibility test on hosted CI infrastructure and no longer installs OS tools unused by the application. Laravel and the maintained isolated environment now default explicitly to Italian/Europe-Rome, so a checkout without `.env` cannot render `assestme.*` keys because of an inherited English locale. The 48-test/352-assertion focused regression covering the failures supplied from GitHub passed with an externally forced `en`/`UTC` environment. Accepted evidence is strict Composer validation, Pint clean, PHPStan over 226 files with zero errors, 171 application tests/1,511 assertions, Canary strict 34/34 with zero skips, locked audit with zero advisories, green diagnostics/storage audit, a successful local `RUN_DUSK=0 scripts/verify.sh` under externally forced `en`/`UTC`, and a complete successful `scripts/verify.sh` with Dusk 5 tests/105 assertions and no severe console errors. A separate local bootstrap built a new application exclusively from tracked files and `composer.lock`, passed diagnostics, and produced exactly one administrator, 18 categories, zero assessments, and eight finding templates. The final isolated 50-finding benchmark passed with HTTP 200, 1.0981 s first render, 2,697,507 response bytes, 0.0419 s explicit save, 0.0554 s reorder, 2.0594 s PDF, and 0.2327 s XLSX. Before and after all gates, the configured database SHA-256 remained `8b8d7a0ddb7ae0d5a6b79150ae45dc7e29e128018a59b76925602ad47dffe328`; the explicit relative-path/content private-storage manifest remained `f232151aa30eaecfef301508e45c6fefa7fa903205b9c857897dc62090aea9a8`. The hosted GitHub Actions jobs have not been rerun and are not claimed as passed. Milestone 5 remains in progress.
+
 Milestone 4 closure remediation started on 2026-07-15 after a repository and runtime audit. Confirmed gaps are: the benchmark reads templates from and creates records in the configured application database; its setup happens before its cleanup guard and can leave client/assessment records on failure; the maintained Dusk invocation can target the configured application database; `scripts/verify.sh` and CI do not create one shared disposable verification environment; `DatabaseSeeder` incorrectly includes the 50-finding demonstration seeder while the required separate `SampleDataSeeder` is absent; the workspace-save request retention schedule is absent; fixture coverage does not yet include every declared evidence type; the required action naming/invokable convention and policy layer require a separate architecture review; and the configured local database currently has no status as an authoritative installation. No application database is considered a reference database during active development. The user approved D-041: automated verification must be autonomous and isolated, while manual Edge, Firefox, iOS Safari, Android Chrome, camera, and device-specific QA is deferred and does not block Milestone 4. Milestone 4 remains in progress until isolated verification, benchmark cleanup, seeding separation, focused regression tests, and all revised automated gates pass.
 
 Milestone 4 closure remediation completed and accepted on 2026-07-15. PHPUnit, Canary, Dusk, the definitive benchmark, `composer quality`, CI, and `scripts/verify.sh` now create marked disposable file-SQLite and storage roots; cleanup runs on success/failure, and reuse of an unmarked or project-overlapping root is rejected. The standalone benchmark creates and seeds every prerequisite inside its own temporary environment before measuring the real workspace, PDF, and XLSX paths. `DatabaseSeeder` now installs domain configuration only; the explicit production-guarded `SampleDataSeeder` owns the sample client/assessment/50 findings. Expired workspace-save request UUID rows are purged hourly. Diagnostics include `PRAGMA integrity_check`. Runtime-generated fixtures exercise every approved evidence type; valid ODS/OOXML ZIP containers are structurally identified while generic renamed ZIP archives remain rejected. Dead Milestone 0 report generators and their isolated proof view/test were removed, and the report uses an application-owned partial without changing the one-note PDF contract. Accepted evidence is strict Composer validation, Pint clean, PHPStan over 216 files with zero errors, 148 application tests/1,378 assertions, Canary strict 34/34 with zero skips, locked audit with zero advisories, Dusk 5 tests/102 assertions with no severe console errors, green diagnostics/storage audit, and a complete successful `scripts/verify.sh`. The isolated 50-finding benchmark passed with HTTP 200, 1.0906 s first render, 2,697,535 response bytes, 0.0452 s explicit save, 0.0546 s reorder, 2.0757 s PDF, and 0.2343 s XLSX. Before and after `composer quality`, Dusk, the standalone benchmark, and the final verification script, the configured development database SHA-256 remained `4af2bdd29112214c3fd5f81199bd9a282cd111fac7eaaaf9037cf59e759865fb`, the private-storage manifest SHA-256 remained `80e5f8185b9337b350a513095d04fa1a4634e8af74a44799cd81a7e709faac88`, and counts remained one user, one client, one assessment, and zero generated reports. Those records are development residue and are not declared a reference installation. Under D-041, deferred manual browser/device compatibility does not block this closure.
 
-Known work remaining for Milestone 5 is explicit and not included in Milestone 4 completion: after the assessment-lifecycle conformance slice, the approved required-action inventory remains structurally divergent for seven names whose behavior is consolidated in tested typed actions, and 8 of 46 current actions are invokable while 38 expose `handle()`; the clean Ubuntu GitHub jobs have not been executed in this local handoff; manual Edge/Firefox/iOS Safari/Android Chrome/camera/device QA remains deferred; and the production-like backup/restore and final deployment handoff remain incomplete.
+Known work remaining for Milestone 5 is explicit and not included in Milestone 4 completion: after the assessment-lifecycle conformance slice, the approved required-action inventory remains structurally divergent for seven names whose behavior is consolidated in tested typed actions, and 8 of 46 current actions are invokable while 38 expose `handle()`; the corrected GitHub Actions jobs still require an actual hosted rerun even though the exact non-Dusk verification command now passes locally; manual Edge/Firefox/iOS Safari/Android Chrome/camera/device QA remains deferred; and the production-like backup/restore and final deployment handoff remain incomplete.
 
 After the isolated Milestone 4 acceptance, the user explicitly requested initialization of the configured local development instance. Domain migrations/seeds and Filament assets were applied, the singleton administrator was explicitly replaced from the local `DEV_ADMIN_*` values, MFA was reset, diagnostics passed, and the application was started at `http://127.0.0.1:8000/admin`. A real headless Chromium/ChromeDriver login reached `Dashboard - AssestMe` at `/admin` with zero severe console errors. The unavailable optional `agent-browser` CLI was not claimed; ChromeDriver from the locked Dusk toolchain provided the executable browser proof. The one-time local credential is delivered in the handoff and is not stored in this plan.
 
@@ -3166,7 +3158,7 @@ Milestone 4 generated-file deletion vertical slice implemented and verified on 2
 
 Milestone 4 definitive XLSX vertical slice implemented and verified on 2026-07-15: the workspace now generates the approved native PhpSpreadsheet workbook with `Finding`, `Soluzioni`, and `Evidenze` sheets; the fixed VAT-excluded note appears exactly once in the merged first row, headers/filter/freeze panes and reviewed widths are applied, long text wraps, monetary cells remain numeric, and URL evidence uses native hyperlinks while private files remain non-public path references. Optional technical notes and explicit/default inclusion of excluded findings are honored without making incomplete excluded rows block export. XLSX files use independent immutable versions, physical UUID names, payload/settings snapshots including the effective export option, payload/file SHA-256, private storage, authenticated hash-verified downloads, generated-file history, and staged permanent deletion. Missing included evidence produces a visible error and no file/report row. The benchmark now measures the definitive persisted PDF and XLSX actions instead of Milestone 0 proof generators. During the acceptance restore, hidden private-storage files were found to be absent from backups; backup copy, manifest, and archive enumeration now include hidden files, with automated round-trip coverage for `.trash` content and `.gitignore`. Accepted evidence is `composer quality` with 128 tests/1,240 assertions, Pint clean, PHPStan over 215 files with zero errors, Canary strict 34/34 with zero skips, and locked audit with zero advisories. The final complete `scripts/verify.sh` run passed, including aggregate Dusk with 5 tests/99 assertions and no severe console errors. The definitive 50-finding benchmark passed at 1.1787 s first render, 2,701,599 response bytes, 0.0519 s explicit save, 0.0572 s reorder, 2.0873 s PDF, and 0.2402 s XLSX. A real fixed backup contained `storage/private/.gitignore`, restored successfully, and post-restore diagnostics remained green. Milestone 4 remains in progress only because the blocking manual visual and cross-browser/mobile acceptance checklist is not completed or claimed by this slice.
 
-Milestone 1 completed in the Ubuntu 24.04 reference environment with the approved owned risk-profile schema, 16-entry matrix, global effort levels, typed general/report settings, native Filament management, and failure-path tests. Accepted evidence is 87 application tests with 774 assertions, Pint clean, Larastan level 6 with zero errors, Canary strict 31/31 with zero skips, locked audit with zero advisories, and Dusk Chromium 150 with 1 test/28 assertions covering every Milestone 1 browser surface and no severe console errors.
+Milestone 1 completed in the then-current reference environment with the approved owned risk-profile schema, 16-entry matrix, global effort levels, typed general/report settings, native Filament management, and failure-path tests. Accepted evidence is 87 application tests with 774 assertions, Pint clean, Larastan level 6 with zero errors, Canary strict 31/31 with zero skips, locked audit with zero advisories, and Dusk Chromium 150 with 1 test/28 assertions covering every Milestone 1 browser surface and no severe console errors.
 
 Milestone 2 completed with native template and nested-solution CRUD, stable external identifiers, semantic aggregate validation, versioned JSON Schema validation, two-stage import preview, deterministic replace/skip behavior, atomic failure handling, equivalent export round trips, and an eight-template/eight-solution Italian base library. Accepted evidence is 99 application tests with 851 assertions, Pint clean, Larastan level 6 with zero errors, Canary strict 34/34 with zero skips, locked audit with zero advisories, and a focused Dusk Chromium run with 1 test/5 assertions and no severe console errors.
 
@@ -3183,7 +3175,7 @@ Record unexpected package behavior, version incompatibilities, and material desi
 - 2026-07-15: The user approved deferring manual Edge, Firefox, iOS Safari, Android Chrome, camera, and device-specific verification until a reference installation and suitable devices exist. Existing automated tests, Canary, and maintained Dusk/Chromium coverage remain the development gates; deferred checks must not be claimed as passed.
 - 2026-07-15: `DatabaseSeeder` called `MilestoneZeroSeeder`, which created a sample client, assessment, and 50 findings. This contradicted the domain-only seed contract and explained why benchmark/CI behavior accidentally depended on seeded sample state. `DatabaseSeeder` now runs only the domain seeders, while the explicit production-guarded `SampleDataSeeder` owns demonstration records; focused tests assert both inventories.
 - 2026-07-15: Laravel's development server command only forwards environment values present in `$_ENV`; on this host, shell exports were available through `getenv()`/`$_SERVER` but not `$_ENV`. The first isolated Dusk attempt therefore kept its temporary database but wrote generated files to the configured application storage. The maintained runner now starts PHP's local server with `variables_order=EGPCS`, so the web process and Dusk process resolve the same marked disposable storage. The browser test asserts that generated/deleted report paths are under that root, and the accepted before/after storage manifest is unchanged.
-- 2026-07-15: A valid ODS generated by the locked PhpSpreadsheet writer is reported as `application/zip` by this Ubuntu `fileinfo`, so a simple MIME allow-list incorrectly rejected an approved evidence type. The evidence action now opens ZIP-reported ODS/DOCX/XLSX files read-only, bounds the inspected entries, verifies the expected ODF/OOXML structure, and stores the canonical MIME. Tests exercise JPEG, PNG, WebP, PDF, TXT, LOG, CSV, DOCX, XLSX, and ODS content plus a generic ZIP renamed to `.ods`, which remains rejected.
+- 2026-07-15: A valid ODS generated by the locked PhpSpreadsheet writer is reported as `application/zip` by the CI host's `fileinfo`, so a simple MIME allow-list incorrectly rejected an approved evidence type. The evidence action now opens ZIP-reported ODS/DOCX/XLSX files read-only, bounds the inspected entries, verifies the expected ODF/OOXML structure, and stores the canonical MIME. Tests exercise JPEG, PNG, WebP, PDF, TXT, LOG, CSV, DOCX, XLSX, and ODS content plus a generic ZIP renamed to `.ods`, which remains rejected.
 - 2026-07-15: The required action inventory was compared class-by-class rather than inferred from names. `CompleteAssessment`, `ReopenAssessment`, and `ArchiveAssessment` are consolidated in `TransitionAssessment`; reorder and patch persistence are in `SaveAssessmentWorkspace`/`SaveFindingDetails`; priority override recalculation is in `RecalculateFindingPriority`; recommended/implemented references are in `SetFindingSolutionReference`; finding state changes are in `TransitionFinding`; and evidence creation is split into `StoreEvidenceFile`/`StoreEvidenceUrl`. These implementations are exercised and are not placeholder or dead logic, so introducing duplicate facades during Milestone 4 would add regression surface without fixing behavior. The exact approved class inventory and invokable convention nevertheless remain unmet architecture work, not silently reinterpreted. At that audit point, the absence of `app/Policies` and dashboard persistence for backup/integrity failures was also confirmed; both were resolved by later Milestone 5 slices.
 - 2026-07-17: The assessment lifecycle consolidation was resolved without facades: `TransitionAssessment` was removed and its three operations became the required invokable `CompleteAssessment`, `ReopenAssessment`, and `ArchiveAssessment` actions. Checking the caller-provided model before acquiring the aggregate lock allowed a stale draft instance to overwrite a lifecycle change already persisted by another request. Each operation now loads and validates the current row while holding the assessment save lock and database transaction; the regression test proves a stale transition is rejected without changing status or `lock_version`.
 - 2026-07-17: The private-storage manifest value supplied at handoff did not include its serialization command and is not reproduced by the explicit relative-path/content algorithm used in this slice. The command `(cd storage/app/private && find . -type f -printf '%P\0' | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum)` produced `f232151aa30eaecfef301508e45c6fefa7fa903205b9c857897dc62090aea9a8` both before and after the gates. The configured database independently retained the supplied SHA-256 `8b8d7a0ddb7ae0d5a6b79150ae45dc7e29e128018a59b76925602ad47dffe328`.
@@ -3191,9 +3183,10 @@ Record unexpected package behavior, version incompatibilities, and material desi
 - 2026-07-17: Evidence-format acceptance previously generated eight of its ten format families only inside a temporary test directory, leaving the committed fixture inventory incomplete. The repository now contains a valid reusable file for every approved extension, including both JPEG extensions, and the acceptance dataset opens those committed files directly. The existing invalid renamed-ZIP case remains generated separately so it cannot be confused with a reusable valid fixture.
 - 2026-07-17: The literal root-container invocation `composer quality` was rejected before script execution by Composer's superuser plugin safety check. Repeating the same locked script as `COMPOSER_ALLOW_SUPERUSER=1 composer quality`, which explicitly enables the two allow-listed Composer plugins in this root-only development container, passed Pint, PHPStan, 149 application tests/1,381 assertions, Canary 34/34 with zero skips, and the locked advisory audit. No production or project configuration was changed for this environment-specific invocation.
 - 2026-07-17: Laravel 13 resolves a policy callback only when the policy implements the requested ability method, so a `before()`-only singleton policy would not cover Filament's authorization calls. The implemented policy defines each ability used by the resources, permits ordinary record operations only for the persisted `singleton_key = 1` administrator, and deliberately returns false for bulk delete and force-delete abilities. Evidence and generated-report downloads now perform the same policy check after authentication instead of relying on route middleware alone.
+- 2026-07-17: The supplied GitHub log showed translation keys in every failing assertion while a clean checkout had no `.env`; repository inspection established that both Laravel locale defaults were English and the isolated verifier did not override locale or timezone. This made the failures cascade across domain validation, commands, Filament, PDF, and XLSX rather than identifying independent regressions in those features. The maintained environment now exports `it`, `it`, and `Europe/Rome`, the application defaults match that contract, and the exact non-Dusk verification command plus the 48-test affected subset pass even when the parent environment is forced to `en`/`UTC`. This is local evidence only; no hosted GitHub job result is claimed.
 
 - 2026-07-13: The initial repository contains the specification package only; no Laravel application, `composer.json`, or `composer.lock` exists yet.
-- 2026-07-13: The available development host is Windows with PHP 8.3.28, Composer 2.9.2, and Git 2.54.0. Ubuntu package commands were not run because Ubuntu 24.04 is the normative reference environment. The standalone SQLite CLI is not currently available on this host.
+- 2026-07-13: The available development host was Windows with PHP 8.3.28, Composer 2.9.2, and Git 2.54.0. Distribution-specific package commands were not run. The standalone SQLite CLI was unavailable and was later removed from the runtime contract because the application uses PHP's `pdo_sqlite` extension directly.
 - 2026-07-13: Required PHP extensions `fileinfo`, `gd`, `intl`, `pdo_sqlite`, and `zip` were present but disabled on the development host and were enabled; the bundled `sqlite3` extension was enabled as well. The system Composer 2.9.2 cannot self-update without administrator rights, so the bootstrap used a portable Composer 2.10.2 PHAR verified against the official SHA-256 `5ee7125f8a30a34d246cefdc0bc85b8a783b28f2aec968994118512350d28027`.
 - 2026-07-13: The independent base bootstrap resolved `laravel/laravel` 13.8.0 with `laravel/framework` 13.19.0. `composer validate --strict` passed, the initial lock audit reported no advisories, SQLite migrations ran, and the two scaffold tests passed after creating the ignored local environment.
 - 2026-07-13: The original D-008 package `aureuserp/advance-table-repeater` was unavailable on Packagist, and its upstream repository exposed no release or tag. The user approved removing the dependency and marked the original D-008 SUPERSEDED. The new APPROVED D-008 uses the native Filament 5 table Repeater as the primary implementation; the formal D-008 blocker is resolved. No VCS repository, `dev-master` pin, commit pin, fork, compatibility code, or alternate grid was added.
@@ -3217,13 +3210,13 @@ Record unexpected package behavior, version incompatibilities, and material desi
 - 2026-07-13: The application-aware backup slice now creates a checkpointed SQLite `VACUUM INTO` snapshot, copies private storage including generated reports, records application/settings metadata, writes and verifies a per-file SHA-256 manifest, restricts archives to mode 0600, and applies 7-daily/4-weekly/6-monthly retention to managed archives. Restore rejects non-maintenance execution, verifies the archive before replacement, creates an unpruned safety backup, replaces database and private storage with filesystem compensation, reconnects SQLite, and runs `assestme:diagnose`. The Laravel Scheduler registers the backup for 02:30 Europe/Rome and the existing single system cron entry remains authoritative. The production deployment script was aligned with the implemented restore and diagnostics signatures. CI-visible tests restore both populated and empty private storage against isolated temporary database/storage paths and prove a tampered archive exits non-zero. Evidence is green: 54 Pest tests with 491 assertions, Pint, Larastan level 6, diagnostics, Canary strict 23/23 with zero skips, Composer validation strict, and locked audit with zero advisories. No browser run was claimed because this slice has no browser surface.
 - 2026-07-13: The Milestone 1 dashboard now shows real draft/completed assessment counts, open and high/critical included finding counts, the latest five assessments, unresolved cleanup failures, and the timestamp of the newest managed successful backup. Recoverable deletion operations persist UUID, entity, state, trash path, and a size/SHA-256 file manifest. Archive mode retains files; permanent mode moves private files into a same-tree operation directory before the database transaction, restores them when a restricted database delete fails, and records completed or failed post-commit cleanup without false success. Path traversal, duplicate paths, symlinks, and missing referenced files are rejected before deletion. Evidence is green: 62 Pest tests with 545 assertions, Pint, Larastan level 6, diagnostics, Canary strict 23/23 with zero skips, Composer validation/audit, and Dusk Chrome with 1 test/17 assertions covering the dashboard plus existing Milestone 1 pages with no severe console errors.
 - 2026-07-13: `assestme:storage:cleanup` now retries only committed or previously failed deletion operations, validates that each persisted trash path exactly matches the configured private-trash root and operation UUID before removal, treats an already absent committed directory as cleaned, and exits non-zero while preserving a visible `cleanup_failed` record when removal fails. Focused success, invalid-path, and mocked filesystem-failure tests are included. Evidence is green: 65 Pest tests with 569 assertions, Pint, and Larastan level 6.
-- 2026-07-13: The CI workflow and its maintained stub now keep the SQLite environment across steps, run every current quality/diagnostic/benchmark gate, run Dusk against a readiness-checked local server, retain failure artifacts, and include a separate Ubuntu 24.04 clean-checkout bootstrap job that verifies exactly one administrator and all 18 seeded categories. `bootstrap-local.sh` now runs domain seeds and diagnostics; `verify.sh` runs Dusk by default unless explicitly disabled by CI before its dedicated browser step. All shell scripts are committed executable. Both YAML files parse successfully with Symfony YAML and the embedded Tinker assertions were executed locally. The Ubuntu-only bootstrap itself cannot run on the Windows development host because the required Linux shell/reference environment is absent; its definitive execution evidence remains the GitHub Actions job.
+- 2026-07-13: The CI workflow and its maintained stub keep the SQLite environment across steps, run every current quality/diagnostic/benchmark gate, run Dusk against a readiness-checked local server, retain failure artifacts, and include a separate clean-checkout bootstrap job that verifies exactly one administrator and all 18 seeded categories. `bootstrap-local.sh` runs domain seeds and diagnostics; `verify.sh` runs Dusk by default unless explicitly disabled by CI before its dedicated browser step. All shell scripts are committed executable. Both YAML files parse successfully with Symfony YAML and the embedded Tinker assertions were executed locally. Specification 2.3 later clarified that the hosted runner is CI infrastructure rather than a production operating-system requirement.
 - 2026-07-13: D-037 resolved to `leek/filament-right-click` 1.3.5 and `occtherapist/advanced-table-export-for-filament` 1.0.1, both MIT licensed and compatible with the locked Laravel 13/Filament 5 stack. Package metadata, service providers, Composer hooks, registered assets, views, translations, actions, and relevant source paths were inspected before activation; neither package adds a Composer plugin or install script, and the exporter reuses locked OpenSpout 4.32.0. Right Click adds one lazily loaded JavaScript asset and stylesheet, published through the native `filament:assets` command without Node or a frontend build. Advanced Table Export has no frontend build requirement. No vendor file was edited.
 - 2026-07-13: The application-owned standard-table enhancement applies Right Click only to the seven currently existing standard resource lists and keeps every context action duplicated by a visible Filament record action; it is absent from the assessment workspace. Generic export is intentionally limited to CSV and XLSX, with Italian controls and a 2,000-row cap; plugin PDF/JSON/XML/clipboard paths are disabled, so assessment PDF/workbook generation remains dedicated. A focused test reopens a real XLSX download, and Dusk dispatches a real `contextmenu` event, invokes the contextual edit modal, proves the visible edit path, and reports no severe console errors. Accepted evidence is green: 75 Pest tests with 608 assertions; Pint; Larastan level 6; Composer validation/audit; Canary strict 23/23 with zero skips; and Dusk Chrome 150.0.7871.101 at 1920×1080 with 1 test/23 assertions. The database, domain seed, and local administrator were restored after Dusk.
 - 2026-07-13: The user approved the missing Milestone 1 decisions and specification 2.2 records them as D-038 through D-040. Risk profiles own their consequence, likelihood, priority, and matrix rows; effort levels are global. VAT treatment, rates, and calculations are absent and non-configurable, while VAT numbers remain anagraphic identifiers only. PDF and XLSX each show the fixed VAT-excluded estimate note once. Optional consultant identity/contact fields now include logo, PEC, tax code, and a text-only name/role signature block.
 - 2026-07-13: The native Filament 5 table Repeater layout was remediated without replacing the approved component or editing vendor files. `compact()`, wrapped headers, top-aligned cells, bounded three-row multiline controls, and Filament's native container-responsive vertical rendering replace the previous forced fixed table layout. The trailing clone/delete cell previously collapsed to 34 px and allowed both 32 px actions to overflow; the workspace-scoped published stylesheet now reserves a 96 px native action column. Browser geometry confirms both actions remain inside that cell, the document has no horizontal overflow, and the first long-content row remains 93 px high. Evidence is green: `composer quality` with 78 application tests/655 assertions, PHPStan with zero errors, Canary strict 23/23 with zero skips, and locked audit with zero advisories; focused Dusk adds 1 test/34 assertions for desktop containment, mobile rendering, persistence actions, offline state, and zero severe console errors. Dusk now uses file-SQLite `DatabaseTruncation` across both browser classes so the aggregate run no longer leaves stale WAL/schema state between classes.
 - 2026-07-13: Milestone 1 risk, effort, and settings are complete. Risk-profile ownership and same-profile matrix constraints are enforced by foreign keys and one aggregate transaction; referenced levels are disabled instead of deleted, the active/default profile remains enabled, and all 16 consequence/likelihood combinations are required. General and report settings use typed Spatie settings classes and private consultant-logo storage; VAT identifiers are normalized anagraphic values and no fiscal setting or calculation exists. Accepted evidence is 87 application tests/774 assertions, Pint clean, Larastan level 6 with zero errors, Canary strict 31/31 with zero skips, locked audit with zero advisories, and Dusk Chromium 150 with 1 test/28 assertions and no severe console errors.
-- 2026-07-13: The Ubuntu host provides Chromium as a confined snap. ChromeDriver session creation stalled while discovering an ephemeral debugging port and running as root was rejected by Chrome's sandbox. The Dusk harness now adds `--no-sandbox` only when the effective user is root and uses ChromeDriver's supported `--remote-debugging-pipe` transport; the resulting browser run passes. This affects development/CI browser transport only and adds no production runtime dependency.
+- 2026-07-13: The Linux browser-test host provided Chromium as a confined package. ChromeDriver session creation stalled while discovering an ephemeral debugging port and running as root was rejected by Chrome's sandbox. The Dusk harness now adds `--no-sandbox` only when the effective user is root and uses ChromeDriver's supported `--remote-debugging-pipe` transport; the resulting browser run passes. This affects development/CI browser transport only and adds no production runtime dependency.
 - 2026-07-13: Milestone 2 template management is complete. Aggregate saves enforce same-profile risk references, solution ownership, estimate/billing invariants, exactly one recommended solution, and soft deletion of omitted nested solutions. Import preview reports create/replace/unchanged state and field-level differences before the confirmed atomic apply; invalid or duplicate payloads leave the database unchanged, and JSON export re-imports as data-equivalent. The domain seeder installs eight Italian templates with eight solutions. Accepted evidence is 99 Pest tests/851 assertions, Pint, Larastan level 6, Canary strict 34/34 with zero skips, Composer validation/audit, and focused Dusk with 1 test/5 assertions and no severe console errors.
 - 2026-07-13: Milestone 3 replaced the temporary proof projections with the definitive related finding-solution, risk, effort, scope, and evidence records. Native Filament file upload state is adopted from a private pending directory only after application-level extension, MIME, size, image-dimension, duplicate-hash, and aggregate-limit validation; downloads remain authenticated with defensive response headers. Closing a slide-over and mutating lifecycle state in the same Livewire page exposed an Alpine action-state reference after the component tree changed; successful complete/reopen transitions now perform a full workspace redirect, preserving the approved component and avoiding vendor changes. Completed-to-archived transitions preserve `completed_at`, while reopening clears it. Accepted evidence is 111 Pest tests/1,001 assertions, Pint, Larastan level 6, Canary strict 34/34 with zero skips, Composer validation/audit, focused Dusk with 1 test/8 assertions and no severe console errors, diagnostics fully green, and every 50-finding performance budget passing.
 - 2026-07-15: The first Milestone 4 reporting slice replaced the user-facing proof PDF with the definitive Spatie Laravel PDF/DOMPDF pipeline. Immutable normalized payload and complete settings snapshots, PDF version rows, physical UUID filenames, SHA-256 verification, completion validation, verified embedded evidence, PNG/JPEG logo revalidation including the 5 MB limit, archived master-data labels, the fixed VAT-excluded note exactly once, authenticated downloads, history, freeze-safe reload, and generated-report storage audit are implemented. The direct proof PDF/XLSX routes were removed so incomplete Milestone 0 artifacts cannot be downloaded as reports. Automated PDF coverage parses Italian output, first/final content page labels excluding the cover, long text, page breaks, 50 findings, alternatives, real image/caption embedding, non-image type references, clickable URL annotations, consultant/client logos, missing/corrupt evidence, invalid/oversized logos, immutable versions, tamper rejection, and freeze only after successful persistence. Accepted current evidence is `composer quality` with 120 application tests/1,101 assertions, Pint clean, PHPStan over 212 files with zero errors, Canary strict 34/34 with zero skips, locked audit with zero advisories, aggregate Dusk Chromium with 5 tests/91 assertions and no severe console errors, and a complete successful `scripts/verify.sh` run. The definitive 50-finding PDF gate passes the 30-second and 50 MB limits. The maintained general benchmark is green at 1.1782 s first render, 0.0521 s explicit save, and 0.0568 s reorder, but its PDF/XLSX metrics still time the internal Milestone 0 proof generators until the XLSX slice can migrate both report metrics together.

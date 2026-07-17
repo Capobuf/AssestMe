@@ -36,6 +36,9 @@ assestme_begin_isolated_environment() {
     export APP_ENV=testing
     export APP_DEBUG=false
     export APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    export APP_FALLBACK_LOCALE=it
+    export APP_LOCALE=it
+    export APP_TIMEZONE=Europe/Rome
     export ASSESTME_BACKUP_ROOT="$ASSESTME_TEST_ROOT/storage/backups"
     export ASSESTME_TEST_ISOLATED=1
     export ASSESTME_TEST_ROOT

@@ -1,3 +1,3 @@
 # Install as /etc/cron.d/assestme with mode 0644.
 # The application scheduler owns backup retention and housekeeping schedules.
-* * * * * assestme cd /var/www/assestme/current && /usr/bin/php artisan schedule:run >> /dev/null 2>&1
+* * * * * __ASSESTME_RUNTIME_USER__ cd __ASSESTME_CURRENT_ROOT__ && __ASSESTME_PHP_BINARY__ artisan schedule:run >> /dev/null 2>&1

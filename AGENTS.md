@@ -1,6 +1,6 @@
 # AGENTS.md — AssestMe
 
-Read `plan.md` completely before changing code. `plan.md` version 2.2 is the authoritative product, architecture, deployment, data, UI, persistence, import, report, test, and acceptance specification.
+Read `plan.md` completely before changing code. `plan.md` version 2.3 is the authoritative product, architecture, deployment, data, UI, persistence, import, report, test, and acceptance specification.
 
 ## Authority
 
@@ -12,8 +12,8 @@ Read `plan.md` completely before changing code. `plan.md` version 2.2 is the aut
 
 ## Required stack
 
-- Ubuntu Server 24.04 LTS reference environment.
-- PHP 8.3 from official Ubuntu repositories.
+- No host operating-system distribution is normative.
+- PHP 8.3 with the extensions locked by the plan.
 - Laravel 13.
 - Filament 5.
 - SQLite.
@@ -24,7 +24,7 @@ Read `plan.md` completely before changing code. `plan.md` version 2.2 is the aut
 - File cache/session and synchronous queue.
 - Laravel Dusk for browser testing.
 
-Do not require Node.js, npm, pnpm, Vite builds, Docker, Redis, Chromium in production, or an external PDF/storage/service dependency.
+Do not require Node.js, npm, pnpm, Vite builds, Redis, Chromium in production, or an external PDF/storage/service dependency. Docker is permitted for future packaging but is not a current development, verification, or runtime requirement.
 
 ## No fallback and no fake success
 

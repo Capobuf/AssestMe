@@ -11,20 +11,28 @@ info() {
 }
 
 source_dir="${1:-$PWD}"
-release_root="${ASSESTME_RELEASE_ROOT:-/var/www/assestme}"
+release_root="${ASSESTME_RELEASE_ROOT:-}"
 release_id="$(date -u +%Y%m%dT%H%M%SZ)"
 release_dir="${release_root}/releases/${release_id}"
 shared_dir="${release_root}/shared"
 current_link="${release_root}/current"
 previous_target=""
 backup_path=""
-backup_root="${ASSESTME_BACKUP_ROOT:-/var/backups/assestme}"
+backup_root="${ASSESTME_BACKUP_ROOT:-}"
+runtime_group="${ASSESTME_RUNTIME_GROUP:-}"
+fpm_service="${ASSESTME_FPM_SERVICE:-}"
 switched=0
 maintenance_enabled=0
 
 [[ "$source_dir" == /* ]] || source_dir="$(realpath "$source_dir")"
+[[ -n "$release_root" ]] || fail "ASSESTME_RELEASE_ROOT is required."
 [[ "$release_root" == /* ]] || fail "ASSESTME_RELEASE_ROOT must be an absolute path."
+[[ -n "$backup_root" ]] || fail "ASSESTME_BACKUP_ROOT is required."
 [[ "$backup_root" == /* ]] || fail "ASSESTME_BACKUP_ROOT must be an absolute path."
+[[ -n "$runtime_group" ]] || fail "ASSESTME_RUNTIME_GROUP is required."
+[[ "$runtime_group" =~ ^[A-Za-z_][A-Za-z0-9_.-]*$ ]] || fail "ASSESTME_RUNTIME_GROUP is invalid."
+[[ -n "$fpm_service" ]] || fail "ASSESTME_FPM_SERVICE is required."
+[[ "$fpm_service" =~ ^[A-Za-z0-9_.@-]+$ ]] || fail "ASSESTME_FPM_SERVICE is invalid."
 [[ -f "$source_dir/artisan" && -f "$source_dir/composer.lock" ]] || \
     fail "The source directory must contain artisan and composer.lock."
 [[ -n "${ASSESTME_HOSTNAME:-}" ]] || fail "ASSESTME_HOSTNAME is required."
@@ -52,7 +60,7 @@ if [[ -L "$current_link" ]]; then
 fi
 
 secure_permissions() {
-    chgrp -R www-data "$release_dir" "$shared_dir/.env" "$shared_dir/database" "$shared_dir/storage"
+    chgrp -R "$runtime_group" "$release_dir" "$shared_dir/.env" "$shared_dir/database" "$shared_dir/storage"
     find "$release_dir" -type d -exec chmod 0750 {} +
     find "$release_dir" -type f -exec chmod 0640 {} +
     find "$release_dir/scripts" -type f -name '*.sh' -exec chmod 0750 {} +
@@ -79,7 +87,7 @@ cleanup_failed_release() {
             else
                 rm -f "$current_link"
             fi
-            if ! systemctl reload php8.3-fpm; then
+            if ! systemctl reload "$fpm_service"; then
                 printf 'ERROR: PHP-FPM reload failed during deployment recovery.\n' >&2
             fi
         fi
@@ -137,7 +145,7 @@ ln -sfn "$release_dir" "${current_link}.next"
 mv -Tf "${current_link}.next" "$current_link"
 switched=1
 
-systemctl reload php8.3-fpm
+systemctl reload "$fpm_service"
 php artisan up
 maintenance_enabled=0
 curl --fail --silent --show-error --retry 5 --retry-delay 2 "https://${ASSESTME_HOSTNAME}/admin" >/dev/null
