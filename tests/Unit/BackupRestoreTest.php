@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Enums\OperationalCheckStatus;
+use App\Enums\OperationalCheckType;
 use App\Models\User;
+use App\Services\Operations\OperationalCheckStore;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -60,7 +63,9 @@ it('backs up, verifies, and restores the SQLite database and private storage tog
 
     expect(Artisan::call('assestme:backup', ['--output' => $archive]))->toBe(0)
         ->and(is_file($archive))->toBeTrue()
-        ->and(Artisan::call('assestme:backup:verify', ['archive' => $archive]))->toBe(0);
+        ->and(Artisan::call('assestme:backup:verify', ['archive' => $archive]))->toBe(0)
+        ->and(app(OperationalCheckStore::class)->find(OperationalCheckType::Backup)?->status)
+        ->toBe(OperationalCheckStatus::Succeeded);
 
     $administrator->update(['name' => 'After backup']);
     File::put($reportPath, 'Report modificato');
@@ -97,6 +102,23 @@ it('returns a failure when an archived file no longer matches the manifest', fun
     unset($phar);
 
     expect(Artisan::call('assestme:backup:verify', ['archive' => $archive]))->toBe(1);
+});
+
+it('persists a failed backup attempt without reporting success', function (): void {
+    User::factory()->create();
+    $archive = $this->backupRoot.DIRECTORY_SEPARATOR.'already-exists.tar.gz';
+    File::put($archive, 'existing archive');
+
+    expect(Artisan::call('assestme:backup', ['--output' => $archive]))->toBe(1)
+        ->and(Artisan::output())->toContain('already exists');
+
+    $check = app(OperationalCheckStore::class)->find(OperationalCheckType::Backup);
+
+    expect($check)->not->toBeNull()
+        ->and($check?->status)->toBe(OperationalCheckStatus::Failed)
+        ->and($check?->lastFailedAt)->not->toBeNull()
+        ->and($check?->lastSucceededAt)->toBeNull()
+        ->and($check?->errorText)->toContain('already exists');
 });
 
 it('restores an empty private storage directory', function (): void {
@@ -146,5 +168,14 @@ it('schedules the managed backup at 02:30 Europe Rome time', function (): void {
 
     expect($event)->not->toBeNull()
         ->and($event->expression)->toBe('30 2 * * *')
+        ->and($event->timezone)->toBe('Europe/Rome');
+});
+
+it('schedules the SQLite integrity check after the managed backup', function (): void {
+    $event = collect(Schedule::events())
+        ->first(fn ($event): bool => str_contains((string) $event->command, 'assestme:integrity-check'));
+
+    expect($event)->not->toBeNull()
+        ->and($event->expression)->toBe('30 3 * * *')
         ->and($event->timezone)->toBe('Europe/Rome');
 });

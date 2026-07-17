@@ -19,7 +19,18 @@ return [
         'cleanup_failures' => 'Pulizie file da risolvere',
         'last_backup' => 'Ultimo backup riuscito',
         'backup_never' => 'Mai eseguito',
+        'backup_failed' => 'Ultimo tentativo di backup fallito il :date',
+        'database_integrity' => 'Integrità database',
+        'integrity_never' => 'Nessun controllo registrato',
+        'integrity_ok' => 'OK — :date',
+        'integrity_failed' => 'Errore — :date',
+        'integrity_failure_help' => 'Eseguire la diagnostica e risolvere il problema prima di continuare.',
         'latest_assessments' => 'Ultimi assessment',
+    ],
+    'operations' => [
+        'integrity_command_description' => 'Esegue e registra il controllo periodico di integrità SQLite',
+        'integrity_passed' => 'Controllo di integrità SQLite superato.',
+        'integrity_failed' => 'Controllo di integrità SQLite fallito: :reason',
     ],
     'common' => [
         'name' => 'Nome',

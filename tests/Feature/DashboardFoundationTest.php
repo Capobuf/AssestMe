@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Actions\Operations\RecordOperationalCheck;
 use App\Enums\AssessmentStatus;
 use App\Enums\DeletionOperationStatus;
 use App\Enums\FindingStatus;
+use App\Enums\OperationalCheckStatus;
+use App\Enums\OperationalCheckType;
 use App\Filament\Widgets\AssessmentStatsOverview;
 use App\Filament\Widgets\LatestAssessments;
 use App\Models\Assessment;
@@ -84,6 +87,41 @@ it('reports the newest managed backup without treating unrelated archives as suc
 
         expect($status)->toBeInstanceOf(CarbonImmutable::class)
             ->and($status?->getTimestamp())->toBe(200);
+    } finally {
+        File::deleteDirectory($root);
+    }
+});
+
+it('shows persisted backup and integrity failures without exposing technical error text', function (): void {
+    $administrator = User::factory()->create();
+    $this->actingAs($administrator);
+    $failedAt = CarbonImmutable::parse('2026-07-17 08:15:00', 'UTC');
+    $root = storage_path('framework/testing/dashboard-operations-'.bin2hex(random_bytes(6)));
+    File::ensureDirectoryExists($root);
+    config()->set('assestme.backup.private_storage_path', $root);
+
+    try {
+        $record = app(RecordOperationalCheck::class);
+        $record(
+            OperationalCheckType::Backup,
+            OperationalCheckStatus::Failed,
+            'Sensitive backup path failed.',
+            $failedAt,
+        );
+        $record(
+            OperationalCheckType::DatabaseIntegrity,
+            OperationalCheckStatus::Failed,
+            'database disk image is malformed',
+            $failedAt,
+        );
+
+        Livewire::test(AssessmentStatsOverview::class)
+            ->assertSee(__('assestme.dashboard.backup_failed', ['date' => '17/07/2026 10:15']))
+            ->assertSee(__('assestme.dashboard.database_integrity'))
+            ->assertSee(__('assestme.dashboard.integrity_failed', ['date' => '17/07/2026 10:15']))
+            ->assertSee(__('assestme.dashboard.integrity_failure_help'))
+            ->assertDontSee('Sensitive backup path failed.')
+            ->assertDontSee('database disk image is malformed');
     } finally {
         File::deleteDirectory($root);
     }

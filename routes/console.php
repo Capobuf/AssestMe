@@ -16,6 +16,11 @@ Schedule::command('assestme:backup')
     ->timezone('Europe/Rome')
     ->withoutOverlapping();
 
+Schedule::command('assestme:integrity-check')
+    ->dailyAt('03:30')
+    ->timezone('Europe/Rome')
+    ->withoutOverlapping();
+
 Schedule::call(fn (): int => app(PurgeExpiredWorkspaceSaveRequests::class)())
     ->name('assestme:purge-workspace-save-requests')
     ->hourly()

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Browser;
 
+use App\Actions\Operations\RecordOperationalCheck;
+use App\Enums\OperationalCheckStatus;
+use App\Enums\OperationalCheckType;
 use App\Models\Assessment;
 use App\Models\Asset;
 use App\Models\AssetType;
@@ -49,6 +52,16 @@ final class MilestoneOneFoundationTest extends DuskTestCase
         Category::factory()->create(['name' => 'Categoria prova browser', 'sort_order' => 0]);
         Tag::factory()->create(['name' => 'Tag prova browser']);
         Assessment::factory()->create(['title' => 'Assessment dashboard browser']);
+        app(RecordOperationalCheck::class)(
+            OperationalCheckType::Backup,
+            OperationalCheckStatus::Failed,
+            'Browser backup failure proof.',
+        );
+        app(RecordOperationalCheck::class)(
+            OperationalCheckType::DatabaseIntegrity,
+            OperationalCheckStatus::Failed,
+            'Browser integrity failure proof.',
+        );
         $riskProfile = RiskProfile::query()->where('is_default', true)->firstOrFail();
         $effortLevel = EffortLevel::query()->where('code', 'low')->firstOrFail();
 
@@ -56,6 +69,9 @@ final class MilestoneOneFoundationTest extends DuskTestCase
             $browser->loginAs($administrator)
                 ->visit('/admin')
                 ->waitForText('Assessment in bozza')
+                ->assertSee('Ultimo tentativo di backup fallito')
+                ->assertSee('Integrità database')
+                ->assertSee('Eseguire la diagnostica e risolvere il problema prima di continuare.')
                 ->waitForText('Ultimi assessment')
                 ->waitForText('Assessment dashboard browser')
                 ->visit('/admin/clients')
