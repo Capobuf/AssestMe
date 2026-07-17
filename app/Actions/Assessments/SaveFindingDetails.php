@@ -122,7 +122,7 @@ final class SaveFindingDetails
             app(SetImplementedSolution::class)($finding, $implemented);
 
             if ($targetStatus !== $originalStatus) {
-                app(TransitionFinding::class)->handle($finding->refresh(), $targetStatus);
+                app(TransitionFindingStatus::class)($finding->refresh(), $targetStatus);
             }
 
             return $finding->refresh();

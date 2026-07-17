@@ -14,7 +14,7 @@ use App\Actions\Assessments\ReopenAssessment;
 use App\Actions\Assessments\SaveFindingDetails;
 use App\Actions\Assessments\SetImplementedSolution;
 use App\Actions\Assessments\SetRecommendedSolution;
-use App\Actions\Assessments\TransitionFinding;
+use App\Actions\Assessments\TransitionFindingStatus;
 use App\Enums\AssessmentStatus;
 use App\Enums\BillingFrequency;
 use App\Enums\EstimateType;
@@ -210,15 +210,35 @@ it('rejects a lifecycle transition when the caller holds stale assessment state'
 it('enforces finding state transitions and resolved requirements', function (): void {
     $finding = Finding::factory()->create(['status' => FindingStatus::Open]);
 
-    expect(fn () => app(TransitionFinding::class)->handle($finding, FindingStatus::Resolved))
+    expect(fn () => app(TransitionFindingStatus::class)($finding, FindingStatus::Resolved))
         ->toThrow(ValidationException::class);
 
-    $planned = app(TransitionFinding::class)->handle($finding, FindingStatus::Planned);
+    $planned = app(TransitionFindingStatus::class)($finding, FindingStatus::Planned);
     $planned->update(['resolution_notes' => 'Rischio eliminato mediante modifica configurativa.']);
-    $resolved = app(TransitionFinding::class)->handle($planned->fresh(), FindingStatus::Resolved);
+    $resolved = app(TransitionFindingStatus::class)($planned->fresh(), FindingStatus::Resolved);
 
     expect($resolved->status)->toBe(FindingStatus::Resolved)
-        ->and($resolved->resolved_at)->not->toBeNull();
+        ->and($resolved->resolved_at)->not->toBeNull()
+        ->and(method_exists(TransitionFindingStatus::class, '__invoke'))->toBeTrue();
+
+    expect(fn () => app(TransitionFindingStatus::class)($resolved, FindingStatus::Accepted))
+        ->toThrow(ValidationException::class);
+});
+
+it('rejects finding transitions from stale or read-only state', function (): void {
+    $stale = Finding::factory()->create(['status' => FindingStatus::Open]);
+    Finding::query()->whereKey($stale)->update(['status' => FindingStatus::Accepted]);
+
+    expect(fn () => app(TransitionFindingStatus::class)($stale, FindingStatus::InProgress))
+        ->toThrow(ValidationException::class)
+        ->and($stale->fresh()->status)->toBe(FindingStatus::Accepted);
+
+    $readOnly = Finding::factory()->create(['status' => FindingStatus::Open]);
+    $readOnly->assessment()->update(['status' => AssessmentStatus::Completed]);
+
+    expect(fn () => app(TransitionFindingStatus::class)($readOnly, FindingStatus::Planned))
+        ->toThrow(ValidationException::class)
+        ->and($readOnly->fresh()->status)->toBe(FindingStatus::Open);
 });
 
 it('saves the row slide-over aggregate and rejects cross-client scope relations', function (): void {
