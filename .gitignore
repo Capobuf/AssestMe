@@ -1,4 +1,5 @@
 *.log
+!fixtures/evidence/*.log
 .DS_Store
 .env
 .env.backup

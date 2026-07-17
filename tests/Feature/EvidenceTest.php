@@ -13,9 +13,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Ods;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 beforeEach(function (): void {
     Storage::fake('local');
@@ -39,6 +36,7 @@ it('accepts every approved evidence format using detected content MIME', functio
     Storage::disk('local')->assertExists((string) $evidence->file_path);
 })->with([
     'JPEG' => ['jpg', 'image/jpeg'],
+    'JPEG long extension' => ['jpeg', 'image/jpeg'],
     'PNG' => ['png', 'image/png'],
     'WebP' => ['webp', 'image/webp'],
     'PDF' => ['pdf', 'application/pdf'],
@@ -174,67 +172,15 @@ function evidenceFixtureDirectory(): string
 
 function evidenceUpload(string $extension): UploadedFile
 {
-    $path = evidenceFixtureDirectory().'/evidence.'.$extension;
-
-    match ($extension) {
-        'jpg' => writeJpegEvidenceFixture($path),
-        'png' => File::put($path, (string) file_get_contents(base_path('fixtures/evidence/valid-small.png'))),
-        'webp' => writeWebpEvidenceFixture($path),
-        'pdf' => File::put($path, (string) file_get_contents(base_path('fixtures/evidence/sample.pdf'))),
-        'txt' => File::put($path, "plain evidence\n"),
-        'log' => File::put($path, "2026-07-15 INFO evidence accepted\n"),
-        'csv' => File::put($path, "name,value\nalpha,1\n"),
-        'docx' => writeDocxEvidenceFixture($path),
-        'xlsx', 'ods' => writeSpreadsheetEvidenceFixture($path, $extension),
-        default => throw new InvalidArgumentException("Unsupported evidence test extension: {$extension}"),
+    $filename = match ($extension) {
+        'png' => 'valid-small.png',
+        default => "sample.{$extension}",
     };
+    $path = base_path('fixtures/evidence/'.$filename);
+
+    if (! is_file($path)) {
+        throw new RuntimeException("The committed evidence fixture is missing: {$filename}");
+    }
 
     return new UploadedFile($path, "evidence.{$extension}", null, null, true);
-}
-
-function writeWebpEvidenceFixture(string $path): int
-{
-    $image = imagecreatetruecolor(2, 2);
-    if ($image === false || ! imagewebp($image, $path)) {
-        throw new RuntimeException('The WebP evidence fixture could not be generated.');
-    }
-    imagedestroy($image);
-
-    return 1;
-}
-
-function writeJpegEvidenceFixture(string $path): int
-{
-    $image = imagecreatetruecolor(2, 2);
-    if ($image === false || ! imagejpeg($image, $path)) {
-        throw new RuntimeException('The JPEG evidence fixture could not be generated.');
-    }
-    imagedestroy($image);
-
-    return 1;
-}
-
-function writeDocxEvidenceFixture(string $path): int
-{
-    $archive = new ZipArchive;
-    if ($archive->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-        throw new RuntimeException('The DOCX evidence fixture could not be generated.');
-    }
-    $archive->addFromString('[Content_Types].xml', '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
-    $archive->addFromString('_rels/.rels', '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
-    $archive->addFromString('word/document.xml', '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Evidence</w:t></w:r></w:p></w:body></w:document>');
-    $archive->close();
-
-    return 1;
-}
-
-function writeSpreadsheetEvidenceFixture(string $path, string $extension): int
-{
-    $spreadsheet = new Spreadsheet;
-    $spreadsheet->getActiveSheet()->setCellValue('A1', 'Evidence');
-    $writer = $extension === 'xlsx' ? new Xlsx($spreadsheet) : new Ods($spreadsheet);
-    $writer->save($path);
-    $spreadsheet->disconnectWorksheets();
-
-    return 1;
 }

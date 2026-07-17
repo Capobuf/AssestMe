@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\GeneratedReport;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -12,6 +13,7 @@ final class DownloadGeneratedReportController extends Controller
 {
     public function __invoke(GeneratedReport $generatedReport): BinaryFileResponse
     {
+        Gate::authorize('view', $generatedReport);
         $disk = Storage::disk('local');
         if (! $disk->exists($generatedReport->file_path)) {
             abort(409, __('assestme.reports.errors.generated_file_missing'));
