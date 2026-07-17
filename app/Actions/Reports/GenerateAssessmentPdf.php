@@ -27,11 +27,11 @@ final class GenerateAssessmentPdf
 
     public function __construct(private readonly BuildAssessmentSnapshot $buildSnapshot) {}
 
-    public function handle(Assessment $assessment): GeneratedReport
+    public function __invoke(Assessment $assessment): GeneratedReport
     {
         return Cache::lock("assessment:{$assessment->getKey()}:save", 10)->block(5, function () use ($assessment): GeneratedReport {
             $startedAt = hrtime(true);
-            $snapshot = $this->buildSnapshot->handle($assessment->fresh());
+            $snapshot = ($this->buildSnapshot)($assessment->fresh());
             $version = $this->nextVersion($assessment);
             $fileName = $this->fileName($snapshot, $version);
             $contents = $this->render($snapshot);

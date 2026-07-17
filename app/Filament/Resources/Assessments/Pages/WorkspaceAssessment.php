@@ -197,7 +197,7 @@ final class WorkspaceAssessment extends EditRecord
     private function generatePdf(): void
     {
         try {
-            $report = app(GenerateAssessmentPdf::class)->handle($this->assessment());
+            $report = app(GenerateAssessmentPdf::class)($this->assessment());
 
             Notification::make()
                 ->success()
@@ -234,7 +234,7 @@ final class WorkspaceAssessment extends EditRecord
     private function generateWorkbook(bool $includeExcludedFindings): void
     {
         try {
-            $report = app(GenerateAssessmentWorkbook::class)->handle(
+            $report = app(GenerateAssessmentWorkbook::class)(
                 $this->assessment(),
                 $includeExcludedFindings,
             );

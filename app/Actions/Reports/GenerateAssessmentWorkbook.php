@@ -29,7 +29,7 @@ final class GenerateAssessmentWorkbook
         private readonly GeneralSettings $generalSettings,
     ) {}
 
-    public function handle(Assessment $assessment, ?bool $includeExcludedFindings = null): GeneratedReport
+    public function __invoke(Assessment $assessment, ?bool $includeExcludedFindings = null): GeneratedReport
     {
         return Cache::lock("assessment:{$assessment->getKey()}:save", 10)->block(5, function () use (
             $assessment,
@@ -37,7 +37,7 @@ final class GenerateAssessmentWorkbook
         ): GeneratedReport {
             $startedAt = hrtime(true);
             $includeExcludedFindings ??= $this->generalSettings->report_excluded_findings_in_xlsx;
-            $snapshot = $this->buildSnapshot->handle(
+            $snapshot = ($this->buildSnapshot)(
                 assessment: $assessment->fresh(),
                 includeExcludedFindings: $includeExcludedFindings,
             );

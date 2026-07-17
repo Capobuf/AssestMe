@@ -109,9 +109,9 @@ it('persists and downloads complete immutable three-sheet workbook versions', fu
     $settings->technical_notes = true;
     $settings->save();
 
-    $first = app(GenerateAssessmentWorkbook::class)->handle($assessment->fresh(), false);
-    $pdf = app(GenerateAssessmentPdf::class)->handle($assessment->fresh());
-    $second = app(GenerateAssessmentWorkbook::class)->handle($assessment->fresh(), false);
+    $first = app(GenerateAssessmentWorkbook::class)($assessment->fresh(), false);
+    $pdf = app(GenerateAssessmentPdf::class)($assessment->fresh());
+    $second = app(GenerateAssessmentWorkbook::class)($assessment->fresh(), false);
     $path = Storage::disk('local')->path($first->file_path);
     $workbook = IOFactory::load($path);
     $findingSheet = $workbook->getSheetByName('Finding');
@@ -185,12 +185,12 @@ it('honors explicit and configured inclusion of incomplete excluded findings', f
         'sort_order' => 2,
     ]);
 
-    $includedOnly = app(GenerateAssessmentWorkbook::class)->handle($assessment->fresh(), false);
-    $withExcluded = app(GenerateAssessmentWorkbook::class)->handle($assessment->fresh(), true);
+    $includedOnly = app(GenerateAssessmentWorkbook::class)($assessment->fresh(), false);
+    $withExcluded = app(GenerateAssessmentWorkbook::class)($assessment->fresh(), true);
     $configuredSettings = app(GeneralSettings::class);
     $configuredSettings->report_excluded_findings_in_xlsx = true;
     $configuredSettings->save();
-    $configured = app(GenerateAssessmentWorkbook::class)->handle($assessment->fresh());
+    $configured = app(GenerateAssessmentWorkbook::class)($assessment->fresh());
 
     $includedWorkbook = IOFactory::load(Storage::disk('local')->path($includedOnly->file_path));
     $excludedWorkbook = IOFactory::load(Storage::disk('local')->path($withExcluded->file_path));
@@ -241,7 +241,7 @@ it('exports every estimate type and billing frequency as native workbook values'
         ]);
     }
 
-    $report = app(GenerateAssessmentWorkbook::class)->handle($assessment->fresh(), false);
+    $report = app(GenerateAssessmentWorkbook::class)($assessment->fresh(), false);
     $workbook = IOFactory::load(Storage::disk('local')->path($report->file_path));
     $findingSheet = $workbook->getSheetByName('Finding');
     $solutionSheet = $workbook->getSheetByName('Soluzioni');
@@ -276,7 +276,7 @@ it('fails visibly and records no workbook when included evidence is missing', fu
         'sort_order' => 1,
     ]);
 
-    expect(fn () => app(GenerateAssessmentWorkbook::class)->handle($assessment, false))
+    expect(fn () => app(GenerateAssessmentWorkbook::class)($assessment, false))
         ->toThrow(ValidationException::class)
         ->and(GeneratedReport::query()->where('format', GeneratedReportFormat::Xlsx)->count())->toBe(0)
         ->and(Storage::disk('local')->allFiles('reports'))->toBe([]);
@@ -302,7 +302,7 @@ it('generates and reopens fifty definitive findings inside the XLSX budget', fun
     }
 
     $startedAt = hrtime(true);
-    $report = app(GenerateAssessmentWorkbook::class)->handle($assessment->fresh(), false);
+    $report = app(GenerateAssessmentWorkbook::class)($assessment->fresh(), false);
     $elapsedSeconds = (hrtime(true) - $startedAt) / 1_000_000_000;
     $workbook = IOFactory::load(Storage::disk('local')->path($report->file_path));
 

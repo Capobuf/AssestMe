@@ -39,7 +39,7 @@ final class BuildAssessmentSnapshot
         private readonly ReportSettings $reportSettings,
     ) {}
 
-    public function handle(
+    public function __invoke(
         Assessment $assessment,
         ?Carbon $generatedAt = null,
         bool $includeExcludedFindings = false,

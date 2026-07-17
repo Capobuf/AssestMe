@@ -90,10 +90,10 @@ final class BenchmarkCommand extends Command
             });
 
             [$pdfSeconds] = $this->measure(function () use ($assessment): void {
-                app(GenerateAssessmentPdf::class)->handle($assessment->fresh());
+                app(GenerateAssessmentPdf::class)($assessment->fresh());
             });
             [$xlsxSeconds] = $this->measure(function () use ($assessment): void {
-                app(GenerateAssessmentWorkbook::class)->handle($assessment->fresh(), false);
+                app(GenerateAssessmentWorkbook::class)($assessment->fresh(), false);
             });
 
             $metrics = [

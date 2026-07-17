@@ -37,7 +37,7 @@ it('persists immutable versioned PDF snapshots and downloads the authoritative f
     [$assessment, $finding] = createPdfReadyAssessment();
     $finding->category?->delete();
 
-    $first = app(GenerateAssessmentPdf::class)->handle($assessment->fresh());
+    $first = app(GenerateAssessmentPdf::class)($assessment->fresh());
     $firstPayload = $first->payload_snapshot;
     $firstPath = Storage::disk('local')->path($first->file_path);
     $pdf = (new Parser)->parseFile($firstPath);
@@ -55,7 +55,7 @@ it('persists immutable versioned PDF snapshots and downloads the authoritative f
         ->and(substr_count($text, $fixedNote))->toBe(1);
 
     $finding->update(['problem' => 'Problema modificato dopo il primo snapshot.']);
-    $second = app(GenerateAssessmentPdf::class)->handle($assessment->fresh());
+    $second = app(GenerateAssessmentPdf::class)($assessment->fresh());
 
     expect($second->version)->toBe(2)
         ->and($second->payload_snapshot['findings'][0]['problem'])->toBe('Problema modificato dopo il primo snapshot.')
@@ -121,7 +121,7 @@ it('freezes a draft only after the PDF and generated report are stored successfu
     $settings->freeze_after_generation = true;
     $settings->save();
 
-    $report = app(GenerateAssessmentPdf::class)->handle($assessment);
+    $report = app(GenerateAssessmentPdf::class)($assessment);
     $assessment->refresh();
 
     expect($report->exists)->toBeTrue()
@@ -149,7 +149,7 @@ it('rejects missing or corrupt included evidence without recording a report or s
         Storage::disk('local')->put('clients/missing/verbale.pdf', 'contenuto alterato');
     }
 
-    expect(fn () => app(GenerateAssessmentPdf::class)->handle($assessment))
+    expect(fn () => app(GenerateAssessmentPdf::class)($assessment))
         ->toThrow(ValidationException::class)
         ->and(GeneratedReport::query()->count())->toBe(0)
         ->and(Storage::disk('local')->allFiles('reports'))->toBe([]);
@@ -160,7 +160,7 @@ it('rejects missing or corrupt included evidence without recording a report or s
 
 it('refuses a generated download when the authoritative file hash no longer matches', function (): void {
     [$assessment] = createPdfReadyAssessment();
-    $report = app(GenerateAssessmentPdf::class)->handle($assessment);
+    $report = app(GenerateAssessmentPdf::class)($assessment);
     Storage::disk('local')->put($report->file_path, 'tampered');
 
     $this->actingAs(User::factory()->create())
@@ -244,7 +244,7 @@ it('renders verified evidence, links, alternatives, branding, scope, and resolut
         'sort_order' => 3,
     ]);
 
-    $report = app(GenerateAssessmentPdf::class)->handle($assessment->fresh());
+    $report = app(GenerateAssessmentPdf::class)($assessment->fresh());
     $path = Storage::disk('local')->path($report->file_path);
     $text = (new Parser)->parseFile($path)->getText();
     $rawPdf = file_get_contents($path);
@@ -273,7 +273,7 @@ it('rejects invalid and oversized report logos before creating a report', functi
     $settings->consultant_logo_path = 'logos/invalid.png';
     $settings->save();
 
-    expect(fn () => app(GenerateAssessmentPdf::class)->handle($assessment))
+    expect(fn () => app(GenerateAssessmentPdf::class)($assessment))
         ->toThrow(ValidationException::class, $message)
         ->and(GeneratedReport::query()->count())->toBe(0);
 })->with([
@@ -297,7 +297,7 @@ it('generates a parsable definitive PDF with fifty findings inside the operation
     }
 
     $startedAt = hrtime(true);
-    $report = app(GenerateAssessmentPdf::class)->handle($assessment->fresh());
+    $report = app(GenerateAssessmentPdf::class)($assessment->fresh());
     $elapsedSeconds = (hrtime(true) - $startedAt) / 1_000_000_000;
     $path = Storage::disk('local')->path($report->file_path);
     $parsed = (new Parser)->parseFile($path);
