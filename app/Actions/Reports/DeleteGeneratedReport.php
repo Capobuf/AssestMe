@@ -19,7 +19,7 @@ final readonly class DeleteGeneratedReport
     {
         return Cache::lock("assessment:{$report->assessment_id}:save", 10)->block(5, function () use ($report): DeletionOperation {
             // The immutable model is deletable only by delegating to the approved recovery protocol.
-            $operation = $this->deleteEntity->handle(
+            $operation = ($this->deleteEntity)(
                 $report,
                 DeletionPolicy::Permanent,
                 [$report->file_path],

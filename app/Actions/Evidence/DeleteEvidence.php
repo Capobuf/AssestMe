@@ -13,10 +13,10 @@ final class DeleteEvidence
 {
     public function __construct(private readonly DeleteEntityAccordingToPolicy $deleteEntity) {}
 
-    public function handle(Evidence $evidence): void
+    public function __invoke(Evidence $evidence): void
     {
         $policy = DeletionPolicy::from(app(GeneralSettings::class)->deletion_policy);
         $paths = $evidence->file_path === null ? [] : [$evidence->file_path];
-        $this->deleteEntity->handle($evidence, $policy, $paths);
+        ($this->deleteEntity)($evidence, $policy, $paths);
     }
 }

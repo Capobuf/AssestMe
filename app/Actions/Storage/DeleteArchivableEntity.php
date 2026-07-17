@@ -48,7 +48,7 @@ final readonly class DeleteArchivableEntity
 
     private function delete(Model $entity, DeletionPolicy $policy): ?DeletionOperation
     {
-        return $this->deleteEntity->handle($entity, $policy, $this->privatePaths($entity));
+        return ($this->deleteEntity)($entity, $policy, $this->privatePaths($entity));
     }
 
     /** @return list<string> */

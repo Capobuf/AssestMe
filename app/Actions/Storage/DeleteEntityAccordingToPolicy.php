@@ -22,7 +22,7 @@ final readonly class DeleteEntityAccordingToPolicy
     /**
      * @param  list<string>  $privateRelativePaths
      */
-    public function handle(
+    public function __invoke(
         Model $entity,
         DeletionPolicy $policy,
         array $privateRelativePaths = [],

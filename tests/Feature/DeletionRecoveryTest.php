@@ -40,7 +40,7 @@ it('archives an entity without moving or deleting its private files', function (
     File::ensureDirectoryExists(dirname($absolute));
     File::put($absolute, 'logo');
 
-    $operation = app(DeleteEntityAccordingToPolicy::class)->handle(
+    $operation = app(DeleteEntityAccordingToPolicy::class)(
         $client,
         DeletionPolicy::Archive,
         [$relative],
@@ -59,7 +59,7 @@ it('stages files, permanently deletes the entity, and records completed cleanup'
     File::ensureDirectoryExists(dirname($absolute));
     File::put($absolute, 'permanent-logo');
 
-    $operation = app(DeleteEntityAccordingToPolicy::class)->handle(
+    $operation = app(DeleteEntityAccordingToPolicy::class)(
         $client,
         DeletionPolicy::Permanent,
         [$relative],
@@ -178,7 +178,7 @@ it('restores staged files when the database deletion is rejected', function (): 
     File::ensureDirectoryExists(dirname($absolute));
     File::put($absolute, 'recover-me');
 
-    expect(fn () => app(DeleteEntityAccordingToPolicy::class)->handle(
+    expect(fn () => app(DeleteEntityAccordingToPolicy::class)(
         $client,
         DeletionPolicy::Permanent,
         [$relative],
@@ -195,7 +195,7 @@ it('restores staged files when the database deletion is rejected', function (): 
 it('rejects path traversal and missing referenced files before changing persistent state', function (string $path, string $exception): void {
     $client = Client::factory()->create();
 
-    expect(fn () => app(DeleteEntityAccordingToPolicy::class)->handle(
+    expect(fn () => app(DeleteEntityAccordingToPolicy::class)(
         $client,
         DeletionPolicy::Permanent,
         [$path],

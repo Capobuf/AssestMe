@@ -164,7 +164,7 @@ it('stores URL evidence without a file and archive deletion retains private data
         ['title' => 'Foto', 'include_in_report' => true],
         UploadedFile::fake()->image('foto.jpg'),
     );
-    app(DeleteEvidence::class)->handle($fileEvidence);
+    app(DeleteEvidence::class)($fileEvidence);
 
     expect($fileEvidence->fresh()?->trashed())->toBeTrue();
     Storage::disk('local')->assertExists((string) $fileEvidence->file_path);
