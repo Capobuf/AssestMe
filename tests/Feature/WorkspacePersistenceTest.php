@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Assessments\PurgeExpiredWorkspaceSaveRequests;
+use App\Actions\Assessments\ReorderFindings;
 use App\Actions\Assessments\SaveAssessmentWorkspace;
 use App\Data\Assessments\WorkspaceSaveData;
 use App\Enums\FindingStatus;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
+/** @return array{assessment: array<string, mixed>, findings: list<array<string, mixed>>} */
 function workspacePayload(Assessment $assessment): array
 {
     return [
@@ -42,6 +44,7 @@ function workspacePayload(Assessment $assessment): array
     ];
 }
 
+/** @param array{assessment: array<string, mixed>, findings: list<array<string, mixed>>} $payload */
 function workspaceRequest(Assessment $assessment, array $payload, ?string $requestId = null): WorkspaceSaveData
 {
     return new WorkspaceSaveData(
@@ -105,6 +108,19 @@ it('atomically adds updates deletes and reorders multiline findings', function (
         ->and($assessment->fresh()->findings[0]->problem)->toBe("Prima riga\nSeconda riga\nTerza riga")
         ->and($assessment->fresh()->findings[1]->is($first))->toBeTrue()
         ->and(Finding::withTrashed()->find($removed->getKey())?->trashed())->toBeTrue();
+});
+
+it('rejects an incomplete authoritative reorder set without partial updates', function (): void {
+    $assessment = Assessment::factory()->create();
+    $first = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $second = Finding::factory()->for($assessment)->create(['sort_order' => 2]);
+
+    expect(fn () => app(ReorderFindings::class)($assessment, [$second->getKey()]))
+        ->toThrow(ValidationException::class)
+        ->and($assessment->fresh()->findings->pluck('id')->all())->toBe([
+            $first->getKey(),
+            $second->getKey(),
+        ]);
 });
 
 it('replays identical request ids without applying the save twice', function (): void {

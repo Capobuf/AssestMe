@@ -22,8 +22,13 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
-final class SaveAssessmentWorkspace
+final readonly class SaveAssessmentWorkspace
 {
+    public function __construct(
+        private SaveAssessmentPatch $saveAssessmentPatch,
+        private ReorderFindings $reorderFindings,
+    ) {}
+
     /**
      * @throws AssessmentVersionConflict
      * @throws IdempotencyKeyMismatch
@@ -150,32 +155,7 @@ final class SaveAssessmentWorkspace
             ]);
         }
 
-        $appliedVersion = $request->expectedVersion + 1;
-        $updated = Assessment::query()
-            ->whereKey($assessment->getKey())
-            ->where('lock_version', $request->expectedVersion)
-            ->update([
-                'title' => $request->payload['assessment']['title'],
-                'assessment_date' => $request->payload['assessment']['assessment_date'],
-                'report_title_override' => $request->payload['assessment']['report_title_override'] ?? null,
-                'scope_type' => $request->payload['assessment']['scope_type'],
-                'scope_description' => $request->payload['assessment']['scope_description'] ?? null,
-                'introduction' => $request->payload['assessment']['introduction'] ?? null,
-                'executive_summary' => $request->payload['assessment']['executive_summary'] ?? null,
-                'methodology_notes' => $request->payload['assessment']['methodology_notes'] ?? null,
-                'lock_version' => $appliedVersion,
-                'updated_at' => now(),
-            ]);
-
-        if ($updated !== 1) {
-            $actualVersion = (int) Assessment::query()
-                ->whereKey($assessment->getKey())
-                ->value('lock_version');
-
-            throw new AssessmentVersionConflict($request->expectedVersion, $actualVersion);
-        }
-
-        $assessment->sites()->sync($request->payload['assessment']['site_ids'] ?? []);
+        $appliedVersion = ($this->saveAssessmentPatch)($assessment, $request);
 
         /** @var array<string, int> $idMap */
         $idMap = [];
@@ -198,7 +178,6 @@ final class SaveAssessmentWorkspace
                 'entrepreneur_notes' => $findingData['entrepreneur_notes'] ?? null,
                 'status' => $findingData['status'],
                 'include_in_report' => $findingData['include_in_report'],
-                'sort_order' => $index + 1,
             ]);
 
             if (! $finding->exists) {
@@ -211,6 +190,7 @@ final class SaveAssessmentWorkspace
         }
 
         $assessment->findings()->whereNotIn('id', $keptIds)->delete();
+        ($this->reorderFindings)($assessment, $keptIds);
 
         $result = new WorkspaceSaveResult($appliedVersion, $idMap);
 
