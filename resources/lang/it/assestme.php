@@ -353,6 +353,7 @@ return [
     ],
     'admin' => [
         'created' => 'Amministratore AssestMe configurato correttamente.',
+        'generated_credentials' => 'Credenziali locali generate una sola volta — Email: :email — Password: :password',
         'prompts' => [
             'name' => 'Nome amministratore',
             'email' => 'Email amministratore',

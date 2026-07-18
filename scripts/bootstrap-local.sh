@@ -68,19 +68,9 @@ $application = require "bootstrap/app.php";
 $application->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 exit(App\Models\User::query()->exists() ? 0 : 1);
 '; then
-    if [[ -z "${DEV_ADMIN_PASSWORD:-}" ]]; then
-        DEV_ADMIN_PASSWORD="$(php -r 'echo bin2hex(random_bytes(12))."!Aa1";')"
-    fi
-
-    export DEV_ADMIN_NAME="${DEV_ADMIN_NAME:-Administrator}"
-    export DEV_ADMIN_EMAIL="${DEV_ADMIN_EMAIL:-admin@assestme.local}"
-    export DEV_ADMIN_PASSWORD
-
     if php artisan list --raw | grep -q '^assestme:create-admin'; then
         php artisan assestme:create-admin \
-            --name="$DEV_ADMIN_NAME" \
-            --email="$DEV_ADMIN_EMAIL" \
-            --password="$DEV_ADMIN_PASSWORD" \
+            --from-env \
             --no-interaction
         administrator_created=1
     else
@@ -91,9 +81,6 @@ fi
 php artisan assestme:diagnose
 
 info "AssestMe application bootstrap completed."
-if [[ "$administrator_created" == "1" ]]; then
-    printf 'One-time local administrator credentials:\nEmail: %s\nPassword: %s\n' \
-        "$DEV_ADMIN_EMAIL" "$DEV_ADMIN_PASSWORD"
-elif [[ "$environment_created" == "1" ]]; then
+if [[ "$administrator_created" == "0" && "$environment_created" == "1" ]]; then
     info "The existing singleton administrator was preserved."
 fi

@@ -16,6 +16,7 @@ final class CreateAdminCommand extends Command
         {--name= : Administrator display name}
         {--email= : Administrator email address}
         {--password= : Administrator password}
+        {--from-env : Load administrator values from the DEV_ADMIN_* configuration}
         {--replace : Replace the existing administrator credentials}
         {--current-password= : Current password required for non-interactive replacement}';
 
@@ -36,9 +37,23 @@ final class CreateAdminCommand extends Command
             return self::FAILURE;
         }
 
-        $name = $this->stringOptionOrAsk('name', __('assestme.admin.prompts.name'));
-        $email = $this->stringOptionOrAsk('email', __('assestme.admin.prompts.email'));
-        $password = $this->passwordOptionOrAsk();
+        $fromEnvironment = (bool) $this->option('from-env');
+        $generatedPassword = false;
+
+        if ($fromEnvironment) {
+            $name = $this->configuredAdministratorValue('name');
+            $email = $this->configuredAdministratorValue('email');
+            $password = $this->configuredAdministratorValue('password');
+
+            if ($password === '') {
+                $password = bin2hex(random_bytes(12)).'!Aa1';
+                $generatedPassword = true;
+            }
+        } else {
+            $name = $this->stringOptionOrAsk('name', __('assestme.admin.prompts.name'));
+            $email = $this->stringOptionOrAsk('email', __('assestme.admin.prompts.email'));
+            $password = $this->passwordOptionOrAsk();
+        }
 
         $validator = Validator::make([
             'name' => $name,
@@ -76,7 +91,21 @@ final class CreateAdminCommand extends Command
 
         $this->info(__('assestme.admin.created'));
 
+        if ($generatedPassword) {
+            $this->warn(__('assestme.admin.generated_credentials', [
+                'email' => $email,
+                'password' => $password,
+            ]));
+        }
+
         return self::SUCCESS;
+    }
+
+    private function configuredAdministratorValue(string $key): string
+    {
+        $value = config("assestme.development_administrator.{$key}");
+
+        return is_string($value) ? $value : '';
     }
 
     private function replacementIsAuthorized(User $existing): bool

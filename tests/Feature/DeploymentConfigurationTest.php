@@ -117,6 +117,7 @@ it('configures the Docker PHP runtime and idempotent bootstrap contract', functi
     $configuration = (string) file_get_contents(base_path('docker/dev/php.ini'));
     $entrypoint = (string) file_get_contents(base_path('docker/dev/entrypoint.sh'));
     $bootstrap = (string) file_get_contents(base_path('scripts/bootstrap-local.sh'));
+    $applicationConfiguration = (string) file_get_contents(base_path('config/assestme.php'));
 
     foreach ([
         'memory_limit = 512M',
@@ -150,13 +151,21 @@ it('configures the Docker PHP runtime and idempotent bootstrap contract', functi
         ->toContain('[[ ! -f vendor/autoload.php || "$installed_lock_hash" != "$composer_lock_hash" ]]')
         ->toContain('[[ -f database/database.sqlite ]] || install -m 660 /dev/null database/database.sqlite')
         ->toContain('App\\Models\\User::query()->exists()')
+        ->toContain('php artisan assestme:create-admin \\')
+        ->toContain('--from-env')
         ->toContain('php artisan migrate --force')
         ->toContain('php artisan db:seed --force')
         ->toContain('php artisan filament:assets')
         ->toContain('php artisan assestme:diagnose')
         ->not->toContain('migrate:fresh')
+        ->not->toContain('export DEV_ADMIN_')
         ->not->toContain('chmod -R 777')
         ->not->toContain('Start: php artisan serve');
+
+    expect($applicationConfiguration)
+        ->toContain("env('DEV_ADMIN_NAME', 'Administrator')")
+        ->toContain("env('DEV_ADMIN_EMAIL', 'admin@assestme.local')")
+        ->toContain("env('DEV_ADMIN_PASSWORD')");
 });
 
 it('records the superseded installation history and approved Docker and CloudPanel profiles only', function (): void {
