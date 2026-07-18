@@ -2,7 +2,6 @@
     'use strict';
 
     let dirty = false;
-    let activeFindingRow = null;
     let livewireHookRegistered = false;
 
     const statusElement = () => document.querySelector('[data-assestme-save-status]');
@@ -27,10 +26,44 @@
         return livewireComponent?.contains(element) ? element : null;
     };
 
+    const isInteractive = (target) => Boolean(target.closest(
+        'input, textarea, select, button, a, [role="button"], [role="menu"], [contenteditable="true"]',
+    ));
+
+    const enhanceFindingRows = () => {
+        document.querySelectorAll('.assestme-finding-row').forEach((row) => {
+            row.setAttribute('aria-selected', row.classList.contains('is-selected') ? 'true' : 'false');
+            row.tabIndex = 0;
+
+            if (row.dataset.assestmeKeyboardReady === 'true') {
+                return;
+            }
+
+            row.dataset.assestmeKeyboardReady = 'true';
+            row.addEventListener('click', (event) => {
+                if (isInteractive(event.target)) {
+                    return;
+                }
+
+                row.querySelector('[data-dusk="open-finding"]')?.click();
+            });
+            row.addEventListener('keydown', (event) => {
+                if (isInteractive(event.target) || !['Enter', ' '].includes(event.key)) {
+                    return;
+                }
+
+                event.preventDefault();
+                row.click();
+            });
+        });
+    };
+
     const clearDirtyAfterSave = () => {
         if (statusElement()?.dataset.status === 'saved') {
             dirty = false;
         }
+
+        enhanceFindingRows();
     };
 
     const registerLivewireHook = () => {
@@ -43,6 +76,7 @@
     };
 
     document.documentElement.dataset.assestmeWorkspaceAsset = 'loaded';
+    enhanceFindingRows();
 
     document.addEventListener('input', (event) => {
         const element = workspaceStatusFor(event.target);
@@ -55,25 +89,26 @@
         showStatus(navigator.onLine ? 'unsaved' : 'offline', element);
     });
 
-    document.addEventListener('focusin', (event) => {
-        activeFindingRow = event.target.closest('.assestme-workspace-findings tbody tr') ?? activeFindingRow;
-    });
-
-    document.addEventListener('pointerdown', (event) => {
-        activeFindingRow = event.target.closest('.assestme-workspace-findings tbody tr') ?? activeFindingRow;
-    });
-
     document.addEventListener('keydown', (event) => {
         if (document.querySelector('.fi-modal-open')) {
             return;
         }
 
         const key = event.key.toLowerCase();
-        const target = event.ctrlKey || event.metaKey
-            ? (key === 's' ? document.querySelector('[data-dusk="save-assessment"]') : null)
+        const command = event.ctrlKey || event.metaKey;
+        let target = command
+            ? (key === 's'
+                ? document.querySelector('[data-dusk="save-finding"]') ?? document.querySelector('[data-dusk="save-assessment"]')
+                : key === 'enter' ? document.querySelector('[data-dusk="save-finding-next"]') : null)
             : (event.altKey && key === 'n' ? document.querySelector('[data-dusk="add-finding"]')
                 : event.altKey && key === 't' ? document.querySelector('[data-dusk="add-template"]')
-                    : event.altKey && key === 'd' ? activeFindingRow?.querySelector('[data-dusk="clone-finding"]') : null);
+                    : key === 'escape' ? document.querySelector('[data-dusk="finding-close"]') : null);
+
+        if (!target && !isInteractive(event.target) && document.querySelector('[data-assestme-finding-inspector]')) {
+            target = key === 'arrowup'
+                ? document.querySelector('[data-dusk="finding-previous"]')
+                : key === 'arrowdown' ? document.querySelector('[data-dusk="finding-next"]') : null;
+        }
 
         if (!target) {
             return;
@@ -108,5 +143,14 @@
     });
 
     document.addEventListener('livewire:init', registerLivewireHook, { once: true });
+    window.addEventListener('assestme-finding-selected', () => {
+        requestAnimationFrame(() => {
+            enhanceFindingRows();
+            document.querySelector('[data-assestme-finding-inspector] input, [data-assestme-finding-inspector] textarea')?.focus();
+        });
+    });
+    window.addEventListener('assestme-finding-validation-failed', () => {
+        requestAnimationFrame(() => document.querySelector('[data-assestme-finding-inspector] [aria-invalid="true"]')?.focus());
+    });
     registerLivewireHook();
 })();

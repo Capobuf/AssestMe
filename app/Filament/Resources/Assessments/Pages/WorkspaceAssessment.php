@@ -7,14 +7,18 @@ namespace App\Filament\Resources\Assessments\Pages;
 use App\Actions\Assessments\CompleteAssessment;
 use App\Actions\Assessments\CopyTemplateToAssessment;
 use App\Actions\Assessments\CreateBlankFinding;
+use App\Actions\Assessments\DeleteFinding;
 use App\Actions\Assessments\DuplicateFinding;
 use App\Actions\Assessments\ReopenAssessment;
+use App\Actions\Assessments\ReorderFindings;
 use App\Actions\Assessments\SaveAssessmentWorkspace;
 use App\Actions\Assessments\SaveFindingDetails;
 use App\Actions\Evidence\StoreEvidence;
 use App\Actions\Reports\DeleteGeneratedReport;
 use App\Actions\Reports\GenerateAssessmentPdf;
 use App\Actions\Reports\GenerateAssessmentWorkbook;
+use App\Data\Assessments\FindingSaveData;
+use App\Data\Assessments\FindingSaveResult;
 use App\Data\Assessments\WorkspaceSaveData;
 use App\Enums\AssessmentStatus;
 use App\Enums\DeletionOperationStatus;
@@ -24,28 +28,42 @@ use App\Exceptions\AssessmentVersionConflict;
 use App\Exceptions\IdempotencyKeyMismatch;
 use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Resources\Assessments\Schemas\AssessmentWorkspaceForm;
+use App\Filament\Resources\Assessments\Schemas\FindingEditorSchema;
+use App\Filament\Resources\Assessments\Tables\AssessmentFindingsTable;
 use App\Models\Assessment;
+use App\Models\Finding;
 use App\Models\FindingTemplate;
 use App\Settings\GeneralSettings;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Url;
 use Throwable;
 
-final class WorkspaceAssessment extends EditRecord
+final class WorkspaceAssessment extends EditRecord implements HasTable
 {
+    use InteractsWithTable;
+
+    protected string $view = 'filament.resources.assessments.pages.workspace-assessment';
+
     protected Width|string|null $maxContentWidth = Width::Full;
+
+    protected static string $resource = AssessmentResource::class;
 
     public const STATUS_SAVED = 'saved';
 
@@ -57,8 +75,6 @@ final class WorkspaceAssessment extends EditRecord
 
     public const STATUS_CONFLICT = 'conflict';
 
-    protected static string $resource = AssessmentResource::class;
-
     public int $expectedVersion = 0;
 
     public string $tabId = '';
@@ -67,20 +83,29 @@ final class WorkspaceAssessment extends EditRecord
 
     public ?string $saveError = null;
 
-    public bool $saveInProgress = false;
+    public ?int $totalFindingsCount = null;
 
-    public bool $saveQueued = false;
+    public ?int $reportFindingsCount = null;
 
-    /** @var array<string, int> */
-    public array $persistedFindingIds = [];
+    /** @var array<string, mixed> */
+    public array $findingData = [];
+
+    #[Url(as: 'finding', history: true)]
+    public ?int $selectedFindingId = null;
+
+    #[Url(as: 'workspace-tab', history: true)]
+    public string $activeWorkspaceTab = 'findings';
 
     public function mount(int|string $record): void
     {
         parent::mount($record);
 
-        $assessment = $this->assessment();
-        $this->expectedVersion = (int) $assessment->lock_version;
+        $this->expectedVersion = (int) $this->assessmentRecord()->lock_version;
         $this->tabId = (string) Str::uuid();
+
+        if ($this->selectedFindingId !== null) {
+            $this->loadSelectedFinding($this->selectedFindingId, closeWhenMissing: true);
+        }
     }
 
     public function form(Schema $schema): Schema
@@ -88,22 +113,326 @@ final class WorkspaceAssessment extends EditRecord
         return AssessmentWorkspaceForm::configure($schema);
     }
 
-    public function save(bool $shouldRedirect = false, bool $shouldSendSavedNotification = true): void
+    public function findingEditor(Schema $schema): Schema
     {
-        $this->persistWorkspace(isAutosave: false, shouldNotify: $shouldSendSavedNotification);
+        return FindingEditorSchema::configure($schema)
+            ->model($this->selectedFinding())
+            ->statePath('findingData');
     }
 
-    public function autosave(): void
+    public function table(Table $table): Table
     {
-        $this->saveStatus = self::STATUS_UNSAVED;
+        return AssessmentFindingsTable::configure($table, $this);
+    }
 
-        if ($this->saveInProgress) {
-            $this->saveQueued = true;
+    /** @return Builder<Finding> */
+    public function findingsQuery(): Builder
+    {
+        return Finding::query()
+            ->where('assessment_id', $this->assessmentRecord()->getKey())
+            ->with(['category', 'priorityLevel', 'sites', 'assets', 'solutions:id,finding_id'])
+            ->withCount(['solutions', 'evidences'])
+            ->orderBy('sort_order');
+    }
+
+    public function updatedFindingData(): void
+    {
+        if ($this->saveStatus !== self::STATUS_CONFLICT) {
+            $this->saveStatus = self::STATUS_UNSAVED;
+            $this->saveError = null;
+        }
+    }
+
+    public function setWorkspaceTab(string $tab): void
+    {
+        if (! in_array($tab, ['findings', 'assessment-details', 'summary', 'generated-files'], true)) {
+            return;
+        }
+
+        $this->activeWorkspaceTab = $tab;
+    }
+
+    public function selectFinding(int $findingId): void
+    {
+        if ($this->selectedFindingId !== $findingId && $this->saveStatus === self::STATUS_UNSAVED) {
+            $this->notifyUnsavedSelectionBlocked();
 
             return;
         }
 
-        $this->persistWorkspace(isAutosave: true, shouldNotify: false);
+        $this->loadSelectedFinding($findingId);
+        $this->dispatch('assestme-finding-selected');
+    }
+
+    public function closeInspector(): void
+    {
+        if ($this->saveStatus === self::STATUS_UNSAVED) {
+            $this->notifyUnsavedSelectionBlocked();
+
+            return;
+        }
+
+        $this->selectedFindingId = null;
+        $this->findingData = [];
+        $this->saveStatus = self::STATUS_SAVED;
+        $this->resetErrorBag();
+    }
+
+    public function selectPreviousFinding(): void
+    {
+        $this->selectAdjacentFinding(-1);
+    }
+
+    public function selectNextFinding(): void
+    {
+        $this->selectAdjacentFinding(1);
+    }
+
+    public function saveFinding(bool $moveNext = false): void
+    {
+        $finding = $this->selectedFinding();
+        if (! $finding instanceof Finding || $this->isWorkspaceReadOnly() || $this->saveStatus === self::STATUS_CONFLICT) {
+            return;
+        }
+
+        $this->saveStatus = self::STATUS_SAVING;
+        $this->saveError = null;
+        $this->resetErrorBag();
+
+        $rawState = $this->findingEditorSchema()->getRawState();
+        $state = is_array($rawState) ? $rawState : $rawState->toArray();
+        $uploads = is_array($state['evidence_uploads'] ?? null) ? $state['evidence_uploads'] : [];
+        $originalNames = is_array($state['evidence_original_names'] ?? null) ? $state['evidence_original_names'] : [];
+        $evidenceUrl = is_string($state['evidence_url'] ?? null) ? trim($state['evidence_url']) : '';
+        $evidenceTitle = is_string($state['evidence_title'] ?? null) ? trim($state['evidence_title']) : '';
+        $payload = Arr::except($state, [
+            'evidence_uploads', 'evidence_original_names', 'evidence_url', 'evidence_title', 'existing_evidence',
+        ]);
+
+        try {
+            $result = $this->persistFindingPayload($finding, $payload);
+            $finding = $result->finding;
+
+            foreach ($uploads as $key => $upload) {
+                $uploadedFile = $this->uploadedFile($upload, $originalNames[$key] ?? null);
+                if (! $uploadedFile instanceof UploadedFile) {
+                    continue;
+                }
+
+                app(StoreEvidence::class)(
+                    $finding,
+                    EvidenceType::File,
+                    ['title' => $uploadedFile->getClientOriginalName(), 'include_in_report' => true],
+                    $uploadedFile,
+                    $this->expectedVersion,
+                );
+                $this->refreshExpectedVersion();
+            }
+
+            if ($evidenceUrl !== '') {
+                app(StoreEvidence::class)(
+                    $finding,
+                    EvidenceType::Url,
+                    ['title' => $evidenceTitle, 'url' => $evidenceUrl, 'include_in_report' => true],
+                    expectedVersion: $this->expectedVersion,
+                );
+                $this->refreshExpectedVersion();
+            }
+
+            $this->loadSelectedFinding((int) $finding->getKey());
+            $this->refreshListCounts();
+            $this->saveStatus = self::STATUS_SAVED;
+
+            Notification::make()
+                ->success()
+                ->title(__('assestme.workspace.inspector.saved'))
+                ->send();
+
+            if ($moveNext) {
+                $this->selectAdjacentFinding(1);
+            }
+        } catch (AssessmentVersionConflict) {
+            $this->saveStatus = self::STATUS_CONFLICT;
+            $this->saveError = __('assestme.workspace.errors.conflict');
+        } catch (ValidationException $exception) {
+            $this->saveStatus = self::STATUS_ERROR;
+            $this->saveError = __('assestme.workspace.errors.validation');
+            foreach ($exception->errors() as $key => $messages) {
+                foreach ($messages as $message) {
+                    $this->addError('findingData.'.$key, $message);
+                }
+            }
+            $this->dispatch('assestme-finding-validation-failed');
+        } catch (Throwable $exception) {
+            $this->reportSaveFailure($exception);
+        } finally {
+            Storage::disk('local')->delete(array_values(array_filter($uploads, 'is_string')));
+        }
+    }
+
+    public function saveFindingAndNext(): void
+    {
+        $this->saveFinding(moveNext: true);
+    }
+
+    public function updateInlineStatus(Finding $finding, string $status): string
+    {
+        $payload = FindingEditorSchema::data($finding);
+        $payload['status'] = $status;
+
+        return $this->persistInline($finding, $payload, 'status');
+    }
+
+    public function updateInlineReportInclusion(Finding $finding, bool $included): bool
+    {
+        $payload = FindingEditorSchema::data($finding);
+        $payload['include_in_report'] = $included;
+
+        return (bool) $this->persistInline($finding, $payload, 'include_in_report');
+    }
+
+    public function createBlankFinding(): void
+    {
+        $finding = app(CreateBlankFinding::class)($this->assessmentRecord());
+        $this->refreshExpectedVersion();
+        $this->refreshListCounts();
+        $this->selectFinding((int) $finding->getKey());
+    }
+
+    public function createFromTemplate(int $templateId): void
+    {
+        $template = FindingTemplate::query()->findOrFail($templateId);
+        $finding = app(CopyTemplateToAssessment::class)($this->assessmentRecord(), $template);
+        $this->refreshExpectedVersion();
+        $this->refreshListCounts();
+        $this->selectFinding((int) $finding->getKey());
+    }
+
+    public function duplicateFinding(int $findingId): void
+    {
+        $source = $this->assessmentRecord()->findings()->findOrFail($findingId);
+        $finding = app(DuplicateFinding::class)($source);
+        $this->refreshExpectedVersion();
+        $this->refreshListCounts();
+        $this->selectFinding((int) $finding->getKey());
+    }
+
+    public function deleteFinding(int $findingId): void
+    {
+        $finding = $this->assessmentRecord()->findings()->findOrFail($findingId);
+        app(DeleteFinding::class)($finding);
+        $this->refreshExpectedVersion();
+        $this->refreshListCounts();
+
+        if ($this->selectedFindingId === $findingId) {
+            $this->selectedFindingId = null;
+            $this->findingData = [];
+        }
+
+        Notification::make()->success()->title(__('assestme.workspace.list.deleted'))->send();
+    }
+
+    /** @param array<int|string> $order */
+    public function reorderTable(array $order, int|string|null $draggedRecordKey = null): void
+    {
+        if (! $this->canReorderFindings()) {
+            return;
+        }
+
+        $ids = array_map(static fn (int|string $id): int => (int) $id, array_values($order));
+        $this->expectedVersion = app(ReorderFindings::class)($this->assessmentRecord(), $ids);
+        $this->assessmentRecord()->setAttribute('lock_version', $this->expectedVersion);
+        $this->saveStatus = self::STATUS_SAVED;
+    }
+
+    public function canReorderFindings(): bool
+    {
+        $activeFilters = collect($this->tableFilters ?? [])->flatten()->filter(fn (mixed $value): bool => filled($value));
+
+        return ! $this->isWorkspaceReadOnly() && blank($this->tableSearch) && $activeFilters->isEmpty();
+    }
+
+    public function moveFinding(Finding $finding, int $direction): void
+    {
+        $ids = $this->assessmentRecord()->findings()->pluck('id')->map(static fn (mixed $id): int => (int) $id)->all();
+        $index = array_search((int) $finding->getKey(), $ids, true);
+        if (! is_int($index)) {
+            return;
+        }
+
+        $target = $index + $direction;
+        if (! array_key_exists($target, $ids)) {
+            return;
+        }
+
+        [$ids[$index], $ids[$target]] = [$ids[$target], $ids[$index]];
+        $this->expectedVersion = app(ReorderFindings::class)($this->assessmentRecord(), $ids);
+        $this->assessmentRecord()->setAttribute('lock_version', $this->expectedVersion);
+    }
+
+    public function totalFindings(): int
+    {
+        return $this->totalFindingsCount ??= $this->assessmentRecord()->findings()->count();
+    }
+
+    public function reportFindings(): int
+    {
+        return $this->reportFindingsCount ??= $this->assessmentRecord()->findings()->where('include_in_report', true)->count();
+    }
+
+    public function saveAssessmentDetails(): void
+    {
+        if ($this->isWorkspaceReadOnly() || $this->saveStatus === self::STATUS_CONFLICT) {
+            return;
+        }
+
+        $this->saveStatus = self::STATUS_SAVING;
+        $rawState = $this->form->getRawState();
+        $state = is_array($rawState) ? $rawState : $rawState->toArray();
+        $payload = ['assessment' => [
+            'title' => (string) ($state['title'] ?? ''),
+            'assessment_date' => (string) ($state['assessment_date'] ?? ''),
+            'report_title_override' => $state['report_title_override'] ?? null,
+            'scope_type' => $state['scope_type'] ?? ScopeType::Organization->value,
+            'scope_description' => $state['scope_description'] ?? null,
+            'introduction' => $state['introduction'] ?? null,
+            'executive_summary' => $state['executive_summary'] ?? null,
+            'methodology_notes' => $state['methodology_notes'] ?? null,
+            'site_ids' => is_array($state['site_ids'] ?? null) ? $state['site_ids'] : [],
+        ]];
+
+        try {
+            $request = new WorkspaceSaveData(
+                requestId: (string) Str::uuid(),
+                expectedVersion: $this->expectedVersion,
+                tabId: $this->tabId,
+                payload: $payload,
+                payloadSha256: WorkspaceSaveData::hashPayload($payload),
+            );
+            $result = app(SaveAssessmentWorkspace::class)($this->assessmentRecord(), $request);
+            $this->expectedVersion = $result->appliedVersion;
+            $this->assessmentRecord()->setAttribute('lock_version', $result->appliedVersion);
+            $this->saveStatus = self::STATUS_SAVED;
+            Notification::make()->success()->title(__('assestme.workspace.saved_notification'))->send();
+        } catch (AssessmentVersionConflict) {
+            $this->saveStatus = self::STATUS_CONFLICT;
+            $this->saveError = __('assestme.workspace.errors.conflict');
+        } catch (ValidationException $exception) {
+            $this->saveStatus = self::STATUS_ERROR;
+            $this->saveError = __('assestme.workspace.errors.validation');
+            foreach ($exception->errors() as $key => $messages) {
+                foreach ($messages as $message) {
+                    $this->addError('data.'.str($key)->replaceStart('payload.', ''), $message);
+                }
+            }
+        } catch (Throwable $exception) {
+            $this->reportSaveFailure($exception);
+        }
+    }
+
+    public function save(bool $shouldRedirect = false, bool $shouldSendSavedNotification = true): void
+    {
+        $this->saveAssessmentDetails();
     }
 
     public function getSaveStatusLabel(): string
@@ -116,58 +445,74 @@ final class WorkspaceAssessment extends EditRecord
         return __('assestme.workspace.title');
     }
 
+    public function isWorkspaceReadOnly(): bool
+    {
+        return $this->assessmentRecord()->status !== AssessmentStatus::Draft;
+    }
+
+    public function assessmentRecord(): Assessment
+    {
+        $record = $this->getRecord();
+        if (! $record instanceof Assessment) {
+            throw new \LogicException('The workspace record must be an assessment.');
+        }
+
+        return $record;
+    }
+
+    public function selectedFinding(): ?Finding
+    {
+        if ($this->selectedFindingId === null) {
+            return null;
+        }
+
+        return $this->assessmentRecord()->findings()
+            ->with(['category', 'priorityLevel', 'consequenceLevel', 'likelihoodLevel', 'solutions', 'evidences', 'tags', 'sites', 'assets'])
+            ->find($this->selectedFindingId);
+    }
+
+    public function selectedFindingPosition(): ?int
+    {
+        if ($this->selectedFindingId === null) {
+            return null;
+        }
+
+        $ids = $this->assessmentRecord()->findings()->pluck('id')->values();
+        $index = $ids->search($this->selectedFindingId);
+
+        return is_int($index) ? $index + 1 : null;
+    }
+
+    public function summaryPreview(): string
+    {
+        return __('assestme.workspace.summary_preview', [
+            'client' => $this->assessmentRecord()->client->displayName(),
+            'title' => $this->assessmentRecord()->report_title_override ?: $this->assessmentRecord()->title,
+            'findings' => $this->assessmentRecord()->findings()->where('include_in_report', true)->count(),
+        ]);
+    }
+
     /** @return array<Action> */
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('add_blank')
-                ->label(__('assestme.workspace.add_finding'))
-                ->icon('heroicon-o-plus')
-                ->extraAttributes(['data-dusk' => 'add-finding'])
-                ->visible(fn (): bool => ! $this->isWorkspaceReadOnly())
-                ->action(function (): void {
-                    app(CreateBlankFinding::class)($this->assessment());
-                    $this->fillForm();
-                }),
-            Action::make('add_template')
-                ->label(__('assestme.workspace.add_template'))
-                ->icon('heroicon-o-book-open')
-                ->extraAttributes(['data-dusk' => 'add-template'])
-                ->visible(fn (): bool => ! $this->isWorkspaceReadOnly())
-                ->schema([
-                    Select::make('template_id')
-                        ->label(__('assestme.workspace.template'))
-                        ->options(fn (): array => FindingTemplate::query()
-                            ->where('is_enabled', true)
-                            ->orderBy('title')
-                            ->pluck('title', 'id')
-                            ->all())
-                        ->searchable()
-                        ->required(),
-                ])
-                ->action(function (array $data): void {
-                    $template = FindingTemplate::query()->findOrFail($data['template_id']);
-                    app(CopyTemplateToAssessment::class)($this->assessment(), $template);
-                    $this->fillForm();
-                }),
             Action::make('complete')
                 ->label(__('assestme.workspace.complete'))
                 ->icon('heroicon-o-check-circle')
                 ->color('success')
                 ->requiresConfirmation()
-                ->visible(fn (): bool => $this->assessment()->status === AssessmentStatus::Draft)
+                ->visible(fn (): bool => $this->assessmentRecord()->status === AssessmentStatus::Draft)
                 ->action(function (): void {
-                    $assessment = app(CompleteAssessment::class)($this->assessment());
-                    // A full reload clears every modal Alpine scope before switching the entire workspace to read-only.
+                    $assessment = app(CompleteAssessment::class)($this->assessmentRecord());
                     $this->redirect(AssessmentResource::getUrl('workspace', ['record' => $assessment]), navigate: false);
                 }),
             Action::make('reopen')
                 ->label(__('assestme.workspace.reopen'))
                 ->icon('heroicon-o-lock-open')
                 ->requiresConfirmation()
-                ->visible(fn (): bool => $this->assessment()->status !== AssessmentStatus::Draft)
+                ->visible(fn (): bool => $this->assessmentRecord()->status !== AssessmentStatus::Draft)
                 ->action(function (): void {
-                    $assessment = app(ReopenAssessment::class)($this->assessment());
+                    $assessment = app(ReopenAssessment::class)($this->assessmentRecord());
                     $this->redirect(AssessmentResource::getUrl('workspace', ['record' => $assessment]), navigate: false);
                 }),
             Action::make('download_pdf')
@@ -194,80 +539,6 @@ final class WorkspaceAssessment extends EditRecord
         ];
     }
 
-    private function generatePdf(): void
-    {
-        try {
-            $report = app(GenerateAssessmentPdf::class)($this->assessment());
-
-            Notification::make()
-                ->success()
-                ->title(__('assestme.reports.generated'))
-                ->body($report->file_name)
-                ->send();
-
-            // The authenticated route verifies and downloads the exact immutable file just persisted.
-            $this->redirect(route('generated-reports.download', $report), navigate: false);
-        } catch (ValidationException $exception) {
-            Notification::make()
-                ->danger()
-                ->title(__('assestme.reports.errors.generation'))
-                ->body(collect($exception->errors())->flatten()->join(' '))
-                ->persistent()
-                ->send();
-
-        } catch (Throwable $exception) {
-            Log::error('Assessment PDF generation failed.', [
-                'assessment_id' => $this->assessment()->getKey(),
-                'exception' => $exception,
-            ]);
-
-            Notification::make()
-                ->danger()
-                ->title(__('assestme.reports.errors.generation'))
-                ->body(__('assestme.reports.errors.retry'))
-                ->persistent()
-                ->send();
-
-        }
-    }
-
-    private function generateWorkbook(bool $includeExcludedFindings): void
-    {
-        try {
-            $report = app(GenerateAssessmentWorkbook::class)(
-                $this->assessment(),
-                $includeExcludedFindings,
-            );
-
-            Notification::make()
-                ->success()
-                ->title(__('assestme.reports.generated_xlsx'))
-                ->body($report->file_name)
-                ->send();
-
-            $this->redirect(AssessmentResource::getUrl('workspace', ['record' => $this->assessment()]), navigate: false);
-        } catch (ValidationException $exception) {
-            Notification::make()
-                ->danger()
-                ->title(__('assestme.reports.errors.generation_xlsx'))
-                ->body(collect($exception->errors())->flatten()->join(' '))
-                ->persistent()
-                ->send();
-        } catch (Throwable $exception) {
-            Log::error('Assessment XLSX generation failed.', [
-                'assessment_id' => $this->assessment()->getKey(),
-                'exception' => $exception,
-            ]);
-
-            Notification::make()
-                ->danger()
-                ->title(__('assestme.reports.errors.generation_xlsx'))
-                ->body(__('assestme.reports.errors.retry_xlsx'))
-                ->persistent()
-                ->send();
-        }
-    }
-
     public function deleteGeneratedReportAction(): Action
     {
         return Action::make('deleteGeneratedReport')
@@ -281,283 +552,24 @@ final class WorkspaceAssessment extends EditRecord
             ->extraAttributes(['data-dusk' => 'delete-generated-report'])
             ->action(function (array $arguments): void {
                 $reportId = filter_var($arguments['report'] ?? null, FILTER_VALIDATE_INT);
-
                 if (! is_int($reportId) || $reportId < 1) {
-                    $this->reportGeneratedFileDeletionFailure(null, new \InvalidArgumentException('The generated report identifier is invalid.'));
-
                     return;
                 }
 
                 try {
-                    $report = $this->assessment()->generatedReports()->findOrFail($reportId);
+                    $report = $this->assessmentRecord()->generatedReports()->findOrFail($reportId);
                     $operation = app(DeleteGeneratedReport::class)->handle($report);
-
-                    if ($operation->status === DeletionOperationStatus::CleanupFailed) {
-                        Log::warning('Generated report deleted with pending trash cleanup.', [
-                            'assessment_id' => $this->assessment()->getKey(),
-                            'generated_report_id' => $reportId,
-                            'deletion_operation_uuid' => $operation->uuid,
-                        ]);
-
-                        Notification::make()
-                            ->warning()
-                            ->title(__('assestme.reports.delete.cleanup_pending'))
-                            ->body(__('assestme.reports.delete.cleanup_pending_body'))
-                            ->persistent()
-                            ->send();
-
-                        return;
-                    }
-
                     Notification::make()
-                        ->success()
-                        ->title(__('assestme.reports.delete.deleted'))
+                        ->{($operation->status === DeletionOperationStatus::CleanupFailed) ? 'warning' : 'success'}()
+                        ->title($operation->status === DeletionOperationStatus::CleanupFailed
+                            ? __('assestme.reports.delete.cleanup_pending')
+                            : __('assestme.reports.delete.deleted'))
                         ->send();
                 } catch (Throwable $exception) {
-                    $this->reportGeneratedFileDeletionFailure($reportId, $exception);
+                    Log::error('Generated report permanent deletion failed.', ['exception' => $exception]);
+                    Notification::make()->danger()->title(__('assestme.reports.delete.failed'))->send();
                 }
             });
-    }
-
-    private function reportGeneratedFileDeletionFailure(?int $reportId, Throwable $exception): void
-    {
-        Log::error('Generated report permanent deletion failed.', [
-            'assessment_id' => $this->assessment()->getKey(),
-            'generated_report_id' => $reportId,
-            'exception' => $exception,
-        ]);
-
-        Notification::make()
-            ->danger()
-            ->title(__('assestme.reports.delete.failed'))
-            ->body(__('assestme.reports.delete.failed_body'))
-            ->persistent()
-            ->send();
-    }
-
-    protected function getSaveFormAction(): Action
-    {
-        return parent::getSaveFormAction()
-            ->label(__('assestme.workspace.explicit_save'))
-            ->extraAttributes(['data-dusk' => 'save-assessment'])
-            ->visible(fn (): bool => ! $this->isWorkspaceReadOnly());
-    }
-
-    private function persistWorkspace(bool $isAutosave, bool $shouldNotify): void
-    {
-        if ($this->saveStatus === self::STATUS_CONFLICT) {
-            return;
-        }
-
-        $this->saveInProgress = true;
-        $this->saveStatus = self::STATUS_SAVING;
-        $this->saveError = null;
-
-        try {
-            $rawState = $this->form->getRawState();
-            $state = is_array($rawState) ? $rawState : $rawState->toArray();
-            $rawFindings = is_array($state['findings'] ?? null) ? $state['findings'] : [];
-            $findings = [];
-
-            foreach ($rawFindings as $itemKey => $finding) {
-                if (! is_array($finding)) {
-                    continue;
-                }
-
-                $key = (string) $itemKey;
-                $recordKey = str($key)->after('record-')->toString();
-                $isExistingRecord = str_starts_with($key, 'record-') && ctype_digit($recordKey);
-                $temporaryUuid = Str::isUuid($key)
-                    ? $key
-                    : (is_string($finding['_temporary_uuid'] ?? null) ? $finding['_temporary_uuid'] : (string) Str::uuid());
-
-                $finding['id'] = $isExistingRecord
-                    ? (int) $recordKey
-                    : ($this->persistedFindingIds[$key] ?? null);
-                $finding['_temporary_uuid'] = $temporaryUuid;
-                $findings[] = $finding;
-            }
-
-            /** @var array{
-             *     assessment: array<string, mixed>,
-             *     findings: list<array<string, mixed>>
-             * } $payload
-             */
-            $payload = [
-                'assessment' => [
-                    'title' => (string) ($state['title'] ?? ''),
-                    'assessment_date' => (string) ($state['assessment_date'] ?? ''),
-                    'report_title_override' => $state['report_title_override'] ?? null,
-                    'scope_type' => $state['scope_type'] ?? ScopeType::Organization->value,
-                    'scope_description' => $state['scope_description'] ?? null,
-                    'introduction' => $state['introduction'] ?? null,
-                    'executive_summary' => $state['executive_summary'] ?? null,
-                    'methodology_notes' => $state['methodology_notes'] ?? null,
-                    'site_ids' => is_array($state['site_ids'] ?? null) ? $state['site_ids'] : [],
-                ],
-                'findings' => $findings,
-            ];
-
-            $request = new WorkspaceSaveData(
-                requestId: (string) Str::uuid(),
-                expectedVersion: $this->expectedVersion,
-                tabId: $this->tabId,
-                payload: $payload,
-                payloadSha256: WorkspaceSaveData::hashPayload($payload),
-            );
-
-            $result = app(SaveAssessmentWorkspace::class)($this->assessment(), $request);
-            $this->expectedVersion = $result->appliedVersion;
-            $this->applyPersistedIds($result->idMap);
-            $this->assessment()->setAttribute('lock_version', $result->appliedVersion);
-            $this->saveStatus = self::STATUS_SAVED;
-
-            if ($shouldNotify && ! $isAutosave) {
-                Notification::make()
-                    ->title(__('assestme.workspace.saved_notification'))
-                    ->success()
-                    ->send();
-            }
-        } catch (AssessmentVersionConflict) {
-            $this->saveStatus = self::STATUS_CONFLICT;
-            $this->saveError = __('assestme.workspace.errors.conflict');
-        } catch (ValidationException $exception) {
-            $this->saveStatus = self::STATUS_ERROR;
-            $this->saveError = __('assestme.workspace.errors.validation');
-
-            foreach ($exception->errors() as $key => $messages) {
-                foreach ($messages as $message) {
-                    $this->addError($this->formErrorKey($key), $message);
-                }
-            }
-        } catch (IdempotencyKeyMismatch|LockTimeoutException $exception) {
-            $this->reportSaveFailure($exception);
-        } catch (Throwable $exception) {
-            $this->reportSaveFailure($exception);
-        } finally {
-            $this->saveInProgress = false;
-        }
-
-        if ($this->saveQueued && $this->saveStatus !== self::STATUS_CONFLICT) {
-            $this->saveQueued = false;
-            $this->persistWorkspace(isAutosave: true, shouldNotify: false);
-        }
-    }
-
-    /** @param array<string, int> $idMap */
-    private function applyPersistedIds(array $idMap): void
-    {
-        if (! isset($this->data['findings']) || ! is_array($this->data['findings'])) {
-            return;
-        }
-
-        $this->persistedFindingIds = array_replace($this->persistedFindingIds, $idMap);
-
-        foreach ($this->data['findings'] as $itemKey => &$finding) {
-            if (! is_array($finding)) {
-                continue;
-            }
-
-            $key = (string) $itemKey;
-            $temporaryUuid = Str::isUuid($key) ? $key : ($finding['_temporary_uuid'] ?? null);
-
-            if (is_string($temporaryUuid) && isset($idMap[$temporaryUuid])) {
-                $finding['id'] = $idMap[$temporaryUuid];
-            }
-        }
-
-        unset($finding);
-    }
-
-    private function reportSaveFailure(Throwable $exception): void
-    {
-        $this->saveStatus = self::STATUS_ERROR;
-        $this->saveError = __('assestme.workspace.errors.persistence');
-
-        Log::error('Assessment workspace save failed.', [
-            'assessment_id' => $this->assessment()->getKey(),
-            'expected_version' => $this->expectedVersion,
-            'exception' => $exception::class,
-            'message' => $exception->getMessage(),
-        ]);
-    }
-
-    private function formErrorKey(string $key): string
-    {
-        return 'data.'.str($key)->replaceStart('payload.', '')->toString();
-    }
-
-    private function assessment(): Assessment
-    {
-        $record = $this->getRecord();
-
-        if (! $record instanceof Assessment) {
-            throw new \LogicException('The workspace record must be an assessment.');
-        }
-
-        return $record;
-    }
-
-    public function isWorkspaceReadOnly(): bool
-    {
-        return $this->assessment()->status !== AssessmentStatus::Draft;
-    }
-
-    public function duplicateFinding(int $findingId): void
-    {
-        $finding = $this->assessment()->findings()->findOrFail($findingId);
-        app(DuplicateFinding::class)($finding);
-        $this->fillForm();
-    }
-
-    /** @param array<string, mixed> $data */
-    public function saveFindingDetails(int $findingId, array $data): void
-    {
-        $finding = $this->assessment()->findings()->findOrFail($findingId);
-        $uploads = is_array($data['evidence_uploads'] ?? null) ? $data['evidence_uploads'] : [];
-        $originalNames = is_array($data['evidence_original_names'] ?? null) ? $data['evidence_original_names'] : [];
-        $evidenceUrl = is_string($data['evidence_url'] ?? null) ? trim($data['evidence_url']) : '';
-        $evidenceTitle = is_string($data['evidence_title'] ?? null) ? trim($data['evidence_title']) : '';
-
-        try {
-            app(SaveFindingDetails::class)->handle(
-                $finding,
-                collect($data)->except(['evidence_uploads', 'evidence_original_names', 'evidence_url', 'evidence_title'])->all(),
-            );
-
-            foreach ($uploads as $key => $upload) {
-                if ($upload instanceof UploadedFile) {
-                    $uploadedFile = $upload;
-                } elseif (is_string($upload) && Storage::disk('local')->exists($upload)) {
-                    $uploadedFile = new UploadedFile(
-                        Storage::disk('local')->path($upload),
-                        is_string($originalNames[$key] ?? null) ? $originalNames[$key] : basename($upload),
-                        Storage::disk('local')->mimeType($upload),
-                        null,
-                        true,
-                    );
-                } else {
-                    continue;
-                }
-
-                app(StoreEvidence::class)($finding, EvidenceType::File, [
-                    'title' => $uploadedFile->getClientOriginalName(),
-                    'include_in_report' => true,
-                ], $uploadedFile);
-            }
-            if ($evidenceUrl !== '') {
-                app(StoreEvidence::class)($finding, EvidenceType::Url, [
-                    'title' => $evidenceTitle,
-                    'url' => $evidenceUrl,
-                    'include_in_report' => true,
-                ]);
-            }
-        } finally {
-            // Filament stores modal uploads before the action runs; every pending file is removed after adoption or failure.
-            Storage::disk('local')->delete(array_values(array_filter($uploads, 'is_string')));
-        }
-
-        $this->fillForm();
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
@@ -570,9 +582,186 @@ final class WorkspaceAssessment extends EditRecord
      */
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        return [
-            ...$data,
-            'site_ids' => $this->assessment()->sites()->pluck('sites.id')->all(),
-        ];
+        return [...$data, 'site_ids' => $this->assessmentRecord()->sites()->pluck('sites.id')->all()];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     *
+     * @throws AssessmentVersionConflict
+     * @throws IdempotencyKeyMismatch
+     * @throws LockTimeoutException
+     */
+    private function persistFindingPayload(Finding $finding, array $payload): FindingSaveResult
+    {
+        $request = new FindingSaveData(
+            requestId: (string) Str::uuid(),
+            expectedVersion: $this->expectedVersion,
+            tabId: $this->tabId,
+            payload: $payload,
+            payloadSha256: FindingSaveData::hashPayload($payload),
+        );
+        $result = app(SaveFindingDetails::class)($finding, $request);
+        $this->expectedVersion = $result->appliedVersion;
+        $this->assessmentRecord()->setAttribute('lock_version', $result->appliedVersion);
+
+        return $result;
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function persistInline(Finding $finding, array $payload, string $attribute): mixed
+    {
+        $oldValue = $finding->getAttribute($attribute);
+        try {
+            $result = $this->persistFindingPayload($finding, $payload);
+            $value = $result->finding->getAttribute($attribute);
+            if ($this->selectedFindingId === (int) $finding->getKey()) {
+                $this->findingData[$attribute] = $value instanceof \BackedEnum ? $value->value : $value;
+            }
+            $this->saveStatus = self::STATUS_SAVED;
+            $this->refreshListCounts();
+
+            return $value instanceof \BackedEnum ? $value->value : $value;
+        } catch (AssessmentVersionConflict) {
+            $this->saveStatus = self::STATUS_CONFLICT;
+            $this->saveError = __('assestme.workspace.errors.conflict');
+        } catch (Throwable $exception) {
+            $this->reportSaveFailure($exception);
+            Notification::make()->danger()->title(__('assestme.workspace.errors.persistence'))->send();
+        }
+
+        return $oldValue instanceof \BackedEnum ? $oldValue->value : $oldValue;
+    }
+
+    private function loadSelectedFinding(int $findingId, bool $closeWhenMissing = false): void
+    {
+        $finding = $this->assessmentRecord()->findings()->find($findingId);
+        if (! $finding instanceof Finding) {
+            if ($closeWhenMissing) {
+                $this->selectedFindingId = null;
+                $this->findingData = [];
+
+                return;
+            }
+
+            throw new \InvalidArgumentException('The selected finding does not belong to the assessment.');
+        }
+
+        $this->selectedFindingId = $findingId;
+        $this->findingEditorSchema()->model($finding)->fill(FindingEditorSchema::data($finding));
+        $this->saveStatus = self::STATUS_SAVED;
+        $this->saveError = null;
+        $this->resetErrorBag();
+    }
+
+    private function selectAdjacentFinding(int $direction): void
+    {
+        if ($this->selectedFindingId === null) {
+            return;
+        }
+        if ($this->saveStatus === self::STATUS_UNSAVED) {
+            $this->notifyUnsavedSelectionBlocked();
+
+            return;
+        }
+
+        $ids = $this->assessmentRecord()->findings()->pluck('id')->map(static fn (mixed $id): int => (int) $id)->all();
+        $index = array_search($this->selectedFindingId, $ids, true);
+        if (! is_int($index) || ! isset($ids[$index + $direction])) {
+            return;
+        }
+
+        $this->loadSelectedFinding($ids[$index + $direction]);
+        $this->dispatch('assestme-finding-selected');
+    }
+
+    private function notifyUnsavedSelectionBlocked(): void
+    {
+        Notification::make()
+            ->warning()
+            ->title(__('assestme.workspace.inspector.unsaved_navigation'))
+            ->body(__('assestme.workspace.inspector.unsaved_navigation_body'))
+            ->send();
+    }
+
+    private function uploadedFile(mixed $upload, mixed $originalName): ?UploadedFile
+    {
+        if ($upload instanceof UploadedFile) {
+            return $upload;
+        }
+        if (! is_string($upload) || ! Storage::disk('local')->exists($upload)) {
+            return null;
+        }
+
+        return new UploadedFile(
+            Storage::disk('local')->path($upload),
+            is_string($originalName) ? $originalName : basename($upload),
+            Storage::disk('local')->mimeType($upload),
+            null,
+            true,
+        );
+    }
+
+    private function refreshExpectedVersion(): void
+    {
+        $version = (int) $this->assessmentRecord()->fresh()->lock_version;
+        $this->expectedVersion = $version;
+        $this->assessmentRecord()->setAttribute('lock_version', $version);
+    }
+
+    private function refreshListCounts(): void
+    {
+        $this->totalFindingsCount = null;
+        $this->reportFindingsCount = null;
+    }
+
+    private function reportSaveFailure(Throwable $exception): void
+    {
+        $this->saveStatus = self::STATUS_ERROR;
+        $this->saveError = __('assestme.workspace.errors.persistence');
+        Log::error('Assessment workspace save failed.', [
+            'assessment_id' => $this->assessmentRecord()->getKey(),
+            'expected_version' => $this->expectedVersion,
+            'exception' => $exception::class,
+            'message' => $exception->getMessage(),
+        ]);
+    }
+
+    private function findingEditorSchema(): Schema
+    {
+        $schema = $this->getSchema('findingEditor');
+        if (! $schema instanceof Schema) {
+            throw new \LogicException('The finding editor schema is unavailable.');
+        }
+
+        return $schema;
+    }
+
+    private function generatePdf(): void
+    {
+        try {
+            $report = app(GenerateAssessmentPdf::class)($this->assessmentRecord());
+            Notification::make()->success()->title(__('assestme.reports.generated'))->body($report->file_name)->send();
+            $this->redirect(route('generated-reports.download', $report), navigate: false);
+        } catch (ValidationException $exception) {
+            Notification::make()->danger()->title(__('assestme.reports.errors.generation'))->body(collect($exception->errors())->flatten()->join(' '))->persistent()->send();
+        } catch (Throwable $exception) {
+            Log::error('Assessment PDF generation failed.', ['assessment_id' => $this->assessmentRecord()->getKey(), 'exception' => $exception]);
+            Notification::make()->danger()->title(__('assestme.reports.errors.generation'))->body(__('assestme.reports.errors.retry'))->persistent()->send();
+        }
+    }
+
+    private function generateWorkbook(bool $includeExcludedFindings): void
+    {
+        try {
+            $report = app(GenerateAssessmentWorkbook::class)($this->assessmentRecord(), $includeExcludedFindings);
+            Notification::make()->success()->title(__('assestme.reports.generated_xlsx'))->body($report->file_name)->send();
+            $this->redirect(AssessmentResource::getUrl('workspace', ['record' => $this->assessmentRecord()]), navigate: false);
+        } catch (ValidationException $exception) {
+            Notification::make()->danger()->title(__('assestme.reports.errors.generation_xlsx'))->body(collect($exception->errors())->flatten()->join(' '))->persistent()->send();
+        } catch (Throwable $exception) {
+            Log::error('Assessment XLSX generation failed.', ['assessment_id' => $this->assessmentRecord()->getKey(), 'exception' => $exception]);
+            Notification::make()->danger()->title(__('assestme.reports.errors.generation_xlsx'))->body(__('assestme.reports.errors.retry_xlsx'))->persistent()->send();
+        }
     }
 }

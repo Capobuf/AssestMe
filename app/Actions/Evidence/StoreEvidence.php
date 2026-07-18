@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Evidence;
 
+use App\Actions\Assessments\IncrementAssessmentVersion;
 use App\Enums\AssessmentStatus;
 use App\Enums\EvidenceType;
 use App\Models\Evidence;
@@ -22,6 +23,8 @@ use ZipArchive;
 
 final class StoreEvidence
 {
+    public function __construct(private readonly IncrementAssessmentVersion $incrementAssessmentVersion) {}
+
     /** @var array<string, list<string>> */
     private const MIME_BY_EXTENSION = [
         'jpg' => ['image/jpeg'],
@@ -47,6 +50,7 @@ final class StoreEvidence
         EvidenceType $type,
         array $data,
         ?UploadedFile $file = null,
+        ?int $expectedVersion = null,
     ): Evidence {
         /** @var array<string, mixed> $validated */
         $validated = Validator::make($data, [
@@ -71,15 +75,17 @@ final class StoreEvidence
             ]);
         }
 
+        $expectedVersion ??= (int) $finding->assessment()->firstOrFail()->lock_version;
+
         return Cache::lock("assessment:{$finding->assessment_id}:save", 10)->block(
             5,
-            function () use ($finding, $type, $validated, $file): Evidence {
+            function () use ($finding, $type, $validated, $file, $expectedVersion): Evidence {
                 $storedPath = '';
 
                 try {
                     return DB::transaction(
-                        function () use ($finding, $type, $validated, $file, &$storedPath): Evidence {
-                            return $this->persist($finding, $type, $validated, $file, $storedPath);
+                        function () use ($finding, $type, $validated, $file, &$storedPath, $expectedVersion): Evidence {
+                            return $this->persist($finding, $type, $validated, $file, $storedPath, $expectedVersion);
                         },
                         attempts: 1,
                     );
@@ -103,6 +109,7 @@ final class StoreEvidence
         array $validated,
         ?UploadedFile $file,
         string &$storedPath,
+        int $expectedVersion,
     ): Evidence {
         $persisted = Finding::query()->with('assessment')->findOrFail($finding->getKey());
 
@@ -113,14 +120,18 @@ final class StoreEvidence
         }
 
         if ($type === EvidenceType::Url) {
-            return $this->storeUrl($persisted, $validated);
+            $evidence = $this->storeUrl($persisted, $validated);
+        } else {
+            if (! $file instanceof UploadedFile) {
+                throw new \LogicException('File evidence requires an uploaded file.');
+            }
+
+            $evidence = $this->storeFile($persisted, $file, $validated, $storedPath);
         }
 
-        if (! $file instanceof UploadedFile) {
-            throw new \LogicException('File evidence requires an uploaded file.');
-        }
+        ($this->incrementAssessmentVersion)($persisted->assessment, $expectedVersion);
 
-        return $this->storeFile($persisted, $file, $validated, $storedPath);
+        return $evidence;
     }
 
     /** @param array<string, mixed> $validated */

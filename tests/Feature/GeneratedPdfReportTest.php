@@ -74,6 +74,7 @@ it('persists immutable versioned PDF snapshots and downloads the authoritative f
         ->assertHeader('x-content-type-options', 'nosniff');
 
     Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('setWorkspaceTab', 'generated-files')
         ->assertSee($first->file_name)
         ->assertSee($second->file_name);
 });
@@ -92,6 +93,7 @@ it('generates one authoritative PDF and redirects the Filament action to its aut
         ->and(hash_file('sha256', Storage::disk('local')->path($report->file_path)))->toBe($report->file_sha256);
 
     Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('setWorkspaceTab', 'generated-files')
         ->assertSee($report->file_name);
 });
 
@@ -274,7 +276,7 @@ it('freezes a draft only after the PDF and generated report are stored successfu
         ->and(Storage::disk('local')->exists($report->file_path))->toBeTrue()
         ->and($assessment->status)->toBe(AssessmentStatus::Completed)
         ->and($assessment->completed_at)->not->toBeNull()
-        ->and($assessment->lock_version)->toBe(1);
+        ->and($assessment->lock_version)->toBe(2);
 });
 
 it('rejects missing or corrupt included evidence without recording a report or success file', function (string $sha256): void {

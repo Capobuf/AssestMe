@@ -17,21 +17,21 @@ cd "$project_dir"
 [[ -f composer.lock ]] || fail "composer.lock is required."
 
 source scripts/isolated-environment.sh
+source scripts/gate-receipts.sh
+
+composer validate --strict
+
+if assestme_gate_receipt_matches quality "$project_dir"; then
+    info "Reusing the successful quality gate for the exact current repository and runtime fingerprint."
+else
+    info "No matching quality receipt was found; running the isolated quality gate once."
+    bash scripts/quality-isolated.sh "$project_dir"
+fi
+
 assestme_begin_isolated_environment verify
 trap assestme_end_isolated_environment EXIT
 
-composer validate --strict
-composer audit --locked --no-interaction
-vendor/bin/pint --test
-vendor/bin/phpstan analyse --memory-limit=1G
 php artisan migrate:fresh --seed --force
-php artisan test
-
-if php artisan list --raw | grep -q '^canary:check'; then
-    php artisan canary:check --strict
-else
-    fail "Canary command canary:check is unavailable."
-fi
 
 php artisan migrate:status
 php artisan assestme:diagnose
@@ -41,9 +41,14 @@ php artisan route:list --except-vendor
 php artisan about
 
 if [[ "${RUN_DUSK:-1}" == "1" ]]; then
-    scripts/dusk-isolated.sh "$project_dir"
+    if assestme_gate_receipt_matches browser "$project_dir"; then
+        info "Reusing the successful browser gate for the exact current repository and runtime fingerprint."
+    else
+        info "No matching browser receipt was found; running the isolated browser gate once."
+        scripts/dusk-isolated.sh "$project_dir"
+    fi
 else
     info "Dusk was explicitly disabled with RUN_DUSK=${RUN_DUSK}."
 fi
 
-info "All requested verification checks passed."
+info "All requested verification checks passed once or were proven by exact-fingerprint receipts."

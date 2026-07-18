@@ -17,6 +17,7 @@ use App\Actions\Assessments\SaveFindingDetails;
 use App\Actions\Assessments\SetImplementedSolution;
 use App\Actions\Assessments\SetRecommendedSolution;
 use App\Actions\Assessments\TransitionFindingStatus;
+use App\Data\Assessments\FindingSaveData;
 use App\Enums\AssessmentStatus;
 use App\Enums\BillingFrequency;
 use App\Enums\EstimateType;
@@ -34,6 +35,7 @@ use App\Models\RiskProfile;
 use App\Models\Site;
 use Database\Seeders\MilestoneOneSeeder;
 use Database\Seeders\MilestoneTwoSeeder;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 beforeEach(function (): void {
@@ -260,7 +262,7 @@ it('returns row-numbered completion errors and enforces the assessment lifecycle
     $completed = app(CompleteAssessment::class)($assessment->fresh());
     expect($completed->status)->toBe(AssessmentStatus::Completed)
         ->and($completed->completed_at)->not->toBeNull()
-        ->and($completed->lock_version)->toBe(1)
+        ->and($completed->lock_version)->toBe(3)
         ->and(fn () => app(CreateBlankFinding::class)($completed))->toThrow(ValidationException::class);
 
     expect(fn () => app(CompleteAssessment::class)($completed))
@@ -270,14 +272,14 @@ it('returns row-numbered completion errors and enforces the assessment lifecycle
     $archived = app(ArchiveAssessment::class)($completed);
     expect($archived->status)->toBe(AssessmentStatus::Archived)
         ->and($archived->completed_at?->toISOString())->toBe($completedAt)
-        ->and($archived->lock_version)->toBe(2)
+        ->and($archived->lock_version)->toBe(4)
         ->and(fn () => app(ArchiveAssessment::class)($archived))
         ->toThrow(ValidationException::class);
 
     $reopened = app(ReopenAssessment::class)($archived);
     expect($reopened->status)->toBe(AssessmentStatus::Draft)
         ->and($reopened->completed_at)->toBeNull()
-        ->and($reopened->lock_version)->toBe(3)
+        ->and($reopened->lock_version)->toBe(5)
         ->and(fn () => app(ReopenAssessment::class)($reopened))
         ->toThrow(ValidationException::class);
 });
@@ -337,7 +339,7 @@ it('saves the row slide-over aggregate and rejects cross-client scope relations'
     $payload['priority_is_overridden'] = true;
     $payload['priority_rationale'] = 'Override salvato dallo slide-over.';
 
-    $saved = app(SaveFindingDetails::class)->handle($finding, $payload);
+    $saved = saveFindingAggregate($finding, $payload);
     expect($saved->technical_notes)->toBe("Dettaglio tecnico\ncon più righe.")
         ->and($saved->sites)->toHaveCount(1)
         ->and($saved->recommendedSolution)->not->toBeNull()
@@ -346,7 +348,7 @@ it('saves the row slide-over aggregate and rejects cross-client scope relations'
 
     $foreignSite = Site::factory()->create();
     $payload['site_ids'] = [$foreignSite->id];
-    expect(fn () => app(SaveFindingDetails::class)->handle($saved, $payload))
+    expect(fn () => saveFindingAggregate($saved, $payload))
         ->toThrow(ValidationException::class);
 });
 
@@ -367,7 +369,7 @@ it('requires assets only for the explicitly selected asset scope', function (): 
         $payload['scope_description'] = $description;
         $payload['site_ids'] = $siteIds;
         $payload['asset_ids'] = $assetIds;
-        $finding = app(SaveFindingDetails::class)->handle($finding->fresh(), $payload);
+        $finding = saveFindingAggregate($finding->fresh(), $payload);
         expect($finding->scope_type)->toBe($scope);
     }
 
@@ -376,11 +378,11 @@ it('requires assets only for the explicitly selected asset scope', function (): 
     $payload['scope_description'] = null;
     $payload['site_ids'] = [];
     $payload['asset_ids'] = [];
-    expect(fn () => app(SaveFindingDetails::class)->handle($finding->fresh(), $payload))
+    expect(fn () => saveFindingAggregate($finding->fresh(), $payload))
         ->toThrow(ValidationException::class);
 
     $payload['asset_ids'] = [$asset->id];
-    $saved = app(SaveFindingDetails::class)->handle($finding->fresh(), $payload);
+    $saved = saveFindingAggregate($finding->fresh(), $payload);
     expect($saved->assets)->toHaveCount(1);
 });
 
@@ -404,6 +406,9 @@ function findingDetailsPayload(Finding $finding): array
     $finding->load(['tags', 'sites', 'assets', 'solutions']);
 
     return [
+        'title' => $finding->title,
+        'problem' => $finding->problem,
+        'entrepreneur_notes' => $finding->entrepreneur_notes,
         'category_id' => $finding->category_id,
         'tag_ids' => $finding->tags->pluck('id')->all(),
         'technical_notes' => $finding->technical_notes,
@@ -417,6 +422,7 @@ function findingDetailsPayload(Finding $finding): array
         'priority_is_overridden' => $finding->priority_is_overridden,
         'priority_rationale' => $finding->priority_rationale,
         'status' => $finding->status->value,
+        'include_in_report' => $finding->include_in_report,
         'resolution_notes' => $finding->resolution_notes,
         'solutions' => $finding->solutions->map(fn (FindingSolution $solution): array => [
             ...$solution->only([
@@ -428,4 +434,19 @@ function findingDetailsPayload(Finding $finding): array
             'is_implemented' => $finding->implemented_solution_id === $solution->id,
         ])->all(),
     ];
+}
+
+/** @param array<string, mixed> $payload */
+function saveFindingAggregate(Finding $finding, array $payload): Finding
+{
+    $assessment = $finding->assessment()->firstOrFail();
+    $request = new FindingSaveData(
+        requestId: (string) Str::uuid(),
+        expectedVersion: (int) $assessment->lock_version,
+        tabId: (string) Str::uuid(),
+        payload: $payload,
+        payloadSha256: FindingSaveData::hashPayload($payload),
+    );
+
+    return app(SaveFindingDetails::class)($finding, $request)->finding;
 }

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Assessments\CopyTemplateToAssessment;
 use App\Enums\ScopeType;
 use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Resources\Assessments\Pages\CreateAssessment;
@@ -10,7 +11,10 @@ use App\Filament\Resources\Assessments\Pages\WorkspaceAssessment;
 use App\Models\Assessment;
 use App\Models\Client;
 use App\Models\Finding;
+use App\Models\FindingTemplate;
 use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 it('creates an assessment through the Filament resource', function (): void {
@@ -56,7 +60,7 @@ it('uses the Workspace as the primary assessment list destination', function ():
         ->assertSeeHtml(AssessmentResource::getUrl('workspace', ['record' => $assessment]));
 });
 
-it('mounts the native table repeater workspace with fifty related findings', function (): void {
+it('mounts the structured findings table workspace with fifty related findings', function (): void {
     $administrator = User::factory()->create();
     $assessment = Assessment::factory()->create();
     Finding::factory()->count(50)->for($assessment)->sequence(
@@ -75,7 +79,7 @@ it('mounts the native table repeater workspace with fifty related findings', fun
         ->assertSee('File Generati');
 });
 
-it('uses the same persistence path for explicit save and autosave', function (): void {
+it('keeps assessment metadata on its separate signed persistence path', function (): void {
     $administrator = User::factory()->create();
     $assessment = Assessment::factory()->create();
     Finding::factory()->for($assessment)->create(['sort_order' => 1]);
@@ -83,21 +87,22 @@ it('uses the same persistence path for explicit save and autosave', function ():
 
     $component = Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()]);
     $component->set('data.title', 'Autosave controllato')->assertHasNoErrors();
+    expect($assessment->fresh()->title)->not->toBe('Autosave controllato')
+        ->and($assessment->fresh()->lock_version)->toBe(0);
+
+    $component->call('saveAssessmentDetails')->assertHasNoErrors();
     expect($assessment->fresh()->title)->toBe('Autosave controllato')
         ->and($assessment->fresh()->lock_version)->toBe(1);
-
-    $component->call('save')->assertHasNoErrors();
-    expect($assessment->fresh()->title)->toBe('Autosave controllato')
-        ->and($assessment->fresh()->lock_version)->toBe(2);
 });
 
-it('keeps invalid form state visible after an autosave validation failure', function (): void {
+it('keeps invalid assessment state visible after a validation failure', function (): void {
     $administrator = User::factory()->create();
     $assessment = Assessment::factory()->create();
     $this->actingAs($administrator);
 
     Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
         ->set('data.title', '')
+        ->call('saveAssessmentDetails')
         ->assertSet('data.title', '')
         ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
         ->assertHasErrors(['data.assessment.title']);
@@ -105,14 +110,62 @@ it('keeps invalid form state visible after an autosave validation failure', func
     expect($assessment->fresh()->title)->not->toBe('');
 });
 
-it('mounts the finding details slide-over for a persisted row', function (): void {
+it('selects one persisted finding and loads its complete inspector state', function (): void {
     $administrator = User::factory()->create();
     $assessment = Assessment::factory()->create();
     $finding = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
     $this->actingAs($administrator);
 
     Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
-        ->mountFormComponentAction('findings', 'details', ['item' => "record-{$finding->id}"])
+        ->call('selectFinding', $finding->id)
         ->assertHasNoErrors()
-        ->assertSee(__('assestme.workspace.finding_details'));
+        ->assertSet('selectedFindingId', $finding->id)
+        ->assertSet('findingData.title', $finding->title)
+        ->assertSee(__('assestme.workspace.inspector.description'));
+});
+
+it('searches and filters the synthetic finding list without relationship query growth', function (): void {
+    $this->seed(DatabaseSeeder::class);
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $complete = app(CopyTemplateToAssessment::class)(
+        $assessment,
+        FindingTemplate::query()->where('default_scope_type', ScopeType::Organization->value)->firstOrFail(),
+    );
+    $complete->update(['title' => 'Unico finding ricercabile']);
+    $incomplete = Finding::factory()->for($assessment)->create([
+        'title' => 'Finding privo di contenuto',
+        'problem' => null,
+        'sort_order' => 2,
+        'include_in_report' => true,
+    ]);
+    $excluded = Finding::factory()->for($assessment)->create([
+        'title' => 'Finding escluso',
+        'sort_order' => 3,
+        'include_in_report' => false,
+    ]);
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->searchTable('ricercabile')
+        ->assertCanSeeTableRecords([$complete])
+        ->assertCanNotSeeTableRecords([$incomplete])
+        ->searchTable()
+        ->filterTable('include_in_report', 0)
+        ->assertCanSeeTableRecords([$excluded])
+        ->assertCanNotSeeTableRecords([$incomplete])
+        ->assertCanNotSeeTableRecords([$complete])
+        ->resetTableFilters()
+        ->filterTable('incomplete')
+        ->assertCanSeeTableRecords([$incomplete])
+        ->assertCanNotSeeTableRecords([$complete]);
+
+    Finding::factory()->count(48)->for($assessment)->sequence(
+        fn ($sequence): array => ['sort_order' => $sequence->index + 4],
+    )->create();
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])->assertOk();
+    expect(count(DB::getQueryLog()))->toBeLessThanOrEqual(20);
+    DB::disableQueryLog();
 });

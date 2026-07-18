@@ -7,14 +7,11 @@ namespace App\Actions\Assessments;
 use App\Data\Assessments\WorkspaceSaveData;
 use App\Data\Assessments\WorkspaceSaveResult;
 use App\Enums\AssessmentStatus;
-use App\Enums\FindingStatus;
 use App\Enums\ScopeType;
 use App\Exceptions\AssessmentVersionConflict;
 use App\Exceptions\IdempotencyKeyMismatch;
 use App\Models\Assessment;
-use App\Models\Finding;
 use App\Models\WorkspaceSaveRequest;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -22,12 +19,9 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
-final readonly class SaveAssessmentWorkspace
+final class SaveAssessmentWorkspace
 {
-    public function __construct(
-        private SaveAssessmentPatch $saveAssessmentPatch,
-        private ReorderFindings $reorderFindings,
-    ) {}
+    public function __construct(private readonly SaveAssessmentPatch $saveAssessmentPatch) {}
 
     /**
      * @throws AssessmentVersionConflict
@@ -85,14 +79,6 @@ final readonly class SaveAssessmentWorkspace
             'payload.assessment.methodology_notes' => ['nullable', 'string', 'max:20000'],
             'payload.assessment.site_ids' => ['array'],
             'payload.assessment.site_ids.*' => ['integer', 'distinct', 'exists:sites,id'],
-            'payload.findings' => ['present', 'array', 'max:100'],
-            'payload.findings.*.id' => ['nullable', 'integer', 'min:1', 'distinct'],
-            'payload.findings.*._temporary_uuid' => ['required', 'uuid', 'distinct'],
-            'payload.findings.*.title' => ['nullable', 'string', 'max:255'],
-            'payload.findings.*.problem' => ['nullable', 'string', 'max:20000'],
-            'payload.findings.*.entrepreneur_notes' => ['nullable', 'string', 'max:20000'],
-            'payload.findings.*.status' => ['required', Rule::enum(FindingStatus::class)],
-            'payload.findings.*.include_in_report' => ['required', 'boolean'],
         ])->validate();
 
         if (! Str::isUuid($request->requestId) || ! Str::isUuid($request->tabId)) {
@@ -165,57 +151,8 @@ final readonly class SaveAssessmentWorkspace
             return $replay;
         }
 
-        /** @var Collection<int, Finding> $existingFindings */
-        $existingFindings = $assessment->findings()->get()->keyBy('id');
-        $requestedIds = collect($request->payload['findings'])
-            ->pluck('id')
-            ->filter()
-            ->map(static fn (mixed $id): int => (int) $id);
-
-        if ($requestedIds->diff($existingFindings->keys())->isNotEmpty()) {
-            throw ValidationException::withMessages([
-                'findings' => __('assestme.workspace.errors.finding_ownership'),
-            ]);
-        }
-
         $appliedVersion = ($this->saveAssessmentPatch)($assessment, $request);
-
-        /** @var array<string, int> $idMap */
-        $idMap = [];
-        $keptIds = [];
-
-        foreach ($request->payload['findings'] as $index => $findingData) {
-            $finding = isset($findingData['id'])
-                ? $existingFindings->get((int) $findingData['id'])
-                : new Finding;
-
-            if (! $finding instanceof Finding) {
-                throw ValidationException::withMessages([
-                    "findings.{$index}.id" => __('assestme.workspace.errors.finding_ownership'),
-                ]);
-            }
-
-            $finding->fill([
-                'title' => $findingData['title'] ?? null,
-                'problem' => $findingData['problem'] ?? null,
-                'entrepreneur_notes' => $findingData['entrepreneur_notes'] ?? null,
-                'status' => $findingData['status'],
-                'include_in_report' => $findingData['include_in_report'],
-            ]);
-
-            if (! $finding->exists) {
-                $finding->assessment()->associate($assessment);
-            }
-
-            $finding->save();
-            $keptIds[] = (int) $finding->getKey();
-            $idMap[(string) $findingData['_temporary_uuid']] = (int) $finding->getKey();
-        }
-
-        $assessment->findings()->whereNotIn('id', $keptIds)->delete();
-        ($this->reorderFindings)($assessment, $keptIds);
-
-        $result = new WorkspaceSaveResult($appliedVersion, $idMap);
+        $result = new WorkspaceSaveResult($appliedVersion, []);
 
         WorkspaceSaveRequest::query()->create([
             'request_id' => $request->requestId,

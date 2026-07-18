@@ -6,9 +6,9 @@ namespace App\Data\Assessments;
 
 use JsonException;
 
-final readonly class WorkspaceSaveData
+final readonly class FindingSaveData
 {
-    /** @param array{assessment: array<string, mixed>} $payload */
+    /** @param array<string, mixed> $payload */
     public function __construct(
         public string $requestId,
         public int $expectedVersion,
@@ -26,7 +26,7 @@ final readonly class WorkspaceSaveData
                 JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
             );
         } catch (JsonException $exception) {
-            throw new JsonException('The workspace payload cannot be encoded.', previous: $exception);
+            throw new JsonException('The finding payload cannot be encoded.', previous: $exception);
         }
 
         return hash('sha256', $json);

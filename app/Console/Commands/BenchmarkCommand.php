@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Actions\Assessments\CopyTemplateToAssessment;
+use App\Actions\Assessments\ReorderFindings;
 use App\Actions\Assessments\SaveAssessmentWorkspace;
+use App\Actions\Assessments\SaveFindingDetails;
 use App\Actions\Reports\GenerateAssessmentPdf;
 use App\Actions\Reports\GenerateAssessmentWorkbook;
+use App\Data\Assessments\FindingSaveData;
 use App\Data\Assessments\WorkspaceSaveData;
+use App\Enums\FindingStatus;
+use App\Filament\Resources\Assessments\Schemas\FindingEditorSchema;
 use App\Models\Assessment;
-use App\Models\Finding;
 use App\Models\FindingTemplate;
 use App\Models\User;
 use Illuminate\Console\Command;
@@ -63,6 +67,8 @@ final class BenchmarkCommand extends Command
                 $finding->update(['title' => sprintf('Benchmark finding %03d', $number)]);
             }
 
+            DB::flushQueryLog();
+            DB::enableQueryLog();
             [$renderSeconds, $response] = $this->measure(function () use ($administrator, $assessment) {
                 Auth::login($administrator);
                 $request = Request::create(route('filament.admin.resources.assessments.workspace', $assessment), 'GET');
@@ -71,22 +77,41 @@ final class BenchmarkCommand extends Command
 
                 return $response;
             });
+            $listQueryCount = count(DB::getQueryLog());
+            DB::disableQueryLog();
 
             $payload = $this->workspacePayload($assessment->fresh('findings'));
-            [$saveSeconds] = $this->measure(function () use ($assessment, $payload): void {
+            [$assessmentSaveSeconds] = $this->measure(function () use ($assessment, $payload): void {
                 app(SaveAssessmentWorkspace::class)(
                     $assessment,
                     $this->saveData($assessment, $payload),
                 );
             });
 
-            $reorderedPayload = $this->workspacePayload($assessment->fresh('findings'));
-            $reorderedPayload['findings'] = array_reverse($reorderedPayload['findings']);
-            [$reorderSeconds] = $this->measure(function () use ($assessment, $reorderedPayload): void {
-                app(SaveAssessmentWorkspace::class)(
-                    $assessment,
-                    $this->saveData($assessment->fresh(), $reorderedPayload),
+            $selectedFinding = $assessment->findings()->firstOrFail();
+            [$inspectorOpenSeconds, $findingPayload] = $this->measure(
+                fn (): array => FindingEditorSchema::data($selectedFinding->fresh()),
+            );
+            $findingPayload['title'] = $selectedFinding->title.' aggiornato';
+            [$findingSaveSeconds, $saveResult] = $this->measure(function () use ($assessment, $selectedFinding, $findingPayload) {
+                return app(SaveFindingDetails::class)(
+                    $selectedFinding,
+                    $this->findingSaveData($assessment->fresh(), $findingPayload),
                 );
+            });
+
+            $inlinePayload = FindingEditorSchema::data($saveResult->finding);
+            $inlinePayload['status'] = FindingStatus::Planned->value;
+            [$inlineSaveSeconds] = $this->measure(function () use ($assessment, $saveResult, $inlinePayload): void {
+                app(SaveFindingDetails::class)(
+                    $saveResult->finding,
+                    $this->findingSaveData($assessment->fresh(), $inlinePayload),
+                );
+            });
+
+            $reorderedIds = $assessment->findings()->pluck('id')->reverse()->values()->all();
+            [$reorderSeconds] = $this->measure(function () use ($assessment, $reorderedIds): void {
+                app(ReorderFindings::class)($assessment->fresh(), $reorderedIds);
             });
 
             [$pdfSeconds] = $this->measure(function () use ($assessment): void {
@@ -101,7 +126,11 @@ final class BenchmarkCommand extends Command
                 'workspace_status' => $response->getStatusCode(),
                 'workspace_first_render_seconds' => round($renderSeconds, 4),
                 'workspace_response_bytes' => strlen((string) $response->getContent()),
-                'explicit_save_seconds' => round($saveSeconds, 4),
+                'workspace_list_queries' => $listQueryCount,
+                'inspector_open_seconds' => round($inspectorOpenSeconds, 4),
+                'single_finding_save_seconds' => round($findingSaveSeconds, 4),
+                'inline_status_save_seconds' => round($inlineSaveSeconds, 4),
+                'assessment_save_seconds' => round($assessmentSaveSeconds, 4),
                 'reorder_seconds' => round($reorderSeconds, 4),
                 'pdf_seconds' => round($pdfSeconds, 4),
                 'xlsx_seconds' => round($xlsxSeconds, 4),
@@ -110,7 +139,11 @@ final class BenchmarkCommand extends Command
                 'workspace_status' => $metrics['workspace_status'] === 200,
                 'workspace_first_render' => $renderSeconds <= 2.5,
                 'workspace_response_size' => $metrics['workspace_response_bytes'] <= 5 * 1024 * 1024,
-                'explicit_save' => $saveSeconds <= 2.0,
+                'workspace_list_queries' => $listQueryCount <= 30,
+                'inspector_open' => $inspectorOpenSeconds <= 1.0,
+                'single_finding_save' => $findingSaveSeconds <= 2.0,
+                'inline_status_save' => $inlineSaveSeconds <= 2.0,
+                'assessment_save' => $assessmentSaveSeconds <= 2.0,
                 'reorder' => $reorderSeconds <= 1.5,
                 'pdf' => $pdfSeconds <= 30.0,
                 'xlsx' => $xlsxSeconds <= 10.0,
@@ -253,7 +286,7 @@ final class BenchmarkCommand extends Command
         return [(hrtime(true) - $start) / 1_000_000_000, $result];
     }
 
-    /** @return array{assessment: array{title: string, assessment_date: string}, findings: list<array<string, mixed>>} */
+    /** @return array{assessment: array<string, mixed>} */
     private function workspacePayload(Assessment $assessment): array
     {
         return [
@@ -268,19 +301,10 @@ final class BenchmarkCommand extends Command
                 'methodology_notes' => $assessment->methodology_notes,
                 'site_ids' => $assessment->sites()->pluck('sites.id')->all(),
             ],
-            'findings' => $assessment->findings->map(fn (Finding $finding): array => [
-                'id' => $finding->getKey(),
-                '_temporary_uuid' => (string) Str::uuid(),
-                'title' => $finding->title,
-                'problem' => $finding->problem,
-                'entrepreneur_notes' => $finding->entrepreneur_notes,
-                'status' => $finding->status->value,
-                'include_in_report' => $finding->include_in_report,
-            ])->values()->all(),
         ];
     }
 
-    /** @param array{assessment: array{title: string, assessment_date: string}, findings: list<array<string, mixed>>} $payload */
+    /** @param array{assessment: array<string, mixed>} $payload */
     private function saveData(Assessment $assessment, array $payload): WorkspaceSaveData
     {
         return new WorkspaceSaveData(
@@ -289,6 +313,18 @@ final class BenchmarkCommand extends Command
             tabId: (string) Str::uuid(),
             payload: $payload,
             payloadSha256: WorkspaceSaveData::hashPayload($payload),
+        );
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function findingSaveData(Assessment $assessment, array $payload): FindingSaveData
+    {
+        return new FindingSaveData(
+            requestId: (string) Str::uuid(),
+            expectedVersion: (int) $assessment->lock_version,
+            tabId: (string) Str::uuid(),
+            payload: $payload,
+            payloadSha256: FindingSaveData::hashPayload($payload),
         );
     }
 }

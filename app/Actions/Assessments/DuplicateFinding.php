@@ -11,11 +11,14 @@ use App\Models\Finding;
 use App\Models\FindingSolution;
 use App\Models\Site;
 use App\Models\Tag;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class DuplicateFinding
 {
+    public function __construct(private readonly IncrementAssessmentVersion $incrementAssessmentVersion) {}
+
     public function __invoke(Finding $source): Finding
     {
         $source->loadMissing(['assessment', 'tags', 'sites', 'assets', 'solutions']);
@@ -23,37 +26,50 @@ final class DuplicateFinding
             throw ValidationException::withMessages(['assessment' => __('assestme.assessments.errors.read_only')]);
         }
 
-        return DB::transaction(function () use ($source): Finding {
-            $copy = $source->replicate([
-                'recommended_solution_id',
-                'implemented_solution_id',
-                'resolution_notes',
-                'resolved_at',
-                'sort_order',
-            ]);
-            $copy->status = FindingStatus::Open;
-            $copy->sort_order = ((int) $source->assessment->findings()->max('sort_order')) + 1;
-            $copy->save();
-            $copy->tags()->sync($source->tags->map(static fn (Tag $tag): int => $tag->id)->all());
-            $copy->sites()->sync($source->sites->map(static fn (Site $site): int => $site->id)->all());
-            $copy->assets()->sync($source->assets->map(static fn (Asset $asset): int => $asset->id)->all());
+        $expectedVersion = (int) $source->assessment->lock_version;
 
-            /** @var array<int, FindingSolution> $solutionMap */
-            $solutionMap = [];
-            foreach ($source->solutions as $solution) {
-                $newSolution = $solution->replicate();
-                $newSolution->finding()->associate($copy);
-                $newSolution->save();
-                $solutionMap[(int) $solution->getKey()] = $newSolution;
-            }
+        return Cache::lock("assessment:{$source->assessment_id}:save", 10)->block(
+            5,
+            fn (): Finding => DB::transaction(function () use ($source, $expectedVersion): Finding {
+                $source = Finding::query()
+                    ->with(['assessment', 'tags', 'sites', 'assets', 'solutions'])
+                    ->findOrFail($source->getKey());
+                if ($source->assessment->status !== AssessmentStatus::Draft) {
+                    throw ValidationException::withMessages(['assessment' => __('assestme.assessments.errors.read_only')]);
+                }
 
-            $recommendedId = $source->recommended_solution_id;
-            if ($recommendedId !== null && isset($solutionMap[$recommendedId])) {
-                $copy->recommendedSolution()->associate($solutionMap[$recommendedId]);
-            }
-            $copy->save();
+                $copy = $source->replicate([
+                    'recommended_solution_id',
+                    'implemented_solution_id',
+                    'resolution_notes',
+                    'resolved_at',
+                    'sort_order',
+                ]);
+                $copy->status = FindingStatus::Open;
+                $copy->sort_order = ((int) $source->assessment->findings()->max('sort_order')) + 1;
+                $copy->save();
+                $copy->tags()->sync($source->tags->map(static fn (Tag $tag): int => $tag->id)->all());
+                $copy->sites()->sync($source->sites->map(static fn (Site $site): int => $site->id)->all());
+                $copy->assets()->sync($source->assets->map(static fn (Asset $asset): int => $asset->id)->all());
 
-            return $copy->refresh();
-        });
+                /** @var array<int, FindingSolution> $solutionMap */
+                $solutionMap = [];
+                foreach ($source->solutions as $solution) {
+                    $newSolution = $solution->replicate();
+                    $newSolution->finding()->associate($copy);
+                    $newSolution->save();
+                    $solutionMap[(int) $solution->getKey()] = $newSolution;
+                }
+
+                $recommendedId = $source->recommended_solution_id;
+                if ($recommendedId !== null && isset($solutionMap[$recommendedId])) {
+                    $copy->recommendedSolution()->associate($solutionMap[$recommendedId]);
+                }
+                $copy->save();
+                ($this->incrementAssessmentVersion)($source->assessment, $expectedVersion);
+
+                return $copy->refresh();
+            }, attempts: 1),
+        );
     }
 }

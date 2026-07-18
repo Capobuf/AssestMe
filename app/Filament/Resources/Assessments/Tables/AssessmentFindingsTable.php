@@ -1,0 +1,205 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Filament\Resources\Assessments\Tables;
+
+use App\Actions\Assessments\AssessFindingCompleteness;
+use App\Enums\FindingStatus;
+use App\Filament\Resources\Assessments\Pages\WorkspaceAssessment;
+use App\Models\Category;
+use App\Models\Finding;
+use App\Models\FindingTemplate;
+use App\Models\PriorityLevel;
+use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
+use Filament\Forms\Components\Select;
+use Filament\Tables\Columns\Layout\Split;
+use Filament\Tables\Columns\Layout\Stack;
+use Filament\Tables\Columns\SelectColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Columns\ViewColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+
+final class AssessmentFindingsTable
+{
+    public static function configure(Table $table, WorkspaceAssessment $page): Table
+    {
+        return $table
+            ->query($page->findingsQuery())
+            ->columns([
+                Split::make([
+                    TextColumn::make('sort_order')
+                        ->formatStateUsing(fn (int $state): string => str_pad((string) $state, 2, '0', STR_PAD_LEFT))
+                        ->extraAttributes(['class' => 'assestme-finding-row__number']),
+                    Stack::make([
+                        TextColumn::make('title')
+                            ->placeholder(__('assestme.workspace.list.untitled'))
+                            ->weight('semibold')
+                            ->lineClamp(1)
+                            ->extraAttributes(['class' => 'assestme-finding-row__title']),
+                        TextColumn::make('problem')
+                            ->placeholder(__('assestme.workspace.list.problem_missing'))
+                            ->lineClamp(2)
+                            ->extraAttributes(['class' => 'assestme-finding-row__problem']),
+                        TextColumn::make('metadata')
+                            ->state(fn (Finding $record): string => self::metadata($record))
+                            ->lineClamp(1)
+                            ->extraAttributes(['class' => 'assestme-finding-row__metadata']),
+                    ])->extraAttributes(['class' => 'assestme-finding-row__summary']),
+                    ViewColumn::make('priority')
+                        ->view('filament.resources.assessments.tables.finding-priority'),
+                    ViewColumn::make('completeness')
+                        ->view('filament.resources.assessments.tables.finding-completeness'),
+                    SelectColumn::make('status')
+                        ->label(__('assestme.findings.fields.status'))
+                        ->options(FindingStatus::options())
+                        ->disabled(fn (): bool => $page->isWorkspaceReadOnly() || $page->saveStatus === WorkspaceAssessment::STATUS_CONFLICT)
+                        ->updateStateUsing(fn (Finding $record, mixed $state): mixed => $page->updateInlineStatus($record, (string) $state))
+                        ->extraAttributes(['class' => 'assestme-finding-row__status', 'data-dusk' => 'finding-inline-status']),
+                    ToggleColumn::make('include_in_report')
+                        ->label(__('assestme.findings.fields.include'))
+                        ->disabled(fn (): bool => $page->isWorkspaceReadOnly() || $page->saveStatus === WorkspaceAssessment::STATUS_CONFLICT)
+                        ->updateStateUsing(fn (Finding $record, mixed $state): mixed => $page->updateInlineReportInclusion($record, (bool) $state))
+                        ->extraAttributes(['class' => 'assestme-finding-row__report', 'data-dusk' => 'finding-inline-report']),
+                ])->extraAttributes(['class' => 'assestme-finding-row__layout']),
+            ])
+            ->searchable()
+            ->searchPlaceholder(__('assestme.workspace.list.search'))
+            ->searchUsing(function (Builder $query, string $search): void {
+                $query->where(function (Builder $query) use ($search): void {
+                    $term = '%'.$search.'%';
+                    $query->where('title', 'like', $term)
+                        ->orWhere('problem', 'like', $term)
+                        ->orWhere('entrepreneur_notes', 'like', $term)
+                        ->orWhereHas('solutions', fn (Builder $query): Builder => $query->where('description', 'like', $term))
+                        ->orWhereHas('assets', fn (Builder $query): Builder => $query
+                            ->where('name', 'like', $term)
+                            ->orWhere('hostname', 'like', $term)
+                            ->orWhere('description', 'like', $term));
+                });
+            })
+            ->filters([
+                SelectFilter::make('priority_level_id')
+                    ->label(__('assestme.findings.fields.priority'))
+                    ->options(fn (): array => PriorityLevel::query()->orderBy('sort_order')->pluck('label', 'id')->all()),
+                SelectFilter::make('status')
+                    ->label(__('assestme.findings.fields.status'))
+                    ->options(FindingStatus::options()),
+                SelectFilter::make('category_id')
+                    ->label(__('assestme.templates.fields.category'))
+                    ->options(fn (): array => Category::query()->orderBy('sort_order')->pluck('name', 'id')->all()),
+                SelectFilter::make('include_in_report')
+                    ->label(__('assestme.findings.fields.include'))
+                    ->options([
+                        1 => __('assestme.workspace.list.included'),
+                        0 => __('assestme.workspace.list.excluded'),
+                    ]),
+                Filter::make('incomplete')
+                    ->label(__('assestme.workspace.list.incomplete_filter'))
+                    ->query(fn (Builder $query): Builder => app(AssessFindingCompleteness::class)->applyIncompleteFilter($query)),
+            ])
+            ->headerActions([
+                Action::make('add_blank')
+                    ->label(__('assestme.workspace.add_finding'))
+                    ->icon('heroicon-o-plus')
+                    ->extraAttributes(['data-dusk' => 'add-finding'])
+                    ->visible(fn (): bool => ! $page->isWorkspaceReadOnly())
+                    ->action(function () use ($page): void {
+                        $page->createBlankFinding();
+                    }),
+                Action::make('add_template')
+                    ->label(__('assestme.workspace.add_template'))
+                    ->icon('heroicon-o-book-open')
+                    ->extraAttributes(['data-dusk' => 'add-template'])
+                    ->visible(fn (): bool => ! $page->isWorkspaceReadOnly())
+                    ->schema([
+                        Select::make('template_id')
+                            ->label(__('assestme.workspace.template'))
+                            ->options(fn (): array => FindingTemplate::query()->where('is_enabled', true)->orderBy('title')->pluck('title', 'id')->all())
+                            ->searchable()
+                            ->required(),
+                    ])
+                    ->action(function (array $data) use ($page): void {
+                        $page->createFromTemplate((int) $data['template_id']);
+                    }),
+            ])
+            ->recordActions([
+                Action::make('open')
+                    ->label(__('assestme.workspace.list.open'))
+                    ->icon('heroicon-o-pencil-square')
+                    ->iconButton()
+                    ->extraAttributes(['data-dusk' => 'open-finding'])
+                    ->action(function (Finding $record) use ($page): void {
+                        $page->selectFinding((int) $record->getKey());
+                    }),
+                Action::make('move_up')
+                    ->label(__('assestme.workspace.list.move_up'))
+                    ->icon('heroicon-o-arrow-up')
+                    ->iconButton()
+                    ->extraAttributes(['data-dusk' => 'move-up-finding'])
+                    ->visible(fn (Finding $record): bool => ! $page->isWorkspaceReadOnly() && $record->sort_order > 1)
+                    ->action(function (Finding $record) use ($page): void {
+                        $page->moveFinding($record, -1);
+                    }),
+                Action::make('move_down')
+                    ->label(__('assestme.workspace.list.move_down'))
+                    ->icon('heroicon-o-arrow-down')
+                    ->iconButton()
+                    ->extraAttributes(['data-dusk' => 'move-down-finding'])
+                    ->visible(fn (Finding $record): bool => ! $page->isWorkspaceReadOnly() && $record->sort_order < $page->totalFindings())
+                    ->action(function (Finding $record) use ($page): void {
+                        $page->moveFinding($record, 1);
+                    }),
+                ActionGroup::make([
+                    Action::make('duplicate')
+                        ->label(__('assestme.workspace.duplicate_finding'))
+                        ->icon('heroicon-o-square-2-stack')
+                        ->extraAttributes(['data-dusk' => 'duplicate-finding'])
+                        ->visible(fn (): bool => ! $page->isWorkspaceReadOnly())
+                        ->action(function (Finding $record) use ($page): void {
+                            $page->duplicateFinding((int) $record->getKey());
+                        }),
+                ])
+                    ->label(__('assestme.workspace.list.actions'))
+                    ->icon('heroicon-m-ellipsis-vertical')
+                    ->extraAttributes(['data-dusk' => 'finding-actions'])
+                    ->iconButton(),
+                Action::make('delete')
+                    ->label(__('filament-actions::delete.single.label'))
+                    ->icon('heroicon-o-trash')
+                    ->iconButton()
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->extraAttributes(['data-dusk' => 'delete-finding'])
+                    ->visible(fn (): bool => ! $page->isWorkspaceReadOnly())
+                    ->action(function (Finding $record) use ($page): void {
+                        $page->deleteFinding((int) $record->getKey());
+                    }),
+            ])
+            ->recordAction('open')
+            ->recordClasses(fn (Finding $record): string => $page->selectedFindingId === (int) $record->getKey() ? 'assestme-finding-row is-selected' : 'assestme-finding-row')
+            ->reorderable('sort_order', fn (): bool => $page->canReorderFindings())
+            ->paginationPageOptions([10, 25, 50])
+            ->defaultPaginationPageOption(50)
+            ->emptyStateHeading(__('assestme.workspace.list.empty'))
+            ->emptyStateDescription(__('assestme.workspace.list.empty_description'))
+            ->striped(false);
+    }
+
+    private static function metadata(Finding $record): string
+    {
+        $category = $record->category_id === null
+            ? __('assestme.workspace.list.category_missing')
+            : $record->category->name;
+        $scope = __('assestme.scopes.'.$record->scope_type->value);
+        $solutions = trans_choice('assestme.workspace.list.solutions_count', (int) $record->solutions_count, ['count' => $record->solutions_count]);
+        $evidences = trans_choice('assestme.workspace.list.evidences_count', (int) $record->evidences_count, ['count' => $record->evidences_count]);
+
+        return "{$category} · {$scope} · {$solutions} · {$evidences}";
+    }
+}

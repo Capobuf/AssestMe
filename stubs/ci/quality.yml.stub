@@ -36,11 +36,8 @@ jobs:
           ini-values: memory_limit=512M
           tools: composer:v2
 
-      - name: Validate and install locked dependencies
-        run: |
-          composer validate --strict
-          composer install --no-interaction --prefer-dist --no-progress
-          composer audit --locked --no-interaction
+      - name: Install locked dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Prepare application assets
         run: |

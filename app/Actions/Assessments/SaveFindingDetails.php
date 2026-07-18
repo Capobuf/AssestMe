@@ -4,33 +4,119 @@ declare(strict_types=1);
 
 namespace App\Actions\Assessments;
 
+use App\Data\Assessments\FindingSaveData;
+use App\Data\Assessments\FindingSaveResult;
 use App\Enums\AssessmentStatus;
 use App\Enums\BillingFrequency;
 use App\Enums\EstimateType;
 use App\Enums\FindingStatus;
 use App\Enums\ScopeType;
+use App\Exceptions\AssessmentVersionConflict;
+use App\Exceptions\IdempotencyKeyMismatch;
 use App\Models\ConsequenceLevel;
 use App\Models\Finding;
 use App\Models\FindingSolution;
 use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
+use App\Models\WorkspaceSaveRequest;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 final class SaveFindingDetails
 {
-    /** @param array<string, mixed> $data */
-    public function handle(Finding $finding, array $data): Finding
+    public function __construct(private readonly IncrementAssessmentVersion $incrementAssessmentVersion) {}
+
+    /**
+     * @throws IdempotencyKeyMismatch
+     * @throws AssessmentVersionConflict
+     * @throws LockTimeoutException
+     * @throws ValidationException
+     */
+    public function __invoke(Finding $finding, FindingSaveData $request): FindingSaveResult
     {
-        $finding->loadMissing('assessment');
-        if ($finding->assessment->status !== AssessmentStatus::Draft) {
-            throw ValidationException::withMessages(['assessment' => __('assestme.assessments.errors.read_only')]);
+        $this->validateEnvelope($finding, $request);
+
+        if ($replay = $this->findReplay($finding, $request)) {
+            return $replay;
         }
 
+        return Cache::lock("assessment:{$finding->assessment_id}:save", 10)->block(
+            5,
+            fn (): FindingSaveResult => DB::transaction(
+                fn (): FindingSaveResult => $this->persistRequest($finding, $request),
+                attempts: 1,
+            ),
+        );
+    }
+
+    private function validateEnvelope(Finding $finding, FindingSaveData $request): void
+    {
+        Validator::make([
+            'request_id' => $request->requestId,
+            'tab_id' => $request->tabId,
+            'expected_version' => $request->expectedVersion,
+            'payload_sha256' => $request->payloadSha256,
+        ], [
+            'request_id' => ['required', 'uuid'],
+            'tab_id' => ['required', 'uuid'],
+            'expected_version' => ['required', 'integer', 'min:0'],
+            'payload_sha256' => ['required', 'regex:/^[a-f0-9]{64}$/'],
+        ])->validate();
+
+        if (! $finding->exists || ! Str::isUuid($request->requestId) || ! Str::isUuid($request->tabId)) {
+            throw ValidationException::withMessages([
+                'request_id' => __('assestme.workspace.errors.invalid_request'),
+            ]);
+        }
+
+        if (! hash_equals(FindingSaveData::hashPayload($request->payload), $request->payloadSha256)) {
+            throw ValidationException::withMessages([
+                'payload_sha256' => __('assestme.workspace.errors.payload_hash'),
+            ]);
+        }
+    }
+
+    private function findReplay(Finding $finding, FindingSaveData $request): ?FindingSaveResult
+    {
+        $stored = WorkspaceSaveRequest::query()->find($request->requestId);
+
+        if (! $stored) {
+            return null;
+        }
+
+        /** @var array<string, mixed> $response */
+        $response = $stored->getAttribute('response');
+        if ((int) $stored->assessment_id !== $finding->assessment_id
+            || ! hash_equals((string) $stored->payload_hash, $request->payloadSha256)
+            || ($response['operation'] ?? null) !== 'save_finding'
+            || (int) ($response['finding_id'] ?? 0) !== (int) $finding->getKey()) {
+            throw new IdempotencyKeyMismatch;
+        }
+
+        $saved = Finding::query()->findOrFail($finding->getKey());
+
+        return new FindingSaveResult(
+            finding: $saved,
+            appliedVersion: (int) $stored->applied_version,
+            idempotentReplay: true,
+        );
+    }
+
+    /** @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function validatePayload(array $data): array
+    {
         /** @var array<string, mixed> $validated */
         $validated = Validator::make($data, [
+            'title' => ['nullable', 'string', 'max:255'],
+            'problem' => ['nullable', 'string', 'max:20000'],
+            'entrepreneur_notes' => ['nullable', 'string', 'max:20000'],
             'category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->whereNull('deleted_at')],
             'tag_ids' => ['array'],
             'tag_ids.*' => ['integer', 'distinct', Rule::exists('tags', 'id')->whereNull('deleted_at')],
@@ -47,6 +133,7 @@ final class SaveFindingDetails
             'priority_is_overridden' => ['required', 'boolean'],
             'priority_rationale' => ['nullable', 'string', 'max:20000'],
             'status' => ['required', Rule::enum(FindingStatus::class)],
+            'include_in_report' => ['required', 'boolean'],
             'resolution_notes' => ['nullable', 'string', 'max:20000'],
             'solutions' => ['array'],
             'solutions.*.id' => ['nullable', 'integer', 'distinct'],
@@ -68,78 +155,117 @@ final class SaveFindingDetails
             'solutions.*.is_implemented' => ['required', 'boolean'],
         ])->validate();
 
-        $this->validateOwnershipAndAggregate($finding, $validated);
+        return $validated;
+    }
 
-        return DB::transaction(function () use ($finding, $validated): Finding {
-            $originalStatus = $finding->status;
-            $targetStatus = FindingStatus::from((string) $validated['status']);
-            $priorityIsOverridden = (bool) $validated['priority_is_overridden'];
-            $priorityLevelId = isset($validated['priority_level_id']) ? (int) $validated['priority_level_id'] : null;
-            $priorityRationale = isset($validated['priority_rationale']) ? (string) $validated['priority_rationale'] : null;
-            $finding->fill(collect($validated)->except([
-                'tag_ids', 'site_ids', 'asset_ids', 'solutions', 'status',
-                'priority_level_id', 'priority_is_overridden', 'priority_rationale',
-            ])->all());
-            $finding->save();
+    private function persistRequest(Finding $finding, FindingSaveData $request): FindingSaveResult
+    {
+        if ($replay = $this->findReplay($finding, $request)) {
+            return $replay;
+        }
 
-            if ($priorityIsOverridden && $priorityLevelId !== null) {
-                app(OverrideFindingPriority::class)(
-                    $finding,
-                    PriorityLevel::query()->findOrFail($priorityLevelId),
-                    (string) $priorityRationale,
-                );
-            } elseif (! $priorityIsOverridden
-                && $finding->consequence_level_id !== null
-                && $finding->likelihood_level_id !== null) {
-                app(RecalculateFindingPriority::class)->handle($finding);
-            } else {
-                $finding->forceFill([
-                    'priority_level_id' => $priorityLevelId,
-                    'priority_is_overridden' => $priorityIsOverridden,
-                    'priority_rationale' => $priorityRationale,
-                ])->save();
-            }
-            $finding->tags()->sync($validated['tag_ids'] ?? []);
-            $finding->sites()->sync($validated['site_ids'] ?? []);
-            $finding->assets()->sync($validated['asset_ids'] ?? []);
+        $current = Finding::query()
+            ->with(['assessment.client', 'tags', 'sites', 'assets', 'solutions'])
+            ->where('assessment_id', $finding->assessment_id)
+            ->findOrFail($finding->getKey());
 
-            $keptIds = [];
-            $recommended = null;
-            $implemented = null;
-            foreach ($validated['solutions'] ?? [] as $row) {
-                /** @var array<string, mixed> $row */
-                $solution = isset($row['id'])
-                    ? $finding->solutions()->withTrashed()->findOrFail($row['id'])
-                    : new FindingSolution;
-                $solution->fill(collect($row)->except(['id', 'is_recommended', 'is_implemented'])->all());
-                $solution->finding()->associate($finding);
+        if ($current->assessment->status !== AssessmentStatus::Draft) {
+            throw ValidationException::withMessages(['assessment' => __('assestme.assessments.errors.read_only')]);
+        }
+
+        $validated = $this->validatePayload($request->payload);
+        $this->validateOwnershipAndAggregate($current, $validated);
+        $saved = $this->persistAggregate($current, $validated);
+        $appliedVersion = ($this->incrementAssessmentVersion)($current->assessment, $request->expectedVersion);
+
+        WorkspaceSaveRequest::query()->create([
+            'request_id' => $request->requestId,
+            'assessment_id' => $current->assessment_id,
+            'expected_version' => $request->expectedVersion,
+            'applied_version' => $appliedVersion,
+            'payload_hash' => $request->payloadSha256,
+            'response' => [
+                'operation' => 'save_finding',
+                'finding_id' => (int) $saved->getKey(),
+                'applied_version' => $appliedVersion,
+            ],
+            'created_at' => now(),
+        ]);
+
+        return new FindingSaveResult($saved, $appliedVersion);
+    }
+
+    /** @param array<string, mixed> $validated */
+    private function persistAggregate(Finding $finding, array $validated): Finding
+    {
+        $originalStatus = $finding->status;
+        $targetStatus = FindingStatus::from((string) $validated['status']);
+        $priorityIsOverridden = (bool) $validated['priority_is_overridden'];
+        $priorityLevelId = isset($validated['priority_level_id']) ? (int) $validated['priority_level_id'] : null;
+        $priorityRationale = isset($validated['priority_rationale']) ? (string) $validated['priority_rationale'] : null;
+        $finding->fill(collect($validated)->except([
+            'tag_ids', 'site_ids', 'asset_ids', 'solutions', 'status',
+            'priority_level_id', 'priority_is_overridden', 'priority_rationale',
+        ])->all());
+        $finding->save();
+
+        if ($priorityIsOverridden && $priorityLevelId !== null) {
+            app(OverrideFindingPriority::class)(
+                $finding,
+                PriorityLevel::query()->findOrFail($priorityLevelId),
+                (string) $priorityRationale,
+            );
+        } elseif (! $priorityIsOverridden
+            && $finding->consequence_level_id !== null
+            && $finding->likelihood_level_id !== null) {
+            app(RecalculateFindingPriority::class)->handle($finding);
+        } else {
+            $finding->forceFill([
+                'priority_level_id' => $priorityLevelId,
+                'priority_is_overridden' => $priorityIsOverridden,
+                'priority_rationale' => $priorityRationale,
+            ])->save();
+        }
+        $finding->tags()->sync($validated['tag_ids'] ?? []);
+        $finding->sites()->sync($validated['site_ids'] ?? []);
+        $finding->assets()->sync($validated['asset_ids'] ?? []);
+
+        $keptIds = [];
+        $recommended = null;
+        $implemented = null;
+        foreach ($validated['solutions'] ?? [] as $row) {
+            /** @var array<string, mixed> $row */
+            $solution = isset($row['id'])
+                ? $finding->solutions()->withTrashed()->findOrFail($row['id'])
+                : new FindingSolution;
+            $solution->fill(collect($row)->except(['id', 'is_recommended', 'is_implemented'])->all());
+            $solution->finding()->associate($finding);
+            $solution->save();
+            if ($solution->external_key === null) {
+                $solution->external_key = "manual-{$solution->id}";
                 $solution->save();
-                if ($solution->external_key === null) {
-                    $solution->external_key = "manual-{$solution->id}";
-                    $solution->save();
-                }
-                $solution->restore();
-                $keptIds[] = (int) $solution->getKey();
-                $recommended = $row['is_recommended'] ? $solution : $recommended;
-                $implemented = $row['is_implemented'] ? $solution : $implemented;
             }
+            $solution->restore();
+            $keptIds[] = (int) $solution->getKey();
+            $recommended = $row['is_recommended'] ? $solution : $recommended;
+            $implemented = $row['is_implemented'] ? $solution : $implemented;
+        }
 
-            $referencedOmitted = collect([$finding->recommended_solution_id, $finding->implemented_solution_id])
-                ->filter()
-                ->diff($keptIds);
-            if ($referencedOmitted->isNotEmpty()) {
-                throw ValidationException::withMessages(['solutions' => __('assestme.findings.errors.referenced_solution')]);
-            }
-            $finding->solutions()->whereNotIn('id', $keptIds)->delete();
-            app(SetRecommendedSolution::class)($finding, $recommended);
-            app(SetImplementedSolution::class)($finding, $implemented);
+        $referencedOmitted = collect([$finding->recommended_solution_id, $finding->implemented_solution_id])
+            ->filter()
+            ->diff($keptIds);
+        if ($referencedOmitted->isNotEmpty()) {
+            throw ValidationException::withMessages(['solutions' => __('assestme.findings.errors.referenced_solution')]);
+        }
+        $finding->solutions()->whereNotIn('id', $keptIds)->delete();
+        app(SetRecommendedSolution::class)($finding, $recommended);
+        app(SetImplementedSolution::class)($finding, $implemented);
 
-            if ($targetStatus !== $originalStatus) {
-                app(TransitionFindingStatus::class)($finding->refresh(), $targetStatus);
-            }
+        if ($targetStatus !== $originalStatus) {
+            app(TransitionFindingStatus::class)($finding->refresh(), $targetStatus);
+        }
 
-            return $finding->refresh();
-        });
+        return $finding->refresh();
     }
 
     /** @param array<string, mixed> $validated */

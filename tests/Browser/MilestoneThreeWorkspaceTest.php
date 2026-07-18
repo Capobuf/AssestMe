@@ -18,7 +18,7 @@ final class MilestoneThreeWorkspaceTest extends DuskTestCase
 {
     use DatabaseTruncation;
 
-    public function test_slide_over_and_lifecycle_are_accessible_without_console_errors(): void
+    public function test_finding_inspector_and_lifecycle_are_accessible_without_console_errors(): void
     {
         $this->seed(DatabaseSeeder::class);
         $administrator = User::factory()->create();
@@ -28,23 +28,28 @@ final class MilestoneThreeWorkspaceTest extends DuskTestCase
         $this->browse(function (Browser $browser) use ($administrator, $assessment): void {
             $browser->loginAs($administrator)
                 ->visit("/admin/assessments/{$assessment->getKey()}/workspace")
-                ->waitFor('[data-dusk="finding-details"]')
+                ->waitFor('.assestme-finding-row')
                 ->assertSee('Aggiungi da template')
                 ->assertSee('Completa assessment')
                 ->assertSee('Anteprima riepilogo')
                 ->assertSee('File Generati')
-                ->click('tbody tr:first-child [data-dusk="finding-details"]')
-                ->waitForText('Dettagli Finding')
+                ->click('.assestme-finding-row:first-of-type')
+                ->waitFor('[data-assestme-finding-inspector]')
+                ->assertAttribute('.assestme-finding-row.is-selected', 'aria-selected', 'true')
+                ->assertSee('Descrizione')
                 ->assertSee('Soluzioni')
                 ->assertSee('Evidenze');
-            // The edit page also has an "Annulla" button, so scope cancellation to the active slide-over.
-            $browser->script("Array.from(document.querySelectorAll('.fi-modal-window button')).find((button) => button.textContent.trim() === 'Annulla').click()");
-            $browser->waitUntilMissing('.fi-modal-window');
+            $browser->click('[data-dusk="finding-close"]')->waitUntilMissing('[data-assestme-finding-inspector]');
             $browser->script("Array.from(document.querySelectorAll('button')).find((button) => button.textContent.includes('Completa assessment')).click()");
             $browser->waitForText('Conferma')
                 ->press('Conferma')
                 ->waitForText('Riapri assessment')
-                ->assertMissing('[data-dusk="add-finding"]');
+                ->assertMissing('[data-dusk="add-finding"]')
+                ->click('.assestme-finding-row:first-of-type')
+                ->waitFor('[data-assestme-finding-inspector]')
+                ->assertMissing('[data-dusk="save-finding"]')
+                ->assertPresent('[data-dusk="finding-close"]');
+            $browser->click('[data-dusk="finding-close"]')->waitUntilMissing('[data-assestme-finding-inspector]');
             $browser->script("Array.from(document.querySelectorAll('button')).find((button) => button.textContent.includes('Riapri assessment')).click()");
             $browser->waitForText('Conferma')
                 ->press('Conferma')

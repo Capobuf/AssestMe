@@ -8,6 +8,16 @@ fi
 cd "$project_dir"
 
 source scripts/isolated-environment.sh
+source scripts/gate-receipts.sh
+
+full_suite=0
+dusk_fingerprint=""
+if [[ $# -eq 0 ]]; then
+    full_suite=1
+    assestme_clear_gate_receipt browser "$project_dir"
+    dusk_fingerprint="$(assestme_gate_fingerprint browser "$project_dir")"
+fi
+
 assestme_begin_isolated_environment dusk
 
 server_pid=""
@@ -65,7 +75,17 @@ server_pid=$!
 for attempt in {1..40}; do
     if curl --fail --silent "http://${DUSK_READY_HOST}:${DUSK_PORT}/admin/login" >/dev/null; then
         php artisan dusk --without-tty "$@"
-        exit $?
+
+        if [[ "$full_suite" == "1" ]]; then
+            if [[ "$(assestme_gate_fingerprint browser "$project_dir")" != "$dusk_fingerprint" ]]; then
+                printf 'ERROR: Repository or runtime inputs changed while the browser gate was running.\n' >&2
+                exit 1
+            fi
+
+            assestme_write_gate_receipt browser "$project_dir" "$dusk_fingerprint"
+        fi
+
+        exit 0
     fi
     sleep 0.25
 done

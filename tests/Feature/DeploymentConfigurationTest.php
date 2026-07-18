@@ -234,6 +234,103 @@ BASH;
         ->and($process->getOutput())->toBe('it|it|Europe/Rome');
 });
 
+it('runs each expensive gate once and reuses only exact fingerprint receipts', function (): void {
+    $quality = (string) file_get_contents(base_path('scripts/quality-isolated.sh'));
+    $browser = (string) file_get_contents(base_path('scripts/dusk-isolated.sh'));
+    $verify = (string) file_get_contents(base_path('scripts/verify.sh'));
+    $workflow = (string) file_get_contents(base_path('.github/workflows/quality.yml'));
+
+    expect($quality)
+        ->toContain('vendor/bin/pint --test')
+        ->toContain('vendor/bin/phpstan analyse --memory-limit=1G')
+        ->toContain('php artisan test')
+        ->toContain('php artisan canary:check --strict')
+        ->toContain('composer audit --locked --no-interaction')
+        ->toContain('assestme_write_gate_receipt quality')
+        ->and($verify)
+        ->toContain('assestme_gate_receipt_matches quality')
+        ->toContain('assestme_gate_receipt_matches browser')
+        ->not->toContain('vendor/bin/pint --test')
+        ->not->toContain('vendor/bin/phpstan analyse')
+        ->not->toContain('php artisan test')
+        ->not->toContain('php artisan canary:check')
+        ->not->toContain('composer audit')
+        ->and($browser)
+        ->toContain('if [[ $# -eq 0 ]]')
+        ->toContain('assestme_write_gate_receipt browser')
+        ->and($workflow)
+        ->toContain('run: RUN_DUSK=0 scripts/verify.sh')
+        ->not->toContain('composer validate --strict')
+        ->not->toContain('composer audit --locked');
+
+    $repository = storage_path('framework/testing/gate-receipt-'.bin2hex(random_bytes(6)));
+    File::ensureDirectoryExists($repository);
+    File::put($repository.'/tracked.txt', "initial\n");
+    File::put($repository.'/plan.md', "# Specification\n\n## 22. Progress\n\nInitial evidence.\n");
+
+    try {
+        foreach ([
+            ['git', 'init'],
+            ['git', 'config', 'user.email', 'gate-test@assestme.local'],
+            ['git', 'config', 'user.name', 'Gate Test'],
+            ['git', 'add', 'tracked.txt', 'plan.md'],
+            ['git', 'commit', '-m', 'Initial'],
+        ] as $command) {
+            $process = new Process($command, $repository);
+            $process->run();
+            expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
+        }
+
+        $writeAndMatch = new Process(
+            ['bash', '-c', <<<'BASH'
+source "$GATE_RECEIPTS_HELPER"
+fingerprint="$(assestme_gate_fingerprint quality "$GATE_TEST_ROOT")"
+assestme_write_gate_receipt quality "$GATE_TEST_ROOT" "$fingerprint"
+assestme_gate_receipt_matches quality "$GATE_TEST_ROOT"
+BASH],
+            base_path(),
+            [
+                'GATE_RECEIPTS_HELPER' => base_path('scripts/gate-receipts.sh'),
+                'GATE_TEST_ROOT' => $repository,
+            ],
+        );
+        $writeAndMatch->run();
+        expect($writeAndMatch->isSuccessful())->toBeTrue($writeAndMatch->getErrorOutput());
+
+        File::append($repository.'/plan.md', "Additional factual evidence.\n");
+        $progressOnlyChange = new Process(
+            ['bash', '-c', <<<'BASH'
+source "$GATE_RECEIPTS_HELPER"
+assestme_gate_receipt_matches quality "$GATE_TEST_ROOT"
+BASH],
+            base_path(),
+            [
+                'GATE_RECEIPTS_HELPER' => base_path('scripts/gate-receipts.sh'),
+                'GATE_TEST_ROOT' => $repository,
+            ],
+        );
+        $progressOnlyChange->run();
+        expect($progressOnlyChange->isSuccessful())->toBeTrue($progressOnlyChange->getErrorOutput());
+
+        File::put($repository.'/tracked.txt', "changed\n");
+        $staleReceipt = new Process(
+            ['bash', '-c', <<<'BASH'
+source "$GATE_RECEIPTS_HELPER"
+assestme_gate_receipt_matches quality "$GATE_TEST_ROOT"
+BASH],
+            base_path(),
+            [
+                'GATE_RECEIPTS_HELPER' => base_path('scripts/gate-receipts.sh'),
+                'GATE_TEST_ROOT' => $repository,
+            ],
+        );
+        $staleReceipt->run();
+        expect($staleReceipt->isSuccessful())->toBeFalse();
+    } finally {
+        File::deleteDirectory($repository);
+    }
+});
+
 it('preserves the legacy generic-host deployment artifact for internal regression coverage', function (): void {
     $script = (string) file_get_contents(base_path('scripts/deploy-production.sh'));
 

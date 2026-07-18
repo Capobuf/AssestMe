@@ -44,7 +44,7 @@ final class ValidateAssessmentCompletion
     }
 
     /** @return list<string> */
-    private function findingErrors(Finding $finding): array
+    public function findingErrors(Finding $finding): array
     {
         $messages = [];
         if (blank($finding->title)) {

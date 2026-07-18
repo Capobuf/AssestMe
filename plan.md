@@ -25,7 +25,7 @@ The application must allow the administrator to:
 3. maintain a reusable library of finding templates;
 4. import and export finding templates in a versioned JSON format;
 5. create an assessment for a client;
-6. add, edit, duplicate, order, and remove findings from a spreadsheet-like grid;
+6. add, locate, edit, duplicate, order, and remove findings through a structured list and single-record lateral inspector;
 7. associate a finding with the whole organization, one or more selected sites, a network scope, selected assets, or a custom scope;
 8. define multiple remediation solutions for the same finding;
 9. select one recommended solution and, when the finding is resolved, one implemented solution;
@@ -70,7 +70,8 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-007 (v2) | SUPERSEDED | No Node.js/npm/pnpm/Vite build or external runtime service; Docker was permitted for future packaging but was not required; superseded by D-007 on 2026-07-18 |
 | D-007 | APPROVED | The application requires no Node.js frontend build; Docker Compose is the maintained and authoritative local development environment |
 | D-008 (v1) | SUPERSEDED | Advance Table Repeater was the selected assessment-grid component; superseded by D-008 on 2026-07-13 |
-| D-008 | APPROVED | The assessment workspace uses only the native Filament 5 table Repeater |
+| D-008 (v2) | SUPERSEDED | The assessment workspace used only the native Filament 5 table Repeater; superseded by D-008 on 2026-07-18 |
+| D-008 | APPROVED | The Finding workspace uses a Filament Table structured list with a single-record lateral inspector; native Repeaters remain permitted for bounded child collections such as Finding solutions |
 | D-009 | APPROVED | Spatie Laravel PDF with DOMPDF; no renderer fallback |
 | D-010 | APPROVED | One configurable professional report layout |
 | D-011 | APPROVED | Italian v1 UI/report, translation keys from the first commit |
@@ -250,7 +251,7 @@ Prohibited in development and runtime:
 
 Laravel Dusk may use the optional profiled Selenium service. Native Chrome/ChromeDriver may remain in CI where the technically reusable isolated runner is invoked outside the supported workstation installation profile. Selenium is not a runtime or production dependency and is not a build step.
 
-### D-008 — Central assessment grid
+### D-008 (v2) — Central assessment grid
 
 Use only native Filament 5 form and schema components for the first implementation of the assessment workspace.
 
@@ -287,6 +288,16 @@ Milestone 0 must prove that the native Repeater table can:
 - display validation and persistence errors without losing current form state.
 
 If a native capability does not behave as required, record the exact limitation in Discoveries. Do not install an alternative plugin without explicit approval.
+
+### D-008 — Finding list/detail workspace
+
+The previous requirement to represent the complete Finding collection through one native table Repeater is **SUPERSEDED by D-008**. The Finding workspace uses Filament Table Builder as the authoritative list engine and an application-style structured row rather than a conventional multi-column CRUD grid. Selecting one row opens a lateral inspector that loads and edits only that complete Finding aggregate. Closing the inspector restores the list to the full available width. Container-responsive behavior presents a side-by-side layout on wide containers, an overlaid inspector at intermediate widths, and consecutive list/detail views on mobile.
+
+The list owns Eloquent query, search, filters, deterministic reorder, empty state, collection actions, accessible row selection, inline status, and inline report-inclusion controls. Only status and report inclusion are editable inline. The inspector owns the complete single-Finding editor, collapsible description, scope/risk, solutions, and evidence sections, previous/next navigation, explicit save, save-and-next, dirty/offline/error/conflict states, and read-only rendering for completed or archived assessments.
+
+The native Filament Repeater remains permitted for bounded child collections such as the solutions belonging to the selected Finding. It is not the primary Finding-list workspace. No Node.js pipeline, external data grid, JavaScript persistence layer, or frontend runtime dependency is introduced.
+
+This decision supersedes only the incompatible table-Repeater presentation and whole-Finding-collection submission rules in §§9.4–9.5, 10.1, 16.1, Milestones 0/3, and their corresponding acceptance wording. Assessment metadata may retain its separate signed persistence path. All other approved domain, persistence, optimistic-locking, idempotency, lifecycle, report, evidence, deployment, and test decisions remain authoritative. Every Finding mutation continues to serialize on the assessment save lock, compare and increment `lock_version`, and record an idempotent request UUID; no unsigned or last-write-wins path is permitted.
 
 ### D-009 — PDF
 
@@ -476,6 +487,8 @@ No development or CI verification command may read, migrate, truncate, seed, bac
 Required behavior:
 
 - the maintained entry points `php artisan test`, `composer quality` (including Canary), `composer browser` (Dusk), the benchmark, and `scripts/verify.sh` use disposable file-backed SQLite databases created specifically for that run;
+- `composer quality` and a complete `composer browser` run write non-versioned receipts bound to the exact executable source, authoritative plan through section 21, dependency, PHP runtime, and extension fingerprint only after success; factual Progress, Discoveries, and Final outcome updates are excluded because they record evidence rather than change executable behavior, and focused browser runs do not write a complete-browser receipt;
+- `scripts/verify.sh` is the authoritative aggregate entry point and executes each expensive gate at most once, reusing a quality or complete-browser result only while its exact fingerprint receipt still matches; source, dependency, or runtime changes invalidate reuse;
 - test cache, sessions, generated reports, evidence, backups, temporary uploads, and deletion trash use disposable test roots;
 - verification creates its own domain fixtures and administrator when required;
 - commands clean their disposable state on success and failure;
@@ -2834,6 +2847,8 @@ scripts/verify.sh
 
 `composer.lock` is mandatory.
 
+For final acceptance, run `scripts/verify.sh` as the single aggregate entry point. `composer quality` and `composer browser` are maintained focused subgates; when either has already succeeded for the exact current repository and runtime fingerprint, the aggregate verifier consumes its non-versioned receipt instead of repeating the same expensive work. The verifier never treats a focused Dusk selection, stale receipt, failed command, or changed source/dependency/runtime as success.
+
 `migrate:fresh --seed`, standalone Canary, diagnostics, storage audit, and Dusk are executed inside the maintained isolated scripts. They are not accepted as direct development-verification entry points against the configured application environment. `scripts/bootstrap-local.sh` remains the explicit command for initializing an intended local installation.
 
 ## 17. Security and operational controls
@@ -3196,6 +3211,22 @@ No unresolved product or architecture decision remains at implementation handoff
 ## 22. Progress
 
 The implementation agent must maintain this section.
+
+Verification-gate deduplication started on 2026-07-18 after the user rejected repeated execution of the same expensive suites. The existing `composer quality` already runs Pint, PHPStan, all application tests, strict Canary, and the locked audit, while `scripts/verify.sh` repeated all five before running operational checks and Dusk. This slice makes the aggregate verifier consume exact repository/dependency/runtime fingerprint receipts from successful complete quality and browser subgates, invalidates them on any relevant change, prevents focused Dusk runs from certifying the complete browser gate, removes duplicate validation/audit work from CI setup, and adds executable receipt invalidation and orchestration coverage. No gate is omitted and no stale or user-asserted success flag is accepted.
+
+Verification-gate deduplication completed on 2026-07-18. `scripts/gate-receipts.sh` fingerprints the Git commit and executable diff, untracked executable inputs, the authoritative plan through section 21, Composer manifests and installed package state, PHP version, and loaded extensions. `composer quality` and a complete browser run clear stale evidence before execution and write mode-0600 receipts only after a stable successful run; focused Dusk selections cannot write the browser receipt. The aggregate verifier contains no duplicate Pint, PHPStan, application-test, Canary, or audit commands and reuses only matching receipts. CI installs dependencies once and delegates validation/audit to the verifier. Executable coverage proves a receipt match, invalidation after a tracked-source change, and preservation after a factual Progress-only plan update. The final aggregate invocation explicitly reported one quality execution, one browser execution, and success; it passed Pint over 302 files, PHPStan over 244 files with zero errors, 244 application tests/2,075 assertions, Canary strict 34/34 with zero skips, a locked audit with zero advisories, diagnostics, storage audit, benchmark, and Dusk 8 tests/283 assertions.
+
+Finding list/detail workspace redesign started on 2026-07-18. The user-approved D-008 now supersedes the native table Repeater only as the primary Finding-list workspace and authorizes a Filament Table structured list with one complete lateral inspector, while retaining native Repeaters for bounded child collections such as solutions. Repository audit confirmed that the existing main form serializes the complete Finding collection through `SaveAssessmentWorkspace`, while `SaveFindingDetails` persists the selected Finding aggregate without participating in the assessment version/idempotency protocol. This slice will converge complete editor persistence, inline status/report controls, reorder, creation, template copy, duplication, and deletion on assessment-locked optimistic mutations; keep assessment metadata on its separate signed path; avoid global `fillForm()` refreshes; and add query, Livewire, browser, responsive, dark-mode, and 10/25/50-Finding evidence. No dependency, vendor file, Node.js toolchain, external data grid, generic repository, nested Livewire component, or additional Markdown document is introduced.
+
+Finding list/detail workspace redesign completed on 2026-07-18. The primary native table Repeater was removed and replaced by one authoritative `WorkspaceAssessment` page that renders a Filament Table structured list and a single-Finding schema in a custom adaptive Blade shell. Native Table `Split`/`Stack` columns provide progressive number, clamped title/problem, category/scope/count metadata, textual/configured-color priority, status and report inline controls, centralized specific completeness indicators, visible open/reorder actions, duplication, and confirmed deletion. Search covers Finding text, entrepreneur notes, solution descriptions, and associated assets; filters cover priority, status, category, report inclusion, and reusable domain completeness. Eager relations and counts avoid N+1 behavior, and the unpaginated deterministic list retains global reorder through the single `ReorderFindings` action for the approved 50-Finding bound.
+
+The inspector loads only the selected aggregate and uses collapsible Filament sections for description, scope/risk, readable solution Repeaters, and existing/new file or URL evidence. Selection is retained in the query string; create, template copy, and duplicate select their result; previous/next, close, save, save-and-next, Ctrl/Cmd+S, Ctrl/Cmd+Enter, Alt+N, Alt+T, Esc, dirty/offline/conflict/error states, and completed-assessment read-only behavior are implemented and browser-covered. CSS Grid/container queries produce side-by-side layout only with sufficient real container width, otherwise an overlay/sequential mobile detail; list and inspector use `min-width: 0`, visible focus, dark mode, sticky header/footer, and no row-level or 1440-pixel workspace horizontal scroll. Non-versioned screenshots are stored under `storage/app/qa-artifacts` for the full-width list, open inspector, 1440-pixel viewport, mobile, and 1920-pixel dark mode.
+
+`SaveFindingDetails` is the sole full-Finding editor persistence boundary: a typed `FindingSaveData` payload is signed, request-UUID idempotent, validated, executed under the assessment lock and database transaction, and returns the applied assessment version. Assessment metadata remains on the separate signed `SaveAssessmentWorkspace` path. Inline status/report changes, creation, template copy, duplication, evidence storage, deletion, and deterministic reorder mutate only the affected aggregate and increment the same assessment `lock_version`; stale versions surface a blocking conflict and failed validation/persistence never emits success. The list never serializes the complete Finding collection and no global `fillForm()` follows record mutations.
+
+Accepted workspace evidence is the final deduplicated aggregate verifier: 244 application tests/2,075 assertions; Dusk 8 tests/283 assertions with no severe console errors; Canary 34/34 with zero skips; clean Composer validation/audit, Pint over 302 files, and PHPStan over 244 files; green diagnostics and storage audit; real PDF/XLSX and backup/restore coverage. The final 50-Finding run measured HTTP 200, 0.5450 s initial render, 1,476,481 response bytes, 13 list queries, 0.0023 s inspector open, 0.0236 s single-Finding save, 0.0250 s inline status save, 0.0039 s metadata save, 0.0126 s reorder, 2.3321 s PDF, and 0.2283 s XLSX. Separate 10/25 runs passed every budget at 0.2143/0.2827 s initial render, 398,560/802,585 bytes, 13/13 list queries, 0.0025/0.0025 s inspector open, 0.0246/0.0248 s single save, 0.0251/0.0259 s inline save, 0.0039/0.0078 s reorder, 0.5660/1.1322 s PDF, and 0.1168/0.1800 s XLSX. Manual Edge, Firefox, iOS Safari, and Android Chrome remain deferred under D-041 and are not claimed.
+
+Final local handoff verification on 2026-07-18 reached `http://127.0.0.1:8000/admin/login` with HTTP 200 and completed a real credential-based Selenium login to `/admin`. Four existing immutable local reports remained present and SHA-256-valid after restore; the latest PDF parsed to 5,019 text characters and the real XLSX reopened with the required `Finding`, `Soluzioni`, and `Evidenze` sheets. `/workspace/backups/assestme-workspace-final-20260718.tar.gz` was created and verified with 28 manifest files, restored in maintenance mode, and produced safety archive `backups/assestme-safety-20260718-171929-289821.tar.gz`; post-restore diagnostics, report hashes, HTTP reachability, and real login all passed. The local one-time handoff credentials are reported only in the final user handoff and are not stored in this plan.
 
 Custom Filament risk-matrix field implementation started on 2026-07-18. This user-approved decision supersedes only D-049's earlier schema-generated `ViewField`/select presentation: the edit page will use an application-owned, risk-specific Filament `Field` with an accessible semantic 4×4 Blade table, nested Livewire state keyed by persisted level IDs, and stable repeater item UUIDs only while newly created levels have no database ID. The existing `SaveRiskProfileConfiguration` aggregate remains the sole transactional persistence path and `risk_matrix_entries` remains the sole authoritative matrix store. No Composer plugin, JavaScript library, JSON column, Node.js/Vite pipeline, vendor edit, automatic Finding recalculation, or second save path is introduced. The normal database and private storage will not be used by verification; focused and final evidence will run through the maintained isolated Compose entry points.
 

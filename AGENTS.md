@@ -104,7 +104,15 @@ Run development and verification commands through the Docker Compose development
 
 ## Tests and gates
 
-Required:
+The authoritative complete gate is:
+
+```bash
+scripts/verify.sh
+```
+
+It orchestrates the required Composer validation/audit, Pint, PHPStan, application tests, strict Canary, diagnostics, the 50-Finding benchmark, storage audit, and Dusk exactly once. `composer quality` and `composer browser` remain supported focused subgates. Successful subgates write content- and runtime-addressed receipts, so `scripts/verify.sh` may reuse them only when the exact executable source, authoritative plan through section 21, dependency, and runtime fingerprint still matches. Factual updates confined to plan Progress, Discoveries, or Final outcome do not invalidate executable evidence. Focused Dusk invocations never write a full-browser receipt. Any relevant source, dependency, or runtime change invalidates reuse.
+
+The underlying commands remain independently callable for diagnosis, but do not run them and then repeat them through the aggregate gate without receipt reuse:
 
 ```bash
 composer validate --strict
@@ -116,7 +124,6 @@ php artisan dusk
 composer audit --locked
 php artisan assestme:diagnose
 php artisan assestme:benchmark --findings=50
-scripts/verify.sh
 ```
 
 If the installed Canary command differs, use its official strict zero-skip command and update the plan.

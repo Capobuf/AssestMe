@@ -52,6 +52,7 @@ it('keeps the immutable row and shows an error when its file cannot be staged', 
     $this->actingAs($administrator);
 
     Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('setWorkspaceTab', 'generated-files')
         ->assertSee($report->file_name)
         ->mountAction(TestAction::make('deleteGeneratedReport')->arguments(['report' => $report->id]))
         ->assertActionMounted(TestAction::make('deleteGeneratedReport'))
@@ -73,6 +74,7 @@ it('warns instead of reporting success when committed trash cleanup fails', func
     $this->actingAs($administrator);
 
     Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('setWorkspaceTab', 'generated-files')
         ->callAction(TestAction::make('deleteGeneratedReport')->arguments(['report' => $report->id]))
         ->assertNotified(__('assestme.reports.delete.cleanup_pending'));
 
