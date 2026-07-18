@@ -67,7 +67,8 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-005 | APPROVED | SQLite with foreign keys, WAL, and 5-second busy timeout |
 | D-006 | APPROVED | File cache/session and synchronous queue; no Redis or worker |
 | D-007 (v1) | SUPERSEDED | Docker was prohibited together with frontend build dependencies; superseded by D-007 on 2026-07-17 |
-| D-007 | APPROVED | No Node.js/npm/pnpm/Vite build or external runtime service; Docker is permitted for future packaging but is not currently required |
+| D-007 (v2) | SUPERSEDED | No Node.js/npm/pnpm/Vite build or external runtime service; Docker was permitted for future packaging but was not required; superseded by D-007 on 2026-07-18 |
+| D-007 | APPROVED | The application requires no Node.js frontend build; Docker Compose is the maintained and authoritative local development environment |
 | D-008 (v1) | SUPERSEDED | Advance Table Repeater was the selected assessment-grid component; superseded by D-008 on 2026-07-13 |
 | D-008 | APPROVED | The assessment workspace uses only the native Filament 5 table Repeater |
 | D-009 | APPROVED | Spatie Laravel PDF with DOMPDF; no renderer fallback |
@@ -80,7 +81,8 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-016 | APPROVED | Autosave plus explicit draft save, both using the same persistence layer |
 | D-017 | APPROVED | Archive/permanent-delete behavior follows one global setting |
 | D-018 | APPROVED | Fail loudly; no silent fallback, omission, or placeholder success |
-| D-019 | APPROVED | Nginx + PHP-FPM for production; Artisan server for local development |
+| D-019 (v1) | SUPERSEDED | Nginx + PHP-FPM was the production profile and direct Artisan startup was the local development profile; superseded by D-019 on 2026-07-18 |
+| D-019 | APPROVED | The only supported installation profiles are Docker Compose for development and CloudPanel for production |
 | D-020 | APPROVED | Optimistic locking and idempotent workspace-save requests |
 | D-021 | APPROVED | Completed assessments are read-only until explicitly reopened |
 | D-022 | APPROVED | Every generated report stores a complete normalized immutable payload snapshot |
@@ -103,6 +105,8 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-039 | APPROVED | VAT treatment is not modeled or configurable; reports and XLSX contain one mandatory VAT-excluded estimate note |
 | D-040 | APPROVED | Optional consultant identity/contact/logo and text-only signature fields are explicitly defined for reports |
 | D-041 | APPROVED | Development verification is autonomous and isolated; manual cross-browser/device QA is deferred until a reference installation and devices exist |
+| D-042 (v1) | SUPERSEDED | The Docker development profile published the development HTTP port only on host loopback; superseded by D-042 on 2026-07-18 |
+| D-042 | APPROVED | The Docker development profile is defined by `docker/compose.dev.yml`, a project-owned PHP 8.3 development image, bind-mounted source code, persistent SQLite state, optional isolated Selenium browser testing, and HTTP publication on all host IPv4 interfaces |
 
 ### D-001 — Framework
 
@@ -129,7 +133,7 @@ Enforce the single-user rule with a unique `singleton_key` column fixed to `1`, 
 
 No host operating-system distribution or CPU architecture is normative for the application.
 
-Development and production hosts provide the required runtime capabilities. Application scripts:
+The project-owned development image and the future CloudPanel production site provide the required runtime capabilities. Application scripts:
 
 - verify capabilities they actually use;
 - do not install operating-system packages;
@@ -140,7 +144,7 @@ The current GitHub Actions workflow may use a hosted Ubuntu runner as CI infrast
 
 ### D-004 — PHP
 
-Use PHP 8.3. The operator or future container image supplies PHP; the application does not prescribe an operating-system repository, PPA, or installation mechanism.
+Use PHP 8.3. The project-owned development image supplies it for Docker Compose. The future CloudPanel implementation must supply it for production without making a host operating-system distribution normative.
 
 Required extensions:
 
@@ -208,11 +212,9 @@ SESSION_DRIVER=file
 
 No Redis, Horizon, queue worker, or asynchronous report generation.
 
-### D-007 — Frontend build
+### D-007 — Frontend build and authoritative development environment
 
-Application runtime and normal development must not require Node.js or a frontend build.
-
-Docker is allowed but optional. Current development, CI verification, local startup, and production scripts do not require a container runtime. A future containerization slice may add packaging without changing the application data, persistence, report, backup, or acceptance contracts.
+The application does not require Node.js and has no frontend build. Docker Compose is the official and authoritative development environment. A development host requires only Docker, Docker Compose, and the AssestMe repository. PHP, Composer, PHP extensions, Chrome, and ChromeDriver are supplied by containers and must not be installed directly on the development host as part of the supported installation profile.
 
 Allowed:
 
@@ -223,7 +225,19 @@ Allowed:
 - plain application-owned JavaScript registered through Filament asset management;
 - Composer packages.
 
-Dusk may install Chrome/ChromeDriver only in development and CI. It is not a production dependency and is not a build step.
+Prohibited in development and runtime:
+
+- Node.js;
+- npm;
+- pnpm;
+- Yarn;
+- Vite;
+- Redis;
+- external databases;
+- queue workers;
+- frontend development servers.
+
+Laravel Dusk may use the optional profiled Selenium service. Native Chrome/ChromeDriver may remain in CI where the technically reusable isolated runner is invoked outside the supported workstation installation profile. Selenium is not a runtime or production dependency and is not a build step.
 
 ### D-008 — Central assessment grid
 
@@ -369,25 +383,24 @@ A failure must:
 4. avoid success notifications;
 5. be covered by a failure-path test where practical.
 
-### D-019 — Deployment
+### D-019 — Supported installation profiles
 
-Local development:
+Development has one supported profile: `docker/compose.dev.yml`. The application is served by Laravel Artisan inside the `app` container and is available at `http://127.0.0.1:8000/admin` or, subject to the development host firewall, at `http://<development-host-ip>:8000/admin` from an authorized local network.
 
-```text
-http://127.0.0.1:8000/admin
-```
+Production has one approved destination: a dedicated PHP site managed by CloudPanel. The CloudPanel procedure is outside this activity and is not yet implemented. A future approved decision and implementation must define at least PHP-FPM, document root, `.env`, SQLite, permissions, scheduler, backup, deployment, update, and rollback behavior.
 
-Production:
+The following are not supported installation profiles:
 
-- Nginx;
-- PHP 8.3 FPM;
-- an operator-supplied absolute `ASSESTME_RELEASE_ROOT`;
-- application releases under `<ASSESTME_RELEASE_ROOT>/releases`;
-- `<ASSESTME_RELEASE_ROOT>/current` symlink;
-- shared data under `<ASSESTME_RELEASE_ROOT>/shared`;
-- TLS through Certbot when a valid FQDN is supplied.
+- development with PHP and Composer installed directly on the workstation;
+- generic Nginx/PHP-FPM servers outside CloudPanel;
+- Laravel Sail;
+- Kubernetes;
+- Docker Swarm;
+- shared hosting without shell access;
+- external managed databases;
+- the previous generic `releases/shared/current` layout.
 
-A production deployment requires the operator to provide `ASSESTME_HOSTNAME`, `ASSESTME_RELEASE_ROOT`, `ASSESTME_BACKUP_ROOT`, `ASSESTME_RUNTIME_GROUP`, `ASSESTME_FPM_SERVICE`, and the PHP-FPM endpoint used to render the Nginx stub. The development milestone does not depend on a public hostname.
+Scripts that remain technically executable on a host may be retained for CI, diagnostics, or internal reuse, but they do not define a third installation method.
 
 ### D-020 — Concurrency
 
@@ -457,10 +470,50 @@ Required behavior:
 - commands clean their disposable state on success and failure;
 - a missing seed, template, administrator, or reference assessment in the application database cannot make a test or benchmark fail;
 - the application may have no initialized reference database while development is in progress;
-- `scripts/bootstrap-local.sh` is an explicit installation command and is the only development helper allowed to initialize the configured local application database;
+- `scripts/bootstrap-local.sh` is the environment-neutral application bootstrap reused by the Docker entrypoint and technically reusable by CI; it is not a direct-host installation profile;
 - tests proving backup/restore or deployment behavior operate only on temporary paths.
 
 Until a reference installation and test devices exist, the blocking automated gate is Composer validation/audit, Pint, PHPStan, Pest, Canary strict zero-skip, the maintained Dusk suite where ChromeDriver is available, diagnostics against an isolated initialized database, the isolated 50-finding benchmark, storage audit, and `scripts/verify.sh`. Manual cross-browser/device QA is recorded as deferred, never falsely reported as passed.
+
+### D-042 — Docker development profile
+
+The authoritative development command is:
+
+```bash
+docker compose -f docker/compose.dev.yml up --build
+```
+
+No Compose file exists at the repository root. The topology contains only the required `app` service and the optional `selenium` service under the `browser` profile. Normal `up` starts only `app`; `app` has no mandatory dependency on Selenium. No custom network, reverse proxy, database service, cache, mail service, administration service, worker, or other infrastructure service is permitted.
+
+The project-owned development image uses the official Debian-based PHP `8.3.32-cli-bookworm` image, Composer `2.10.2` copied from the official Composer image, and Xdebug `3.5.3`. It supplies Bash, Git, Curl, Unzip, Zip, the utilities used by maintained scripts, and every D-004 extension. PHP extensions are built and enabled with the official PHP image helpers; Xdebug is installed through PECL without a third-party extension installer. The image contains no Nginx, PHP-FPM, Node.js, Redis, external database, Supervisor, systemd, Horizon, queue worker, Chrome, or ChromeDriver. The repository is not copied into the image.
+
+The `app` service:
+
+- works at `/workspace` and bind-mounts the complete repository there;
+- runs `php artisan serve --host=0.0.0.0 --port=8000 --no-reload`; Laravel's `--no-reload` mode is required so the child PHP server retains the Docker process overrides instead of replacing them with host-specific values from `.env`;
+- publishes `0.0.0.0:8000:8000`, making the development HTTP service reachable through every host IPv4 interface, including an authorized local network;
+- uses `init: true` and an HTTP login-page healthcheck;
+- has no `container_name`, privileged mode, Docker socket, added capability, or named source-code volume;
+- maps `host.docker.internal` to `host-gateway` for Linux development;
+- detects the bind-mounted repository UID/GID, accepts explicit `UID`/`GID` overrides, and drops entrypoint privileges before bootstrap so normal repository, Composer, Laravel, and SQLite writes use the host repository owner rather than root.
+
+The entire repository bind mount is the persistence boundary. PHP, Blade, Livewire, configuration, translation, application CSS/JavaScript, and test edits are visible immediately without rebuild or Compose Watch. `.env`, `vendor/`, the complete `database/` directory including SQLite WAL/SHM files, `storage/`, generated reports, evidence, and `backups/` remain on the host. No named SQLite volume and no single-file SQLite mount is allowed; stop, recreation, and image rebuild must not delete this state.
+
+`docker/dev/php.ini` is development-only and defines the approved 512 MB memory limit, 25 MB upload limit, 30 MB post limit, 20 upload-file limit, 120-second execution limit, full visible/logged errors, and timestamp-validating OPcache. Xdebug is loaded but its default mode is `off`; its client is `host.docker.internal:9003`, and users enable it only by explicitly setting `XDEBUG_MODE`. Tests, quality, benchmark, Dusk, and verification do not enable it automatically. Production PHP stubs contain no Docker or Xdebug configuration.
+
+`.env.example` remains environment-neutral. Compose supplies process overrides for `DB_DATABASE=/workspace/database/database.sqlite`, `LARAVEL_PDF_DOMPDF_CHROOT=/workspace`, `ASSESTME_BACKUP_ROOT=/workspace/backups`, and `APP_URL=http://127.0.0.1:8000`. No Docker-specific Laravel environment file or versioned secret exists.
+
+`docker/dev/entrypoint.sh` uses `set -Eeuo pipefail`, validates the bind mount, prepares writable per-UID temporary Composer state, invokes the single environment-neutral `scripts/bootstrap-local.sh`, and executes the received command. The shared idempotent bootstrap creates only missing `.env`, directories, and SQLite state; installs Composer dependencies only when `composer.lock` differs or `vendor` is absent; generates only a missing application key; applies pending migrations and domain seeds; publishes Filament assets; preserves an existing singleton administrator and creates one only when absent; clears obsolete Laravel caches; runs preflight and diagnostics; and fails on incomplete initialization. It never runs `migrate:fresh`, deletes normal database/storage/backups, replaces an application key, changes existing administrator credentials, creates a second user, or hides an error.
+
+The optional browser service uses `selenium/standalone-chromium:4.46.0-20260707`, 2 GB shared memory, no host WebDriver publication, and a readiness healthcheck. Dusk retains D-041 isolation: a marked temporary root, temporary file SQLite database, storage, cache, sessions, backups, and cleanup on success or failure. Native defaults bind and address the isolated server through `127.0.0.1`. Docker execution binds it to `0.0.0.0`, gives the `app` service the default-network alias `assestme-app`, gives the remote browser `http://assestme-app:<port>`, checks readiness locally through `127.0.0.1`, and uses `http://selenium:4444` without starting local ChromeDriver or silently falling back. The alias avoids Chromium treating the bare service name `app` as the HSTS-preloaded public `.app` name; it is not a custom network or `container_name`.
+
+Script classification:
+
+- environment-neutral: `scripts/preflight.sh`, `scripts/bootstrap-local.sh`, `scripts/isolated-environment.sh`, `scripts/quality-isolated.sh`, `scripts/dusk-isolated.sh`, and `scripts/verify.sh`;
+- Docker-specific: `docker/dev/entrypoint.sh` and `docker/compose.dev.yml`;
+- future CloudPanel-specific: none yet; CloudPanel production configuration is not implemented by this decision;
+- legacy/deprecated generic-host production artifacts: `scripts/deploy-production.sh`, `scripts/rollback-production.sh`, `scripts/rehearse-production.sh`, `stubs/nginx/assestme.conf`, `stubs/php/assestme.ini`, and `stubs/cron/assestme`;
+- deprecated direct-host installation: none is supported; technically reusable host execution of environment-neutral scripts is limited to CI, diagnostics, and internal verification.
 
 ### D-028 — Authentication and MFA
 
@@ -611,6 +664,10 @@ tests/Browser/
 scripts/preflight.sh
 scripts/bootstrap-local.sh
 scripts/verify.sh
+docker/compose.dev.yml
+docker/dev/Dockerfile
+docker/dev/php.ini
+docker/dev/entrypoint.sh
 scripts/deploy-production.sh
 stubs/nginx/assestme.conf
 stubs/php/assestme.ini
@@ -632,22 +689,13 @@ Rules:
 
 ### 5.1 Runtime provisioning
 
-The host operator or a future container image provides the runtime. AssestMe does not install operating-system packages or prescribe a distribution-specific package source.
+The supported development host provides Docker, Docker Compose, and the repository only. The project-owned image provides PHP 8.3 CLI, every D-004 extension, Composer 2, and the standard shell/file utilities used by maintained development scripts. PHP, Composer, PHP extensions, Chrome, and ChromeDriver are not installed directly on the workstation as part of the supported profile.
 
-Required application capabilities:
-
-- PHP 8.3 CLI for application commands and PHP 8.3 FPM for production requests;
-- every PHP extension listed by D-004;
-- Composer 2 for installation and development verification;
-- Nginx for the production web tier;
-- a writable private SQLite database path and writable application storage/cache/session paths;
-- standard shell/file utilities only for the supplied bootstrap, deployment, backup, and rollback scripts.
-
-The application runtime does not require the standalone SQLite CLI. SQLite access is provided by PHP's `pdo_sqlite` extension.
+The application runtime does not require the standalone SQLite CLI. SQLite access is provided by PHP's `pdo_sqlite` extension. Production runtime provisioning is reserved for the future CloudPanel decision and implementation.
 
 ### 5.2 Preflight
 
-Run `scripts/preflight.sh`. It must verify:
+The Docker entrypoint runs `scripts/preflight.sh` inside `app`. It must verify:
 
 ```bash
 php -v
@@ -668,10 +716,13 @@ Preflight does not inspect or reject the operating-system distribution, version,
 
 ### 5.3 Project creation
 
+The repository is already the application source. Supported development installation is:
+
 ```bash
-composer create-project laravel/laravel AssestMe "^13.0"
-cd AssestMe
+docker compose -f docker/compose.dev.yml up --build
 ```
+
+The entrypoint performs the environment-neutral bootstrap against the bind-mounted repository. The following Composer constraints record the approved dependency inventory and are not a direct-host installation procedure.
 
 Runtime dependencies:
 
@@ -697,7 +748,7 @@ composer require larastan/larastan --dev
 composer require smalot/pdfparser:"^2.12" --dev
 ```
 
-Initialize:
+Initial framework scaffolding provenance (already completed in the repository, not an installation procedure):
 
 ```bash
 php artisan filament:install --panels
@@ -708,7 +759,7 @@ php artisan pest:install
 php artisan filament:assets
 ```
 
-After Filament works without application-built assets, remove unused Laravel starter frontend files:
+After Filament worked without application-built assets, the unused Laravel starter frontend files were removed:
 
 ```text
 package.json
@@ -732,7 +783,7 @@ Milestone 0 must record in `plan.md`:
 - whether vendor publishing is required;
 - known maintenance/security concerns.
 
-After acceptance, normal development uses:
+After acceptance, the entrypoint runs the equivalent of the following inside `app` only when `vendor` is absent or `composer.lock` changed:
 
 ```bash
 composer install
@@ -742,13 +793,7 @@ Do not run an unreviewed broad `composer update`.
 
 ### 5.5 Environment
 
-Create SQLite:
-
-```bash
-install -m 660 /dev/null database/database.sqlite
-```
-
-Local `.env`:
+The entrypoint creates `.env` from the neutral `.env.example` and creates `database/database.sqlite` only when each is missing. The neutral application file uses portable placeholders:
 
 ```dotenv
 APP_NAME=AssestMe
@@ -781,16 +826,16 @@ DEV_ADMIN_EMAIL=admin@assestme.local
 DEV_ADMIN_PASSWORD=
 ```
 
-Production differences:
+Compose overrides the environment at process level without writing Docker-only paths into `.env`:
 
 ```dotenv
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=https://<ASSESTME_HOSTNAME>
-SESSION_SECURE_COOKIE=true
-SESSION_ENCRYPT=true
-LOG_LEVEL=warning
+APP_URL=http://127.0.0.1:8000
+DB_DATABASE=/workspace/database/database.sqlite
+LARAVEL_PDF_DOMPDF_CHROOT=/workspace
+ASSESTME_BACKUP_ROOT=/workspace/backups
 ```
+
+No `.env.docker` file is used and no secret is stored in Compose. Production environment differences are reserved for the future CloudPanel implementation.
 
 ### 5.6 Administrator bootstrap
 
@@ -815,18 +860,26 @@ Behavior:
 
 Tests create their administrator through factories.
 
+The environment-neutral bootstrap queries the singleton first and invokes this command only when no administrator exists. A later container start preserves existing credentials.
+
 ### 5.7 Local development
 
-Start:
+Start the supported profile:
 
 ```bash
-php artisan serve --host=127.0.0.1 --port=8000
+docker compose -f docker/compose.dev.yml up --build
 ```
 
 Required URL:
 
 ```text
 http://127.0.0.1:8000/admin
+```
+
+Authorized local-network URL:
+
+```text
+http://<development-host-ip>:8000/admin
 ```
 
 Completion evidence:
@@ -838,48 +891,13 @@ Completion evidence:
 
 ### 5.8 Production layout
 
-Canonical layout relative to the required absolute deployment inputs:
+The approved production destination is a dedicated PHP site managed by CloudPanel. Its layout is not defined or implemented in this activity. A future decision must specify the CloudPanel document root, `.env`, SQLite location, ownership, permissions, scheduler, backups, deployment, update, and rollback before production installation is supported operationally.
 
-```text
-<ASSESTME_RELEASE_ROOT>/releases/<UTC_TIMESTAMP>/
-<ASSESTME_RELEASE_ROOT>/current -> releases/<UTC_TIMESTAMP>
-<ASSESTME_RELEASE_ROOT>/shared/.env
-<ASSESTME_RELEASE_ROOT>/shared/database/database.sqlite
-<ASSESTME_RELEASE_ROOT>/shared/storage/
-<ASSESTME_BACKUP_ROOT>/
-```
-
-Ownership:
-
-```text
-deploy user: operator supplied
-web group: <ASSESTME_RUNTIME_GROUP>
-```
-
-Permissions:
-
-- release directories: `750`;
-- regular code files: `640`;
-- `shared/storage` and `shared/database`: `770`;
-- SQLite file: `660`;
-- `.env`: `640`;
-- no world-writable paths.
-
-The release links its `.env`, database file, and storage to shared paths.
+The former generic `releases/shared/current` layout is superseded and is not an official installation profile.
 
 ### 5.9 Nginx and PHP-FPM
 
-Use the supplied Nginx stub.
-
-Required:
-
-- root `<ASSESTME_RELEASE_ROOT>/current/public`, rendered as an absolute path in the supplied stub;
-- `try_files $uri $uri/ /index.php?$query_string`;
-- an operator-supplied PHP 8.3 FPM Unix socket or upstream endpoint rendered in the supplied stub;
-- deny dotfiles except `.well-known`;
-- deny direct access to SQLite, `.env`, storage private paths, and source files;
-- client upload limit `25m`;
-- HTTPS redirect in production.
+CloudPanel must provide PHP-FPM and the web-server integration in the future production implementation. The existing generic Nginx and PHP stubs are legacy/deprecated regression artifacts only and must not be installed or partially adapted as CloudPanel configuration in this activity.
 
 PHP production limits:
 
@@ -893,35 +911,11 @@ max_execution_time = 120
 
 ### 5.10 TLS
 
-Production deployment requires a valid FQDN resolving to the server.
-
-```bash
-sudo certbot --nginx -d "$ASSESTME_HOSTNAME"
-```
-
-If the FQDN is unavailable, production deployment stops. Local development remains complete.
+TLS and hostname handling belong to the future CloudPanel production decision. No CloudPanel or generic-host TLS procedure is implemented by this activity. Local Docker development uses unencrypted HTTP on all host IPv4 interfaces; access control and any required network restriction remain the responsibility of the development host firewall. This exposure does not make the Docker profile suitable for production.
 
 ### 5.11 Deployment and rollback
 
-`deploy-production.sh` must:
-
-1. verify clean release source and `composer.lock`;
-2. create a timestamped release;
-3. run `composer install --no-dev --classmap-authoritative`;
-4. link shared `.env`, database, and storage;
-5. enable maintenance mode;
-6. create a pre-migration backup;
-7. run `php artisan migrate --force --isolated`;
-8. run `php artisan filament:assets`;
-9. run `php artisan optimize`;
-10. run diagnostics and smoke tests;
-11. switch the `current` symlink atomically;
-12. reload PHP-FPM;
-13. disable maintenance mode.
-
-Failure before symlink switch removes the failed release and restores the pre-migration database if it was changed.
-
-A rollback switches to the previous code release and restores its matching database/storage backup. The command must warn that restoring a database discards writes made after the backup.
+CloudPanel deployment, update, and rollback are not implemented in this activity. `scripts/deploy-production.sh`, `scripts/rollback-production.sh`, and `scripts/rehearse-production.sh` implement the superseded generic-host model and remain legacy/deprecated internal artifacts until a future CloudPanel decision determines whether they are removed or replaced. Technical executability and regression tests do not make them a supported production profile.
 
 ### 5.12 Backups
 
@@ -941,7 +935,7 @@ Backup content:
 - settings and application version metadata;
 - manifest with SHA-256 per file.
 
-Schedule daily at 02:30 Europe/Rome through Laravel Scheduler and one system cron entry.
+Schedule daily at 02:30 Europe/Rome through Laravel Scheduler. Registration of the scheduler with CloudPanel belongs to the future production implementation; the existing generic cron stub is legacy/deprecated.
 
 Retention:
 
@@ -949,7 +943,7 @@ Retention:
 - 4 weekly;
 - 6 monthly.
 
-Backups are stored under the required absolute `<ASSESTME_BACKUP_ROOT>` with mode `600`.
+Backups are stored under the configured absolute `ASSESTME_BACKUP_ROOT` with mode `600`.
 
 Off-host copying and encrypted-volume protection are required operational controls but are outside application code.
 
@@ -962,7 +956,7 @@ Restore:
 - runs diagnostics;
 - exits non-zero on any mismatch.
 
-Run an automated restore test against temporary paths in CI and a manual production restore test at least quarterly.
+Run an automated restore test against temporary paths in CI. A CloudPanel production restore test and its operational cadence belong to the future production implementation.
 
 ## 6. Architecture and coding method
 
@@ -2750,7 +2744,10 @@ Measure Livewire payload sizes and fail when the initial workspace response exce
 
 ### 16.6 Quality commands
 
+Run these application commands inside the `app` service. The first command is the supported host entrypoint; the remainder are container commands shown without the repeated `docker compose -f docker/compose.dev.yml exec app` prefix.
+
 ```bash
+docker compose -f docker/compose.dev.yml up --build
 composer validate --strict
 composer install --no-interaction --prefer-dist
 composer quality
@@ -3008,7 +3005,8 @@ Failure of central grid or DOMPDF blocks the project.
 - all Italian translations;
 - record the browser/mobile checklist as deferred until a reference installation and devices exist;
 - storage audit;
-- production Nginx/deploy scripts;
+- authoritative Docker development profile and legacy classification of superseded generic-host production artifacts;
+- future CloudPanel production decision and implementation remain separate work;
 - clean-checkout bootstrap;
 - final quality/security review;
 - app running and credentials supplied.
@@ -3019,7 +3017,7 @@ Failure of central grid or DOMPDF blocks the project.
 
 - PHP 8.3 capability contract documented and verified without a normative host distribution;
 - clean `composer install` from lock;
-- no runtime Node/Redis/external renderer; Docker remains optional and unused by the current development path;
+- no runtime Node/Redis/external renderer; Docker Compose is the authoritative development path;
 - SQLite PRAGMAs verified;
 - local URL reachable;
 - real login works.
@@ -3123,6 +3121,22 @@ No unresolved product or architecture decision remains at implementation handoff
 
 The implementation agent must maintain this section.
 
+Unsaved-change warning remediation started on 2026-07-18. The defect is confined to the application-owned workspace JavaScript: because the asset is registered panel-wide, its unscoped Livewire input listener marks every Filament form dirty, while only the assessment workspace renders the save-status marker that can clear that state. The remediation will scope dirty tracking to the workspace Livewire component, make post-save reset independent of asset/Livewire initialization order, and add browser regression evidence for both ordinary Filament forms and the assessment workspace without changing persistence behavior.
+
+Unsaved-change warning remediation completed on 2026-07-18. `resources/js/assestme-workspace.js` now accepts input and offline dirty-state transitions only when the assessment workspace save-status marker belongs to the same Livewire component, so ordinary Filament forms cannot inherit the workspace `beforeunload` warning. The Livewire morph hook is registered whether the asset loads before or after `livewire:init`, while a confirmed `saved` marker remains the only path that clears a genuinely dirty workspace. The published `public/js/app/assestme-workspace.js` was refreshed through `php artisan filament:assets`. `tests/Browser/MilestoneZeroTest.php` proves a saved client form has no unload prevention, an edited workspace retains it, a successful explicit workspace save clears it, both records persist, and no severe console error occurs. Accepted evidence is focused Pint; the focused regression with 1 test/6 assertions; `composer quality` with Pint over 285 files, PHPStan over 230 files with zero errors, 208 application tests/1,780 assertions, Canary strict 34/34 with zero skips, and zero locked advisories; aggregate Selenium Dusk with 6 tests/111 assertions; and a complete successful `scripts/verify.sh`. The final verifier benchmark passed with HTTP 200, 1.0941 s first render, 2,697,529 response bytes, 0.0526 s explicit save, 0.0488 s reorder, 2.0302 s PDF, and 0.2260 s XLSX. The normal database, private/generated storage, and backups manifest remained byte-identical across aggregate Dusk and the final verifier at SHA-256 `139ea207f8c9a23fae6c5628513f966bf6bd37f2f29956bef0dd93561667a32a`.
+
+Docker development profile implementation started on 2026-07-18. The approved scope is limited to the authoritative `docker/compose.dev.yml` development environment, an optional profiled Selenium service, environment-neutral reuse of the existing local bootstrap, remote-driver-aware isolated Dusk execution, normative architecture tests, and executable lifecycle/data-isolation evidence. CloudPanel is recorded as the approved production destination but is not implemented in this slice. The existing generic Nginx/PHP-FPM release scripts and stubs are being preserved only as legacy/deprecated technical artifacts pending the future CloudPanel decision; they are not an installation profile.
+
+Docker development profile implementation completed and was verified on 2026-07-18. Created files are `docker/compose.dev.yml`, `docker/dev/Dockerfile`, `docker/dev/php.ini`, and `docker/dev/entrypoint.sh`. Modified files are `AGENTS.md`, `plan.md`, `scripts/bootstrap-local.sh`, `scripts/dusk-isolated.sh`, `tests/DuskTestCase.php`, and `tests/Feature/DeploymentConfigurationTest.php`. No application behavior, production stub, CloudPanel artifact, root Compose file, additional Markdown document, CI workflow, Laravel environment example, dependency lock, or functional application file was changed. The exact development versions are PHP `8.3.32-cli-bookworm`, Composer `2.10.2`, Xdebug `3.5.3`, and Selenium standalone Chromium `4.46.0-20260707`; the pulled Selenium repository digest is `sha256:3400b92f1cddb2dfaaf358654e8f7d83d7be45192fb73c5f28c25faa28d36504`.
+
+Accepted Docker evidence is Docker Engine `29.4.2` and Compose `5.1.3`; successful default and browser-profile Compose rendering; final image build `sha256:7061935e79b1d42dbf93c0055a226e95878772892139b63e4601d007207c1061`; healthy application and internal-only WebDriver services; complete D-004 extensions; Xdebug loaded with every feature disabled under `XDEBUG_MODE=off`; preflight, `artisan about`, and diagnostics green; 208 application tests with 1,777 assertions; Pint over 285 files; PHPStan over 230 files with zero errors; Canary strict 34/34 with zero skips; locked audit with zero advisories; Dusk through remote Selenium with 5 tests and 105 assertions and no severe browser-console errors; and a complete successful `scripts/verify.sh`. The final isolated 50-finding benchmark passed with HTTP 200, 1.0775 s first render, 2,697,509 response bytes, 0.0534 s explicit save, 0.0482 s reorder, 2.0226 s PDF, and 0.2227 s XLSX. The normal database, private/generated storage, and backups manifest remained byte-identical across application tests, `composer quality`, successful and failing Dusk, and the final verifier; the final protected-manifest SHA-256 was `3632c8dabd69ad3aff1de9767bf147baca87ba183d00a42f83885f9db82cc32a` before and after verification. Normal runtime logs changed as expected and were excluded from the protected application-data comparison.
+
+Functional Docker evidence includes a clean temporary checkout with no `.env`, `vendor`, or SQLite database; successful bootstrap and a second idempotent startup; exactly one preserved administrator; host ownership `12345:12345` for newly created environment, Composer, Laravel, and SQLite paths; immediate bind-mount visibility for temporary PHP, Blade, Italian translation, application CSS, and application JavaScript edits; a real administrator login at `/admin` without severe console errors; real parsable PDF and XLSX generation through feature, browser, and benchmark gates; real isolated backup creation, manifest/hash verification, maintenance-only restore rejection, successful maintenance-mode restore, and database/private-file validation; bind-mounted SQLite WAL/SHM creation; and preservation of logical database content and all private/generated/backup files across stop, start, container removal, recreation, image rebuild, and forced recreation. Dusk temporary roots were absent after both success and an intentional unavailable-driver failure.
+
+This Docker slice does not complete Milestone 5 or the overall product acceptance. CloudPanel configuration and procedures are intentionally not implemented, hosted GitHub Actions were not rerun, and manual Edge, Firefox, iOS Safari, Android Chrome, camera, and device-specific QA remain deferred under D-041. No unexecuted check is reported as passed.
+
+On 2026-07-18, the user explicitly superseded D-042 v1's loopback-only host publication. The approved D-042 now publishes `0.0.0.0:8000:8000` for authorized local-network access while retaining HTTP-only development status and host-firewall responsibility. `docker compose config` rendered `host_ip: 0.0.0.0`; the recreated `app` container was healthy and listened on `0.0.0.0:8000`; both `http://127.0.0.1:8000/admin` and `http://10.0.0.30:8000/admin` returned HTTP 302 to their corresponding login URL; and the focused deployment configuration suite passed 13 tests with 196 assertions. No image rebuild was required because only Compose, the normative plan, and its architecture test changed.
+
 - [x] Milestone 0 — Native Filament table Repeater and compatibility proof completed on 2026-07-13
 - [x] Milestone 1 — Foundation and settings completed on 2026-07-13
 - [x] Milestone 2 — Template library completed on 2026-07-13
@@ -3189,6 +3203,15 @@ Milestone 3 completed with the complete assessment/finding schema, native Filame
 ---
 
 ## 23. Discoveries and deviations
+
+- 2026-07-18: The application-owned workspace asset is registered panel-wide, so checking only for a generic Livewire ancestor caused every Filament form input to set the workspace closure's `dirty` flag. Non-workspace pages cannot render the assessment save-status marker and therefore had no path to clear that flag after a successful save. Scoping the listener to the Livewire component that contains the marker fixes the false warning without weakening the workspace protection or enabling Filament's unrelated panel-wide alert mechanism.
+- 2026-07-18: The new Dusk regression initially ended while a queued Livewire save request was still in flight. Aggregate database truncation then removed its authenticated user, causing that late request to follow the login redirect and expose an HTML response to the Livewire JSON parser; the same class passed in isolation. A preserved marked Dusk root showed no application exception. The test now counts requests through Livewire's request lifecycle callbacks, waits for a 250 ms zero-request quiet window, and checks its own severe console log before teardown. The diagnostic root was removed after inspection, and both aggregate Dusk and the complete verifier pass.
+- 2026-07-18: The first PHP image build attempted to rebuild every D-004 extension separately and failed reproducibly while compiling `xmlreader` because the modular DOM build did not expose `ext/dom/dom_ce.h`. The official `php:8.3.32-cli-bookworm` base already provides `ctype`, `curl`, `dom`, `fileinfo`, `filter`, `iconv`, `libxml`, `mbstring`, `openssl`, `PDO`, `pdo_sqlite`, `session`, `SimpleXML`, `tokenizer`, `xml`, `xmlreader`, `xmlwriter`, `zlib`, and OPcache. The final image uses the official helpers only for the absent `bcmath`, `gd`, `intl`, and `zip` extensions and executable runtime inspection proves the complete required set; no third-party extension installer or vendor patch was added.
+- 2026-07-18: A static Compose `user: "${UID:-1000}:${GID:-1000}"` made the repository unwritable in the root-owned verification workspace. The final entrypoint reads the bind-mounted repository UID/GID, accepts explicit numeric overrides, and uses `setpriv` to drop from root before bootstrap when the resolved owner is non-root. A clean checkout owned by UID/GID 12345 proved that `.env`, `vendor`, SQLite, storage, and cache files are created as 12345 without `chmod -R 777`; root-owned repositories remain executable without inventing an inaccessible default owner.
+- 2026-07-18: Chromium 150 interprets the bare Compose DNS name `app` as the public `.app` name and applies the preload HSTS policy. The isolated PHP server logged rejected TLS requests and Dusk failed with `ERR_CONNECTION_CLOSED`; disabling ordinary HTTPS-upgrade features did not override HSTS. The service remains named `app` for every official Compose command and has no `container_name`, while the default Compose network supplies the non-HSTS alias `assestme-app` to the remote browser. Chromium then reached the isolated server, and the Dusk-only secure-origin flag prevented an insecure-download console warning during the real PDF/XLSX history test. The accepted full suite is 5 tests/105 assertions with no severe console errors.
+- 2026-07-18: Laravel 13's `artisan serve` passes only a small allowlist of environment variables to its child PHP server when `.env` reload monitoring is enabled. CLI diagnostics used the Compose SQLite override, but a real Livewire login request instead read the old direct-host path from `.env` and failed visibly. Adding Laravel's `--no-reload` option preserves every Compose process override in the child server; the subsequent real login reached `/admin` without console errors. This keeps one neutral `.env`, adds no Docker environment file, and source-code changes remain immediately visible because the PHP development server does not cache application source.
+- 2026-07-18: The real isolated restore proof first exited non-zero, as required, when restore was attempted outside maintenance mode. The accepted rerun entered maintenance mode, restored the verified archive, returned the isolated application to live mode, and proved both the administrator value and a private-file sentinel returned to their archived values. No failure was converted into success and the normal database/storage were not used.
+- 2026-07-18: The domain seeders are result-idempotent but rewrite technical database timestamps during each container bootstrap, so byte-for-byte SQLite identity is not a valid container-lifecycle persistence measurement. Lifecycle proof instead compared every domain table after removing only `created_at`/`updated_at` fields and separately compared SHA-256 for every private/generated/backup file; both signatures remained identical across stop, removal, recreation, rebuild, and forced recreation. Verification commands were held to the stricter byte-for-byte protected manifest and passed it.
 
 Record unexpected package behavior, version incompatibilities, and material design corrections here.
 

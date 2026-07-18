@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Browser;
 
 use App\Models\Assessment;
+use App\Models\Client;
 use App\Models\Finding;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
@@ -15,6 +16,124 @@ use Tests\DuskTestCase;
 final class MilestoneZeroTest extends DuskTestCase
 {
     use DatabaseTruncation;
+
+    public function test_unsaved_warning_is_scoped_to_the_workspace_and_clears_after_save(): void
+    {
+        $administrator = User::factory()->create();
+        $client = Client::factory()->create(['legal_name' => 'Cliente dirty-state browser S.r.l.']);
+        $assessment = Assessment::factory()->create(['title' => 'Dirty-state workspace browser']);
+        Finding::factory()->for($assessment)->create();
+
+        $this->browse(function (Browser $browser) use ($administrator, $assessment, $client): void {
+            $browser->loginAs($administrator)
+                ->visit("/admin/clients/{$client->getKey()}/edit")
+                ->waitForText('Ragione sociale');
+
+            $browser->script(<<<'JS'
+                const input = Array.from(document.querySelectorAll('input'))
+                    .find((element) => element.value === 'Cliente dirty-state browser S.r.l.');
+
+                if (!input) {
+                    throw new Error('The client legal-name input was not found.');
+                }
+
+                input.value = 'Cliente dirty-state salvato S.r.l.';
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                JS);
+
+            $browser->press('Salva')
+                ->waitForText('Salvato');
+
+            $ordinaryFormUnloadWasPrevented = $browser->script(<<<'JS'
+                const event = new Event('beforeunload', { cancelable: true });
+                window.dispatchEvent(event);
+
+                return event.defaultPrevented;
+                JS)[0];
+
+            Assert::assertFalse(
+                $ordinaryFormUnloadWasPrevented,
+                'A saved ordinary Filament form must not inherit the workspace unsaved-change warning.',
+            );
+
+            $browser->visit("/admin/assessments/{$assessment->getKey()}/workspace")
+                ->waitFor('[data-dusk="save-assessment"]')
+                ->waitUntil('return document.documentElement.dataset.assestmeWorkspaceAsset === "loaded"');
+
+            $browser->script(<<<'JS'
+                window.assestmePendingLivewireRequests = 0;
+                window.assestmeLastLivewireRequestCompletedAt = performance.now();
+                window.Livewire.hook('request', ({ respond, succeed, fail }) => {
+                    let completed = false;
+                    window.assestmePendingLivewireRequests++;
+
+                    const complete = () => {
+                        if (completed) {
+                            return;
+                        }
+
+                        completed = true;
+                        window.assestmePendingLivewireRequests--;
+                        window.assestmeLastLivewireRequestCompletedAt = performance.now();
+                    };
+
+                    respond(complete);
+                    succeed(complete);
+                    fail(complete);
+                });
+
+                const input = Array.from(document.querySelectorAll('input'))
+                    .find((element) => element.value === 'Dirty-state workspace browser');
+
+                if (!input) {
+                    throw new Error('The assessment title input was not found.');
+                }
+
+                input.value = 'Dirty-state workspace salvato';
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                JS);
+
+            $workspaceUnloadWasPrevented = $browser->script(<<<'JS'
+                const event = new Event('beforeunload', { cancelable: true });
+                window.dispatchEvent(event);
+
+                return event.defaultPrevented;
+                JS)[0];
+
+            Assert::assertTrue(
+                $workspaceUnloadWasPrevented,
+                'An edited assessment workspace must retain its unsaved-change warning.',
+            );
+
+            $browser->click('[data-dusk="save-assessment"]')
+                ->waitUntil('return document.querySelector(\'[data-assestme-save-status]\').dataset.status === "saved"')
+                ->waitUntil(<<<'JS'
+                    return window.assestmePendingLivewireRequests === 0
+                        && performance.now() - window.assestmeLastLivewireRequestCompletedAt >= 250;
+                    JS);
+
+            $savedWorkspaceUnloadWasPrevented = $browser->script(<<<'JS'
+                const event = new Event('beforeunload', { cancelable: true });
+                window.dispatchEvent(event);
+
+                return event.defaultPrevented;
+                JS)[0];
+
+            Assert::assertFalse(
+                $savedWorkspaceUnloadWasPrevented,
+                'A successfully saved assessment workspace must clear its unsaved-change warning.',
+            );
+
+            $severeLogs = array_values(array_filter(
+                $browser->driver->manage()->getLog('browser'),
+                static fn (array $entry): bool => ($entry['level'] ?? '') === 'SEVERE',
+            ));
+            Assert::assertSame([], $severeLogs, 'The dirty-state browser regression contains severe console errors.');
+        });
+
+        self::assertSame('Cliente dirty-state salvato S.r.l.', $client->fresh()->legal_name);
+        self::assertSame('Dirty-state workspace salvato', $assessment->fresh()->title);
+    }
 
     public function test_admin_login_and_native_workspace_actions_have_no_console_errors(): void
     {

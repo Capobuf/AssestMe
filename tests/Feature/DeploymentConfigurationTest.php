@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Process;
+use Symfony\Component\Yaml\Yaml;
 
 it('includes SQLite integrity verification in application diagnostics', function (): void {
     $this->artisan('assestme:diagnose')
@@ -11,7 +12,7 @@ it('includes SQLite integrity verification in application diagnostics', function
         ->assertSuccessful();
 });
 
-it('ships a hardened nginx front controller with ACME-safe HTTPS redirection', function (): void {
+it('preserves the legacy generic-host nginx artifact without Docker development settings', function (): void {
     $configuration = (string) file_get_contents(base_path('stubs/nginx/assestme.conf'));
 
     expect($configuration)
@@ -39,6 +40,150 @@ it('ships a hardened nginx front controller with ACME-safe HTTPS redirection', f
         ->toContain('X-Frame-Options');
 
     expect(substr_count($configuration, 'fastcgi_pass '))->toBe(1);
+
+    expect($configuration)->not->toContain('xdebug');
+});
+
+it('defines the authoritative minimal Docker development topology semantically', function (): void {
+    $composePath = base_path('docker/compose.dev.yml');
+    $dockerfilePath = base_path('docker/dev/Dockerfile');
+
+    expect($composePath)->toBeFile()
+        ->and($dockerfilePath)->toBeFile()
+        ->and(base_path('docker/dev/php.ini'))->toBeFile()
+        ->and(base_path('docker/dev/entrypoint.sh'))->toBeFile();
+
+    foreach (['compose.yaml', 'compose.yml', 'docker-compose.yaml', 'docker-compose.yml'] as $rootComposeFile) {
+        expect(base_path($rootComposeFile))->not->toBeFile();
+    }
+
+    /** @var array{services: array<string, array<string, mixed>>, volumes?: mixed} $compose */
+    $compose = Yaml::parseFile($composePath);
+    expect(array_keys($compose['services']))->toBe(['app', 'selenium'])
+        ->and($compose)->not->toHaveKey('volumes');
+
+    $app = $compose['services']['app'];
+    $selenium = $compose['services']['selenium'];
+
+    expect($app['build'])->toBe([
+        'context' => 'dev',
+        'dockerfile' => 'Dockerfile',
+    ])->and($app['working_dir'])->toBe('/workspace')
+        ->and($app['init'])->toBeTrue()
+        ->and($app['command'])->toBe([
+            'php',
+            'artisan',
+            'serve',
+            '--host=0.0.0.0',
+            '--port=8000',
+            '--no-reload',
+        ])->and($app['ports'])->toBe(['0.0.0.0:8000:8000'])
+        ->and($app['volumes'])->toContain('../:/workspace')
+        ->and($app['environment']['DB_DATABASE'])->toBe('/workspace/database/database.sqlite')
+        ->and($app['environment']['LARAVEL_PDF_DOMPDF_CHROOT'])->toBe('/workspace')
+        ->and($app['environment']['ASSESTME_BACKUP_ROOT'])->toBe('/workspace/backups')
+        ->and($app['environment']['ASSESTME_UID'])->toBe('${UID:-}')
+        ->and($app['environment']['ASSESTME_GID'])->toBe('${GID:-}')
+        ->and($app['environment']['DUSK_BROWSER_HOST'])->toBe('assestme-app')
+        ->and($app['networks']['default']['aliases'])->toBe(['assestme-app'])
+        ->and($app['environment']['XDEBUG_MODE'])->toBe('${XDEBUG_MODE:-off}')
+        ->and($app['extra_hosts'])->toContain('host.docker.internal:host-gateway')
+        ->and($app)->not->toHaveKeys(['container_name', 'privileged', 'depends_on', 'cap_add']);
+
+    expect($selenium['profiles'])->toBe(['browser'])
+        ->and($selenium['image'])->toBe('selenium/standalone-chromium:4.46.0-20260707')
+        ->and($selenium['shm_size'])->toBe('2gb')
+        ->and($selenium)->not->toHaveKey('ports')
+        ->and($selenium)->not->toHaveKeys(['container_name', 'privileged', 'cap_add']);
+
+    $serializedCompose = strtolower((string) file_get_contents($composePath));
+    expect($serializedCompose)
+        ->not->toContain('/var/run/docker.sock')
+        ->not->toMatch('/\b(?:nginx|php-fpm|node(?:js)?|npm|pnpm|yarn|vite|redis|mysql|postgres(?:ql)?|mariadb|supervisor|systemd|horizon|queue worker)\b/');
+
+    $dockerfile = strtolower((string) file_get_contents($dockerfilePath));
+    expect($dockerfile)
+        ->toContain('from php:8.3.32-cli-bookworm')
+        ->toContain('from composer:2.10.2')
+        ->toContain('arg xdebug_version=3.5.3')
+        ->toContain('docker-php-ext-configure')
+        ->toContain('docker-php-ext-install')
+        ->toContain('docker-php-ext-enable')
+        ->not->toContain('copy . /workspace')
+        ->not->toMatch('/\b(?:alpine|nginx|php-fpm|node(?:js)?|npm|pnpm|yarn|vite|redis|mysql|postgres(?:ql)?|mariadb|supervisor|systemd|horizon|chromedriver|chromium)\b/');
+});
+
+it('configures the Docker PHP runtime and idempotent bootstrap contract', function (): void {
+    $configuration = (string) file_get_contents(base_path('docker/dev/php.ini'));
+    $entrypoint = (string) file_get_contents(base_path('docker/dev/entrypoint.sh'));
+    $bootstrap = (string) file_get_contents(base_path('scripts/bootstrap-local.sh'));
+
+    foreach ([
+        'memory_limit = 512M',
+        'upload_max_filesize = 25M',
+        'post_max_size = 30M',
+        'max_file_uploads = 20',
+        'max_execution_time = 120',
+        'display_errors = On',
+        'display_startup_errors = On',
+        'error_reporting = E_ALL',
+        'log_errors = On',
+        'opcache.enable = 1',
+        'opcache.validate_timestamps = 1',
+        'opcache.revalidate_freq = 0',
+        'xdebug.mode = off',
+        'xdebug.client_host = host.docker.internal',
+        'xdebug.client_port = 9003',
+    ] as $setting) {
+        expect($configuration)->toContain($setting);
+    }
+
+    expect($entrypoint)
+        ->toContain('set -Eeuo pipefail')
+        ->toContain("repository_uid=\"\$(stat -c '%u' /workspace)\"")
+        ->toContain('setpriv --reuid="$runtime_uid" --regid="$runtime_gid" --clear-groups')
+        ->toContain('scripts/bootstrap-local.sh /workspace')
+        ->toContain('exec "$@"')
+        ->not->toContain('chmod -R 777');
+
+    expect($bootstrap)
+        ->toContain('[[ ! -f vendor/autoload.php || "$installed_lock_hash" != "$composer_lock_hash" ]]')
+        ->toContain('[[ -f database/database.sqlite ]] || install -m 660 /dev/null database/database.sqlite')
+        ->toContain('App\\Models\\User::query()->exists()')
+        ->toContain('php artisan migrate --force')
+        ->toContain('php artisan db:seed --force')
+        ->toContain('php artisan filament:assets')
+        ->toContain('php artisan assestme:diagnose')
+        ->not->toContain('migrate:fresh')
+        ->not->toContain('chmod -R 777')
+        ->not->toContain('Start: php artisan serve');
+});
+
+it('records the superseded installation history and approved Docker and CloudPanel profiles only', function (): void {
+    $plan = (string) file_get_contents(base_path('plan.md'));
+
+    expect($plan)
+        ->toContain('| D-007 (v2) | SUPERSEDED |')
+        ->toContain('| D-007 | APPROVED | The application requires no Node.js frontend build; Docker Compose is the maintained and authoritative local development environment |')
+        ->toContain('| D-019 (v1) | SUPERSEDED |')
+        ->toContain('| D-019 | APPROVED | The only supported installation profiles are Docker Compose for development and CloudPanel for production |')
+        ->toContain('| D-042 (v1) | SUPERSEDED | The Docker development profile published the development HTTP port only on host loopback; superseded by D-042 on 2026-07-18 |')
+        ->toContain('| D-042 | APPROVED | The Docker development profile is defined by `docker/compose.dev.yml`, a project-owned PHP 8.3 development image, bind-mounted source code, persistent SQLite state, optional isolated Selenium browser testing, and HTTP publication on all host IPv4 interfaces |')
+        ->toContain('### D-042 — Docker development profile')
+        ->toContain('CloudPanel production configuration is not implemented by this decision')
+        ->toContain('legacy/deprecated generic-host production artifacts')
+        ->toContain('docker/compose.dev.yml');
+
+    $markdownFiles = collect(File::allFiles(base_path()))
+        ->reject(fn (SplFileInfo $file): bool => str_contains($file->getPathname(), DIRECTORY_SEPARATOR.'vendor'.DIRECTORY_SEPARATOR))
+        ->filter(fn (SplFileInfo $file): bool => strtolower($file->getExtension()) === 'md')
+        ->map(fn (SplFileInfo $file): string => $file->getRelativePathname())
+        ->sort()
+        ->values()
+        ->all();
+
+    expect($markdownFiles)->toBe(['AGENTS.md', 'plan.md']);
+    expect(base_path('scripts/cloudpanel'))->not->toBeDirectory();
 });
 
 it('uses capability-based preflight and rejects an incomplete project root', function (): void {
@@ -89,7 +234,7 @@ BASH;
         ->and($process->getOutput())->toBe('it|it|Europe/Rome');
 });
 
-it('requires a clean locked release and reapplies production permissions', function (): void {
+it('preserves the legacy generic-host deployment artifact for internal regression coverage', function (): void {
     $script = (string) file_get_contents(base_path('scripts/deploy-production.sh'));
 
     expect($script)
@@ -118,7 +263,7 @@ it('requires a clean locked release and reapplies production permissions', funct
     expect(substr_count($script, 'secure_permissions'))->toBeGreaterThanOrEqual(4);
 });
 
-it('ships a confirmed compensating production rollback', function (): void {
+it('preserves the legacy generic-host rollback artifact for internal regression coverage', function (): void {
     $script = (string) file_get_contents(base_path('scripts/rollback-production.sh'));
 
     expect($script)
@@ -140,7 +285,7 @@ it('ships a confirmed compensating production rollback', function (): void {
         ->not->toContain('|| true');
 });
 
-it('ships an isolated production-like deployment and rollback rehearsal', function (): void {
+it('preserves the legacy generic-host rehearsal as a non-normative internal check', function (): void {
     $script = (string) file_get_contents(base_path('scripts/rehearse-production.sh'));
 
     expect($script)
@@ -184,4 +329,25 @@ it('refuses browser tests outside the marked disposable environment', function (
         ->toContain("getenv('ASSESTME_TEST_ROOT')")
         ->toContain("\$isolatedRoot.'/.assestme-test-root'")
         ->toContain('Dusk requires the marked disposable environment created by scripts/dusk-isolated.sh.');
+});
+
+it('uses a configured remote Dusk driver without starting local ChromeDriver', function (): void {
+    $testCase = (string) file_get_contents(base_path('tests/DuskTestCase.php'));
+    $runner = (string) file_get_contents(base_path('scripts/dusk-isolated.sh'));
+
+    expect($testCase)
+        ->toContain('if (static::configuredDriverUrl() === null)')
+        ->toContain('static::startChromeDriver')
+        ->toContain("\$_ENV['DUSK_DRIVER_URL'] ?? getenv('DUSK_DRIVER_URL')")
+        ->not->toMatch("/(?<!get)env\\('DUSK_DRIVER_URL'\\)/");
+
+    expect($runner)
+        ->toContain('DUSK_SERVER_BIND="${DUSK_SERVER_BIND:-127.0.0.1}"')
+        ->toContain('DUSK_BROWSER_HOST="${DUSK_BROWSER_HOST:-127.0.0.1}"')
+        ->toContain('DUSK_READY_HOST="${DUSK_READY_HOST:-127.0.0.1}"')
+        ->toContain('export APP_URL="http://${DUSK_BROWSER_HOST}:${DUSK_PORT}"')
+        ->toContain('"${DUSK_DRIVER_URL%/}/status"')
+        ->toContain('exec php -d variables_order=EGPCS -S "${DUSK_SERVER_BIND}:${DUSK_PORT}"')
+        ->toContain('http://${DUSK_READY_HOST}:${DUSK_PORT}/admin/login')
+        ->toContain('assestme_end_isolated_environment');
 });

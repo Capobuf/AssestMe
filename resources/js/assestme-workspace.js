@@ -3,12 +3,11 @@
 
     let dirty = false;
     let activeFindingRow = null;
+    let livewireHookRegistered = false;
 
     const statusElement = () => document.querySelector('[data-assestme-save-status]');
 
-    const showStatus = (status) => {
-        const element = statusElement();
-
+    const showStatus = (status, element = statusElement()) => {
         if (!element) {
             return;
         }
@@ -21,15 +20,39 @@
         }
     };
 
+    const workspaceStatusFor = (target) => {
+        const livewireComponent = target.closest('[wire\\:id]');
+        const element = statusElement();
+
+        return livewireComponent?.contains(element) ? element : null;
+    };
+
+    const clearDirtyAfterSave = () => {
+        if (statusElement()?.dataset.status === 'saved') {
+            dirty = false;
+        }
+    };
+
+    const registerLivewireHook = () => {
+        if (livewireHookRegistered || !window.Livewire?.hook) {
+            return;
+        }
+
+        livewireHookRegistered = true;
+        window.Livewire.hook('morph.updated', clearDirtyAfterSave);
+    };
+
     document.documentElement.dataset.assestmeWorkspaceAsset = 'loaded';
 
     document.addEventListener('input', (event) => {
-        if (!event.target.closest('[wire\\:id]')) {
+        const element = workspaceStatusFor(event.target);
+
+        if (!element) {
             return;
         }
 
         dirty = true;
-        showStatus(navigator.onLine ? 'unsaved' : 'offline');
+        showStatus(navigator.onLine ? 'unsaved' : 'offline', element);
     });
 
     document.addEventListener('focusin', (event) => {
@@ -61,6 +84,10 @@
     });
 
     window.addEventListener('offline', () => {
+        if (!statusElement()) {
+            return;
+        }
+
         dirty = true;
         showStatus('offline');
     });
@@ -80,11 +107,6 @@
         event.returnValue = '';
     });
 
-    document.addEventListener('livewire:init', () => {
-        window.Livewire.hook('morph.updated', () => {
-            if (statusElement()?.dataset.status === 'saved') {
-                dirty = false;
-            }
-        });
-    });
+    document.addEventListener('livewire:init', registerLivewireHook, { once: true });
+    registerLivewireHook();
 })();

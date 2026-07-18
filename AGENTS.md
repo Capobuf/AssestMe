@@ -24,7 +24,7 @@ Read `plan.md` completely before changing code. `plan.md` version 2.3 is the aut
 - File cache/session and synchronous queue.
 - Laravel Dusk for browser testing.
 
-Do not require Node.js, npm, pnpm, Vite builds, Redis, Chromium in production, or an external PDF/storage/service dependency. Docker is permitted for future packaging but is not a current development, verification, or runtime requirement.
+Do not require Node.js, npm, pnpm, Vite builds, Redis, Chromium in production, or an external PDF/storage/service dependency. Docker Compose through `docker/compose.dev.yml` is the only supported development installation profile. CloudPanel is the approved production destination, but its configuration and procedure are not implemented yet.
 
 ## No fallback and no fake success
 
@@ -50,6 +50,8 @@ Never:
 8. Record discoveries, locked versions, and evidence in `plan.md`.
 9. Keep `main` releasable.
 10. Do not declare completion until URL, login, PDF, XLSX, backup/restore, automated tests, manual QA, and benchmark pass.
+
+Run development and verification commands through the Docker Compose development profile. Environment-neutral scripts may remain directly executable for CI, diagnostics, and internal reuse, but direct-host PHP/Composer development is not a supported installation method.
 
 ## Architecture
 
@@ -134,4 +136,4 @@ Allowed: code, comments, translations, shell scripts, configuration stubs, JSON 
 
 ## Final handoff
 
-Start the app, verify a real login, generate and validate real PDF/XLSX files, verify backup/restore, run all gates, and report the exact local URL and one-time local test credentials. Never print production credentials.
+Start the app through `docker/compose.dev.yml`, verify a real login, generate and validate real PDF/XLSX files, verify backup/restore, run all gates, and report the exact local URL and one-time local test credentials. Never print production credentials. Do not implement CloudPanel without a later approved decision.

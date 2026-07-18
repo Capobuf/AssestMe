@@ -1,0 +1,66 @@
+services:
+  app:
+    build:
+      context: dev
+      dockerfile: Dockerfile
+    working_dir: /workspace
+    init: true
+    command:
+      - php
+      - artisan
+      - serve
+      - --host=0.0.0.0
+      - --port=8000
+      - --no-reload
+    environment:
+      APP_URL: http://127.0.0.1:8000
+      ASSESTME_GID: "${GID:-}"
+      ASSESTME_BACKUP_ROOT: /workspace/backups
+      ASSESTME_UID: "${UID:-}"
+      DB_DATABASE: /workspace/database/database.sqlite
+      DUSK_BROWSER_HOST: assestme-app
+      DUSK_DRIVER_URL: http://selenium:4444
+      DUSK_READY_HOST: 127.0.0.1
+      DUSK_SERVER_BIND: 0.0.0.0
+      LARAVEL_PDF_DOMPDF_CHROOT: /workspace
+      XDEBUG_MODE: "${XDEBUG_MODE:-off}"
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks:
+      default:
+        aliases:
+          - assestme-app
+    ports:
+      - "0.0.0.0:8000:8000"
+    volumes:
+      - ../:/workspace
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - --fail
+        - --silent
+        - --show-error
+        - http://127.0.0.1:8000/admin/login
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 180s
+
+  selenium:
+    image: selenium/standalone-chromium:4.46.0-20260707
+    profiles:
+      - browser
+    shm_size: 2gb
+    healthcheck:
+      test:
+        - CMD
+        - /opt/bin/check-grid.sh
+        - --host
+        - 0.0.0.0
+        - --port
+        - "4444"
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
