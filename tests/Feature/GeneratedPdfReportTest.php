@@ -148,6 +148,59 @@ it('applies cover title company address and optional priority legend presentatio
         );
 });
 
+it('generates authoritative PDFs in both title modes with optional and null priority descriptions', function (): void {
+    [$assessment] = createPdfReadyAssessment();
+    $assessment->client->update([
+        'trade_name' => 'Azienda Modalità PDF',
+        'legal_name' => 'Azienda Modalità PDF S.r.l.',
+    ]);
+    $priority = $assessment->findings()->firstOrFail()->priorityLevel()->firstOrFail();
+    $priority->update(['description' => 'Descrizione legenda verificabile']);
+
+    $settings = app(ReportSettings::class);
+    $settings->cover_title_mode = CoverTitleMode::Separate;
+    $settings->show_priority_descriptions = false;
+    $settings->save();
+
+    $separate = app(GenerateAssessmentPdf::class)($assessment->fresh());
+    $separatePath = Storage::disk('local')->path($separate->file_path);
+    $separateText = (new Parser)->parseFile($separatePath)->getText();
+
+    expect($separate->settings_snapshot['cover_title_mode'])->toBe(CoverTitleMode::Separate->value)
+        ->and($separate->settings_snapshot['show_priority_descriptions'])->toBeFalse()
+        ->and($separate->payload_snapshot['title'])->toBe('Assessment IT')
+        ->and($separateText)->not->toContain('Descrizione legenda verificabile')
+        ->and(hash_file('sha256', $separatePath))->toBe($separate->file_sha256);
+
+    $settings->cover_title_mode = CoverTitleMode::Combined;
+    $settings->show_priority_descriptions = true;
+    $settings->save();
+
+    $combined = app(GenerateAssessmentPdf::class)($assessment->fresh());
+    $combinedPath = Storage::disk('local')->path($combined->file_path);
+    $combinedText = (new Parser)->parseFile($combinedPath)->getText();
+
+    expect($combined->settings_snapshot['cover_title_mode'])->toBe(CoverTitleMode::Combined->value)
+        ->and($combined->settings_snapshot['show_priority_descriptions'])->toBeTrue()
+        ->and($combined->payload_snapshot['title'])->toBe('Assessment IT — Azienda Modalità PDF')
+        ->and($combinedText)->toContain('Descrizione legenda verificabile')
+        ->and(hash_file('sha256', $combinedPath))->toBe($combined->file_sha256);
+
+    $priority->update(['description' => null]);
+    $withoutDescription = app(GenerateAssessmentPdf::class)($assessment->fresh());
+    $withoutDescriptionPath = Storage::disk('local')->path($withoutDescription->file_path);
+    $withoutDescriptionText = (new Parser)->parseFile($withoutDescriptionPath)->getText();
+    $prioritySnapshot = collect($withoutDescription->payload_snapshot['priority_legend'])
+        ->firstWhere('code', $priority->code);
+
+    expect($prioritySnapshot)->not->toBeNull()
+        ->and($prioritySnapshot['description'])->toBeNull()
+        ->and($withoutDescriptionText)->toContain($priority->label)
+        ->and($withoutDescriptionText)->not->toContain('Descrizione legenda verificabile')
+        ->and(hash_file('sha256', $withoutDescriptionPath))->toBe($withoutDescription->file_sha256)
+        ->and(GeneratedReport::query()->where('assessment_id', $assessment->getKey())->count())->toBe(3);
+});
+
 it('loads exactly the configured private report logos', function (string $branding, array $owners): void {
     [$assessment] = createPdfReadyAssessment();
     $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
