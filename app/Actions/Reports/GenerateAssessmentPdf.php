@@ -116,7 +116,7 @@ final class GenerateAssessmentPdf
     private function fileName(AssessmentReportData $snapshot, int $version): string
     {
         $client = Str::slug($snapshot->clientName);
-        $client = $client === '' ? 'cliente' : $client;
+        $client = $client === '' ? 'azienda' : $client;
 
         return sprintf('AssestMe_%s_%s_v%02d.pdf', $client, $snapshot->assessmentDate, $version);
     }

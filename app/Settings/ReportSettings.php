@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Settings;
 
+use App\Enums\CoverTitleMode;
 use Spatie\LaravelSettings\Settings;
 
 final class ReportSettings extends Settings
@@ -39,6 +40,10 @@ final class ReportSettings extends Settings
     public string $primary_color;
 
     public string $branding;
+
+    public CoverTitleMode $cover_title_mode;
+
+    public bool $show_priority_descriptions;
 
     public bool $cover;
 

@@ -74,7 +74,11 @@ final readonly class SaveAssessmentWorkspace
             'payload.assessment.title' => ['required', 'string', 'max:255'],
             'payload.assessment.assessment_date' => ['required', 'date_format:Y-m-d'],
             'payload.assessment.report_title_override' => ['nullable', 'string', 'max:255'],
-            'payload.assessment.scope_type' => ['required', Rule::enum(ScopeType::class)],
+            'payload.assessment.scope_type' => ['required', Rule::in([
+                ScopeType::Organization->value,
+                ScopeType::SelectedSites->value,
+                ScopeType::Custom->value,
+            ])],
             'payload.assessment.scope_description' => ['nullable', 'string', 'max:20000'],
             'payload.assessment.introduction' => ['nullable', 'string', 'max:20000'],
             'payload.assessment.executive_summary' => ['nullable', 'string', 'max:20000'],
@@ -113,6 +117,25 @@ final readonly class SaveAssessmentWorkspace
         if ($assessment->client->sites()->whereIn('id', $siteIds)->count() !== count($siteIds)) {
             throw ValidationException::withMessages([
                 'assessment.site_ids' => __('assestme.assessments.errors.site_ownership'),
+            ]);
+        }
+
+        $scope = ScopeType::from((string) $request->payload['assessment']['scope_type']);
+        if ($scope === ScopeType::SelectedSites && $siteIds === []) {
+            throw ValidationException::withMessages([
+                'assessment.site_ids' => __('assestme.assessments.errors.site_required'),
+            ]);
+        }
+        if ($scope !== ScopeType::SelectedSites && $siteIds !== []) {
+            throw ValidationException::withMessages([
+                'assessment.site_ids' => __('assestme.assessments.errors.site_scope'),
+            ]);
+        }
+        if ($scope === ScopeType::Custom && blank($request->payload['assessment']['scope_description'] ?? null)) {
+            throw ValidationException::withMessages([
+                'assessment.scope_description' => __('validation.required', [
+                    'attribute' => __('assestme.assessments.fields.scope_description'),
+                ]),
             ]);
         }
     }

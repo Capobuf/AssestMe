@@ -19,6 +19,7 @@ use App\Models\FindingSolution;
 use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
 use App\Models\Tag;
+use App\Settings\GeneralSettings;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -34,6 +35,7 @@ use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\VerticalAlignment;
 use Filament\Support\Enums\Width;
@@ -75,7 +77,8 @@ final class AssessmentWorkspaceForm
                     ->columnSpan(2),
                 Select::make('scope_type')
                     ->label(__('assestme.assessments.fields.scope'))
-                    ->options(self::scopeOptions())
+                    ->options(self::assessmentScopeOptions())
+                    ->live()
                     ->required()
                     ->disabled(self::isReadOnly(...)),
                 Select::make('site_ids')
@@ -83,12 +86,17 @@ final class AssessmentWorkspaceForm
                     ->options(fn (WorkspaceAssessment $livewire): array => self::workspaceAssessment($livewire)->client->sites()->pluck('name', 'id')->all())
                     ->multiple()
                     ->searchable()
+                    ->visible(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedSites->value)
+                    ->required(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedSites->value)
                     ->disabled(self::isReadOnly(...))
                     ->columnSpanFull(),
                 Textarea::make('scope_description')
-                    ->label(__('assestme.assessments.fields.scope_description'))
+                    ->label(fn (Get $get): string => $get('scope_type') === ScopeType::Custom->value
+                        ? __('assestme.assessments.fields.scope_description')
+                        : __('assestme.assessments.fields.scope_notes'))
                     ->rows(3)
                     ->maxLength(20000)
+                    ->required(fn (Get $get): bool => $get('scope_type') === ScopeType::Custom->value)
                     ->disabled(self::isReadOnly(...))
                     ->columnSpanFull(),
                 Textarea::make('introduction')
@@ -235,6 +243,7 @@ final class AssessmentWorkspaceForm
                                             ->generatedReports()
                                             ->latest('generated_at')
                                             ->get(),
+                                        'timezone' => app(GeneralSettings::class)->timezone,
                                     ])),
                             ]),
                     ])
@@ -295,6 +304,7 @@ final class AssessmentWorkspaceForm
             Select::make('scope_type')
                 ->label(__('assestme.assessments.fields.scope'))
                 ->options(self::scopeOptions())
+                ->live()
                 ->required(),
             Textarea::make('scope_description')
                 ->label(__('assestme.assessments.fields.scope_description'))
@@ -304,14 +314,18 @@ final class AssessmentWorkspaceForm
                 ->label(__('assestme.assessments.fields.sites'))
                 ->options(fn (WorkspaceAssessment $livewire): array => self::workspaceAssessment($livewire)->client->sites()->pluck('name', 'id')->all())
                 ->multiple()
-                ->searchable(),
+                ->searchable()
+                ->visible(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedSites->value)
+                ->required(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedSites->value),
             Select::make('asset_ids')
                 ->label(__('assestme.findings.fields.assets'))
                 ->options(fn (WorkspaceAssessment $livewire): array => self::workspaceAssessment($livewire)->client->assets()->get()->mapWithKeys(
                     static fn (Asset $asset): array => [$asset->id => $asset->name ?? $asset->hostname ?? "Asset {$asset->id}"],
                 )->all())
                 ->multiple()
-                ->searchable(),
+                ->searchable()
+                ->visible(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedAssets->value)
+                ->required(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedAssets->value),
             Select::make('consequence_level_id')
                 ->label(__('assestme.templates.fields.consequence'))
                 ->options(fn (): array => ConsequenceLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all()),
@@ -430,6 +444,16 @@ final class AssessmentWorkspaceForm
             ScopeType::SelectedSites->value => __('assestme.scopes.selected_sites'),
             ScopeType::Network->value => __('assestme.scopes.network'),
             ScopeType::SelectedAssets->value => __('assestme.scopes.selected_assets'),
+            ScopeType::Custom->value => __('assestme.scopes.custom'),
+        ];
+    }
+
+    /** @return array<string, string> */
+    private static function assessmentScopeOptions(): array
+    {
+        return [
+            ScopeType::Organization->value => __('assestme.scopes.organization'),
+            ScopeType::SelectedSites->value => __('assestme.scopes.site'),
             ScopeType::Custom->value => __('assestme.scopes.custom'),
         ];
     }

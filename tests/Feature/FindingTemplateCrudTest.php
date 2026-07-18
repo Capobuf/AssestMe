@@ -19,9 +19,51 @@ beforeEach(function (): void {
 it('creates a complete template and its recommended solution through the application action', function (): void {
     $template = app(SaveFindingTemplate::class)->handle(null, findingTemplateData());
 
-    expect($template->external_id)->toBe('test.template')
+    expect($template->external_id)->toBe('template-di-test')
         ->and($template->solutions()->count())->toBe(1)
+        ->and($template->solutions()->firstOrFail()->external_id)->toBe('soluzione-raccomandata')
         ->and($template->solutions()->firstOrFail()->is_recommended)->toBeTrue();
+});
+
+it('generates collision-safe stable external identifiers and rejects later mutations', function (): void {
+    $first = app(SaveFindingTemplate::class)->handle(null, findingTemplateData());
+    $second = app(SaveFindingTemplate::class)->handle(null, findingTemplateData());
+    $payload = findingTemplateData();
+    $payload['title'] = 'Titolo modificato';
+    $payload['external_id'] = 'payload-manipolato';
+    $payload['solutions'][0]['id'] = $first->solutions()->firstOrFail()->getKey();
+    $payload['solutions'][0]['external_id'] = 'soluzione-manipolata';
+
+    expect($first->external_id)->toBe('template-di-test')
+        ->and($second->external_id)->toBe('template-di-test-2')
+        ->and($second->solutions()->firstOrFail()->external_id)->toBe('soluzione-raccomandata')
+        ->and(fn () => app(SaveFindingTemplate::class)->handle($first, $payload))
+        ->toThrow(ValidationException::class);
+
+    $payload['external_id'] = $first->external_id;
+    $payload['solutions'][0]['external_id'] = $first->solutions()->firstOrFail()->external_id;
+    $updated = app(SaveFindingTemplate::class)->handle($first, $payload);
+
+    expect($updated->title)->toBe('Titolo modificato')
+        ->and($updated->external_id)->toBe('template-di-test')
+        ->and($updated->solutions()->firstOrFail()->external_id)->toBe('soluzione-raccomandata')
+        ->and(fn () => $updated->update(['external_id' => 'mutazione-diretta']))
+        ->toThrow(LogicException::class);
+});
+
+it('generates deterministic solution collisions inside one template', function (): void {
+    $payload = findingTemplateData();
+    $payload['solutions'][] = [
+        ...$payload['solutions'][0],
+        'title' => 'Soluzione raccomandata',
+        'is_recommended' => false,
+        'sort_order' => 1,
+    ];
+
+    $template = app(SaveFindingTemplate::class)->handle(null, $payload);
+
+    expect($template->solutions()->orderBy('sort_order')->pluck('external_id')->all())
+        ->toBe(['soluzione-raccomandata', 'soluzione-raccomandata-2']);
 });
 
 it('rolls back a template when recommendations or estimates are invalid', function (array $changes): void {
@@ -44,7 +86,7 @@ it('creates a template through its Filament resource', function (): void {
         ->call('create')
         ->assertHasNoFormErrors();
 
-    expect(FindingTemplate::query()->where('external_id', 'test.template')->exists())->toBeTrue();
+    expect(FindingTemplate::query()->where('external_id', 'template-di-test')->exists())->toBeTrue();
 });
 
 it('requires authentication for the template library', function (): void {
@@ -55,7 +97,6 @@ it('requires authentication for the template library', function (): void {
 function findingTemplateData(): array
 {
     return [
-        'external_id' => 'test.template',
         'title' => 'Template di test',
         'category_id' => Category::query()->where('slug', 'sicurezza')->firstOrFail()->getKey(),
         'tag_ids' => [],
@@ -70,7 +111,6 @@ function findingTemplateData(): array
         'priority_rationale' => null,
         'is_enabled' => true,
         'solutions' => [[
-            'external_id' => 'recommended',
             'title' => 'Soluzione raccomandata',
             'description' => 'Descrizione della soluzione.',
             'comparison_notes' => null,

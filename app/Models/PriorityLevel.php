@@ -6,10 +6,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 /** @property int $id @property int $risk_profile_id @property string $code @property string $label @property string $color @property int $sort_order @property bool $is_enabled */
 class PriorityLevel extends Model
 {
+    protected static function booted(): void
+    {
+        self::updating(static function (self $level): void {
+            if ($level->isDirty('code')) {
+                throw new LogicException('Priority technical codes are immutable.');
+            }
+        });
+    }
+
     /** @var list<string> */
     protected $fillable = ['risk_profile_id', 'code', 'label', 'description', 'color', 'sort_order', 'is_enabled'];
 

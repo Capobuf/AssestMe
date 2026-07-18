@@ -107,6 +107,16 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-041 | APPROVED | Development verification is autonomous and isolated; manual cross-browser/device QA is deferred until a reference installation and devices exist |
 | D-042 (v1) | SUPERSEDED | The Docker development profile published the development HTTP port only on host loopback; superseded by D-042 on 2026-07-18 |
 | D-042 | APPROVED | The Docker development profile is defined by `docker/compose.dev.yml`, a project-owned PHP 8.3 development image, bind-mounted source code, persistent SQLite state, optional isolated Selenium browser testing, and HTTP publication on all host IPv4 interfaces |
+| D-043 | APPROVED | Italian user-facing terminology uses Azienda/Aziende and Intera azienda; internal `Client`, `clients`, `client_id`, relations, and persistence contracts remain unchanged |
+| D-044 | APPROVED | Assessment creation proposes a reusable automatically generated but user-editable title, exposes only organization/site/custom assessment scopes, filters one or more sites by company, and makes the Workspace the primary post-create and list-row destination |
+| D-045 | APPROVED | Finding asset association remains optional for every scope except `selected_assets`, which requires at least one same-company asset; conditional site/asset UI and completion/report validation use the same domain rule |
+| D-046 | APPROVED | The dashboard separates four compact clickable operational KPIs, the latest five assessments, urgent findings, and a compact application-status section for backup, database integrity, and unresolved cleanup operations |
+| D-047 | APPROVED | Company, site, asset, template, and generated-file Filament surfaces use the approved native responsive layouts, explicit create/cancel destinations, conditional solution fields, and compact tabular generated-file history |
+| D-048 | APPROVED | Manually created template and solution external IDs are generated deterministically from titles on first authoritative save, collision-suffixed, immutable thereafter, and preserved unchanged by JSON import/export |
+| D-049 | APPROVED | Risk profile and level technical codes are generated on creation and immutable after first save; existing level identity is preserved and the sixteen entries are edited through a deterministic 4×4 consequence-by-likelihood matrix |
+| D-050 | APPROVED | PDF generation creates one immutable authoritative report, applies any configured freeze, immediately downloads that same authenticated hash-verified file, and retains it in generated-file history |
+| D-051 | APPROVED | Report settings retain consultant/company/both branding and add typed cover-title mode plus optional priority-legend descriptions without changing immutable settings snapshots |
+| D-052 | APPROVED | The A4 portrait DOMPDF report uses the approved entrepreneur-oriented cover, company information, priority legend, two-row finding summaries, detail hierarchy, and page-safe evidence blocks while preserving all logical data |
 
 ### D-001 — Framework
 
@@ -514,6 +524,48 @@ Script classification:
 - future CloudPanel-specific: none yet; CloudPanel production configuration is not implemented by this decision;
 - legacy/deprecated generic-host production artifacts: `scripts/deploy-production.sh`, `scripts/rollback-production.sh`, `scripts/rehearse-production.sh`, `stubs/nginx/assestme.conf`, `stubs/php/assestme.ini`, and `stubs/cron/assestme`;
 - deprecated direct-host installation: none is supported; technically reusable host execution of environment-neutral scripts is limited to CI, diagnostics, and internal verification.
+
+### D-043 — Italian company terminology
+
+Every Italian UI, validation message, PDF, and XLSX label uses `Azienda`, `Aziende`, and `Intera azienda` instead of `Cliente`, `Clienti`, and `Intera organizzazione`. This is a presentation contract only. English application identifiers and the existing `Client`, `ClientResource`, `clients`, `client_id`, and relationship/database contracts are unchanged.
+
+### D-044 — Assessment title, scope, and primary navigation
+
+Assessment creation proposes `<Azienda> — <Ambito> — <gg/mm/aaaa>` through one testable application implementation. Company, assessment scope, selected sites, custom scope description, and date update the proposal only until the user edits the visible title manually. The saved `title` remains an ordinary value and is never rewritten after creation because a company or site is renamed.
+
+Assessment-level scope choices are exactly `organization`, `selected_sites`, and `custom`; the broader `ScopeType` enum remains valid for individual findings. Site scope accepts one or more sites belonging to the selected company and removes invalid site selections after a company change. Custom scope requires `scope_description`; the same field is optional and labelled as notes for other scopes. Create/save opens the Workspace, the list row opens the Workspace, general-data edit remains an explicit secondary action, and create cancellation returns to the assessment list.
+
+### D-045 — Finding scope relations
+
+The blanket sentence “Asset association is optional” in D-015 is **SUPERSEDED only for `selected_assets` findings by D-045**. D-015 otherwise remains APPROVED. An included finding requires at least one asset only when its explicit scope is `selected_assets`. No asset is required for `organization`, `selected_sites`, `network`, or `custom`; selected sites remain required only for `selected_sites`. Assets and sites must belong to the assessment company. The Workspace conditionally shows the relevant native Filament relation control, while save, completion, and report generation delegate to the same server-side rule.
+
+### D-046 — Dashboard information architecture
+
+The previous presentation of backup, integrity, and cleanup alongside operational counts as equal large statistics is **SUPERSEDED by D-046**. The dashboard contains four compact, content-height, clickable operational KPIs: draft assessments, completed assessments, open findings, and included open high/critical findings. It separately shows the latest five assessments and compact urgent findings, with primary links to the applicable filtered assessment list or Workspace. `Stato applicazione` shows one compact row per backup, database-integrity, and unresolved-cleanup check with status, last event, concise message, and an action when applicable. Severity uses text or an icon in addition to color, and messages do not claim an application block that is not enforced.
+
+### D-047 — Native Filament form and generated-file layouts
+
+Company creation save/cancel returns to the company list while `Salva e nuovo` resets to a blank create form and duplicate warnings remain active. Site and asset forms use native responsive grids: identity/assignment stays compact, detail sections span full width, and narrow viewports use one column. Template finding forms use full-width Content, Classification/defaults, Solutions, and Advanced options sections. Every solution is at most two columns, with full-width long text and native conditional monetary/range/custom-frequency fields. Generated files use a compact tabular history containing format/version, filename, configured-timezone date/time, size, and authenticated Download/Delete actions; destructive deletion remains confirmed and recoverable.
+
+### D-048 — Stable external IDs
+
+Manual template saves generate a lowercase contract-compatible `external_id` from the title when creating the record. Global collisions use the first available deterministic numeric suffix `-2`, `-3`, and so on. Manual nested solutions use the same rule with uniqueness scoped to the template. Existing template and solution IDs are immutable in the authoritative save action even for manipulated payloads; title changes never regenerate them. JSON imports preserve supplied IDs and retain the schema, replace/skip, and round-trip contracts. Advanced options hide input on new records and show persisted IDs read-only on existing records.
+
+### D-049 — Stable risk identities and 4×4 matrix
+
+Risk profile, consequence, likelihood, and priority codes are generated from their initial labels during creation with deterministic collision suffixes in their existing uniqueness scopes. After persistence, the authoritative aggregate action rejects any code mutation. Existing level integer IDs are carried in the form and matched explicitly so label edits update the same row rather than creating a replacement. Level forms normally show label, optional description, applicable score, color, order, and enabled status; codes are advanced read-only values. The previous vertical matrix repeater with manually repeated consequence/likelihood codes is **SUPERSEDED by D-049**. A simple Filament/Blade 4×4 grid renders consequence rows, likelihood columns, and one native priority select per cell with priority label and color. The action still validates and atomically persists exactly sixteen same-profile combinations.
+
+### D-050 — Authoritative PDF download and history
+
+The previous Workspace behavior that generated a PDF and only redirected to history is **SUPERSEDED by D-050**. One `GenerateAssessmentPdf` invocation creates the immutable record, snapshot, hashes, and authoritative private file and applies `freeze_after_generation` when configured. Its successful Livewire/Filament response immediately starts an authenticated download through the existing hash-verifying route for that same record; it never rerenders or copies to a different temporary output. The record remains in history. Validation or generation failure remains visible and never triggers a success or download.
+
+### D-051 — Cover and priority-legend settings
+
+Branding values remain exactly consultant, company, and both. A typed cover-title mode is added with `separate` and `combined` values. Separate mode prints the effective report title and company name on distinct lines; combined mode prints `<effective title> — <azienda>` once and omits the separate company line. `report_title_override` and the title pattern remain supported without automatic company-name repetition. A typed boolean controls whether optional priority descriptions appear in the legend; color and label always appear and an empty description produces no placeholder.
+
+### D-052 — Entrepreneur-oriented PDF composition
+
+The “Exactly” nine-column summary table in §13.4 is **SUPERSEDED by D-052**; all nine logical values remain mandatory but each finding uses a readable dynamic-height two-row block on A4 portrait. The previous technical ordering in §13.5 is **SUPERSEDED only as to presentation order by D-052**; its data-inclusion requirements remain APPROVED. Detail order is number/title/priority/status, prominent entrepreneur notes when present, problem, recommended solution, effort/estimate, alternatives, scope/sites/assets/risk, evidence, optional technical notes, and resolution. Empty entrepreneur notes render no empty block. Company information omits duplicate display/legal names, country-only `IT` addresses, and empty rows. Evidence title, image, and caption form one DOMPDF-supported page-safe logical block; images preserve proportions, respect A4-safe maximum height, and never overflow or crop.
 
 ### D-028 — Authentication and MFA
 
@@ -1480,6 +1532,8 @@ Exactly one non-deleted solution is recommended.
 - completed timestamp nullable;
 - timestamps and soft deletes.
 
+Assessment creation scope is deliberately narrower than finding scope: the UI and authoritative create action accept only `organization`, `selected_sites`, and `custom`. `selected_sites` requires one or more `assessment_site` rows owned by the assessment company; `custom` requires `scope_description`. The initial visible title proposal is generated through the D-044 application rule and remains user-editable without adding persistence state beyond the existing `title` column.
+
 Pivot `assessment_site`.
 
 State machine:
@@ -1522,7 +1576,7 @@ Rules:
 - new blank finding is persisted immediately and may be incomplete while draft;
 - completion/report validation ignores excluded findings;
 - an included finding requires title, category, problem, final priority, valid scope, and at least one solution;
-- selected sites/assets scopes require at least one relation;
+- selected-sites scope requires at least one same-company site and selected-assets scope requires at least one same-company asset; every other scope permits zero site/asset relations;
 - priority override always requires a reason;
 - `resolved` requires implemented solution or non-empty resolution notes;
 - numbering is derived from current sort order and recalculates after reorder;
@@ -1668,7 +1722,7 @@ VAT treatment is not an application setting. No VAT status, display mode, rate, 
 
 ### 8.2 ReportSettings
 
-- default title pattern: `Assessment IT — {client}`;
+- default title pattern: `Assessment IT — {client}`; `{client}` remains a supported persisted placeholder even though Italian presentation labels use Azienda;
 - optional `consultant_name`;
 - optional `business_name`;
 - optional `consultant_role`;
@@ -1683,6 +1737,8 @@ VAT treatment is not an application setting. No VAT status, display mode, rate, 
 - optional text-only `signature_name` and `signature_role`; no handwritten-signature upload in v1;
 - primary color, strict six-digit hex;
 - branding: consultant, client, both;
+- cover title mode: `separate` or `combined`;
+- show priority descriptions in legend: boolean;
 - cover;
 - content index without page numbers;
 - executive summary;
@@ -1740,7 +1796,7 @@ Defaults:
 2. Assessment
    - Assessment
 3. Anagrafica
-   - Clienti
+   - Aziende
    - Sedi
    - Asset
 4. Libreria
@@ -1758,15 +1814,11 @@ Italian labels; English class names.
 
 ### 9.2 Dashboard
 
-Show only actionable values:
+Show four compact clickable operational KPI cards first: draft assessments, completed assessments, open findings, and included open high/critical findings. Each has a visible text/icon meaning in addition to any color and links to the relevant filtered list or Workspace.
 
-- draft assessments;
-- completed assessments;
-- open findings;
-- high/critical included findings;
-- latest five assessments;
-- unresolved file-cleanup failures;
-- last backup status.
+Below them show the latest five assessments with Azienda, scope, date, status, open-Finding count, and Workspace action; and a compact list of included open high/critical findings linking to their Workspaces.
+
+`Stato applicazione` is a separate compact section with one row each for latest backup, database integrity, and unresolved file-cleanup operations. Each row includes status, latest event, concise message, and an action when applicable. Operational information is retained without presenting technical checks as large KPI cards or claiming an unenforced block.
 
 ### 9.3 Standard resources
 
@@ -1780,6 +1832,15 @@ Use Filament resources with:
 - slide-over edit for compact records.
 
 Advanced Table Export is allowed for generic lists. The assessment workbook remains dedicated.
+
+Native form layout requirements:
+
+- company create Save and Cancel return to the Aziende list; Save and new opens a blank create form and duplicate-identifier warning remains active;
+- site identity keeps Azienda and Nome compact, while Dettagli spans full width and responsive schemas collapse to one column on narrow viewports;
+- asset Azienda, Sede, and Tipologia asset share one balanced desktop row, company changes clear the filtered site, Identificazione is balanced, and Dettagli spans full width;
+- template Content, Classification/defaults, Solutions, and Advanced options are separate full-width sections; long fields span full width and every solution uses at most two columns with conditional estimate controls;
+- risk level identity uses hidden persisted IDs and advanced read-only codes; matrix editing uses the D-049 4×4 grid rather than a vertical repeater;
+- generated-file history is a compact table with format/version, filename, configured-timezone date/time, size, and authenticated Download plus confirmed recoverable Delete actions.
 
 ### 9.4 Assessment workspace
 
@@ -1809,7 +1870,9 @@ Tabs:
 - Finding;
 - Dettagli assessment;
 - Anteprima riepilogo;
-- File generati.
+- File Generati.
+
+User-visible Workspace casing is `Workspace Assessment`, `Apri Workspace`, `Aggiungi Finding`, and `File Generati`. “Finding” retains that capitalization throughout the Italian UI.
 
 ### 9.5 Central grid
 
@@ -2287,6 +2350,8 @@ Title precedence:
 
 Logo: PNG or JPEG, max 5 MB.
 
+Branding renders the consultant logo, company logo, or both according to the saved setting, loading each from verified private storage. A selected but missing/invalid logo fails visibly; an unselected or genuinely absent optional logo creates no placeholder. Cover-title mode follows D-051: separate mode prints title and company on separate lines, combined mode appends the company exactly once.
+
 Primary color is passed to the view only after strict `#RRGGBB` normalization.
 
 ### 13.2 Sections
@@ -2318,43 +2383,43 @@ Implement repeated header/footer and DOMPDF page numbering through the supplied 
 
 Test extracted text for first and last page labels.
 
-### 13.4 Summary columns
+### 13.4 Finding summary blocks
 
-Exactly:
+The former nine narrow columns are superseded by D-052. Each included finding renders a two-row dynamic-height summary block while retaining exactly the same nine logical values.
+
+First row:
 
 - number;
 - finding title;
 - category;
-- scope;
-- recommended solution;
 - priority;
-- effort;
-- estimate;
 - status.
 
-No total.
+Second row:
+
+- scope;
+- recommended solution;
+- effort;
+- estimate.
+
+There is no total, landscape orientation, fixed row height, or data omission.
 
 ### 13.5 Finding detail
 
-Exactly:
+Render in this recipient-oriented hierarchy without omitting the previously required data:
 
-- number/title;
-- category/tags;
-- scope;
-- selected sites/assets;
-- priority/status;
-- consequence/likelihood and rationale;
-- problem;
-- entrepreneur notes;
-- recommended solution;
-- effort/effort notes;
-- estimate/estimate notes;
-- alternatives and comparison notes when enabled;
-- image evidence;
-- non-image attachment references;
-- URL evidence as clickable links;
-- technical notes when enabled;
-- resolution details when applicable.
+1. number, title, priority, and status;
+2. prominent `Perché è importante per l’Azienda` entrepreneur notes, only when non-empty;
+3. problem found;
+4. recommended solution;
+5. effort and estimate, including their notes;
+6. alternatives and comparison notes when enabled;
+7. scope, selected sites/assets, category/tags, consequence/likelihood, and rationale;
+8. image evidence, non-image attachment references, and clickable URL evidence;
+9. technical notes when enabled;
+10. resolution details when applicable.
+
+When entrepreneur notes are empty, problem is the first main content section and no empty entrepreneur block appears.
 
 Default: each finding begins on a new page. It may span any number of pages.
 
@@ -2391,7 +2456,9 @@ The note is fixed, not configurable, and present even when an assessment current
 ### 13.7 Evidence
 
 - images embedded from verified local files/data URI;
-- preserve aspect ratio;
+- evidence heading, image, and optional caption stay in one logical page-break-safe block so the heading cannot be orphaned;
+- preserve aspect ratio and use an A4-safe tested maximum height without cropping or overflow;
+- multiple evidence blocks may continue on following pages;
 - caption when enabled;
 - non-image files listed with title/original filename/type;
 - uploaded private files do not receive a web download link in the client PDF;
@@ -3121,6 +3188,10 @@ No unresolved product or architecture decision remains at implementation handoff
 
 The implementation agent must maintain this section.
 
+Approved UX/UI and functional decision implementation started on 2026-07-18. D-043 through D-052 now record the authoritative company terminology, assessment title/scope/navigation, conditional finding relations, dashboard information architecture, native resource layouts, stable external identifiers, immutable risk identities and 4×4 matrix, authoritative immediate PDF download, report settings, and entrepreneur-oriented PDF composition. Only the incompatible secondary rules in D-015, the previous dashboard presentation, the vertical risk matrix, the history-only PDF behavior, and PDF §§13.4–13.5 were marked SUPERSEDED; native Filament Repeater, DOMPDF, SQLite, immutable snapshots/hashes, recoverable deletion, optimistic locking, and idempotency remain unchanged. The protected baseline recorded before any verification command is database SHA-256 `37e2ab6d532fca9fa35ece6f4930070626ab29d6de6c22f5dda428a570c068ad`, private-storage manifest SHA-256 `430ee982f2695b446ce580a83771cb33a75649b1e30f1068677ee9ab4904c2ff`, and backup manifest SHA-256 `abcfa6a9d4df344d1781bc2560b5e4cdcae08b39ed303063535e7e1e926a304a` using the explicit relative-path/content algorithm documented in Discoveries.
+
+The D-043–D-052 implementation slice completed its isolated automated and Chromium desktop acceptance on 2026-07-18. `composer quality` passed Pint over 292 files, PHPStan with zero errors, 225 application tests/1,875 assertions, Canary strict 34/34 with zero skips, and the locked audit with zero advisories. The complete `scripts/verify.sh` rerun passed strict Composer validation, the same static/application gates, isolated diagnostics, storage audit with zero orphan/missing/hash-mismatched/incomplete items, and Dusk with 7 tests/245 assertions and no severe console errors. The final isolated 50-Finding benchmark passed every check with HTTP 200, 1.0194 s first render, 2,689,856 response bytes, 0.0511 s explicit save, 0.0463 s reorder, 2.2191 s PDF, and 0.2265 s XLSX. Browser QA used Chromium `150.0.7871.114` and produced 32 non-versioned PNG artifacts under `storage/app/qa-artifacts`: the approved interface pages in dark mode and the real light PDF at 1366×768 and 1920×1080, including scrolled proofs for generated files, application status, template solutions, and the risk matrix. The first aggregate Dusk run exposed four failing browser expectations/fixtures; none was accepted as success, and focused then complete isolated reruns passed after the corrections recorded in Discoveries. The configured normal database, private storage, and backups remained byte-identical after all commands at their baseline hashes `37e2ab6d532fca9fa35ece6f4930070626ab29d6de6c22f5dda428a570c068ad`, `430ee982f2695b446ce580a83771cb33a75649b1e30f1068677ee9ab4904c2ff`, and `abcfa6a9d4df344d1781bc2560b5e4cdcae08b39ed303063535e7e1e926a304a`. No dependency lock, vendor file, competing Markdown document, or `docs/adr` directory changed. Edge, Firefox, iOS Safari, Android Chrome, hosted CI, CloudPanel, and device/camera QA were not executed or claimed; Milestone 5 and overall product acceptance remain open under D-041.
+
 Unsaved-change warning remediation started on 2026-07-18. The defect is confined to the application-owned workspace JavaScript: because the asset is registered panel-wide, its unscoped Livewire input listener marks every Filament form dirty, while only the assessment workspace renders the save-status marker that can clear that state. The remediation will scope dirty tracking to the workspace Livewire component, make post-save reset independent of asset/Livewire initialization order, and add browser regression evidence for both ordinary Filament forms and the assessment workspace without changing persistence behavior.
 
 Unsaved-change warning remediation completed on 2026-07-18. `resources/js/assestme-workspace.js` now accepts input and offline dirty-state transitions only when the assessment workspace save-status marker belongs to the same Livewire component, so ordinary Filament forms cannot inherit the workspace `beforeunload` warning. The Livewire morph hook is registered whether the asset loads before or after `livewire:init`, while a confirmed `saved` marker remains the only path that clears a genuinely dirty workspace. The published `public/js/app/assestme-workspace.js` was refreshed through `php artisan filament:assets`. `tests/Browser/MilestoneZeroTest.php` proves a saved client form has no unload prevention, an edited workspace retains it, a successful explicit workspace save clears it, both records persist, and no severe console error occurs. Accepted evidence is focused Pint; the focused regression with 1 test/6 assertions; `composer quality` with Pint over 285 files, PHPStan over 230 files with zero errors, 208 application tests/1,780 assertions, Canary strict 34/34 with zero skips, and zero locked advisories; aggregate Selenium Dusk with 6 tests/111 assertions; and a complete successful `scripts/verify.sh`. The final verifier benchmark passed with HTTP 200, 1.0941 s first render, 2,697,529 response bytes, 0.0526 s explicit save, 0.0488 s reorder, 2.0302 s PDF, and 0.2260 s XLSX. The normal database, private/generated storage, and backups manifest remained byte-identical across aggregate Dusk and the final verifier at SHA-256 `139ea207f8c9a23fae6c5628513f966bf6bd37f2f29956bef0dd93561667a32a`.
@@ -3204,6 +3275,9 @@ Milestone 3 completed with the complete assessment/finding schema, native Filame
 
 ## 23. Discoveries and deviations
 
+- 2026-07-18: Filament's distributed CSS does not contain arbitrary Tailwind utilities introduced only in Blade, so `md:grid-cols-[...]` and `min-w-[48rem]` left the application-status checks stacked and generated-history columns cramped in the real browser even though the DOM was valid. The accepted implementation uses semantic tables, standard Filament-compatible utilities, and deterministic column widths; the regenerated 1366×768 and 1920×1080 artifacts show one compact status row per check and a readable generated-file history without a frontend build or new dependency.
+- 2026-07-18: Risk-profile creation needs two distinct code paths: manually created levels may arrive without technical codes and require deterministic generation, while seed/import payloads already carry contract identities that must be preserved. The first focused implementation regenerated those supplied codes and broke the default `high`/`critical` identities. The authoritative action now preserves explicit creation codes, generates only absent ones, maps persisted rows by hidden ID or existing code, and rejects every post-save code mutation; focused and aggregate tests prove label edits retain level identity and all sixteen matrix cells.
+- 2026-07-18: The first aggregate Dusk run failed four tests with 3 passing/104 assertions: three assertions still expected superseded dashboard/workspace strings or a lazy widget before scrolling, and the ordinary-form save fixture inherited a random phone that could violate the real server-side regex. The tests now assert the approved non-blocking dashboard copy and Finding capitalization, scroll the lazy widget into view, and set the unrelated phone to null. The focused reruns and two subsequent complete isolated suites passed at 7 tests/245 assertions without weakening validation or hiding a browser error.
 - 2026-07-18: The application-owned workspace asset is registered panel-wide, so checking only for a generic Livewire ancestor caused every Filament form input to set the workspace closure's `dirty` flag. Non-workspace pages cannot render the assessment save-status marker and therefore had no path to clear that flag after a successful save. Scoping the listener to the Livewire component that contains the marker fixes the false warning without weakening the workspace protection or enabling Filament's unrelated panel-wide alert mechanism.
 - 2026-07-18: The new Dusk regression initially ended while a queued Livewire save request was still in flight. Aggregate database truncation then removed its authenticated user, causing that late request to follow the login redirect and expose an HTML response to the Livewire JSON parser; the same class passed in isolation. A preserved marked Dusk root showed no application exception. The test now counts requests through Livewire's request lifecycle callbacks, waits for a 250 ms zero-request quiet window, and checks its own severe console log before teardown. The diagnostic root was removed after inspection, and both aggregate Dusk and the complete verifier pass.
 - 2026-07-18: The first PHP image build attempted to rebuild every D-004 extension separately and failed reproducibly while compiling `xmlreader` because the modular DOM build did not expose `ext/dom/dom_ce.h`. The official `php:8.3.32-cli-bookworm` base already provides `ctype`, `curl`, `dom`, `fileinfo`, `filter`, `iconv`, `libxml`, `mbstring`, `openssl`, `PDO`, `pdo_sqlite`, `session`, `SimpleXML`, `tokenizer`, `xml`, `xmlreader`, `xmlwriter`, `zlib`, and OPcache. The final image uses the official helpers only for the absent `bcmath`, `gd`, `intl`, and `zip` extensions and executable runtime inspection proves the complete required set; no third-party extension installer or vendor patch was added.

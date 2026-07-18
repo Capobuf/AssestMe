@@ -4,18 +4,11 @@ declare(strict_types=1);
 
 namespace App\Filament\Widgets;
 
-use App\Data\Operations\OperationalCheckResult;
 use App\Enums\AssessmentStatus;
-use App\Enums\DeletionOperationStatus;
 use App\Enums\FindingStatus;
-use App\Enums\OperationalCheckStatus;
-use App\Enums\OperationalCheckType;
+use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Models\Assessment;
-use App\Models\DeletionOperation;
 use App\Models\Finding;
-use App\Services\Backups\LatestBackupStatus;
-use App\Services\Operations\OperationalCheckStore;
-use Carbon\CarbonImmutable;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -23,86 +16,53 @@ final class AssessmentStatsOverview extends StatsOverviewWidget
 {
     protected static ?int $sort = 1;
 
+    /** @return array<string, int> */
+    protected function getColumns(): array
+    {
+        return ['default' => 1, 'sm' => 2, 'xl' => 4];
+    }
+
     /** @return array<Stat> */
     protected function getStats(): array
     {
-        $latestBackup = app(LatestBackupStatus::class)->latestSuccessfulAt();
-        $backupValue = $latestBackup?->setTimezone('Europe/Rome')->format('d/m/Y H:i')
-            ?? __('assestme.dashboard.backup_never');
-        $operationalChecks = app(OperationalCheckStore::class);
-        $backupCheck = $operationalChecks->find(OperationalCheckType::Backup);
-        $integrityCheck = $operationalChecks->find(OperationalCheckType::DatabaseIntegrity);
-        $backupStat = Stat::make(__('assestme.dashboard.last_backup'), $backupValue);
-
-        if ($backupCheck?->status === OperationalCheckStatus::Failed) {
-            $backupStat
-                ->description(__('assestme.dashboard.backup_failed', [
-                    'date' => $this->formatRome($backupCheck->lastFailedAt),
-                ]))
-                ->descriptionIcon('heroicon-m-exclamation-triangle')
-                ->color('danger');
-        }
-
         return [
             Stat::make(
                 __('assestme.dashboard.draft_assessments'),
                 Assessment::query()->where('status', AssessmentStatus::Draft)->count(),
-            ),
+            )
+                ->icon('heroicon-m-pencil-square')
+                ->url($this->assessmentFilterUrl('status', AssessmentStatus::Draft->value)),
             Stat::make(
                 __('assestme.dashboard.completed_assessments'),
                 Assessment::query()->where('status', AssessmentStatus::Completed)->count(),
-            ),
+            )
+                ->icon('heroicon-m-check-circle')
+                ->url($this->assessmentFilterUrl('status', AssessmentStatus::Completed->value)),
             Stat::make(
                 __('assestme.dashboard.open_findings'),
                 Finding::query()->where('status', FindingStatus::Open)->count(),
-            ),
+            )
+                ->icon('heroicon-m-clipboard-document-list')
+                ->url($this->assessmentFilterUrl('finding_attention', 'open')),
             Stat::make(
                 __('assestme.dashboard.urgent_findings'),
                 Finding::query()
                     ->where('include_in_report', true)
+                    ->where('status', FindingStatus::Open)
                     ->whereHas('priorityLevel', fn ($query) => $query->whereIn('code', ['high', 'critical']))
                     ->count(),
-            ),
-            Stat::make(
-                __('assestme.dashboard.cleanup_failures'),
-                DeletionOperation::query()->where('status', DeletionOperationStatus::CleanupFailed)->count(),
-            ),
-            $backupStat,
-            $this->integrityStat($integrityCheck),
+            )
+                ->description(__('assestme.dashboard.urgent_findings_help'))
+                ->descriptionIcon('heroicon-m-exclamation-triangle')
+                ->color('danger')
+                ->url($this->assessmentFilterUrl('finding_attention', 'urgent')),
         ];
     }
 
-    private function integrityStat(?OperationalCheckResult $check): Stat
+    private function assessmentFilterUrl(string $filter, string $value): string
     {
-        if ($check === null) {
-            return Stat::make(
-                __('assestme.dashboard.database_integrity'),
-                __('assestme.dashboard.integrity_never'),
-            );
-        }
-
-        if ($check->status === OperationalCheckStatus::Failed) {
-            return Stat::make(
-                __('assestme.dashboard.database_integrity'),
-                __('assestme.dashboard.integrity_failed', [
-                    'date' => $this->formatRome($check->lastFailedAt),
-                ]),
-            )
-                ->description(__('assestme.dashboard.integrity_failure_help'))
-                ->descriptionIcon('heroicon-m-exclamation-triangle')
-                ->color('danger');
-        }
-
-        return Stat::make(
-            __('assestme.dashboard.database_integrity'),
-            __('assestme.dashboard.integrity_ok', [
-                'date' => $this->formatRome($check->lastSucceededAt),
-            ]),
-        )->color('success');
-    }
-
-    private function formatRome(?CarbonImmutable $date): string
-    {
-        return $date?->setTimezone('Europe/Rome')->format('d/m/Y H:i') ?? '—';
+        return AssessmentResource::getUrl('index', [
+            'tableFilters' => [$filter => ['value' => $value]],
+        ]);
     }
 }

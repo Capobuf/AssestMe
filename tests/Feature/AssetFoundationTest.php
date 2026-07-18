@@ -132,6 +132,21 @@ it('creates an asset through its Filament resource', function (): void {
         ->toBe('00:11:22:33:44:55');
 });
 
+it('filters sites by company and clears a stale site when the company changes', function (): void {
+    $administrator = User::factory()->create();
+    $firstClient = Client::factory()->create();
+    $secondClient = Client::factory()->create();
+    $firstSite = Site::factory()->for($firstClient)->create();
+    $this->actingAs($administrator);
+
+    Livewire::test(CreateAsset::class)
+        ->set('data.client_id', $firstClient->id)
+        ->set('data.site_id', $firstSite->id)
+        ->assertSet('data.site_id', $firstSite->id)
+        ->set('data.client_id', $secondClient->id)
+        ->assertSet('data.site_id', null);
+});
+
 it('requires authentication for asset and asset type resources', function (): void {
     $this->get('/admin/assets')->assertRedirect('/admin/login');
     $this->get('/admin/asset-types')->assertRedirect('/admin/login');

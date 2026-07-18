@@ -24,8 +24,15 @@ final class CreateAssessment
             'title' => ['required', 'string', 'max:255'],
             'report_title_override' => ['nullable', 'string', 'max:255'],
             'assessment_date' => ['required', 'date_format:Y-m-d'],
-            'scope_type' => ['required', Rule::enum(ScopeType::class)],
-            'scope_description' => ['nullable', 'string', 'max:20000'],
+            'scope_type' => ['required', Rule::in([
+                ScopeType::Organization->value,
+                ScopeType::SelectedSites->value,
+                ScopeType::Custom->value,
+            ])],
+            'scope_description' => [
+                Rule::requiredIf(fn (): bool => ($data['scope_type'] ?? null) === ScopeType::Custom->value),
+                'nullable', 'string', 'max:20000',
+            ],
             'site_ids' => ['array'],
             'site_ids.*' => ['integer', 'distinct', Rule::exists('sites', 'id')->whereNull('deleted_at')],
             'introduction' => ['nullable', 'string', 'max:20000'],
@@ -35,6 +42,16 @@ final class CreateAssessment
 
         $client = Client::query()->findOrFail($validated['client_id']);
         $siteIds = array_map('intval', $validated['site_ids'] ?? []);
+
+        if ($validated['scope_type'] === ScopeType::SelectedSites->value && $siteIds === []) {
+            throw ValidationException::withMessages([
+                'site_ids' => __('assestme.assessments.errors.site_required'),
+            ]);
+        }
+
+        if ($validated['scope_type'] !== ScopeType::SelectedSites->value) {
+            $siteIds = [];
+        }
 
         if ($client->sites()->whereIn('id', $siteIds)->count() !== count($siteIds)) {
             throw ValidationException::withMessages([

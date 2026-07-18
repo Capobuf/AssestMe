@@ -9,6 +9,7 @@ use App\Actions\Assessments\CreateAssessment;
 use App\Actions\Assessments\CreateBlankFinding;
 use App\Actions\Assessments\DeleteFindingSolution;
 use App\Actions\Assessments\DuplicateFinding;
+use App\Actions\Assessments\GenerateAssessmentTitle;
 use App\Actions\Assessments\OverrideFindingPriority;
 use App\Actions\Assessments\RecalculateFindingPriority;
 use App\Actions\Assessments\ReopenAssessment;
@@ -22,6 +23,7 @@ use App\Enums\EstimateType;
 use App\Enums\FindingStatus;
 use App\Enums\ScopeType;
 use App\Models\Assessment;
+use App\Models\Asset;
 use App\Models\Client;
 use App\Models\Finding;
 use App\Models\FindingSolution;
@@ -65,6 +67,41 @@ it('creates a typed draft assessment and rejects sites owned by another client',
         'scope_type' => ScopeType::SelectedSites->value,
         'site_ids' => [$otherSite->getKey()],
     ]))->toThrow(ValidationException::class);
+});
+
+it('generates assessment titles for company site and custom scopes', function (): void {
+    $client = Client::factory()->create(['trade_name' => 'VIP Estintori']);
+    $firstSite = Site::factory()->for($client)->create(['name' => 'Sede principale']);
+    $secondSite = Site::factory()->for($client)->create(['name' => 'Sede secondaria']);
+    $generate = app(GenerateAssessmentTitle::class);
+
+    expect($generate($client, ScopeType::Organization, '2026-07-18'))
+        ->toBe('VIP Estintori — Intera azienda — 18/07/2026')
+        ->and($generate($client, ScopeType::SelectedSites, '2026-07-18', [$firstSite->id]))
+        ->toBe('VIP Estintori — Sede principale — 18/07/2026')
+        ->and($generate($client, ScopeType::SelectedSites, '2026-07-18', [$secondSite->id, $firstSite->id]))
+        ->toBe('VIP Estintori — Sede secondaria, Sede principale — 18/07/2026')
+        ->and($generate($client, ScopeType::Custom, '2026-07-18', [], 'Infrastruttura di rete'))
+        ->toBe('VIP Estintori — Infrastruttura di rete — 18/07/2026');
+});
+
+it('accepts only approved assessment scopes and requires a custom description', function (): void {
+    $client = Client::factory()->create();
+
+    expect(fn () => app(CreateAssessment::class)([
+        'client_id' => $client->id,
+        'title' => 'Ambito custom incompleto',
+        'assessment_date' => '2026-07-18',
+        'scope_type' => ScopeType::Custom->value,
+        'scope_description' => null,
+    ]))->toThrow(ValidationException::class)
+        ->and(fn () => app(CreateAssessment::class)([
+            'client_id' => $client->id,
+            'title' => 'Ambito rete non disponibile',
+            'assessment_date' => '2026-07-18',
+            'scope_type' => ScopeType::Network->value,
+            'scope_description' => 'Rete',
+        ]))->toThrow(ValidationException::class);
 });
 
 it('persists blank findings immediately and copies detached template snapshots', function (): void {
@@ -311,6 +348,40 @@ it('saves the row slide-over aggregate and rejects cross-client scope relations'
     $payload['site_ids'] = [$foreignSite->id];
     expect(fn () => app(SaveFindingDetails::class)->handle($saved, $payload))
         ->toThrow(ValidationException::class);
+});
+
+it('requires assets only for the explicitly selected asset scope', function (): void {
+    $assessment = Assessment::factory()->create();
+    $finding = app(CopyTemplateToAssessment::class)($assessment, FindingTemplate::query()->firstOrFail());
+    $site = Site::factory()->for($assessment->client)->create();
+    $asset = Asset::factory()->for($assessment->client)->create();
+
+    foreach ([
+        [ScopeType::Organization, null, [], []],
+        [ScopeType::SelectedSites, null, [$site->id], []],
+        [ScopeType::Network, 'Rete perimetrale', [], []],
+        [ScopeType::Custom, 'Ambito personalizzato', [], []],
+    ] as [$scope, $description, $siteIds, $assetIds]) {
+        $payload = findingDetailsPayload($finding->fresh());
+        $payload['scope_type'] = $scope->value;
+        $payload['scope_description'] = $description;
+        $payload['site_ids'] = $siteIds;
+        $payload['asset_ids'] = $assetIds;
+        $finding = app(SaveFindingDetails::class)->handle($finding->fresh(), $payload);
+        expect($finding->scope_type)->toBe($scope);
+    }
+
+    $payload = findingDetailsPayload($finding->fresh());
+    $payload['scope_type'] = ScopeType::SelectedAssets->value;
+    $payload['scope_description'] = null;
+    $payload['site_ids'] = [];
+    $payload['asset_ids'] = [];
+    expect(fn () => app(SaveFindingDetails::class)->handle($finding->fresh(), $payload))
+        ->toThrow(ValidationException::class);
+
+    $payload['asset_ids'] = [$asset->id];
+    $saved = app(SaveFindingDetails::class)->handle($finding->fresh(), $payload);
+    expect($saved->assets)->toHaveCount(1);
 });
 
 function createFindingSolution(Finding $finding, string $suffix): FindingSolution

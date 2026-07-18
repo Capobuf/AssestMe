@@ -32,9 +32,9 @@ final class MilestoneThreeWorkspaceTest extends DuskTestCase
                 ->assertSee('Aggiungi da template')
                 ->assertSee('Completa assessment')
                 ->assertSee('Anteprima riepilogo')
-                ->assertSee('File generati')
+                ->assertSee('File Generati')
                 ->click('tbody tr:first-child [data-dusk="finding-details"]')
-                ->waitForText('Dettagli finding')
+                ->waitForText('Dettagli Finding')
                 ->assertSee('Soluzioni')
                 ->assertSee('Evidenze');
             // The edit page also has an "Annulla" button, so scope cancellation to the active slide-over.

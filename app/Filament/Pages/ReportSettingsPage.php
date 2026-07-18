@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Enums\CoverTitleMode;
 use App\Settings\ReportSettings;
 use BackedEnum;
 use Filament\Forms\Components\ColorPicker;
@@ -75,6 +76,12 @@ final class ReportSettingsPage extends SettingsPage
                         'client' => __('assestme.settings.values.client'),
                         'both' => __('assestme.settings.values.both'),
                     ])->required(),
+                    Select::make('cover_title_mode')
+                        ->label(__('assestme.settings.fields.cover_title_mode'))
+                        ->options(CoverTitleMode::options())
+                        ->required(),
+                    Toggle::make('show_priority_descriptions')
+                        ->label(__('assestme.settings.fields.show_priority_descriptions')),
                     TextInput::make('confidentiality_label')->label(__('assestme.settings.fields.confidentiality_label'))->required()->maxLength(40),
                     TextInput::make('header_text')->label(__('assestme.settings.fields.header_text'))->maxLength(120),
                     TextInput::make('footer_text')->label(__('assestme.settings.fields.footer_text'))->maxLength(120),
@@ -90,6 +97,15 @@ final class ReportSettingsPage extends SettingsPage
     }
 
     /** @param array<string, mixed> $data @return array<string, mixed> */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $mode = $data['cover_title_mode'] ?? CoverTitleMode::Separate;
+        $data['cover_title_mode'] = $mode instanceof CoverTitleMode ? $mode->value : (string) $mode;
+
+        return $data;
+    }
+
+    /** @param array<string, mixed> $data @return array<string, mixed> */
     protected function mutateFormDataBeforeSave(array $data): array
     {
         foreach (['consultant_vat_number', 'consultant_tax_code'] as $field) {
@@ -98,6 +114,7 @@ final class ReportSettingsPage extends SettingsPage
         }
 
         $data['primary_color'] = mb_strtoupper((string) $data['primary_color']);
+        $data['cover_title_mode'] = CoverTitleMode::from((string) $data['cover_title_mode']);
 
         return $data;
     }

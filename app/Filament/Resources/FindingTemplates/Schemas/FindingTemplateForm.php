@@ -19,15 +19,15 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 
 final class FindingTemplateForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->components([
+        return $schema->columns(1)->components([
             Section::make(__('assestme.templates.sections.finding'))->schema([
-                TextInput::make('external_id')->label(__('assestme.templates.fields.external_id'))->required()->maxLength(160)->regex('/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/'),
                 TextInput::make('title')->label(__('assestme.templates.fields.title'))->required()->maxLength(255),
                 Select::make('category_id')->label(__('assestme.templates.fields.category'))->options(fn (): array => Category::query()->where('is_enabled', true)->orderBy('name')->pluck('name', 'id')->all())->searchable()->required(),
                 Select::make('tag_ids')->label(__('assestme.templates.fields.tags'))->options(fn (): array => Tag::query()->orderBy('name')->pluck('name', 'id')->all())->multiple()->searchable(),
@@ -35,41 +35,54 @@ final class FindingTemplateForm
                 Textarea::make('problem')->label(__('assestme.findings.fields.problem'))->required()->rows(5)->maxLength(20000)->columnSpanFull(),
                 Textarea::make('entrepreneur_notes')->label(__('assestme.findings.fields.entrepreneur_notes'))->rows(4)->maxLength(20000)->columnSpanFull(),
                 Textarea::make('technical_notes')->label(__('assestme.templates.fields.technical_notes'))->rows(4)->maxLength(20000)->columnSpanFull(),
-            ])->columns(2),
+            ])->columns(['default' => 1, 'md' => 2])->columnSpanFull(),
             Section::make(__('assestme.templates.sections.defaults'))->schema([
                 Select::make('default_scope_type')->label(__('assestme.templates.fields.scope'))->options(self::scopeOptions())->required(),
-                Textarea::make('default_scope_description')->label(__('assestme.templates.fields.scope_description'))->rows(3)->maxLength(20000),
+                Textarea::make('default_scope_description')->label(__('assestme.templates.fields.scope_description'))->rows(3)->maxLength(20000)->columnSpanFull(),
                 Select::make('default_consequence_level_id')->label(__('assestme.templates.fields.consequence'))->options(fn (): array => ConsequenceLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())->searchable(),
                 Select::make('default_likelihood_level_id')->label(__('assestme.templates.fields.likelihood'))->options(fn (): array => LikelihoodLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())->searchable(),
                 Select::make('default_priority_level_id')->label(__('assestme.findings.fields.priority'))->options(fn (): array => PriorityLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())->searchable(),
-                Textarea::make('priority_rationale')->label(__('assestme.templates.fields.priority_rationale'))->rows(3)->maxLength(20000),
-            ])->columns(2),
+                Textarea::make('priority_rationale')->label(__('assestme.templates.fields.priority_rationale'))->rows(3)->maxLength(20000)->columnSpanFull(),
+            ])->columns(['default' => 1, 'md' => 2])->columnSpanFull(),
             Section::make(__('assestme.templates.sections.solutions'))->schema([
                 Repeater::make('solutions')
                     ->label(__('assestme.templates.sections.solutions'))
                     ->schema([
-                        TextInput::make('external_id')->label(__('assestme.templates.fields.external_id'))->required()->maxLength(160),
                         TextInput::make('title')->label(__('assestme.templates.fields.title'))->required()->maxLength(255),
                         Toggle::make('is_recommended')->label(__('assestme.templates.fields.recommended'))->required(),
-                        Select::make('effort_level_id')->label(__('assestme.findings.fields.effort'))->options(fn (): array => EffortLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())->searchable(),
                         Textarea::make('description')->label(__('assestme.common.description'))->required()->rows(4)->maxLength(20000)->columnSpanFull(),
-                        Textarea::make('comparison_notes')->label(__('assestme.templates.fields.comparison_notes'))->rows(3)->maxLength(20000),
+                        Select::make('effort_level_id')->label(__('assestme.findings.fields.effort'))->options(fn (): array => EffortLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())->searchable(),
                         Textarea::make('effort_notes')->label(__('assestme.templates.fields.effort_notes'))->rows(3)->maxLength(20000),
-                        Select::make('estimate_type')->label(__('assestme.findings.fields.estimate_type'))->options(EstimateType::options())->required(),
-                        TextInput::make('amount_min')->label(__('assestme.templates.fields.amount_min'))->numeric()->minValue(0),
-                        TextInput::make('amount_max')->label(__('assestme.templates.fields.amount_max'))->numeric()->minValue(0),
-                        TextInput::make('currency_code')->label(__('assestme.templates.fields.currency'))->length(3)->default('EUR'),
-                        Select::make('billing_frequency')->label(__('assestme.templates.fields.billing_frequency'))->options(self::billingOptions())->required()->default(BillingFrequency::OneOff->value),
-                        TextInput::make('custom_billing_frequency')->label(__('assestme.templates.fields.custom_billing'))->maxLength(120),
-                        Textarea::make('estimate_notes')->label(__('assestme.findings.fields.estimate_notes'))->rows(3)->maxLength(20000),
+                        Textarea::make('comparison_notes')->label(__('assestme.templates.fields.comparison_notes'))->rows(3)->maxLength(20000),
+                        Select::make('estimate_type')->label(__('assestme.findings.fields.estimate_type'))->options(EstimateType::options())->required()->live(),
+                        Select::make('billing_frequency')->label(__('assestme.templates.fields.billing_frequency'))->options(self::billingOptions())->required()->default(BillingFrequency::OneOff->value)->live(),
+                        TextInput::make('amount_min')->label(__('assestme.templates.fields.amount_min'))->numeric()->minValue(0)
+                            ->visible(fn (Get $get): bool => self::isMonetary($get('estimate_type'))),
+                        TextInput::make('amount_max')->label(__('assestme.templates.fields.amount_max'))->numeric()->minValue(0)
+                            ->visible(fn (Get $get): bool => $get('estimate_type') === EstimateType::Range->value),
+                        TextInput::make('currency_code')->label(__('assestme.templates.fields.currency'))->length(3)->default('EUR')
+                            ->visible(fn (Get $get): bool => self::isMonetary($get('estimate_type'))),
+                        TextInput::make('custom_billing_frequency')->label(__('assestme.templates.fields.custom_billing'))->maxLength(120)
+                            ->visible(fn (Get $get): bool => $get('billing_frequency') === BillingFrequency::Custom->value),
+                        Textarea::make('estimate_notes')->label(__('assestme.findings.fields.estimate_notes'))->rows(3)->maxLength(20000)->columnSpanFull(),
                         TextInput::make('sort_order')->label(__('assestme.common.sort_order'))->numeric()->minValue(0)->required()->default(0),
+                        TextInput::make('external_id')->label(__('assestme.templates.fields.external_id'))->disabled()->dehydrated()->maxLength(160),
                     ])
                     ->minItems(1)
                     ->defaultItems(1)
                     ->reorderable()
-                    ->columns(4)
+                    ->columns(['default' => 1, 'md' => 2])
                     ->required(),
-            ]),
+            ])->columnSpanFull(),
+            Section::make(__('assestme.templates.sections.advanced'))
+                ->collapsed()
+                ->schema([
+                    TextInput::make('external_id')
+                        ->label(__('assestme.templates.fields.external_id'))
+                        ->disabled()
+                        ->dehydrated(),
+                ])
+                ->columnSpanFull(),
         ]);
     }
 
@@ -83,5 +96,10 @@ final class FindingTemplateForm
     private static function billingOptions(): array
     {
         return collect(BillingFrequency::cases())->mapWithKeys(fn (BillingFrequency $frequency): array => [$frequency->value => __("assestme.billing.{$frequency->value}")])->all();
+    }
+
+    private static function isMonetary(mixed $estimateType): bool
+    {
+        return in_array($estimateType, [EstimateType::Exact->value, EstimateType::Range->value], true);
     }
 }

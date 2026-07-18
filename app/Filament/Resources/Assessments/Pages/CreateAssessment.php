@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Assessments\Pages;
 
 use App\Actions\Assessments\CreateAssessment as CreateAssessmentAction;
 use App\Filament\Resources\Assessments\AssessmentResource;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 
@@ -16,6 +17,11 @@ class CreateAssessment extends CreateRecord
     protected function getRedirectUrl(): string
     {
         return AssessmentResource::getUrl('workspace', ['record' => $this->getRecord()]);
+    }
+
+    protected function getCancelFormAction(): Action
+    {
+        return parent::getCancelFormAction()->url(AssessmentResource::getUrl('index'));
     }
 
     /** @param array<string, mixed> $data */

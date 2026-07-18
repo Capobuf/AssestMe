@@ -8,8 +8,10 @@ use App\Enums\DeletionOperationStatus;
 use App\Enums\FindingStatus;
 use App\Enums\OperationalCheckStatus;
 use App\Enums\OperationalCheckType;
+use App\Filament\Widgets\ApplicationStatus;
 use App\Filament\Widgets\AssessmentStatsOverview;
 use App\Filament\Widgets\LatestAssessments;
+use App\Filament\Widgets\UrgentFindings;
 use App\Models\Assessment;
 use App\Models\DeletionOperation;
 use App\Models\Finding;
@@ -26,13 +28,17 @@ it('shows actionable dashboard counts and only the latest five assessments', fun
     $this->actingAs($administrator);
     $this->seed(MilestoneOneSeeder::class);
 
-    Assessment::factory()->count(6)->sequence(
+    $assessments = Assessment::factory()->count(6)->sequence(
         fn ($sequence): array => [
             'title' => 'Assessment '.($sequence->index + 1),
             'status' => $sequence->index === 0 ? AssessmentStatus::Completed : AssessmentStatus::Draft,
+            'assessment_date' => today()->subDays($sequence->index),
             'updated_at' => now()->subMinutes($sequence->index),
         ],
     )->create();
+    $assessments->each(function (Assessment $assessment, int $index): void {
+        $assessment->client->update(['trade_name' => 'Azienda '.($index + 1)]);
+    });
 
     $assessment = Assessment::query()->latest('updated_at')->firstOrFail();
     Finding::factory()->for($assessment)->create([
@@ -59,12 +65,22 @@ it('shows actionable dashboard counts and only the latest five assessments', fun
         ->assertSee(__('assestme.dashboard.draft_assessments'))
         ->assertSee(__('assestme.dashboard.completed_assessments'))
         ->assertSee(__('assestme.dashboard.open_findings'))
-        ->assertSee(__('assestme.dashboard.cleanup_failures'));
+        ->assertSee(__('assestme.dashboard.urgent_findings'))
+        ->assertDontSee(__('assestme.dashboard.cleanup_failures'));
 
     Livewire::test(LatestAssessments::class)
-        ->assertSee('Assessment 1')
-        ->assertSee('Assessment 5')
-        ->assertDontSee('Assessment 6');
+        ->assertSee('Azienda 1')
+        ->assertSee('Azienda 5')
+        ->assertDontSee('Azienda 6');
+
+    Livewire::test(UrgentFindings::class)
+        ->assertSee(__('assestme.dashboard.urgent_findings_list'))
+        ->assertSee($assessment->findings()->where('status', FindingStatus::Open)->sole()->title);
+
+    Livewire::test(ApplicationStatus::class)
+        ->assertSee(__('assestme.dashboard.application_status'))
+        ->assertSee(__('assestme.dashboard.cleanup_failures'))
+        ->assertSee(__('assestme.dashboard.cleanup_pending_count', ['count' => 1]));
 });
 
 it('reports the newest managed backup without treating unrelated archives as successful', function (): void {
@@ -115,10 +131,10 @@ it('shows persisted backup and integrity failures without exposing technical err
             $failedAt,
         );
 
-        Livewire::test(AssessmentStatsOverview::class)
-            ->assertSee(__('assestme.dashboard.backup_failed', ['date' => '17/07/2026 10:15']))
+        Livewire::test(ApplicationStatus::class)
+            ->assertSee(__('assestme.dashboard.backup_failed_short'))
             ->assertSee(__('assestme.dashboard.database_integrity'))
-            ->assertSee(__('assestme.dashboard.integrity_failed', ['date' => '17/07/2026 10:15']))
+            ->assertSee('17/07/2026 10:15')
             ->assertSee(__('assestme.dashboard.integrity_failure_help'))
             ->assertDontSee('Sensitive backup path failed.')
             ->assertDontSee('database disk image is malformed');

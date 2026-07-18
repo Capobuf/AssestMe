@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
+use LogicException;
 
 /**
  * @property int $id
@@ -42,6 +43,15 @@ class FindingTemplate extends Model
     use HasFactory;
 
     use SoftDeletes;
+
+    protected static function booted(): void
+    {
+        self::updating(static function (self $template): void {
+            if ($template->isDirty('external_id')) {
+                throw new LogicException('Finding template external identifiers are immutable.');
+            }
+        });
+    }
 
     /** @var list<string> */
     protected $fillable = [

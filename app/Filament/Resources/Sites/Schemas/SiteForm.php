@@ -15,6 +15,7 @@ final class SiteForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns(1)
             ->components([
                 Section::make(__('assestme.sites.sections.identity'))
                     ->schema([
@@ -28,7 +29,7 @@ final class SiteForm
                             ->label(__('assestme.sites.fields.name'))
                             ->required()
                             ->maxLength(255),
-                    ])->columns(2),
+                    ])->columns(['default' => 1, 'md' => 2])->columnSpanFull(),
                 Section::make(__('assestme.address.section'))
                     ->schema([
                         TextInput::make('address')
@@ -48,7 +49,7 @@ final class SiteForm
                             ->required()
                             ->default('IT')
                             ->length(2),
-                    ])->columns(2),
+                    ])->columns(['default' => 1, 'md' => 2])->columnSpanFull(),
                 Section::make(__('assestme.sites.sections.details'))
                     ->schema([
                         Textarea::make('description')
@@ -59,7 +60,7 @@ final class SiteForm
                             ->label(__('assestme.sites.fields.notes'))
                             ->rows(4)
                             ->maxLength(20000),
-                    ]),
+                    ])->columns(1)->columnSpanFull(),
             ]);
     }
 }

@@ -152,6 +152,16 @@ final class SaveFindingDetails
             throw ValidationException::withMessages(['scope' => __('assestme.findings.errors.scope_ownership')]);
         }
 
+        $scope = $validated['scope_type'] instanceof ScopeType
+            ? $validated['scope_type']
+            : ScopeType::from((string) $validated['scope_type']);
+        app(ValidateFindingScopeSelection::class)(
+            $scope,
+            count($siteIds),
+            count($assetIds),
+            isset($validated['scope_description']) ? (string) $validated['scope_description'] : null,
+        );
+
         if ($validated['priority_is_overridden'] && blank($validated['priority_rationale'] ?? null)) {
             throw ValidationException::withMessages(['priority_rationale' => __('assestme.findings.errors.override_reason_required')]);
         }

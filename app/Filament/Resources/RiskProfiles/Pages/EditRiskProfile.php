@@ -27,13 +27,13 @@ final class EditRiskProfile extends EditRecord
         }
 
         $scored = static fn (ConsequenceLevel|LikelihoodLevel $level): array => [
-            'code' => $level->code, 'label' => $level->label, 'score' => $level->score,
+            'id' => $level->id, 'code' => $level->code, 'label' => $level->label, 'description' => $level->description, 'score' => $level->score,
             'color' => $level->color, 'sort_order' => $level->sort_order, 'is_enabled' => $level->is_enabled,
         ];
         $data['consequences'] = $profile->consequenceLevels->map($scored)->all();
         $data['likelihoods'] = $profile->likelihoodLevels->map($scored)->all();
         $data['priorities'] = $profile->priorityLevels->map(static fn ($level): array => [
-            'code' => $level->code, 'label' => $level->label, 'color' => $level->color,
+            'id' => $level->id, 'code' => $level->code, 'label' => $level->label, 'description' => $level->description, 'color' => $level->color,
             'sort_order' => $level->sort_order, 'is_enabled' => $level->is_enabled,
         ])->all();
         $data['matrix'] = $profile->matrixEntries()->with(['consequenceLevel', 'likelihoodLevel', 'priorityLevel'])->get()

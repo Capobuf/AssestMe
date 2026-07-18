@@ -18,7 +18,7 @@ final class AssetForm
 {
     public static function configure(Schema $schema): Schema
     {
-        return $schema->components([
+        return $schema->columns(1)->components([
             Section::make(__('assestme.assets.sections.assignment'))
                 ->schema([
                     Select::make('client_id')
@@ -54,7 +54,7 @@ final class AssetForm
                         ->searchable()
                         ->preload()
                         ->required(),
-                ])->columns(3),
+                ])->columns(['default' => 1, 'lg' => 3])->columnSpanFull(),
             Section::make(__('assestme.assets.sections.identification'))
                 ->description(__('assestme.assets.identifier_help'))
                 ->schema([
@@ -81,7 +81,7 @@ final class AssetForm
                     TextInput::make('serial_number')
                         ->label(__('assestme.assets.fields.serial_number'))
                         ->maxLength(160),
-                ])->columns(2),
+                ])->columns(['default' => 1, 'md' => 2])->columnSpanFull(),
             Section::make(__('assestme.assets.sections.details'))
                 ->schema([
                     Textarea::make('description')
@@ -92,7 +92,7 @@ final class AssetForm
                         ->label(__('assestme.assets.fields.notes'))
                         ->rows(4)
                         ->maxLength(20000),
-                ]),
+                ])->columns(1)->columnSpanFull(),
         ]);
     }
 }

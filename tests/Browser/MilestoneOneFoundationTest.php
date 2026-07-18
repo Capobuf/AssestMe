@@ -51,7 +51,7 @@ final class MilestoneOneFoundationTest extends DuskTestCase
             ->create(['name' => 'Asset prova browser']);
         Category::factory()->create(['name' => 'Categoria prova browser', 'sort_order' => 0]);
         Tag::factory()->create(['name' => 'Tag prova browser']);
-        Assessment::factory()->create(['title' => 'Assessment dashboard browser']);
+        Assessment::factory()->for($client)->create(['title' => 'Assessment dashboard browser']);
         app(RecordOperationalCheck::class)(
             OperationalCheckType::Backup,
             OperationalCheckStatus::Failed,
@@ -68,14 +68,17 @@ final class MilestoneOneFoundationTest extends DuskTestCase
         $this->browse(function (Browser $browser) use ($administrator, $asset, $client, $effortLevel, $riskProfile, $site): void {
             $browser->loginAs($administrator)
                 ->visit('/admin')
-                ->waitForText('Assessment in bozza')
-                ->assertSee('Ultimo tentativo di backup fallito')
+                ->waitForText('Assessment in bozza');
+            $browser->script('window.scrollTo(0, document.documentElement.scrollHeight)');
+            $browser->waitForText('Stato applicazione')
+                ->assertSee('L’ultimo tentativo non è riuscito; l’applicazione resta disponibile.')
                 ->assertSee('Integrità database')
-                ->assertSee('Eseguire la diagnostica e risolvere il problema prima di continuare.')
+                ->assertSee('Esegui la diagnostica e verifica il problema segnalato.')
+                ->assertDontSee('risolvere il problema prima di continuare')
                 ->waitForText('Ultimi assessment')
-                ->waitForText('Assessment dashboard browser')
+                ->waitForText('Cliente Browser')
                 ->visit('/admin/clients')
-                ->waitForText('Clienti')
+                ->waitForText('Aziende')
                 ->assertSee('Cliente prova browser S.r.l.')
                 ->assertSee('Cliente Browser')
                 ->assertSee('Esporta tabella')
@@ -116,7 +119,7 @@ final class MilestoneOneFoundationTest extends DuskTestCase
                 ->assertSeeIn('.fi-right-click-menu.fi-open', 'Modifica')
                 ->assertSeeIn('.fi-right-click-menu.fi-open', 'Archivia')
                 ->click('.fi-right-click-menu.fi-open [data-action="contextEdit"]')
-                ->waitForText('Modifica cliente')
+                ->waitForText('Modifica azienda')
                 ->assertSee('Ragione sociale')
                 ->visit("/admin/clients/{$client->getKey()}/edit")
                 ->waitForText('Ragione sociale')
@@ -132,7 +135,7 @@ final class MilestoneOneFoundationTest extends DuskTestCase
                 ->assertSee('Sede prova browser')
                 ->assertSee('Torino')
                 ->visit("/admin/sites/{$site->getKey()}/edit")
-                ->waitForText('Cliente');
+                ->waitForText('Azienda');
 
             $siteInputValues = $browser->script(
                 'return Array.from(document.querySelectorAll("input")).map((element) => element.value);',

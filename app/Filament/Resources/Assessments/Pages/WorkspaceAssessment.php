@@ -205,8 +205,8 @@ final class WorkspaceAssessment extends EditRecord
                 ->body($report->file_name)
                 ->send();
 
-            // Reloading applies a possible freeze atomically and exposes the immutable file in history.
-            $this->redirect(AssessmentResource::getUrl('workspace', ['record' => $this->assessment()]), navigate: false);
+            // The authenticated route verifies and downloads the exact immutable file just persisted.
+            $this->redirect(route('generated-reports.download', $report), navigate: false);
         } catch (ValidationException $exception) {
             Notification::make()
                 ->danger()

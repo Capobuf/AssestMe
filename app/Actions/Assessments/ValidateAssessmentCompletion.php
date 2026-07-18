@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Actions\Assessments;
 
 use App\Enums\FindingStatus;
-use App\Enums\ScopeType;
 use App\Models\Assessment;
 use App\Models\Finding;
 use Illuminate\Validation\ValidationException;
 
 final class ValidateAssessmentCompletion
 {
+    public function __construct(private readonly ValidateFindingScopeSelection $validateScope) {}
+
     /** @throws ValidationException */
     public function __invoke(Assessment $assessment): void
     {
@@ -68,16 +69,12 @@ final class ValidateAssessmentCompletion
             || $finding->solutions->where('id', $finding->recommended_solution_id)->isEmpty()) {
             $messages[] = __('assestme.findings.errors.recommended_solution_required');
         }
-        if ($finding->scope_type === ScopeType::SelectedSites && $finding->sites->isEmpty()) {
-            $messages[] = __('assestme.findings.errors.site_scope_required');
-        }
-        if ($finding->scope_type === ScopeType::SelectedAssets && $finding->assets->isEmpty()) {
-            $messages[] = __('assestme.findings.errors.asset_scope_required');
-        }
-        if (in_array($finding->scope_type, [ScopeType::Network, ScopeType::Custom], true)
-            && blank($finding->scope_description)) {
-            $messages[] = __('assestme.findings.errors.scope_description_required');
-        }
+        array_push($messages, ...$this->validateScope->messages(
+            $finding->scope_type,
+            $finding->sites->count(),
+            $finding->assets->count(),
+            $finding->scope_description,
+        ));
         if ($finding->status === FindingStatus::Resolved
             && $finding->implemented_solution_id === null
             && blank($finding->resolution_notes)) {

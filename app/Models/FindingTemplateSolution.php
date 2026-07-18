@@ -9,6 +9,7 @@ use App\Enums\EstimateType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use LogicException;
 
 /**
  * @property int $id
@@ -33,6 +34,15 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class FindingTemplateSolution extends Model
 {
     use SoftDeletes;
+
+    protected static function booted(): void
+    {
+        self::updating(static function (self $solution): void {
+            if ($solution->isDirty('external_id')) {
+                throw new LogicException('Finding template solution external identifiers are immutable.');
+            }
+        });
+    }
 
     /** @var list<string> */
     protected $fillable = [

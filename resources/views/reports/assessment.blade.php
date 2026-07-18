@@ -10,7 +10,7 @@
         h1, h2, h3, p { margin-top: 0; }
         a { color: {{ $report->setting('primary_color') }}; }
         .page-break { page-break-before: always; }
-        .avoid-break, .solution, .evidence { page-break-inside: avoid; }
+        .avoid-break, .solution, .evidence, .summary-finding { page-break-inside: avoid; }
         .cover { padding-top: 42mm; text-align: center; }
         .cover img { max-height: 28mm; max-width: 75mm; margin: 0 4mm 14mm; }
         .cover h1 { color: {{ $report->setting('primary_color') }}; font-size: 26pt; margin-bottom: 8mm; }
@@ -20,19 +20,24 @@
         .subsection-title { color: {{ $report->setting('primary_color') }}; font-size: 11pt; margin: 5mm 0 2mm; }
         table { border-collapse: collapse; width: 100%; }
         .meta-table td, .detail-table td { padding: 2mm 3mm; vertical-align: top; }
-        .summary-table { font-size: 6.5pt; table-layout: fixed; }
-        .summary-table th, .summary-table td { border: 1px solid #d1d5db; overflow-wrap: break-word; padding: 1.3mm; text-align: left; vertical-align: top; }
+        .summary-table { font-size: 8pt; table-layout: fixed; }
+        .summary-table th, .summary-table td { border: 1px solid #d1d5db; overflow-wrap: break-word; padding: 2mm; text-align: left; vertical-align: top; }
         .summary-table th { background: #e5e7eb; }
-        .summary-table .number { width: 4%; }
+        .summary-table .number { width: 6%; }
+        .summary-details td { background: #f9fafb; border-top: 0; }
+        .summary-details-table td { background: transparent; border: 0; padding: 0 3mm 0 0; }
         .label { color: #4b5563; font-size: 7.5pt; font-weight: bold; text-transform: uppercase; }
         .content-block { margin-bottom: 4mm; }
         .finding-header { background: #f3f4f6; border-left: 5px solid {{ $report->setting('primary_color') }}; margin-bottom: 4mm; padding: 4mm; }
         .finding-header h2 { font-size: 15pt; margin-bottom: 2mm; }
+        .entrepreneur-focus { background: #eff6ff; border-left: 5px solid {{ $report->setting('primary_color') }}; margin: 4mm 0; padding: 4mm; }
+        .entrepreneur-focus h3 { color: {{ $report->setting('primary_color') }}; font-size: 12pt; margin-bottom: 2mm; }
         .badge { border: 1px solid #9ca3af; display: inline-block; font-size: 8pt; margin-right: 1mm; padding: 1mm 2mm; }
         .solution { border: 1px solid #d1d5db; margin-bottom: 4mm; padding: 3mm; }
         .solution.recommended { border-left: 5px solid {{ $report->setting('primary_color') }}; }
-        .evidence { margin-bottom: 5mm; }
-        .evidence img { display: block; height: auto; margin: 0 auto; max-height: 170mm; max-width: 100%; }
+        .evidence { margin-bottom: 6mm; }
+        .evidence .subsection-title { margin-top: 0; }
+        .evidence img { display: block; height: auto; margin: 2mm auto 0; max-height: 150mm; max-width: 100%; }
         .attachment-list { margin: 0; padding-left: 6mm; }
         .estimate-note { border: 1px solid #d1d5db; font-size: 8pt; margin: 5mm 0; padding: 2.5mm; }
         .signature-line { margin-top: 14mm; }
@@ -46,7 +51,9 @@
                 <img src="{{ $logo->dataUri }}" alt="">
             @endforeach
             <h1>{{ $report->title }}</h1>
-            <p>{{ $report->clientName }}</p>
+            @if ($report->setting('cover_title_mode') === 'separate')
+                <p>{{ $report->clientName }}</p>
+            @endif
             <p class="muted">{{ $report->assessmentDateLabel }}</p>
             @if (filled($report->setting('business_name')) || filled($report->setting('consultant_name')))
                 <p>{{ $report->setting('business_name') ?: $report->setting('consultant_name') }}</p>
@@ -64,7 +71,11 @@
                 <td><div class="label">{{ __('assestme.reports.document.assessment_date') }}</div>{{ $report->assessmentDateLabel }}</td>
             </tr>
             <tr>
-                <td><div class="label">{{ __('assestme.reports.document.legal_name') }}</div>{{ $report->clientLegalName }}</td>
+                <td>
+                    @if (filled($report->clientLegalName) && strcasecmp(trim($report->clientName), trim((string) $report->clientLegalName)) !== 0)
+                        <div class="label">{{ __('assestme.reports.document.legal_name') }}</div>{{ $report->clientLegalName }}
+                    @endif
+                </td>
                 <td><div class="label">{{ __('assestme.reports.document.status') }}</div>{{ $report->assessmentStatusLabel }}</td>
             </tr>
             @if ($report->clientAddress !== null || $report->clientVatNumber !== null || $report->clientTaxCode !== null)
@@ -126,7 +137,12 @@
             <h1 class="section-title">{{ __('assestme.reports.document.priority_legend') }}</h1>
             <table class="detail-table">
                 @foreach ($report->priorityLegend as $priority)
-                    <tr><td style="border-left: 5px solid {{ $priority->color }}"><strong>{{ $priority->label }}</strong></td><td>{{ $priority->description }}</td></tr>
+                    <tr>
+                        <td style="border-left: 5px solid {{ $priority->color }}"><strong>{{ $priority->label }}</strong></td>
+                        @if ($report->setting('show_priority_descriptions') === true && filled($priority->description))
+                            <td>{{ $priority->description }}</td>
+                        @endif
+                    </tr>
                 @endforeach
             </table>
         </section>
@@ -136,17 +152,21 @@
         <section>
             <h1 class="section-title">{{ __('assestme.reports.document.findings_summary') }}</h1>
             <table class="summary-table">
-                <thead><tr><th class="number">#</th><th>{{ __('assestme.reports.document.finding') }}</th><th>{{ __('assestme.reports.document.category') }}</th><th>{{ __('assestme.reports.document.scope') }}</th><th>{{ __('assestme.reports.document.recommended_solution') }}</th><th>{{ __('assestme.reports.document.priority') }}</th><th>{{ __('assestme.reports.document.effort') }}</th><th>{{ __('assestme.reports.document.estimate') }}</th><th>{{ __('assestme.reports.document.status') }}</th></tr></thead>
-                <tbody>
+                <thead><tr><th class="number">#</th><th style="width: 38%">{{ __('assestme.reports.document.finding') }}</th><th>{{ __('assestme.reports.document.category') }}</th><th>{{ __('assestme.reports.document.priority') }}</th><th>{{ __('assestme.reports.document.status') }}</th></tr></thead>
                     @foreach ($report->findings as $finding)
                         @php($recommended = $finding->recommendedSolution())
-                        <tr>
-                            <td>{{ $finding->number }}</td><td>{{ $finding->title }}</td><td>{{ $finding->category }}</td><td>{{ $finding->scopeLabel }}</td>
-                            <td class="pre-line">{{ $recommended->description }}</td><td>{{ $finding->priorityLabel }}</td><td>{{ $recommended->effortLabel }}</td>
-                            <td>{{ $report->setting('costs') === true ? $recommended->estimateLabel : '—' }}</td><td>{{ $finding->statusLabel }}</td>
+                        <tbody class="summary-finding"><tr>
+                            <td>{{ $finding->number }}</td><td>{{ $finding->title }}</td><td>{{ $finding->category }}</td><td>{{ $finding->priorityLabel }}</td><td>{{ $finding->statusLabel }}</td>
                         </tr>
+                        <tr class="summary-details"><td colspan="5">
+                            <table class="summary-details-table"><tr>
+                                <td style="width: 25%"><div class="label">{{ __('assestme.reports.document.scope') }}</div>{{ $finding->scopeLabel }}</td>
+                                <td style="width: 35%"><div class="label">{{ __('assestme.reports.document.recommended_solution') }}</div><strong>{{ $recommended->title }}</strong><div class="pre-line">{{ $recommended->description }}</div></td>
+                                <td style="width: 18%"><div class="label">{{ __('assestme.reports.document.effort') }}</div>{{ $recommended->effortLabel }}</td>
+                                <td style="width: 22%"><div class="label">{{ __('assestme.reports.document.estimate') }}</div>{{ $report->setting('costs') === true ? $recommended->estimateLabel : '—' }}</td>
+                            </tr></table>
+                        </td></tr></tbody>
                     @endforeach
-                </tbody>
             </table>
         </section>
     @endif
@@ -157,25 +177,12 @@
         <article>
             <header class="finding-header" style="border-left-color: {{ $finding->priorityColor }}">
                 <h2>{{ $finding->number }}. {{ $finding->title }}</h2>
-                <span class="badge">{{ $finding->priorityLabel }}</span><span class="badge">{{ $finding->statusLabel }}</span><span class="badge">{{ $finding->category }}</span>
+                <span class="badge">{{ $finding->priorityLabel }}</span><span class="badge">{{ $finding->statusLabel }}</span>
             </header>
-            @if ($finding->tags !== [])<div class="content-block"><div class="label">{{ __('assestme.reports.document.tags') }}</div>{{ implode(', ', $finding->tags) }}</div>@endif
-            <div class="content-block"><div class="label">{{ __('assestme.reports.document.scope') }}</div><div class="pre-line">{{ $finding->scopeLabel }}</div></div>
-            @if ($finding->sites !== [])<div class="content-block"><div class="label">{{ __('assestme.reports.document.sites') }}</div>{{ implode(', ', $finding->sites) }}</div>@endif
-            @if ($finding->assets !== [])
-                <div class="content-block"><div class="label">{{ __('assestme.reports.document.assets') }}</div><ul>@foreach ($finding->assets as $asset)<li>{{ $asset->displayLabel }}</li>@endforeach</ul></div>
+            @if (filled($finding->entrepreneurNotes))
+                <section class="entrepreneur-focus avoid-break"><h3>{{ __('assestme.reports.document.entrepreneur_notes') }}</h3><div class="pre-line">{{ $finding->entrepreneurNotes }}</div></section>
             @endif
-            <div class="content-block"><div class="label">{{ __('assestme.reports.document.priority_and_risk') }}</div>
-                {{ $finding->priorityLabel }}
-                @if ($finding->consequenceLabel !== null) — {{ __('assestme.reports.document.consequence') }}: {{ $finding->consequenceLabel }}@endif
-                @if ($finding->likelihoodLabel !== null) — {{ __('assestme.reports.document.likelihood') }}: {{ $finding->likelihoodLabel }}@endif
-                @if ($finding->priorityOverridden)
-                    — {{ __('assestme.reports.document.manual_priority') }}
-                @endif
-            </div>
-            @if ($finding->priorityRationale !== null)<div class="content-block"><div class="label">{{ __('assestme.reports.document.priority_rationale') }}</div><div class="pre-line">{{ $finding->priorityRationale }}</div></div>@endif
-            <div class="content-block"><div class="label">{{ __('assestme.reports.document.problem') }}</div><div class="pre-line">{{ $finding->problem }}</div></div>
-            @if ($finding->entrepreneurNotes !== null)<div class="content-block"><div class="label">{{ __('assestme.reports.document.entrepreneur_notes') }}</div><div class="pre-line">{{ $finding->entrepreneurNotes }}</div></div>@endif
+            <div class="content-block"><h3 class="subsection-title">{{ __('assestme.reports.document.problem') }}</h3><div class="pre-line">{{ $finding->problem }}</div></div>
 
             <h3 class="subsection-title">{{ __('assestme.reports.document.recommended_solution') }}</h3>
             <div class="solution recommended">
@@ -194,10 +201,28 @@
                 @endforeach
             @endif
 
+            <h3 class="subsection-title">{{ __('assestme.reports.document.scope_and_classification') }}</h3>
+            <div class="content-block"><div class="label">{{ __('assestme.reports.document.scope') }}</div><div class="pre-line">{{ $finding->scopeLabel }}</div></div>
+            @if ($finding->sites !== [])<div class="content-block"><div class="label">{{ __('assestme.reports.document.sites') }}</div>{{ implode(', ', $finding->sites) }}</div>@endif
+            @if ($finding->assets !== [])
+                <div class="content-block"><div class="label">{{ __('assestme.reports.document.assets') }}</div><ul>@foreach ($finding->assets as $asset)<li>{{ $asset->displayLabel }}</li>@endforeach</ul></div>
+            @endif
+            @if ($finding->tags !== [])<div class="content-block"><div class="label">{{ __('assestme.reports.document.tags') }}</div>{{ implode(', ', $finding->tags) }}</div>@endif
+            <div class="content-block"><div class="label">{{ __('assestme.reports.document.priority_and_risk') }}</div>
+                {{ $finding->priorityLabel }}
+                @if (filled($finding->category)) — {{ __('assestme.reports.document.category') }}: {{ $finding->category }}@endif
+                @if ($finding->consequenceLabel !== null) — {{ __('assestme.reports.document.consequence') }}: {{ $finding->consequenceLabel }}@endif
+                @if ($finding->likelihoodLabel !== null) — {{ __('assestme.reports.document.likelihood') }}: {{ $finding->likelihoodLabel }}@endif
+                @if ($finding->priorityOverridden) — {{ __('assestme.reports.document.manual_priority') }}@endif
+            </div>
+            @if ($finding->priorityRationale !== null)<div class="content-block"><div class="label">{{ __('assestme.reports.document.priority_rationale') }}</div><div class="pre-line">{{ $finding->priorityRationale }}</div></div>@endif
+
             @if ($report->setting('evidence') === true && $finding->includedImageEvidence() !== [])
-                <h3 class="subsection-title">{{ __('assestme.reports.document.evidence') }}</h3>
                 @foreach ($finding->includedImageEvidence() as $evidence)
-                    <div class="evidence"><img src="{{ $evidence->imageDataUri }}" alt="">
+                    <div class="evidence">
+                        <h3 class="subsection-title">{{ __('assestme.reports.document.evidence') }}</h3>
+                        @if (filled($evidence->title))<div class="label">{{ $evidence->title }}</div>@endif
+                        <img src="{{ $evidence->imageDataUri }}" alt="">
                         @if ($report->setting('evidence_captions') === true && $evidence->caption !== null)<p class="muted">{{ $evidence->caption }}</p>@endif
                     </div>
                 @endforeach

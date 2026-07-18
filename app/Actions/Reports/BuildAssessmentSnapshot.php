@@ -12,6 +12,7 @@ use App\Data\Reports\ReportFindingData;
 use App\Data\Reports\ReportLogoData;
 use App\Data\Reports\ReportPriorityData;
 use App\Data\Reports\ReportSolutionData;
+use App\Enums\CoverTitleMode;
 use App\Enums\EvidenceType;
 use App\Enums\ScopeType;
 use App\Models\Assessment;
@@ -70,8 +71,7 @@ final class BuildAssessmentSnapshot
             generatedAt: $generatedAt->utc()->toIso8601String(),
             applicationVersion: (string) config('assestme.version'),
             locale: $assessment->locale,
-            title: $assessment->report_title_override
-                ?: str_replace('{client}', $clientName, $this->reportSettings->default_title_pattern),
+            title: $this->reportTitle($assessment, $clientName),
             assessmentId: (int) $assessment->getKey(),
             assessmentTitle: $assessment->title,
             assessmentDate: $assessment->assessment_date->format('Y-m-d'),
@@ -368,9 +368,35 @@ final class BuildAssessmentSnapshot
     /** @param list<string|null> $parts */
     private function address(array $parts): ?string
     {
-        $address = implode(', ', array_filter($parts, static fn (?string $part): bool => filled($part)));
+        $populated = array_values(array_filter($parts, static fn (?string $part): bool => filled($part)));
+        if (count($populated) === 1 && mb_strtoupper(trim((string) $populated[0])) === 'IT') {
+            return null;
+        }
+
+        $address = implode(', ', $populated);
 
         return $address === '' ? null : $address;
+    }
+
+    private function reportTitle(Assessment $assessment, string $clientName): string
+    {
+        $hasOverride = filled($assessment->report_title_override);
+        $configured = trim($hasOverride
+            ? (string) $assessment->report_title_override
+            : $this->reportSettings->default_title_pattern);
+        $baseTitle = $hasOverride ? $configured : str_replace('{client}', '', $configured);
+        $baseTitle = trim((string) preg_replace('/(?:\s*[—-]\s*)+$/u', '', $baseTitle));
+        $baseTitle = $baseTitle === '' ? __('assestme.reports.document.default_title') : $baseTitle;
+
+        if ($this->reportSettings->cover_title_mode === CoverTitleMode::Separate) {
+            return $baseTitle;
+        }
+
+        if (str_contains(mb_strtolower($baseTitle), mb_strtolower($clientName))) {
+            return $baseTitle;
+        }
+
+        return $baseTitle.' — '.$clientName;
     }
 
     /** @return array<string, bool|int|string|null> */
@@ -414,6 +440,8 @@ final class BuildAssessmentSnapshot
             'signature_role' => $this->reportSettings->signature_role,
             'primary_color' => $this->reportSettings->primary_color,
             'branding' => $this->reportSettings->branding,
+            'cover_title_mode' => $this->reportSettings->cover_title_mode->value,
+            'show_priority_descriptions' => $this->reportSettings->show_priority_descriptions,
             'cover' => $this->reportSettings->cover,
             'content_index' => $this->reportSettings->content_index,
             'executive_summary' => $this->reportSettings->executive_summary,

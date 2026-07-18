@@ -43,9 +43,10 @@ final class MilestoneFourPdfTest extends DuskTestCase
                     ->where('assessment_id', $assessment->getKey())
                     ->where('format', GeneratedReportFormat::Pdf)
                     ->exists())
+                ->assertPathIs("/admin/assessments/{$assessment->getKey()}/workspace")
                 ->waitFor('[data-dusk="generate-xlsx"]')
                 ->click('[data-dusk="generate-xlsx"]')
-                ->waitForText('Includi i finding esclusi dal report')
+                ->waitForText('Includi i Finding esclusi dal report')
                 ->assertSee('Genera file XLSX')
                 ->press('Genera file XLSX')
                 ->waitUsing(15, 100, static fn (): bool => GeneratedReport::query()
@@ -62,8 +63,8 @@ final class MilestoneFourPdfTest extends DuskTestCase
                 ->where('format', GeneratedReportFormat::Xlsx)
                 ->sole();
             $browser->visit("/admin/assessments/{$assessment->getKey()}/workspace")
-                ->waitForText('File generati')
-                ->press('File generati')
+                ->waitForText('File Generati')
+                ->press('File Generati')
                 ->waitForText($workbook->file_name)
                 ->assertSee($pdfReport->file_name)
                 ->assertSee($workbook->file_name)
@@ -87,6 +88,10 @@ final class MilestoneFourPdfTest extends DuskTestCase
                 ->sole();
 
             Assert::assertSame(DeletionOperationStatus::Cleaned, $operation->status);
+            Assert::assertSame(1, GeneratedReport::query()
+                ->where('assessment_id', $assessment->getKey())
+                ->where('format', GeneratedReportFormat::Pdf)
+                ->count());
             Assert::assertSame(
                 config('assestme.backup.private_storage_path'),
                 config('filesystems.disks.local.root'),

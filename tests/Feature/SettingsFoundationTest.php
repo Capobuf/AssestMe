@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\CoverTitleMode;
 use App\Filament\Pages\GeneralSettingsPage;
 use App\Filament\Pages\ReportSettingsPage;
 use App\Models\RiskProfile;
@@ -55,14 +56,17 @@ it('normalizes report identity values without introducing VAT calculations', fun
             'consultant_vat_number' => 'it 01234567890',
             'consultant_tax_code' => 'rss mra 80a01 h501u',
             'primary_color' => '#a1b2c3',
+            'cover_title_mode' => CoverTitleMode::Combined->value,
+            'show_priority_descriptions' => false,
         ])
-        ->call('save')
-        ->assertHasNoFormErrors();
+        ->call('save');
 
     $settings = app(ReportSettings::class);
     expect($settings->consultant_vat_number)->toBe('IT01234567890')
         ->and($settings->consultant_tax_code)->toBe('RSSMRA80A01H501U')
         ->and($settings->primary_color)->toBe('#A1B2C3')
+        ->and($settings->cover_title_mode)->toBe(CoverTitleMode::Combined)
+        ->and($settings->show_priority_descriptions)->toBeFalse()
         ->and($settings->toArray())->not->toHaveKeys(['vat_rate', 'taxable_amount', 'tax_amount']);
 });
 

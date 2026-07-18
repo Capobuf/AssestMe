@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Enums\ScopeType;
+use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Resources\Assessments\Pages\CreateAssessment;
+use App\Filament\Resources\Assessments\Pages\ListAssessments;
 use App\Filament\Resources\Assessments\Pages\WorkspaceAssessment;
 use App\Models\Assessment;
 use App\Models\Client;
@@ -15,7 +18,7 @@ it('creates an assessment through the Filament resource', function (): void {
     $client = Client::factory()->create();
     $this->actingAs($administrator);
 
-    Livewire::test(CreateAssessment::class)
+    $component = Livewire::test(CreateAssessment::class)
         ->fillForm([
             'client_id' => $client->getKey(),
             'title' => 'Assessment creato da Filament',
@@ -24,7 +27,33 @@ it('creates an assessment through the Filament resource', function (): void {
         ->call('create')
         ->assertHasNoFormErrors();
 
-    expect(Assessment::query()->where('title', 'Assessment creato da Filament')->exists())->toBeTrue();
+    $assessment = Assessment::query()->where('title', 'Assessment creato da Filament')->sole();
+    $component->assertRedirect(AssessmentResource::getUrl('workspace', ['record' => $assessment]));
+});
+
+it('keeps a manually edited automatic assessment title unchanged', function (): void {
+    $administrator = User::factory()->create();
+    $client = Client::factory()->create(['trade_name' => 'Azienda automatica']);
+    $this->actingAs($administrator);
+
+    Livewire::test(CreateAssessment::class)
+        ->set('data.client_id', $client->id)
+        ->set('data.assessment_date', '2026-07-18')
+        ->set('data.scope_type', ScopeType::Organization->value)
+        ->assertSet('data.title', 'Azienda automatica — Intera azienda — 18/07/2026')
+        ->set('data.title', 'Titolo scelto dall’utente')
+        ->set('data.assessment_date', '2026-07-19')
+        ->assertSet('data.title', 'Titolo scelto dall’utente');
+});
+
+it('uses the Workspace as the primary assessment list destination', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $this->actingAs($administrator);
+
+    Livewire::test(ListAssessments::class)
+        ->assertSee($assessment->title)
+        ->assertSeeHtml(AssessmentResource::getUrl('workspace', ['record' => $assessment]));
 });
 
 it('mounts the native table repeater workspace with fifty related findings', function (): void {
@@ -43,7 +72,7 @@ it('mounts the native table repeater workspace with fifty related findings', fun
         ->assertSee('Finding')
         ->assertSee('Dettagli assessment')
         ->assertSee('Anteprima riepilogo')
-        ->assertSee('File generati');
+        ->assertSee('File Generati');
 });
 
 it('uses the same persistence path for explicit save and autosave', function (): void {

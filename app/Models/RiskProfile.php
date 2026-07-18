@@ -8,12 +8,22 @@ use Database\Factories\RiskProfileFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use LogicException;
 
 /** @property int $id @property string $code @property string $label @property bool $is_default @property bool $is_enabled */
 class RiskProfile extends Model
 {
     /** @use HasFactory<RiskProfileFactory> */
     use HasFactory;
+
+    protected static function booted(): void
+    {
+        self::updating(static function (self $profile): void {
+            if ($profile->isDirty('code')) {
+                throw new LogicException('Risk profile technical codes are immutable.');
+            }
+        });
+    }
 
     /** @var list<string> */
     protected $fillable = ['code', 'label', 'description', 'is_default', 'is_enabled'];

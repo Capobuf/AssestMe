@@ -3,11 +3,13 @@
 declare(strict_types=1);
 
 use App\Actions\Assessments\CopyTemplateToAssessment;
+use App\Actions\Reports\BuildAssessmentSnapshot;
 use App\Actions\Reports\FormatEstimate;
 use App\Actions\Reports\GenerateAssessmentPdf;
 use App\Actions\Storage\AuditPrivateStorage;
 use App\Enums\AssessmentStatus;
 use App\Enums\BillingFrequency;
+use App\Enums\CoverTitleMode;
 use App\Enums\EstimateType;
 use App\Enums\EvidenceType;
 use App\Enums\FindingStatus;
@@ -22,6 +24,7 @@ use App\Models\User;
 use App\Settings\ReportSettings;
 use Database\Seeders\MilestoneOneSeeder;
 use Database\Seeders\MilestoneTwoSeeder;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -74,6 +77,96 @@ it('persists immutable versioned PDF snapshots and downloads the authoritative f
         ->assertSee($first->file_name)
         ->assertSee($second->file_name);
 });
+
+it('generates one authoritative PDF and redirects the Filament action to its authenticated download', function (): void {
+    [$assessment] = createPdfReadyAssessment();
+    $this->actingAs(User::factory()->create());
+
+    $component = Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->callAction(TestAction::make('download_pdf'));
+
+    $report = GeneratedReport::query()->sole();
+    $component->assertRedirect(route('generated-reports.download', $report));
+    expect($report->version)->toBe(1)
+        ->and(Storage::disk('local')->exists($report->file_path))->toBeTrue()
+        ->and(hash_file('sha256', Storage::disk('local')->path($report->file_path)))->toBe($report->file_sha256);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->assertSee($report->file_name);
+});
+
+it('rejects PDF generation only when selected asset scope has no asset', function (): void {
+    [$assessment, $finding] = createPdfReadyAssessment();
+    $finding->update(['scope_type' => ScopeType::SelectedAssets, 'scope_description' => null]);
+
+    expect(fn () => app(GenerateAssessmentPdf::class)($assessment->fresh()))
+        ->toThrow(ValidationException::class)
+        ->and(GeneratedReport::query()->count())->toBe(0);
+});
+
+it('applies cover title company address and optional priority legend presentation settings', function (): void {
+    [$assessment] = createPdfReadyAssessment();
+    $client = $assessment->client;
+    $client->update([
+        'trade_name' => 'Azienda Copertina',
+        'legal_name' => 'Azienda Copertina',
+        'address' => null,
+        'city' => null,
+        'postal_code' => null,
+        'province' => null,
+        'country' => 'IT',
+    ]);
+    $priority = $assessment->findings()->firstOrFail()->priorityLevel;
+    $priority?->update(['description' => 'Descrizione priorità visibile']);
+    $settings = app(ReportSettings::class);
+    $settings->cover_title_mode = CoverTitleMode::Separate;
+    $settings->show_priority_descriptions = false;
+    $settings->save();
+
+    $separate = app(BuildAssessmentSnapshot::class)($assessment->fresh());
+    $separateHtml = view('reports.assessment', ['report' => $separate])->render();
+    expect($separate->title)->toBe('Assessment IT')
+        ->and($separate->clientAddress)->toBeNull()
+        ->and($separateHtml)->not->toContain('Descrizione priorità visibile')
+        ->and($separateHtml)->not->toContain('<div class="label">Ragione sociale</div>Azienda Copertina');
+
+    $settings->cover_title_mode = CoverTitleMode::Combined;
+    $settings->show_priority_descriptions = true;
+    $settings->save();
+    $combined = app(BuildAssessmentSnapshot::class)($assessment->fresh());
+    $combinedHtml = view('reports.assessment', ['report' => $combined])->render();
+    preg_match('/<section class="cover">(.*?)<\/section>/s', $combinedHtml, $coverMatch);
+
+    expect($combined->title)->toBe('Assessment IT — Azienda Copertina')
+        ->and($combinedHtml)->toContain('Descrizione priorità visibile')
+        ->and(substr_count($coverMatch[1] ?? '', 'Azienda Copertina'))->toBe(1)
+        ->and($combinedHtml)->toContain(
+            __('assestme.reports.document.scope'),
+            __('assestme.reports.document.recommended_solution'),
+            __('assestme.reports.document.effort'),
+            __('assestme.reports.document.estimate'),
+        );
+});
+
+it('loads exactly the configured private report logos', function (string $branding, array $owners): void {
+    [$assessment] = createPdfReadyAssessment();
+    $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', true);
+    expect($png)->toBeString();
+    Storage::disk('local')->put('logos/company.png', $png);
+    Storage::disk('local')->put('logos/consultant.png', $png);
+    $assessment->client->update(['logo_path' => 'logos/company.png']);
+    $settings = app(ReportSettings::class);
+    $settings->branding = $branding;
+    $settings->consultant_logo_path = 'logos/consultant.png';
+    $settings->save();
+
+    $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh());
+    expect(collect($snapshot->logos)->pluck('owner')->all())->toBe($owners);
+})->with([
+    'consultant' => ['consultant', ['consultant']],
+    'company' => ['client', ['client']],
+    'both' => ['both', ['consultant', 'client']],
+]);
 
 it('formats every approved estimate branch without repeating the VAT note', function (): void {
     [, $finding] = createPdfReadyAssessment();
@@ -247,6 +340,8 @@ it('renders verified evidence, links, alternatives, branding, scope, and resolut
     $report = app(GenerateAssessmentPdf::class)($assessment->fresh());
     $path = Storage::disk('local')->path($report->file_path);
     $text = (new Parser)->parseFile($path)->getText();
+    $pageTexts = collect((new Parser)->parseFile($path)->getPages())
+        ->map(static fn ($page): string => $page->getText());
     $rawPdf = file_get_contents($path);
 
     expect($report->payload_snapshot['logos'])->toHaveCount(2)
@@ -263,6 +358,8 @@ it('renders verified evidence, links, alternatives, branding, scope, and resolut
             'Nota tecnica riservata inclusa',
             'Risoluzione verificata durante il collaudo.',
         )
+        ->and($pageTexts->contains(static fn (string $page): bool => str_contains($page, 'Evidenze')
+            && str_contains($page, 'Didascalia immagine verificata')))->toBeTrue()
         ->and($rawPdf)->toContain('https://example.test/security');
 });
 

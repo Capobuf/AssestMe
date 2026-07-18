@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Clients\FindDuplicateClientIdentifiers;
 use App\Actions\Clients\SaveClient;
 use App\Actions\Sites\SaveSite;
+use App\Filament\Resources\Clients\ClientResource;
 use App\Filament\Resources\Clients\Pages\CreateClient;
 use App\Filament\Resources\Sites\Pages\CreateSite;
 use App\Models\Client;
@@ -84,7 +85,7 @@ it('creates clients and sites through their Filament resources', function (): vo
     $administrator = User::factory()->create();
     $this->actingAs($administrator);
 
-    Livewire::test(CreateClient::class)
+    $component = Livewire::test(CreateClient::class)
         ->fillForm([
             'legal_name' => 'Cliente Filament S.r.l.',
             'vat_number' => 'it 111 222 33344',
@@ -107,6 +108,23 @@ it('creates clients and sites through their Filament resources', function (): vo
 
     expect($client->vat_number)->toBe('IT11122233344')
         ->and(Site::query()->whereBelongsTo($client)->where('name', 'Sede Filament')->exists())->toBeTrue();
+
+    $component->assertRedirect(ClientResource::getUrl('index'));
+});
+
+it('keeps the company creation page empty after Save and new', function (): void {
+    $this->actingAs(User::factory()->create());
+
+    Livewire::test(CreateClient::class)
+        ->fillForm([
+            'legal_name' => 'Azienda da ripetere S.r.l.',
+            'country' => 'IT',
+        ])
+        ->call('create', another: true)
+        ->assertHasNoFormErrors()
+        ->assertSet('data.legal_name', null);
+
+    expect(Client::query()->where('legal_name', 'Azienda da ripetere S.r.l.')->count())->toBe(1);
 });
 
 it('requires authentication for client and site resource pages', function (): void {

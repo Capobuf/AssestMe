@@ -5,13 +5,16 @@ declare(strict_types=1);
 use App\Actions\EffortLevels\SaveEffortLevel;
 use App\Actions\Risk\CalculateFindingPriority;
 use App\Actions\Risk\SaveRiskProfileConfiguration;
+use App\Filament\Resources\RiskProfiles\Pages\EditRiskProfile;
 use App\Models\ConsequenceLevel;
 use App\Models\EffortLevel;
 use App\Models\LikelihoodLevel;
 use App\Models\RiskMatrixEntry;
 use App\Models\RiskProfile;
+use App\Models\User;
 use Database\Seeders\MilestoneOneSeeder;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 
 it('seeds the approved default risk matrix and global effort levels', function (): void {
     $this->seed(MilestoneOneSeeder::class);
@@ -82,6 +85,37 @@ it('rejects disabling the default profile and malformed matrix updates', functio
         ->and($profile->matrixEntries()->count())->toBe(16);
 });
 
+it('preserves risk level identities and rejects technical code mutations server side', function (): void {
+    $this->seed(MilestoneOneSeeder::class);
+    $profile = RiskProfile::query()->where('code', 'default')->firstOrFail();
+    $consequence = $profile->consequenceLevels()->firstOrFail();
+    $payload = riskProfilePayload($profile);
+    $payload['consequences'][0]['label'] = 'Etichetta aggiornata';
+
+    $saved = app(SaveRiskProfileConfiguration::class)->handle($profile, $payload);
+    expect($saved->consequenceLevels()->whereKey($consequence)->firstOrFail()->label)->toBe('Etichetta aggiornata')
+        ->and($saved->consequenceLevels()->count())->toBe(4)
+        ->and($saved->matrixEntries()->count())->toBe(16);
+
+    $payload = riskProfilePayload($saved);
+    $payload['consequences'][0]['code'] = 'payload_manipolato';
+    expect(fn () => app(SaveRiskProfileConfiguration::class)->handle($saved, $payload))
+        ->toThrow(ValidationException::class)
+        ->and(fn () => $consequence->update(['code' => 'mutazione_diretta']))
+        ->toThrow(LogicException::class);
+});
+
+it('mounts a real four by four risk matrix instead of a vertical matrix repeater', function (): void {
+    $this->seed(MilestoneOneSeeder::class);
+    $this->actingAs(User::factory()->create());
+    $profile = RiskProfile::query()->where('code', 'default')->firstOrFail();
+
+    Livewire::test(EditRiskProfile::class, ['record' => $profile->getRouteKey()])
+        ->assertOk()
+        ->assertSeeHtml('data-dusk="risk-matrix-grid"')
+        ->assertSee(__('assestme.risk.matrix_help'));
+});
+
 it('normalizes effort colors and rejects duplicate stable codes', function (): void {
     $first = app(SaveEffortLevel::class)->handle(null, [
         'code' => 'custom',
@@ -106,6 +140,7 @@ it('normalizes effort colors and rejects duplicate stable codes', function (): v
 function riskProfilePayload(RiskProfile $profile): array
 {
     $mapScored = static fn (ConsequenceLevel|LikelihoodLevel $level): array => [
+        'id' => $level->getKey(),
         'code' => $level->code,
         'label' => $level->label,
         'description' => $level->description,
@@ -124,6 +159,7 @@ function riskProfilePayload(RiskProfile $profile): array
         'consequences' => $profile->consequenceLevels->map($mapScored)->all(),
         'likelihoods' => $profile->likelihoodLevels->map($mapScored)->all(),
         'priorities' => $profile->priorityLevels->map(static fn ($level): array => [
+            'id' => $level->getKey(),
             'code' => $level->code,
             'label' => $level->label,
             'description' => $level->description,

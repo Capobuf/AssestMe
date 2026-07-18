@@ -14,6 +14,7 @@ use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -22,9 +23,11 @@ final class SaveFindingTemplate
     /** @param array<string, mixed> $data */
     public function handle(?FindingTemplate $template, array $data): FindingTemplate
     {
+        $data = $this->withStableExternalIds($template, $data);
+
         /** @var array<string, mixed> $validated */
         $validated = Validator::make($data, [
-            'external_id' => ['required', 'string', 'min:3', 'max:160', 'regex:/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/', Rule::unique('finding_templates', 'external_id')->ignore($template?->getKey())],
+            'external_id' => ['required', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/', Rule::unique('finding_templates', 'external_id')->ignore($template?->getKey())],
             'title' => ['required', 'string', 'max:255'],
             'category_id' => ['required', 'integer', Rule::exists('categories', 'id')->whereNull('deleted_at')],
             'tag_ids' => ['array'],
@@ -41,7 +44,7 @@ final class SaveFindingTemplate
             'is_enabled' => ['required', 'boolean'],
             'solutions' => ['required', 'array', 'min:1'],
             'solutions.*.id' => ['nullable', 'integer'],
-            'solutions.*.external_id' => ['required', 'string', 'min:3', 'max:160', 'regex:/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/', 'distinct'],
+            'solutions.*.external_id' => ['required', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/', 'distinct'],
             'solutions.*.title' => ['required', 'string', 'max:255'],
             'solutions.*.description' => ['required', 'string', 'max:20000'],
             'solutions.*.comparison_notes' => ['nullable', 'string', 'max:20000'],
@@ -87,6 +90,101 @@ final class SaveFindingTemplate
 
             return $record->refresh();
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function withStableExternalIds(?FindingTemplate $template, array $data): array
+    {
+        if ($template !== null) {
+            if (isset($data['external_id']) && $data['external_id'] !== $template->external_id) {
+                throw ValidationException::withMessages([
+                    'external_id' => __('assestme.templates.errors.external_id_immutable'),
+                ]);
+            }
+            $data['external_id'] = $template->external_id;
+        } else {
+            $data['external_id'] = $this->nextTemplateExternalId((string) ($data['title'] ?? ''));
+        }
+
+        $rows = is_array($data['solutions'] ?? null) ? $data['solutions'] : [];
+        $reserved = [];
+        foreach ($rows as $index => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $existing = isset($row['id']) && $template !== null
+                ? $template->solutions()->withTrashed()->find($row['id'])
+                : null;
+            if ($existing !== null) {
+                if (isset($row['external_id']) && $row['external_id'] !== $existing->external_id) {
+                    throw ValidationException::withMessages([
+                        "solutions.{$index}.external_id" => __('assestme.templates.errors.external_id_immutable'),
+                    ]);
+                }
+                $externalId = $existing->external_id;
+            } else {
+                $externalId = $this->nextSolutionExternalId(
+                    $template,
+                    (string) ($row['title'] ?? ''),
+                    $reserved,
+                );
+            }
+
+            $data['solutions'][$index]['external_id'] = $externalId;
+            $reserved[] = $externalId;
+        }
+
+        return $data;
+    }
+
+    private function nextTemplateExternalId(string $title): string
+    {
+        $base = $this->identifierBase($title, 'template');
+
+        return $this->nextIdentifier($base, static fn (string $candidate): bool => FindingTemplate::withTrashed()
+            ->where('external_id', $candidate)
+            ->exists());
+    }
+
+    /** @param list<string> $reserved */
+    private function nextSolutionExternalId(?FindingTemplate $template, string $title, array $reserved): string
+    {
+        $base = $this->identifierBase($title, 'soluzione');
+
+        return $this->nextIdentifier($base, static function (string $candidate) use ($template, $reserved): bool {
+            if (in_array($candidate, $reserved, true)) {
+                return true;
+            }
+
+            return $template?->solutions()
+                ->withTrashed()
+                ->where('external_id', $candidate)
+                ->exists() ?? false;
+        });
+    }
+
+    private function identifierBase(string $label, string $fallback): string
+    {
+        $identifier = Str::slug(Str::lower(trim($label)));
+
+        return Str::limit($identifier === '' ? $fallback : $identifier, 150, '');
+    }
+
+    /** @param callable(string): bool $exists */
+    private function nextIdentifier(string $base, callable $exists): string
+    {
+        $candidate = $base;
+        $suffix = 2;
+        while ($exists($candidate)) {
+            $candidate = Str::limit($base, 160 - strlen((string) $suffix) - 1, '').'-'.$suffix;
+            $suffix++;
+        }
+
+        return $candidate;
     }
 
     /** @param array<string, mixed> $validated */

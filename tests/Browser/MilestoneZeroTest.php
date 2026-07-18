@@ -20,7 +20,10 @@ final class MilestoneZeroTest extends DuskTestCase
     public function test_unsaved_warning_is_scoped_to_the_workspace_and_clears_after_save(): void
     {
         $administrator = User::factory()->create();
-        $client = Client::factory()->create(['legal_name' => 'Cliente dirty-state browser S.r.l.']);
+        $client = Client::factory()->create([
+            'legal_name' => 'Cliente dirty-state browser S.r.l.',
+            'phone' => null,
+        ]);
         $assessment = Assessment::factory()->create(['title' => 'Dirty-state workspace browser']);
         Finding::factory()->for($assessment)->create();
 
