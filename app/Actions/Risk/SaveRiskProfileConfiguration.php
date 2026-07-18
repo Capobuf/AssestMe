@@ -26,6 +26,7 @@ final class SaveRiskProfileConfiguration
     public function handle(?RiskProfile $profile, array $data): RiskProfile
     {
         $data = $this->withStableCodes($profile, $data);
+        $profileId = $profile?->getKey();
 
         /** @var array<string, mixed> $validated */
         $validated = Validator::make($data, [
@@ -35,7 +36,14 @@ final class SaveRiskProfileConfiguration
             'is_default' => ['required', 'boolean'],
             'is_enabled' => ['required', 'boolean'],
             'consequences' => ['required', 'array', 'size:4'],
-            'consequences.*.id' => ['nullable', 'integer'],
+            'consequences.*.id' => [
+                'nullable',
+                'integer',
+                'distinct',
+                Rule::prohibitedIf($profile === null),
+                Rule::exists('consequence_levels', 'id')->where('risk_profile_id', $profileId),
+            ],
+            'consequences.*._form_key' => ['nullable', 'uuid', 'distinct'],
             'consequences.*.code' => ['required', 'string', 'max:40', 'regex:/^[a-z0-9_]+$/', 'distinct'],
             'consequences.*.label' => ['required', 'string', 'max:120'],
             'consequences.*.description' => ['nullable', 'string', 'max:20000'],
@@ -44,7 +52,14 @@ final class SaveRiskProfileConfiguration
             'consequences.*.sort_order' => ['required', 'integer', 'min:0'],
             'consequences.*.is_enabled' => ['required', 'boolean'],
             'likelihoods' => ['required', 'array', 'size:4'],
-            'likelihoods.*.id' => ['nullable', 'integer'],
+            'likelihoods.*.id' => [
+                'nullable',
+                'integer',
+                'distinct',
+                Rule::prohibitedIf($profile === null),
+                Rule::exists('likelihood_levels', 'id')->where('risk_profile_id', $profileId),
+            ],
+            'likelihoods.*._form_key' => ['nullable', 'uuid', 'distinct'],
             'likelihoods.*.code' => ['required', 'string', 'max:40', 'regex:/^[a-z0-9_]+$/', 'distinct'],
             'likelihoods.*.label' => ['required', 'string', 'max:120'],
             'likelihoods.*.description' => ['nullable', 'string', 'max:20000'],
@@ -53,18 +68,34 @@ final class SaveRiskProfileConfiguration
             'likelihoods.*.sort_order' => ['required', 'integer', 'min:0'],
             'likelihoods.*.is_enabled' => ['required', 'boolean'],
             'priorities' => ['required', 'array', 'min:1'],
-            'priorities.*.id' => ['nullable', 'integer'],
+            'priorities.*.id' => [
+                'nullable',
+                'integer',
+                'distinct',
+                Rule::prohibitedIf($profile === null),
+                Rule::exists('priority_levels', 'id')->where('risk_profile_id', $profileId),
+            ],
+            'priorities.*._form_key' => ['nullable', 'uuid', 'distinct'],
             'priorities.*.code' => ['required', 'string', 'max:40', 'regex:/^[a-z0-9_]+$/', 'distinct'],
             'priorities.*.label' => ['required', 'string', 'max:120'],
             'priorities.*.description' => ['nullable', 'string', 'max:20000'],
             'priorities.*.color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'priorities.*.sort_order' => ['required', 'integer', 'min:0'],
             'priorities.*.is_enabled' => ['required', 'boolean'],
-            'matrix' => ['required', 'array', 'size:16'],
-            'matrix.*.consequence_code' => ['required', 'string'],
-            'matrix.*.likelihood_code' => ['required', 'string'],
-            'matrix.*.priority_code' => ['required', 'string'],
+            'matrix' => ['required', 'array', 'size:4'],
+            'matrix.*' => ['required', 'array', 'size:4'],
+            'matrix.*.*' => ['required', 'string'],
+        ], [
+            'consequences.*.id.exists' => __('assestme.risk.errors.foreign_consequence'),
+            'likelihoods.*.id.exists' => __('assestme.risk.errors.foreign_likelihood'),
+            'priorities.*.id.exists' => __('assestme.risk.errors.foreign_priority'),
+            'matrix.size' => __('assestme.risk.errors.invalid_matrix'),
+            'matrix.*.size' => __('assestme.risk.errors.invalid_matrix'),
+            'matrix.*.*.required' => __('assestme.risk.errors.invalid_matrix'),
+            'matrix.*.*.string' => __('assestme.risk.errors.invalid_matrix'),
         ])->validate();
+
+        $this->validateMatrixState($validated);
 
         if ((bool) $validated['is_default'] && ! (bool) $validated['is_enabled']) {
             throw ValidationException::withMessages(['is_enabled' => __('assestme.risk.errors.default_must_be_enabled')]);
@@ -108,13 +139,6 @@ final class SaveRiskProfileConfiguration
      */
     private function withStableCodes(?RiskProfile $profile, array $data): array
     {
-        $originalRows = [
-            'consequences' => is_array($data['consequences'] ?? null) ? array_values($data['consequences']) : [],
-            'likelihoods' => is_array($data['likelihoods'] ?? null) ? array_values($data['likelihoods']) : [],
-            'priorities' => is_array($data['priorities'] ?? null) ? array_values($data['priorities']) : [],
-        ];
-        $originalMatrix = is_array($data['matrix'] ?? null) ? array_values($data['matrix']) : [];
-
         if ($profile !== null) {
             if (isset($data['code']) && $data['code'] !== $profile->code) {
                 throw ValidationException::withMessages(['code' => __('assestme.risk.errors.code_immutable')]);
@@ -160,6 +184,7 @@ final class SaveRiskProfileConfiguration
                         ]);
                     }
                     $code = $existing->code;
+                    $data[$key][$index]['id'] = $existing->getKey();
                 } else {
                     $suppliedCode = is_string($row['code'] ?? null) ? trim($row['code']) : '';
                     $code = $suppliedCode !== ''
@@ -179,53 +204,95 @@ final class SaveRiskProfileConfiguration
             }
         }
 
-        if (count($data['consequences']) === 4 && count($data['likelihoods']) === 4) {
-            $codeMaps = [];
-            foreach (['consequences', 'likelihoods', 'priorities'] as $key) {
-                $codeMaps[$key] = [];
-                foreach ($originalRows[$key] as $index => $row) {
-                    if (is_array($row) && filled($row['code'] ?? null) && isset($data[$key][$index]['code'])) {
-                        $codeMaps[$key][(string) $row['code']] ??= (string) $data[$key][$index]['code'];
-                    }
-                }
-            }
+        return $data;
+    }
 
-            $normalizedMatrix = [];
-            foreach ($originalMatrix as $matrixIndex => $original) {
-                if (! is_array($original)) {
-                    continue;
-                }
+    /** @param array<string, mixed> $data */
+    private function validateMatrixState(array $data): void
+    {
+        $consequenceIdentities = $this->levelIdentities($data['consequences'], 'consequences');
+        $likelihoodIdentities = $this->levelIdentities($data['likelihoods'], 'likelihoods');
+        $priorityIdentities = $this->levelIdentities($data['priorities'], 'priorities');
 
-                $consequenceIndex = intdiv($matrixIndex, 4);
-                $likelihoodIndex = $matrixIndex % 4;
-                $originalConsequence = (string) ($original['consequence_code'] ?? '');
-                $originalLikelihood = (string) ($original['likelihood_code'] ?? '');
-                $originalPriority = (string) ($original['priority_code'] ?? '');
-                $normalizedMatrix[] = [
-                    'consequence_code' => $codeMaps['consequences'][$originalConsequence]
-                        ?? (string) ($data['consequences'][$consequenceIndex]['code'] ?? ''),
-                    'likelihood_code' => $codeMaps['likelihoods'][$originalLikelihood]
-                        ?? (string) ($data['likelihoods'][$likelihoodIndex]['code'] ?? ''),
-                    'priority_code' => $codeMaps['priorities'][$originalPriority]
-                        ?? (string) ($data['priorities'][0]['code'] ?? ''),
-                ];
-            }
-
-            if ($normalizedMatrix === [] && isset($data['priorities'][0]['code'])) {
-                foreach (array_values($data['consequences']) as $consequence) {
-                    foreach (array_values($data['likelihoods']) as $likelihood) {
-                        $normalizedMatrix[] = [
-                            'consequence_code' => (string) $consequence['code'],
-                            'likelihood_code' => (string) $likelihood['code'],
-                            'priority_code' => (string) $data['priorities'][0]['code'],
-                        ];
-                    }
-                }
-            }
-            $data['matrix'] = $normalizedMatrix;
+        if (count(array_filter($data['consequences'], static fn (array $row): bool => (bool) $row['is_enabled'])) !== 4) {
+            throw ValidationException::withMessages(['consequences' => __('assestme.risk.errors.four_enabled_consequences')]);
         }
 
-        return $data;
+        if (count(array_filter($data['likelihoods'], static fn (array $row): bool => (bool) $row['is_enabled'])) !== 4) {
+            throw ValidationException::withMessages(['likelihoods' => __('assestme.risk.errors.four_enabled_likelihoods')]);
+        }
+
+        /** @var array<int|string, mixed> $matrix */
+        $matrix = $data['matrix'];
+        if ($this->normalizedKeys($matrix) !== $this->normalizedValues($consequenceIdentities)) {
+            throw ValidationException::withMessages(['matrix' => __('assestme.risk.errors.invalid_matrix')]);
+        }
+
+        $expectedLikelihoods = $this->normalizedValues($likelihoodIdentities);
+        $knownPriorities = array_fill_keys($priorityIdentities, true);
+        foreach ($consequenceIdentities as $consequenceIdentity) {
+            $row = $matrix[$consequenceIdentity] ?? null;
+            if (! is_array($row) || $this->normalizedKeys($row) !== $expectedLikelihoods) {
+                throw ValidationException::withMessages(['matrix' => __('assestme.risk.errors.invalid_matrix')]);
+            }
+
+            foreach ($likelihoodIdentities as $likelihoodIdentity) {
+                $priorityIdentity = (string) ($row[$likelihoodIdentity] ?? '');
+                if (! isset($knownPriorities[$priorityIdentity])) {
+                    throw ValidationException::withMessages([
+                        "matrix.{$consequenceIdentity}.{$likelihoodIdentity}" => __('assestme.risk.errors.foreign_priority'),
+                    ]);
+                }
+            }
+        }
+    }
+
+    /**
+     * @param  array<int, mixed>  $rows
+     * @return list<string>
+     */
+    private function levelIdentities(array $rows, string $statePath): array
+    {
+        $identities = [];
+
+        foreach ($rows as $index => $row) {
+            if (! is_array($row)) {
+                throw ValidationException::withMessages([$statePath => __('assestme.risk.errors.invalid_matrix')]);
+            }
+
+            $identity = filled($row['id'] ?? null)
+                ? (string) $row['id']
+                : (string) ($row['_form_key'] ?? '');
+            if ($identity === '' || in_array($identity, $identities, true)) {
+                throw ValidationException::withMessages([
+                    "{$statePath}.{$index}" => __('assestme.risk.errors.unknown_level'),
+                ]);
+            }
+
+            $identities[] = $identity;
+        }
+
+        return $identities;
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $values
+     * @return list<string>
+     */
+    private function normalizedKeys(array $values): array
+    {
+        return $this->normalizedValues(array_map('strval', array_keys($values)));
+    }
+
+    /**
+     * @param  list<string>  $values
+     * @return list<string>
+     */
+    private function normalizedValues(array $values): array
+    {
+        sort($values, SORT_STRING);
+
+        return $values;
     }
 
     /** @param callable(string): bool $exists */
@@ -253,12 +320,12 @@ final class SaveRiskProfileConfiguration
     private function syncScoredLevels(RiskProfile $profile, string $modelClass, array $rows): array
     {
         $levels = [];
-        $activeCodes = [];
+        $keptIds = [];
 
         foreach ($rows as $row) {
             /** @var array<string, mixed> $row */
             $code = (string) $row['code'];
-            $activeCodes[] = $code;
+            $identity = filled($row['id'] ?? null) ? (string) $row['id'] : (string) $row['_form_key'];
             /** @var TLevel $level */
             $level = isset($row['id'])
                 ? $modelClass::query()->where('risk_profile_id', $profile->getKey())->findOrFail($row['id'])
@@ -272,13 +339,14 @@ final class SaveRiskProfileConfiguration
                 'is_enabled' => $row['is_enabled'],
             ]);
             $level->save();
-            $levels[$code] = $level;
+            $keptIds[] = (int) $level->getKey();
+            $levels[$identity] = $level;
         }
 
         // Historical levels remain referentially valid and are disabled instead of deleted.
         $modelClass::query()
             ->where('risk_profile_id', $profile->getKey())
-            ->whereNotIn('code', $activeCodes)
+            ->whereNotIn('id', $keptIds)
             ->update(['is_enabled' => false]);
 
         return $levels;
@@ -291,12 +359,12 @@ final class SaveRiskProfileConfiguration
     private function syncPriorityLevels(RiskProfile $profile, array $rows): array
     {
         $levels = [];
-        $activeCodes = [];
+        $keptIds = [];
 
         foreach ($rows as $row) {
             /** @var array<string, mixed> $row */
             $code = (string) $row['code'];
-            $activeCodes[] = $code;
+            $identity = filled($row['id'] ?? null) ? (string) $row['id'] : (string) $row['_form_key'];
             $level = isset($row['id'])
                 ? PriorityLevel::query()->where('risk_profile_id', $profile->getKey())->findOrFail($row['id'])
                 : new PriorityLevel(['risk_profile_id' => $profile->getKey(), 'code' => $code]);
@@ -308,53 +376,42 @@ final class SaveRiskProfileConfiguration
                 'is_enabled' => $row['is_enabled'],
             ]);
             $level->save();
-            $levels[$code] = $level;
+            $keptIds[] = (int) $level->getKey();
+            $levels[$identity] = $level;
         }
 
         PriorityLevel::query()
             ->where('risk_profile_id', $profile->getKey())
-            ->whereNotIn('code', $activeCodes)
+            ->whereNotIn('id', $keptIds)
             ->update(['is_enabled' => false]);
 
         return $levels;
     }
 
     /**
-     * @param  array<int, mixed>  $rows
+     * @param  array<int|string, mixed>  $rows
      * @param  array<string, ConsequenceLevel>  $consequences
      * @param  array<string, LikelihoodLevel>  $likelihoods
      * @param  array<string, PriorityLevel>  $priorities
      */
     private function syncMatrix(RiskProfile $profile, array $rows, array $consequences, array $likelihoods, array $priorities): void
     {
-        $seenPairs = [];
         $keptIds = [];
 
-        foreach ($rows as $index => $row) {
-            /** @var array<string, mixed> $row */
-            $consequenceCode = (string) $row['consequence_code'];
-            $likelihoodCode = (string) $row['likelihood_code'];
-            $priorityCode = (string) $row['priority_code'];
-            $pair = $consequenceCode.'|'.$likelihoodCode;
-
-            if (isset($seenPairs[$pair]) || ! isset($consequences[$consequenceCode], $likelihoods[$likelihoodCode], $priorities[$priorityCode])) {
-                throw ValidationException::withMessages(["matrix.{$index}" => __('assestme.risk.errors.invalid_matrix')]);
+        foreach ($consequences as $consequenceIdentity => $consequence) {
+            foreach ($likelihoods as $likelihoodIdentity => $likelihood) {
+                $priorityIdentity = (string) $rows[$consequenceIdentity][$likelihoodIdentity];
+                $priority = $priorities[$priorityIdentity];
+                $entry = RiskMatrixEntry::query()->updateOrCreate(
+                    [
+                        'risk_profile_id' => $profile->getKey(),
+                        'consequence_level_id' => $consequence->getKey(),
+                        'likelihood_level_id' => $likelihood->getKey(),
+                    ],
+                    ['priority_level_id' => $priority->getKey()],
+                );
+                $keptIds[] = (int) $entry->getKey();
             }
-
-            $seenPairs[$pair] = true;
-            $entry = RiskMatrixEntry::query()->updateOrCreate(
-                [
-                    'risk_profile_id' => $profile->getKey(),
-                    'consequence_level_id' => $consequences[$consequenceCode]->getKey(),
-                    'likelihood_level_id' => $likelihoods[$likelihoodCode]->getKey(),
-                ],
-                ['priority_level_id' => $priorities[$priorityCode]->getKey()],
-            );
-            $keptIds[] = (int) $entry->getKey();
-        }
-
-        if (count($seenPairs) !== 16) {
-            throw ValidationException::withMessages(['matrix' => __('assestme.risk.errors.invalid_matrix')]);
         }
 
         RiskMatrixEntry::query()

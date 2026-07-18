@@ -120,35 +120,58 @@ final class MilestoneOneSeeder extends Seeder
             ['moderate', 'high', 'high', 'critical'],
             ['high', 'high', 'critical', 'critical'],
         ];
-        $matrix = [];
-
-        foreach ($consequences as $consequenceIndex => $consequence) {
-            foreach ($likelihoods as $likelihoodIndex => $likelihood) {
-                $matrix[] = [
-                    'consequence_code' => $consequence['code'],
-                    'likelihood_code' => $likelihood['code'],
-                    'priority_code' => $matrixCodes[$consequenceIndex][$likelihoodIndex],
-                ];
-            }
-        }
-
         $decorate = static fn (array $row, int $index): array => $row + [
+            '_form_key' => (string) Str::uuid(),
             'description' => null,
             'sort_order' => $index + 1,
             'is_enabled' => true,
         ];
 
+        $profile = RiskProfile::query()->where('code', 'default')->first();
+        $consequences = array_map($decorate, $consequences, array_keys($consequences));
+        $likelihoods = array_map($decorate, $likelihoods, array_keys($likelihoods));
+        $priorities = array_map($decorate, $priorities, array_keys($priorities));
+
+        if ($profile !== null) {
+            foreach ([
+                'consequenceLevels' => &$consequences,
+                'likelihoodLevels' => &$likelihoods,
+                'priorityLevels' => &$priorities,
+            ] as $relation => &$rows) {
+                $idsByCode = $profile->{$relation}()->pluck('id', 'code');
+                foreach ($rows as &$row) {
+                    $row['id'] = $idsByCode->get($row['code']);
+                }
+                unset($row);
+            }
+            unset($rows);
+        }
+
+        $priorityIdentitiesByCode = [];
+        foreach ($priorities as $priority) {
+            $priorityIdentitiesByCode[$priority['code']] = (string) ($priority['id'] ?? $priority['_form_key']);
+        }
+
+        $matrix = [];
+        foreach ($consequences as $consequenceIndex => $consequence) {
+            $consequenceIdentity = (string) ($consequence['id'] ?? $consequence['_form_key']);
+            foreach ($likelihoods as $likelihoodIndex => $likelihood) {
+                $likelihoodIdentity = (string) ($likelihood['id'] ?? $likelihood['_form_key']);
+                $matrix[$consequenceIdentity][$likelihoodIdentity] = $priorityIdentitiesByCode[$matrixCodes[$consequenceIndex][$likelihoodIndex]];
+            }
+        }
+
         $profile = app(SaveRiskProfileConfiguration::class)->handle(
-            RiskProfile::query()->where('code', 'default')->first(),
+            $profile,
             [
                 'code' => 'default',
                 'label' => 'Profilo predefinito',
                 'description' => 'Matrice di priorità predefinita AssestMe.',
                 'is_default' => true,
                 'is_enabled' => true,
-                'consequences' => array_map($decorate, $consequences, array_keys($consequences)),
-                'likelihoods' => array_map($decorate, $likelihoods, array_keys($likelihoods)),
-                'priorities' => array_map($decorate, $priorities, array_keys($priorities)),
+                'consequences' => $consequences,
+                'likelihoods' => $likelihoods,
+                'priorities' => $priorities,
                 'matrix' => $matrix,
             ],
         );

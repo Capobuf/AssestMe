@@ -110,6 +110,10 @@ final class ApprovedUxQaTest extends DuskTestCase
                     ->scrollIntoView('[data-dusk="risk-matrix-grid"]')
                     ->pause(250);
                 $browser->driver->takeScreenshot("{$artifactRoot}/risk-matrix-{$width}x{$height}-dark.png");
+                $browser->script("localStorage.setItem('theme', 'light'); document.documentElement.classList.remove('dark');");
+                $browser->pause(200);
+                $browser->driver->takeScreenshot("{$artifactRoot}/risk-matrix-{$width}x{$height}-light.png");
+                $browser->script("localStorage.setItem('theme', 'dark'); document.documentElement.classList.add('dark');");
 
                 $browser->visit("/admin/finding-templates/{$template->getKey()}/edit")
                     ->waitUntil(<<<'JS'
@@ -151,6 +155,10 @@ final class ApprovedUxQaTest extends DuskTestCase
                 self::assertFileExists($path);
                 self::assertGreaterThan(0, (int) filesize($path));
             }
+
+            $lightMatrixPath = "{$artifactRoot}/risk-matrix-{$width}x{$height}-light.png";
+            self::assertFileExists($lightMatrixPath);
+            self::assertGreaterThan(0, (int) filesize($lightMatrixPath));
         }
     }
 }

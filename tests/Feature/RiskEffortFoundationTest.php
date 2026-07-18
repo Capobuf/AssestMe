@@ -77,7 +77,7 @@ it('rejects disabling the default profile and malformed matrix updates', functio
         ->toThrow(ValidationException::class);
 
     $payload = riskProfilePayload($profile);
-    $payload['matrix'][15] = $payload['matrix'][0];
+    $payload['matrix']['unknown-consequence'] = reset($payload['matrix']);
 
     expect(fn () => app(SaveRiskProfileConfiguration::class)->handle($profile, $payload))
         ->toThrow(ValidationException::class)
@@ -168,12 +168,11 @@ function riskProfilePayload(RiskProfile $profile): array
             'is_enabled' => $level->is_enabled,
         ])->all(),
         'matrix' => $profile->matrixEntries()
-            ->with(['consequenceLevel', 'likelihoodLevel', 'priorityLevel'])
             ->get()
-            ->map(static fn (RiskMatrixEntry $entry): array => [
-                'consequence_code' => $entry->consequenceLevel->code,
-                'likelihood_code' => $entry->likelihoodLevel->code,
-                'priority_code' => $entry->priorityLevel->code,
-            ])->all(),
+            ->reduce(static function (array $matrix, RiskMatrixEntry $entry): array {
+                $matrix[(string) $entry->consequence_level_id][(string) $entry->likelihood_level_id] = (string) $entry->priority_level_id;
+
+                return $matrix;
+            }, []),
     ];
 }

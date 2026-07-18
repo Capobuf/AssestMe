@@ -37,11 +37,11 @@ final class EditRiskProfile extends EditRecord
             'sort_order' => $level->sort_order, 'is_enabled' => $level->is_enabled,
         ])->all();
         $data['matrix'] = $profile->matrixEntries()->with(['consequenceLevel', 'likelihoodLevel', 'priorityLevel'])->get()
-            ->map(static fn (RiskMatrixEntry $entry): array => [
-                'consequence_code' => $entry->consequenceLevel->code,
-                'likelihood_code' => $entry->likelihoodLevel->code,
-                'priority_code' => $entry->priorityLevel->code,
-            ])->all();
+            ->reduce(static function (array $matrix, RiskMatrixEntry $entry): array {
+                $matrix[(string) $entry->consequence_level_id][(string) $entry->likelihood_level_id] = (string) $entry->priority_level_id;
+
+                return $matrix;
+            }, []);
 
         return $data;
     }
