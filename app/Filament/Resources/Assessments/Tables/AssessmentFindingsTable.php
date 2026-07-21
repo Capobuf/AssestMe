@@ -40,7 +40,7 @@ final class AssessmentFindingsTable
                         TextColumn::make('title')
                             ->placeholder(__('assestme.workspace.list.untitled'))
                             ->weight('semibold')
-                            ->lineClamp(1)
+                            ->lineClamp(2)
                             ->extraAttributes(['class' => 'assestme-finding-row__title']),
                         TextColumn::make('problem')
                             ->placeholder(__('assestme.workspace.list.problem_missing'))
@@ -131,29 +131,13 @@ final class AssessmentFindingsTable
             ->recordActions([
                 Action::make('open')
                     ->label(__('assestme.workspace.list.open'))
-                    ->icon('heroicon-o-pencil-square')
-                    ->iconButton()
-                    ->extraAttributes(['data-dusk' => 'open-finding'])
+                    ->extraAttributes([
+                        'class' => 'assestme-finding-row__open-action',
+                        'aria-hidden' => 'true',
+                        'tabindex' => '-1',
+                    ])
                     ->action(function (Finding $record) use ($page): void {
                         $page->selectFinding((int) $record->getKey());
-                    }),
-                Action::make('move_up')
-                    ->label(__('assestme.workspace.list.move_up'))
-                    ->icon('heroicon-o-arrow-up')
-                    ->iconButton()
-                    ->extraAttributes(['data-dusk' => 'move-up-finding'])
-                    ->visible(fn (Finding $record): bool => ! $page->isWorkspaceReadOnly() && $record->sort_order > 1)
-                    ->action(function (Finding $record) use ($page): void {
-                        $page->moveFinding($record, -1);
-                    }),
-                Action::make('move_down')
-                    ->label(__('assestme.workspace.list.move_down'))
-                    ->icon('heroicon-o-arrow-down')
-                    ->iconButton()
-                    ->extraAttributes(['data-dusk' => 'move-down-finding'])
-                    ->visible(fn (Finding $record): bool => ! $page->isWorkspaceReadOnly() && $record->sort_order < $page->totalFindings())
-                    ->action(function (Finding $record) use ($page): void {
-                        $page->moveFinding($record, 1);
                     }),
                 ActionGroup::make([
                     Action::make('duplicate')
@@ -164,22 +148,21 @@ final class AssessmentFindingsTable
                         ->action(function (Finding $record) use ($page): void {
                             $page->duplicateFinding((int) $record->getKey());
                         }),
+                    Action::make('delete')
+                        ->label(__('filament-actions::delete.single.label'))
+                        ->icon('heroicon-o-trash')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->extraAttributes(['data-dusk' => 'delete-finding'])
+                        ->visible(fn (): bool => ! $page->isWorkspaceReadOnly())
+                        ->action(function (Finding $record) use ($page): void {
+                            $page->deleteFinding((int) $record->getKey());
+                        }),
                 ])
                     ->label(__('assestme.workspace.list.actions'))
                     ->icon('heroicon-m-ellipsis-vertical')
                     ->extraAttributes(['data-dusk' => 'finding-actions'])
                     ->iconButton(),
-                Action::make('delete')
-                    ->label(__('filament-actions::delete.single.label'))
-                    ->icon('heroicon-o-trash')
-                    ->iconButton()
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->extraAttributes(['data-dusk' => 'delete-finding'])
-                    ->visible(fn (): bool => ! $page->isWorkspaceReadOnly())
-                    ->action(function (Finding $record) use ($page): void {
-                        $page->deleteFinding((int) $record->getKey());
-                    }),
             ])
             ->recordAction('open')
             ->recordClasses(fn (Finding $record): string => $page->selectedFindingId === (int) $record->getKey() ? 'assestme-finding-row is-selected' : 'assestme-finding-row')

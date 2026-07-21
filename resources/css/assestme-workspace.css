@@ -1,7 +1,13 @@
-.assestme-findings-workspace {
+.assestme-findings-container {
     container-type: inline-size;
+    min-width: 0;
+}
+
+.assestme-findings-workspace {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
+    height: var(--assestme-workspace-available-height);
+    max-height: var(--assestme-workspace-available-height);
     min-width: 0;
     border: 1px solid var(--gray-200);
     border-radius: 0.75rem;
@@ -20,8 +26,13 @@
 }
 
 .assestme-findings-list {
-    padding: 1rem;
+    padding: 0.75rem;
     overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.assestme-findings-workspace.has-inspector .assestme-findings-list {
+    display: none;
 }
 
 .assestme-findings-list__counters {
@@ -45,32 +56,38 @@
     table-layout: fixed;
 }
 
-.assestme-findings-list .fi-ta-row {
+.assestme-findings-list .assestme-finding-row {
     cursor: pointer;
 }
 
-.assestme-findings-list .fi-ta-row > td {
-    padding-block: 0.4rem;
+.assestme-finding-row__open-action {
+    display: none;
 }
 
-.assestme-findings-list .fi-ta-row.is-selected > td {
+.assestme-findings-list .assestme-finding-row.is-selected {
     background: color-mix(in srgb, var(--primary-500) 9%, var(--color-white));
     box-shadow: inset 0.2rem 0 var(--primary-500);
 }
 
-.dark .assestme-findings-list .fi-ta-row.is-selected > td {
+.assestme-findings-list .assestme-finding-row.is-selected .assestme-finding-row__title .fi-ta-text-item {
+    font-weight: 700;
+}
+
+.dark .assestme-findings-list .assestme-finding-row.is-selected {
     background: color-mix(in srgb, var(--primary-500) 13%, var(--gray-900));
 }
 
-.assestme-findings-list .fi-ta-row:focus-within > td {
+.assestme-findings-list .assestme-finding-row:focus,
+.assestme-findings-list .assestme-finding-row:focus-within {
     outline: 2px solid var(--primary-500);
     outline-offset: -2px;
 }
 
 .assestme-finding-row__layout {
-    align-items: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
     gap: 0.75rem;
-    min-height: 4.5rem;
+    min-height: 4.25rem;
 }
 
 .assestme-finding-row__number {
@@ -89,9 +106,9 @@
     display: -webkit-box;
     overflow: hidden;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 1;
     font-size: 0.875rem;
     line-height: 1.25;
+    -webkit-line-clamp: 2;
 }
 
 .assestme-finding-row__problem .fi-ta-text-item {
@@ -176,9 +193,9 @@
 
 .assestme-finding-inspector {
     display: flex;
-    max-height: calc(100vh - 10rem);
+    height: 100%;
+    min-height: 0;
     flex-direction: column;
-    border-left: 1px solid var(--gray-200);
     background: var(--color-white);
     overflow: hidden;
 }
@@ -193,6 +210,8 @@
     position: sticky;
     z-index: 10;
     display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
@@ -220,6 +239,7 @@
 .assestme-finding-inspector__save-actions {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 0.5rem;
     min-width: 0;
 }
@@ -288,50 +308,38 @@
     margin-top: 1rem;
 }
 
-@container (min-width: 70rem) {
+.assestme-finding-inspector__save-actions {
+    width: 100%;
+}
+
+.assestme-finding-row__summary {
+    flex-basis: calc(100% - 3rem);
+}
+
+@container (min-width: 64rem) {
     .assestme-findings-workspace.has-inspector {
-        grid-template-columns: minmax(28rem, 1fr) minmax(32rem, 0.85fr);
+        grid-template-columns: minmax(32rem, 1fr) minmax(28rem, 0.875fr);
     }
-}
 
-@container (min-width: 48rem) and (max-width: 69.999rem) {
-    .assestme-findings-workspace.has-inspector .assestme-finding-inspector {
-        position: absolute;
-        z-index: 30;
-        right: 0;
-        width: min(38rem, 92%);
-        height: min(76rem, calc(100vh - 8rem));
-        box-shadow: -1rem 0 2rem rgb(0 0 0 / 18%);
-    }
-}
-
-@container (max-width: 47.999rem) {
     .assestme-findings-workspace.has-inspector .assestme-findings-list {
-        display: none;
+        display: block;
     }
 
     .assestme-finding-inspector {
-        max-height: none;
-        border-left: 0;
+        border-left: 1px solid var(--gray-200);
     }
 
-    .assestme-finding-inspector__footer,
-    .assestme-finding-inspector__header {
-        flex-wrap: wrap;
-    }
-
-    .assestme-finding-inspector__save-actions {
-        width: 100%;
-        flex-wrap: wrap;
+    .dark .assestme-finding-inspector {
+        border-color: var(--gray-700);
     }
 
     .assestme-finding-row__layout {
-        align-items: flex-start;
-        flex-wrap: wrap;
+        align-items: center;
+        flex-wrap: nowrap;
     }
 
     .assestme-finding-row__summary {
-        flex-basis: calc(100% - 3rem);
+        flex-basis: 22rem;
     }
 }
 

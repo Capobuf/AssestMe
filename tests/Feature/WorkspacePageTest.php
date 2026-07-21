@@ -124,6 +124,25 @@ it('selects one persisted finding and loads its complete inspector state', funct
         ->assertSee(__('assestme.workspace.inspector.description'));
 });
 
+it('exposes one native reorder mode and one visible row action menu', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $this->actingAs($administrator);
+
+    $component = Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()]);
+
+    expect($component->instance()->canReorderFindings())->toBeTrue()
+        ->and($component->instance()->getTable()->isReorderable())->toBeTrue();
+
+    $component
+        ->assertTableActionVisible('open', $finding)
+        ->assertTableActionDoesNotExist('move_up', record: $finding)
+        ->assertTableActionDoesNotExist('move_down', record: $finding)
+        ->assertSeeHtml('assestme-finding-row__open-action')
+        ->assertSeeHtml('data-dusk="finding-actions"');
+});
+
 it('searches and filters the synthetic finding list without relationship query growth', function (): void {
     $this->seed(DatabaseSeeder::class);
     $administrator = User::factory()->create();

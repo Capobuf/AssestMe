@@ -347,27 +347,11 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
 
     public function canReorderFindings(): bool
     {
-        $activeFilters = collect($this->tableFilters ?? [])->flatten()->filter(fn (mixed $value): bool => filled($value));
+        $hasActiveFilters = collect($this->tableFilters ?? [])->flatten()->contains(
+            static fn (mixed $value): bool => is_bool($value) ? $value : filled($value),
+        );
 
-        return ! $this->isWorkspaceReadOnly() && blank($this->tableSearch) && $activeFilters->isEmpty();
-    }
-
-    public function moveFinding(Finding $finding, int $direction): void
-    {
-        $ids = $this->assessmentRecord()->findings()->pluck('id')->map(static fn (mixed $id): int => (int) $id)->all();
-        $index = array_search((int) $finding->getKey(), $ids, true);
-        if (! is_int($index)) {
-            return;
-        }
-
-        $target = $index + $direction;
-        if (! array_key_exists($target, $ids)) {
-            return;
-        }
-
-        [$ids[$index], $ids[$target]] = [$ids[$target], $ids[$index]];
-        $this->expectedVersion = app(ReorderFindings::class)($this->assessmentRecord(), $ids);
-        $this->assessmentRecord()->setAttribute('lock_version', $this->expectedVersion);
+        return ! $this->isWorkspaceReadOnly() && blank($this->tableSearch) && ! $hasActiveFilters;
     }
 
     public function totalFindings(): int

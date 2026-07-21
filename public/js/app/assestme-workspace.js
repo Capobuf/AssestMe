@@ -2,7 +2,9 @@
     'use strict';
 
     let dirty = false;
+    let listScrollTop = 0;
     let livewireHookRegistered = false;
+    let workspaceHeightFrame = null;
 
     const statusElement = () => document.querySelector('[data-assestme-save-status]');
 
@@ -30,6 +32,24 @@
         'input, textarea, select, button, a, [role="button"], [role="menu"], [contenteditable="true"]',
     ));
 
+    const updateWorkspaceAvailableHeight = () => {
+        if (workspaceHeightFrame !== null) {
+            cancelAnimationFrame(workspaceHeightFrame);
+        }
+
+        workspaceHeightFrame = requestAnimationFrame(() => {
+            workspaceHeightFrame = null;
+
+            document.querySelectorAll('[data-assestme-findings-workspace]').forEach((workspace) => {
+                // Filament header and tabs can wrap, so use their real rendered offset instead of a fixed viewport subtraction.
+                const workspaceTop = Math.max(0, workspace.getBoundingClientRect().top);
+                const availableHeight = Math.max(320, Math.floor(window.innerHeight - workspaceTop - 16));
+
+                workspace.style.setProperty('--assestme-workspace-available-height', `${availableHeight}px`);
+            });
+        });
+    };
+
     const enhanceFindingRows = () => {
         document.querySelectorAll('.assestme-finding-row').forEach((row) => {
             row.setAttribute('aria-selected', row.classList.contains('is-selected') ? 'true' : 'false');
@@ -45,7 +65,8 @@
                     return;
                 }
 
-                row.querySelector('[data-dusk="open-finding"]')?.click();
+                listScrollTop = row.closest('.assestme-findings-list')?.scrollTop ?? 0;
+                row.querySelector('.fi-ta-record-content')?.click();
             });
             row.addEventListener('keydown', (event) => {
                 if (isInteractive(event.target) || !['Enter', ' '].includes(event.key)) {
@@ -53,7 +74,8 @@
                 }
 
                 event.preventDefault();
-                row.click();
+                listScrollTop = row.closest('.assestme-findings-list')?.scrollTop ?? 0;
+                row.querySelector('.fi-ta-record-content')?.click();
             });
         });
     };
@@ -64,6 +86,12 @@
         }
 
         enhanceFindingRows();
+        updateWorkspaceAvailableHeight();
+
+        const list = document.querySelector('.assestme-findings-list');
+        if (list && getComputedStyle(list).display !== 'none') {
+            list.scrollTop = listScrollTop;
+        }
     };
 
     const registerLivewireHook = () => {
@@ -77,6 +105,7 @@
 
     document.documentElement.dataset.assestmeWorkspaceAsset = 'loaded';
     enhanceFindingRows();
+    updateWorkspaceAvailableHeight();
 
     document.addEventListener('input', (event) => {
         const element = workspaceStatusFor(event.target);
@@ -143,9 +172,11 @@
     });
 
     document.addEventListener('livewire:init', registerLivewireHook, { once: true });
+    window.addEventListener('resize', updateWorkspaceAvailableHeight);
     window.addEventListener('assestme-finding-selected', () => {
         requestAnimationFrame(() => {
             enhanceFindingRows();
+            updateWorkspaceAvailableHeight();
             document.querySelector('[data-assestme-finding-inspector] input, [data-assestme-finding-inspector] textarea')?.focus();
         });
     });

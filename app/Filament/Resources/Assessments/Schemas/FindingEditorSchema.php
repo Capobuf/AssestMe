@@ -39,7 +39,7 @@ final class FindingEditorSchema
             ->columns(1)
             ->components([
                 Section::make(__('assestme.workspace.inspector.description'))
-                    ->collapsible()
+                    ->compact()
                     ->schema([
                         TextInput::make('title')
                             ->label(__('assestme.findings.fields.title'))
@@ -48,17 +48,23 @@ final class FindingEditorSchema
                             ->extraInputAttributes(['data-dusk' => 'finding-editor-title']),
                         Textarea::make('problem')
                             ->label(__('assestme.findings.fields.problem'))
-                            ->rows(7)
+                            ->rows(4)
                             ->maxLength(20000)
                             ->disabled(self::isReadOnly(...)),
                         Textarea::make('entrepreneur_notes')
                             ->label(__('assestme.findings.fields.entrepreneur_notes'))
-                            ->rows(6)
+                            ->rows(3)
                             ->maxLength(20000)
                             ->disabled(self::isReadOnly(...)),
+                    ]),
+                Section::make(__('assestme.templates.fields.technical_notes'))
+                    ->collapsible()
+                    ->collapsed()
+                    ->compact()
+                    ->schema([
                         Textarea::make('technical_notes')
                             ->label(__('assestme.templates.fields.technical_notes'))
-                            ->rows(6)
+                            ->rows(4)
                             ->maxLength(20000)
                             ->disabled(self::isReadOnly(...)),
                     ]),

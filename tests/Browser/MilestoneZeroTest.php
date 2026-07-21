@@ -183,6 +183,9 @@ final class MilestoneZeroTest extends DuskTestCase
                 ->assertPresent('[data-dusk="add-finding"]')
                 ->assertPresent('[data-dusk="add-template"]')
                 ->assertPresent('[data-dusk="finding-actions"]')
+                ->assertMissing('[data-dusk="open-finding"]')
+                ->assertMissing('[data-dusk="move-up-finding"]')
+                ->assertMissing('[data-dusk="move-down-finding"]')
                 ->assertMissing('.fi-fo-table-repeater')
                 ->assertPresent('.assestme-findings-workspace')
                 ->waitUntil('return document.documentElement.dataset.assestmeWorkspaceAsset === "loaded"');
@@ -305,8 +308,27 @@ final class MilestoneZeroTest extends DuskTestCase
             ));
             Assert::assertSame([], $duplicateLogs, 'Duplicating from the action menu produced severe console errors.');
 
-            $browser->click('[data-dusk="move-down-finding"]')
-                ->pause(500);
+            $browser->script(<<<'JS'
+                const root = document.querySelector('.assestme-findings-workspace').closest('[wire\\:id]');
+                const component = Livewire.find(root.getAttribute('wire:id'));
+                component.$set('tableSearch', '');
+                JS);
+            $browser->pause(500)
+                ->waitFor('button[aria-label="Riordina record"]')
+                ->click('button[aria-label="Riordina record"]')
+                ->waitFor('.fi-ta-reorder-handle');
+            $firstReorderKey = $browser->attribute('.fi-ta-record[x-sortable-item]', 'wire:key');
+            $browser->script(<<<'JS'
+                const sortable = document.querySelector('.fi-ta-content[x-sortable]');
+                const records = Array.from(sortable.querySelectorAll(':scope > [x-sortable-item]'));
+                const dragged = records[0];
+                sortable.insertBefore(dragged, records[3].nextSibling);
+                const event = new CustomEvent('end', { bubbles: true });
+                Object.defineProperty(event, 'item', { value: dragged });
+                sortable.dispatchEvent(event);
+                JS);
+            $browser->waitUntil("return document.querySelector('.fi-ta-record[x-sortable-item]').getAttribute('wire:key') !== ".json_encode($firstReorderKey))
+                ->click('button[aria-label="Termina riordino record"]');
 
             $browser->refresh()->waitFor('[data-dusk="finding-actions"]');
             $beforeDeleteLogs = array_values(array_filter(
@@ -314,7 +336,9 @@ final class MilestoneZeroTest extends DuskTestCase
                 static fn (array $entry): bool => ($entry['level'] ?? '') === 'SEVERE',
             ));
             Assert::assertSame([], $beforeDeleteLogs, 'A finding action before deletion produced severe console errors.');
-            $browser->click('[data-dusk="delete-finding"]');
+            $browser->click('.assestme-finding-row:first-of-type [data-dusk="finding-actions"]')
+                ->waitFor('[data-dusk="delete-finding"]')
+                ->click('[data-dusk="delete-finding"]');
             $browser->waitForText('Conferma')->press('Conferma')
                 ->waitUntil('return document.querySelectorAll(\'.assestme-finding-row\').length === 11');
             $deleteLogs = array_values(array_filter(
@@ -365,7 +389,7 @@ final class MilestoneZeroTest extends DuskTestCase
 
         $assessment->refresh();
         self::assertSame(11, $assessment->findings()->count());
-        self::assertSame(1, Finding::query()->findOrFail($firstFindingId)->sort_order);
+        self::assertGreaterThan(1, Finding::query()->findOrFail($firstFindingId)->sort_order);
         self::assertSame('Finding salvato da inspector', Finding::query()->findOrFail($firstFindingId)->title);
         self::assertSame('planned', Finding::query()->findOrFail($firstFindingId)->status->value);
         self::assertFalse(Finding::query()->findOrFail($firstFindingId)->include_in_report);
