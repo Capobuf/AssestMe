@@ -41,6 +41,21 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 ->waitFor('[data-assestme-finding-inspector]')
                 ->waitUntil('return document.documentElement.dataset.assestmeWorkspaceAsset === "loaded"');
 
+            $rowPresentation = $browser->script(<<<'JS'
+                return Array.from(document.querySelectorAll('.assestme-finding-row')).map((row) => ({
+                    metadata: Boolean(row.querySelector('.assestme-finding-row__metadata')),
+                    state: row.querySelector('.assestme-finding-row__state')?.textContent.trim() ?? null,
+                    completion: row.querySelector('.assestme-finding-row__completion')?.textContent.trim() ?? null,
+                    exclusion: row.querySelector('.assestme-finding-row__report-exclusion')?.getAttribute('aria-label') ?? null,
+                }));
+                JS)[0];
+            Assert::assertFalse(collect($rowPresentation)->contains('metadata', true));
+            Assert::assertNull($rowPresentation[0]['state']);
+            Assert::assertNull($rowPresentation[0]['completion']);
+            Assert::assertSame('Pianificato', $rowPresentation[1]['state']);
+            Assert::assertSame('Escluso dal report', $rowPresentation[1]['exclusion']);
+            Assert::assertStringContainsString('informazioni mancanti', (string) $rowPresentation[9]['completion']);
+
             $measurements = [];
             foreach ([[2560, 1440], [1920, 1080], [1440, 900], [1280, 800], [390, 844]] as [$width, $height]) {
                 self::resizeViewport($browser, $width, $height);
@@ -121,6 +136,30 @@ final class WorkspaceResponsiveTest extends DuskTestCase
             Assert::assertSame('none', self::measureWorkspace($browser)['list']['display']);
 
             self::resizeViewport($browser, 1920, 1080);
+            $browser->script("localStorage.setItem('theme', 'dark'); document.documentElement.classList.add('dark');");
+            $browser->pause(250);
+            $browser->driver->takeScreenshot("{$artifactRoot}/palette-after-1920x1080-dark.png");
+            self::resizeViewport($browser, 1440, 900);
+            $browser->driver->takeScreenshot("{$artifactRoot}/palette-after-1440x900-dark.png");
+            $browser->script("localStorage.setItem('theme', 'light'); document.documentElement.classList.remove('dark');");
+            $browser->pause(250);
+            $browser->driver->takeScreenshot("{$artifactRoot}/palette-after-1440x900-light.png");
+            $browser->script("localStorage.setItem('theme', 'dark'); document.documentElement.classList.add('dark');");
+            self::resizeViewport($browser, 1920, 1080);
+            $navigator = $browser->element('.assestme-findings-list');
+            Assert::assertNotNull($navigator);
+            $navigator->takeElementScreenshot("{$artifactRoot}/palette-after-navigator-selected-dark.png");
+            $browser->click('[data-dusk="new-finding-menu"]')
+                ->waitFor('[data-dusk="add-finding"]');
+            $browser->driver->takeScreenshot("{$artifactRoot}/palette-after-new-finding-menu-dark.png");
+            $browser->click('[data-dusk="new-finding-menu"]')
+                ->click('[data-dusk="export-menu"]')
+                ->waitFor('[data-dusk="generate-pdf"]');
+            $browser->driver->takeScreenshot("{$artifactRoot}/palette-after-export-menu-dark.png");
+            $browser->click('[data-dusk="export-menu"]');
+            $footer = $browser->element('.assestme-workbench-footer');
+            Assert::assertNotNull($footer);
+            $footer->takeElementScreenshot("{$artifactRoot}/palette-after-editor-footer-dark.png");
             $browser->driver->takeScreenshot("{$artifactRoot}/workbench-after-1920x1080.png");
             $pasteEnabled = $browser->script(<<<JS
                 const editor = document.querySelector('[data-assestme-workbench-editor]');
@@ -310,6 +349,35 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 ->waitUntil('return document.querySelector("[data-assestme-save-status]").dataset.status === "conflict"')
                 ->assertSee('Conflitto');
 
+            $navigatorOverflow = $browser->script(<<<'JS'
+                const content = document.querySelector('.assestme-findings-list .fi-ta-content-ctn');
+                const table = content.querySelector('.fi-ta-table');
+                const row = content.querySelector('.assestme-finding-row');
+                const actionCell = row.querySelector('.fi-ta-cell:last-child');
+                const action = actionCell.querySelector('[data-dusk="finding-actions"]');
+                const widths = (element) => ({
+                    client: element.clientWidth,
+                    offset: element.offsetWidth,
+                    scroll: element.scrollWidth,
+                    rect: element.getBoundingClientRect().width,
+                });
+
+                return {
+                    content: widths(content),
+                    table: widths(table),
+                    row: widths(row),
+                    actionCell: widths(actionCell),
+                    action: widths(action),
+                };
+                JS)[0];
+            Assert::assertLessThanOrEqual(
+                $navigatorOverflow['content']['client'] + 1,
+                $navigatorOverflow['content']['scroll'],
+                'The navigator table must not overflow horizontally in the conflict state: '.json_encode($navigatorOverflow),
+            );
+
+            $browser->driver->takeScreenshot(base_path('storage/app/qa-artifacts/palette-after-conflict-1920x1080-dark.png'));
+
             Assert::assertSame('Finding persistence second', $second->fresh()->title);
             self::assertNoSevereBrowserLogs($browser, 'Dirty-state and conflict flows produced severe console errors.');
         });
@@ -322,14 +390,19 @@ final class WorkspaceResponsiveTest extends DuskTestCase
         $administrator = User::factory()->create();
         $assessment = Assessment::factory()->create(['title' => 'Workspace responsive diagnostics']);
         $priorities = PriorityLevel::query()->orderBy('sort_order')->pluck('id')->values();
+        $realisticTitles = [
+            'Backup del NAS non verificato',
+            'NAS appoggiato sopra l’UPS senza staffaggio e protezione dagli urti',
+            'Accessi amministrativi non tracciati',
+            'Patch critiche non installate sui server',
+            'Continuità elettrica del rack non documentata',
+        ];
 
         FindingTemplate::query()->where('is_enabled', true)->orderBy('id')->limit(5)->get()
-            ->each(function (FindingTemplate $template, int $index) use ($assessment, $priorities): void {
+            ->each(function (FindingTemplate $template, int $index) use ($assessment, $priorities, $realisticTitles): void {
                 $finding = app(CopyTemplateToAssessment::class)($assessment, $template);
                 $finding->update([
-                    'title' => $index === 1
-                        ? 'Finding con un titolo volutamente molto lungo per verificare il limite massimo di due righe'
-                        : "Finding completo {$index}",
+                    'title' => $realisticTitles[$index],
                     'problem' => "Problema realistico sulla prima riga.\nDettaglio operativo sulla seconda riga.",
                     'technical_notes' => str_repeat("Nota tecnica articolata per la verifica del form lungo.\n", 12),
                     'priority_level_id' => $priorities[$index % $priorities->count()],
@@ -341,7 +414,13 @@ final class WorkspaceResponsiveTest extends DuskTestCase
 
         Finding::factory()->count(5)->for($assessment)->sequence(
             fn ($sequence): array => [
-                'title' => "Finding incompleto {$sequence->index}",
+                'title' => 'Finding incompleto: '.[
+                    'inventario dei dispositivi di rete',
+                    'responsabile del ripristino non assegnato',
+                    'test di restore non documentato',
+                    'protezione fisica del locale tecnico',
+                    'classificazione degli asset da completare',
+                ][$sequence->index],
                 'problem' => $sequence->index === 4 ? null : "Problema incompleto {$sequence->index}\nSeconda riga descrittiva",
                 'priority_level_id' => $sequence->index === 4 ? null : $priorities[$sequence->index % $priorities->count()],
                 'status' => FindingStatus::Open,

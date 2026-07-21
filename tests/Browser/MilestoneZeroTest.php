@@ -178,9 +178,13 @@ final class MilestoneZeroTest extends DuskTestCase
                 ->waitForLocation('/admin')
                 ->assertPathIs('/admin')
                 ->visit("/admin/assessments/{$assessment->getKey()}/workspace")
-                ->waitFor('[data-dusk="add-finding"]')
+                ->waitFor('[data-dusk="new-finding-menu"]')
                 ->assertSee('Finding')
-                ->assertPresent('[data-dusk="add-finding"]')
+                ->assertSee('Nuovo finding')
+                ->click('[data-dusk="new-finding-menu"]')
+                ->waitFor('[data-dusk="add-finding"]')
+                ->assertSee('Finding vuoto')
+                ->assertSee('Da template')
                 ->assertPresent('[data-dusk="add-template"]')
                 ->assertPresent('[data-dusk="finding-actions"]')
                 ->assertMissing('[data-dusk="open-finding"]')
@@ -189,6 +193,7 @@ final class MilestoneZeroTest extends DuskTestCase
                 ->assertMissing('.fi-fo-table-repeater')
                 ->assertPresent('.assestme-findings-workspace')
                 ->waitUntil('return document.documentElement.dataset.assestmeWorkspaceAsset === "loaded"');
+            $browser->click('[data-dusk="new-finding-menu"]');
 
             $browser->type('input[type="search"]', 'ricerca Dusk')
                 ->waitUntil('return document.querySelectorAll(\'.assestme-finding-row\').length === 1');
@@ -321,8 +326,8 @@ final class MilestoneZeroTest extends DuskTestCase
                 component.$set('tableSearch', '');
                 JS);
             $browser->pause(500)
-                ->waitFor('button[aria-label="Riordina record"]')
-                ->click('button[aria-label="Riordina record"]')
+                ->waitForText('Riordina')
+                ->press('Riordina')
                 ->waitFor('.fi-ta-reorder-handle');
             $firstReorderKey = $browser->attribute('[x-sortable-item]', 'wire:key');
             $browser->script(<<<'JS'
@@ -335,7 +340,7 @@ final class MilestoneZeroTest extends DuskTestCase
                 sortable.dispatchEvent(event);
                 JS);
             $browser->waitUntil("return document.querySelector('[x-sortable-item]').getAttribute('wire:key') !== ".json_encode($firstReorderKey))
-                ->click('button[aria-label="Termina riordino record"]');
+                ->press('Fine riordino');
 
             $browser->refresh()->waitFor('[data-dusk="finding-actions"]');
             $beforeDeleteLogs = array_values(array_filter(

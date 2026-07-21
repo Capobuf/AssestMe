@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Assessments\CopyTemplateToAssessment;
+use App\Enums\FindingStatus;
 use App\Enums\ScopeType;
 use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Resources\Assessments\Pages\CreateAssessment;
@@ -236,4 +237,46 @@ it('searches and filters the synthetic finding list without relationship query g
     Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])->assertOk();
     expect(count(DB::getQueryLog()))->toBeLessThanOrEqual(20);
     DB::disableQueryLog();
+});
+
+it('renders only selection-critical and exceptional information in navigator rows', function (): void {
+    $this->seed(DatabaseSeeder::class);
+    $assessment = Assessment::factory()->create();
+    $finding = app(CopyTemplateToAssessment::class)(
+        $assessment,
+        FindingTemplate::query()->where('default_scope_type', ScopeType::Organization->value)->firstOrFail(),
+    );
+    $finding->update([
+        'title' => 'NAS appoggiato sopra l’UPS',
+        'status' => FindingStatus::Open,
+        'include_in_report' => true,
+    ]);
+
+    $completeHtml = view('filament.resources.assessments.tables.finding-workbench-state', [
+        'getRecord' => static fn (): Finding => $finding->fresh(),
+    ])->render();
+
+    expect($completeHtml)
+        ->toContain('NAS appoggiato sopra l’UPS')
+        ->toContain((string) $finding->priorityLevel?->label)
+        ->not->toContain('assestme-finding-row__metadata')
+        ->not->toContain('assestme-finding-row__state')
+        ->not->toContain('assestme-finding-row__completion')
+        ->not->toContain((string) $finding->category?->name);
+
+    $finding->update([
+        'problem' => null,
+        'status' => FindingStatus::InProgress,
+        'include_in_report' => false,
+    ]);
+    $exceptionHtml = view('filament.resources.assessments.tables.finding-workbench-state', [
+        'getRecord' => static fn (): Finding => $finding->fresh(),
+    ])->render();
+
+    expect($exceptionHtml)
+        ->toContain(FindingStatus::options()[FindingStatus::InProgress->value])
+        ->toContain('mancant')
+        ->toContain('aria-label="Escluso dal report"')
+        ->not->toContain('>Aperto<')
+        ->not->toContain('>Completo<');
 });

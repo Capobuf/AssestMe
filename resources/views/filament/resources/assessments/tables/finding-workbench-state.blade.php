@@ -11,31 +11,32 @@
         <strong class="assestme-finding-row__title">
             {{ $record->title ?: __('assestme.workspace.list.untitled') }}
         </strong>
-        <span class="assestme-finding-row__metadata">
-            {{ \App\Filament\Resources\Assessments\Tables\AssessmentFindingsTable::metadata($record) }}
-        </span>
         <div class="assestme-finding-row__signals">
             <span
                 class="assestme-finding-row__priority"
-                style="--assestme-priority-color: {{ $record->priorityLevel?->color ?? '#9CA3AF' }}"
+                style="--assestme-priority-color: {{ $record->priorityLevel?->color ?? '#8A8A8A' }}"
             >
                 <span aria-hidden="true"></span>
                 {{ $record->priorityLevel?->label ?? __('assestme.workspace.list.priority_missing') }}
             </span>
-            <span class="assestme-finding-row__state">
-                {{ \App\Enums\FindingStatus::options()[$record->status->value] }}
-            </span>
-            @if (! $record->include_in_report)
-                <span class="assestme-finding-row__completion is-muted">
-                    {{ __('assestme.workspace.list.excluded') }}
+            @if ($record->status !== \App\Enums\FindingStatus::Open)
+                <span class="assestme-finding-row__state">
+                    {{ \App\Enums\FindingStatus::options()[$record->status->value] }}
                 </span>
-            @elseif ($messages !== [])
+            @endif
+            @if ($messages !== [])
                 <span class="assestme-finding-row__completion is-incomplete" title="{{ implode(' · ', $messages) }}">
-                    {{ __('assestme.workspace.list.incomplete') }}
+                    {{ trans_choice('assestme.workspace.list.incomplete_details', count($messages), ['count' => count($messages)]) }}
                 </span>
-            @else
-                <span class="assestme-finding-row__completion is-complete">
-                    {{ __('assestme.workspace.list.complete') }}
+            @endif
+            @if (! $record->include_in_report)
+                <span
+                    class="assestme-finding-row__report-exclusion"
+                    title="{{ __('assestme.workspace.list.excluded') }}"
+                    aria-label="{{ __('assestme.workspace.list.excluded') }}"
+                >
+                    <x-filament::icon icon="heroicon-m-eye-slash" aria-hidden="true" />
+                    <span class="assestme-sr-only">{{ __('assestme.workspace.list.excluded') }}</span>
                 </span>
             @endif
         </div>

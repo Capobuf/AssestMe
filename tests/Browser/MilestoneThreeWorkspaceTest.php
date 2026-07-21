@@ -29,7 +29,7 @@ final class MilestoneThreeWorkspaceTest extends DuskTestCase
             $browser->loginAs($administrator)
                 ->visit("/admin/assessments/{$assessment->getKey()}/workspace")
                 ->waitFor('.assestme-finding-row')
-                ->assertSee('Aggiungi da template')
+                ->assertSee('Nuovo finding')
                 ->assertSee('Completa assessment')
                 ->assertSee('Anteprima riepilogo')
                 ->assertSee('File Generati')
@@ -44,7 +44,7 @@ final class MilestoneThreeWorkspaceTest extends DuskTestCase
             $browser->waitForText('Conferma')
                 ->press('Conferma')
                 ->waitForText('Riapri assessment')
-                ->assertMissing('[data-dusk="add-finding"]')
+                ->assertMissing('[data-dusk="new-finding-menu"]')
                 ->click('.assestme-finding-row:first-of-type')
                 ->waitFor('[data-assestme-finding-inspector]')
                 ->assertMissing('[data-dusk="save-finding"]')
@@ -53,7 +53,7 @@ final class MilestoneThreeWorkspaceTest extends DuskTestCase
             $browser->script("Array.from(document.querySelectorAll('button')).find((button) => button.textContent.includes('Riapri assessment')).click()");
             $browser->waitForText('Conferma')
                 ->press('Conferma')
-                ->waitFor('[data-dusk="add-finding"]');
+                ->waitFor('[data-dusk="new-finding-menu"]');
 
             $severeLogs = array_values(array_filter(
                 $browser->driver->manage()->getLog('browser'),

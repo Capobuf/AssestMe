@@ -11,6 +11,7 @@
                 wire:click="setWorkspaceTab('{{ $tab }}')"
                 tag="button"
                 type="button"
+                class="assestme-workspace-tab {{ $activeWorkspaceTab === $tab ? 'is-active' : '' }}"
             >
                 {{ $label }}
             </x-filament::tabs.item>
@@ -129,10 +130,10 @@
                             </div>
                             @if (! $this->isWorkspaceReadOnly())
                                 <div class="assestme-workbench-footer__actions">
-                                    <x-filament::button type="submit" data-dusk="save-finding">
+                                    <x-filament::button type="submit" class="assestme-save-primary" data-dusk="save-finding">
                                         {{ __('assestme.workspace.inspector.save') }}
                                     </x-filament::button>
-                                    <x-filament::button type="button" color="gray" wire:click="saveFindingAndNext" data-dusk="save-finding-next">
+                                    <x-filament::button type="button" color="gray" outlined wire:click="saveFindingAndNext" data-dusk="save-finding-next">
                                         {{ __('assestme.workspace.inspector.save_next') }}
                                     </x-filament::button>
                                 </div>

@@ -67,29 +67,41 @@ final class AssessmentFindingsTable
                     ->query(fn (Builder $query): Builder => app(AssessFindingCompleteness::class)->applyIncompleteFilter($query)),
             ])
             ->headerActions([
-                Action::make('add_blank')
-                    ->label(__('assestme.workspace.add_finding'))
+                ActionGroup::make([
+                    Action::make('add_blank')
+                        ->label(__('assestme.workspace.add_blank_finding'))
+                        ->icon('heroicon-o-document-plus')
+                        ->keyBindings(['alt+n'])
+                        ->extraAttributes(['data-dusk' => 'add-finding'])
+                        ->action(function () use ($page): void {
+                            $page->createBlankFinding();
+                        }),
+                    Action::make('add_template')
+                        ->label(__('assestme.workspace.add_from_template'))
+                        ->icon('heroicon-o-book-open')
+                        ->keyBindings(['alt+t'])
+                        ->extraAttributes(['data-dusk' => 'add-template'])
+                        ->schema([
+                            Select::make('template_id')
+                                ->label(__('assestme.workspace.template'))
+                                ->options(fn (): array => FindingTemplate::query()->where('is_enabled', true)->orderBy('title')->pluck('title', 'id')->all())
+                                ->searchable()
+                                ->required(),
+                        ])
+                        ->action(function (array $data) use ($page): void {
+                            $page->createFromTemplate((int) $data['template_id']);
+                        }),
+                ])
+                    ->label(__('assestme.workspace.new_finding'))
                     ->icon('heroicon-o-plus')
-                    ->extraAttributes(['data-dusk' => 'add-finding'])
-                    ->visible(fn (): bool => ! $page->isWorkspaceReadOnly())
-                    ->action(function () use ($page): void {
-                        $page->createBlankFinding();
-                    }),
-                Action::make('add_template')
-                    ->label(__('assestme.workspace.add_template'))
-                    ->icon('heroicon-o-book-open')
-                    ->extraAttributes(['data-dusk' => 'add-template'])
-                    ->visible(fn (): bool => ! $page->isWorkspaceReadOnly())
-                    ->schema([
-                        Select::make('template_id')
-                            ->label(__('assestme.workspace.template'))
-                            ->options(fn (): array => FindingTemplate::query()->where('is_enabled', true)->orderBy('title')->pluck('title', 'id')->all())
-                            ->searchable()
-                            ->required(),
+                    ->color('gray')
+                    ->outlined()
+                    ->button()
+                    ->extraAttributes([
+                        'class' => 'assestme-new-finding-action',
+                        'data-dusk' => 'new-finding-menu',
                     ])
-                    ->action(function (array $data) use ($page): void {
-                        $page->createFromTemplate((int) $data['template_id']);
-                    }),
+                    ->visible(fn (): bool => ! $page->isWorkspaceReadOnly()),
             ])
             ->recordActions([
                 Action::make('open')
@@ -130,22 +142,17 @@ final class AssessmentFindingsTable
             ->recordAction('open')
             ->recordClasses(fn (Finding $record): string => $page->selectedFindingId === (int) $record->getKey() ? 'assestme-finding-row is-selected' : 'assestme-finding-row')
             ->reorderable('sort_order', fn (): bool => $page->canReorderFindings())
+            ->reorderRecordsTriggerAction(fn (Action $action, bool $isReordering): Action => $action
+                ->label($isReordering
+                    ? __('assestme.workspace.list.finish_reordering')
+                    : __('assestme.workspace.list.reorder'))
+                ->button()
+                ->outlined()
+                ->size('xs'))
             ->paginationPageOptions([10, 25, 50])
             ->defaultPaginationPageOption(50)
             ->emptyStateHeading(__('assestme.workspace.list.empty'))
             ->emptyStateDescription(__('assestme.workspace.list.empty_description'))
             ->striped(false);
-    }
-
-    public static function metadata(Finding $record): string
-    {
-        $category = $record->category_id === null
-            ? __('assestme.workspace.list.category_missing')
-            : $record->category->name;
-        $scope = __('assestme.scopes.'.$record->scope_type->value);
-        $solutions = trans_choice('assestme.workspace.list.solutions_count', (int) $record->solutions_count, ['count' => $record->solutions_count]);
-        $evidences = trans_choice('assestme.workspace.list.evidences_count', (int) $record->evidences_count, ['count' => $record->evidences_count]);
-
-        return "{$category} · {$scope} · {$solutions} · {$evidences}";
     }
 }

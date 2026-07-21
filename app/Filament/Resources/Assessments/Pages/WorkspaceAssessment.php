@@ -36,6 +36,7 @@ use App\Models\Finding;
 use App\Models\FindingTemplate;
 use App\Settings\GeneralSettings;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
@@ -492,14 +493,19 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
         ]);
     }
 
-    /** @return array<Action> */
+    /** @return array<Action | ActionGroup> */
     protected function getHeaderActions(): array
     {
         return [
             Action::make('complete')
                 ->label(__('assestme.workspace.complete'))
                 ->icon('heroicon-o-check-circle')
-                ->color('success')
+                ->color('gray')
+                ->outlined()
+                ->extraAttributes([
+                    'class' => 'assestme-complete-action',
+                    'data-dusk' => 'complete-assessment',
+                ])
                 ->requiresConfirmation()
                 ->visible(fn (): bool => $this->assessmentRecord()->status === AssessmentStatus::Draft)
                 ->action(function (): void {
@@ -509,33 +515,46 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
             Action::make('reopen')
                 ->label(__('assestme.workspace.reopen'))
                 ->icon('heroicon-o-lock-open')
+                ->color('gray')
+                ->outlined()
                 ->requiresConfirmation()
                 ->visible(fn (): bool => $this->assessmentRecord()->status !== AssessmentStatus::Draft)
                 ->action(function (): void {
                     $assessment = app(ReopenAssessment::class)($this->assessmentRecord());
                     $this->redirect(AssessmentResource::getUrl('workspace', ['record' => $assessment]), navigate: false);
                 }),
-            Action::make('download_pdf')
-                ->label(__('assestme.workspace.download_pdf'))
-                ->icon('heroicon-o-document-arrow-down')
-                ->extraAttributes(['data-dusk' => 'generate-pdf'])
-                ->action(function (): void {
-                    $this->generatePdf();
-                }),
-            Action::make('download_xlsx')
-                ->label(__('assestme.workspace.download_xlsx'))
-                ->icon('heroicon-o-table-cells')
-                ->extraAttributes(['data-dusk' => 'generate-xlsx'])
-                ->modalHeading(__('assestme.workspace.generate_xlsx_heading'))
-                ->modalSubmitActionLabel(__('assestme.workspace.generate_xlsx_confirm'))
-                ->schema([
-                    Toggle::make('include_excluded_findings')
-                        ->label(__('assestme.workspace.include_excluded_findings_in_xlsx'))
-                        ->default(fn (): bool => app(GeneralSettings::class)->report_excluded_findings_in_xlsx),
-                ])
-                ->action(function (array $data): void {
-                    $this->generateWorkbook((bool) ($data['include_excluded_findings'] ?? false));
-                }),
+            ActionGroup::make([
+                Action::make('download_pdf')
+                    ->label(__('assestme.workspace.download_pdf'))
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->extraAttributes(['data-dusk' => 'generate-pdf'])
+                    ->action(function (): void {
+                        $this->generatePdf();
+                    }),
+                Action::make('download_xlsx')
+                    ->label(__('assestme.workspace.download_xlsx'))
+                    ->icon('heroicon-o-table-cells')
+                    ->extraAttributes(['data-dusk' => 'generate-xlsx'])
+                    ->modalHeading(__('assestme.workspace.generate_xlsx_heading'))
+                    ->modalSubmitActionLabel(__('assestme.workspace.generate_xlsx_confirm'))
+                    ->schema([
+                        Toggle::make('include_excluded_findings')
+                            ->label(__('assestme.workspace.include_excluded_findings_in_xlsx'))
+                            ->default(fn (): bool => app(GeneralSettings::class)->report_excluded_findings_in_xlsx),
+                    ])
+                    ->action(function (array $data): void {
+                        $this->generateWorkbook((bool) ($data['include_excluded_findings'] ?? false));
+                    }),
+            ])
+                ->label(__('assestme.workspace.export'))
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('gray')
+                ->outlined()
+                ->button()
+                ->extraAttributes([
+                    'class' => 'assestme-export-action',
+                    'data-dusk' => 'export-menu',
+                ]),
         ];
     }
 

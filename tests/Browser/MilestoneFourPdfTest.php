@@ -36,6 +36,9 @@ final class MilestoneFourPdfTest extends DuskTestCase
         $this->browse(function (Browser $browser) use ($administrator, $assessment): void {
             $browser->loginAs($administrator)
                 ->visit("/admin/assessments/{$assessment->getKey()}/workspace")
+                ->waitFor('[data-dusk="export-menu"]')
+                ->assertSee('Esporta')
+                ->click('[data-dusk="export-menu"]')
                 ->waitFor('[data-dusk="generate-pdf"]')
                 ->assertSee('Genera PDF')
                 ->click('[data-dusk="generate-pdf"]')

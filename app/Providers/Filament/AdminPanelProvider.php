@@ -28,6 +28,36 @@ use OccTherapist\AdvancedTableExportForFilament\AdvancedTableExportForFilamentPl
 
 class AdminPanelProvider extends PanelProvider
 {
+    /** @var array<int, string> */
+    private const PRIMARY_PALETTE = [
+        50 => '#FCFFE6',
+        100 => '#F8FFBF',
+        200 => '#F1FF7A',
+        300 => '#EBFF3D',
+        400 => '#E6FF22',
+        500 => '#E1FB15',
+        600 => '#C9E20F',
+        700 => '#A6BC08',
+        800 => '#7D8E05',
+        900 => '#566203',
+        950 => '#2C3300',
+    ];
+
+    /** @var array<int, string> */
+    private const SUCCESS_PALETTE = [
+        50 => '#ECFDF5',
+        100 => '#D1FAE5',
+        200 => '#A7F3D0',
+        300 => '#6EE7B7',
+        400 => '#4ADE9B',
+        500 => '#32D583',
+        600 => '#20B96D',
+        700 => '#178E55',
+        800 => '#146C43',
+        900 => '#125637',
+        950 => '#082F20',
+    ];
+
     public function panel(Panel $panel): Panel
     {
         return $panel
@@ -48,7 +78,9 @@ class AdminPanelProvider extends PanelProvider
                 Js::make('assestme-workspace', resource_path('js/assestme-workspace.js')),
             ])
             ->colors([
-                'primary' => Color::Blue,
+                'gray' => Color::Neutral,
+                'primary' => self::PRIMARY_PALETTE,
+                'success' => self::SUCCESS_PALETTE,
             ])
             ->plugins([
                 FilamentRightClickPlugin::make(),
