@@ -14,11 +14,6 @@ use App\Models\PriorityLevel;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Select;
-use Filament\Tables\Columns\Layout\Split;
-use Filament\Tables\Columns\Layout\Stack;
-use Filament\Tables\Columns\SelectColumn;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Columns\ViewColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -32,41 +27,9 @@ final class AssessmentFindingsTable
         return $table
             ->query($page->findingsQuery())
             ->columns([
-                Split::make([
-                    TextColumn::make('sort_order')
-                        ->formatStateUsing(fn (int $state): string => str_pad((string) $state, 2, '0', STR_PAD_LEFT))
-                        ->extraAttributes(['class' => 'assestme-finding-row__number']),
-                    Stack::make([
-                        TextColumn::make('title')
-                            ->placeholder(__('assestme.workspace.list.untitled'))
-                            ->weight('semibold')
-                            ->lineClamp(2)
-                            ->extraAttributes(['class' => 'assestme-finding-row__title']),
-                        TextColumn::make('problem')
-                            ->placeholder(__('assestme.workspace.list.problem_missing'))
-                            ->lineClamp(2)
-                            ->extraAttributes(['class' => 'assestme-finding-row__problem']),
-                        TextColumn::make('metadata')
-                            ->state(fn (Finding $record): string => self::metadata($record))
-                            ->lineClamp(1)
-                            ->extraAttributes(['class' => 'assestme-finding-row__metadata']),
-                    ])->extraAttributes(['class' => 'assestme-finding-row__summary']),
-                    ViewColumn::make('priority')
-                        ->view('filament.resources.assessments.tables.finding-priority'),
-                    ViewColumn::make('completeness')
-                        ->view('filament.resources.assessments.tables.finding-completeness'),
-                    SelectColumn::make('status')
-                        ->label(__('assestme.findings.fields.status'))
-                        ->options(FindingStatus::options())
-                        ->disabled(fn (): bool => $page->isWorkspaceReadOnly() || $page->saveStatus === WorkspaceAssessment::STATUS_CONFLICT)
-                        ->updateStateUsing(fn (Finding $record, mixed $state): mixed => $page->updateInlineStatus($record, (string) $state))
-                        ->extraAttributes(['class' => 'assestme-finding-row__status', 'data-dusk' => 'finding-inline-status']),
-                    ToggleColumn::make('include_in_report')
-                        ->label(__('assestme.findings.fields.include'))
-                        ->disabled(fn (): bool => $page->isWorkspaceReadOnly() || $page->saveStatus === WorkspaceAssessment::STATUS_CONFLICT)
-                        ->updateStateUsing(fn (Finding $record, mixed $state): mixed => $page->updateInlineReportInclusion($record, (bool) $state))
-                        ->extraAttributes(['class' => 'assestme-finding-row__report', 'data-dusk' => 'finding-inline-report']),
-                ])->extraAttributes(['class' => 'assestme-finding-row__layout']),
+                ViewColumn::make('workbench_summary')
+                    ->label(__('assestme.workspace.tabs.findings'))
+                    ->view('filament.resources.assessments.tables.finding-workbench-state'),
             ])
             ->searchable()
             ->searchPlaceholder(__('assestme.workspace.list.search'))
@@ -174,7 +137,7 @@ final class AssessmentFindingsTable
             ->striped(false);
     }
 
-    private static function metadata(Finding $record): string
+    public static function metadata(Finding $record): string
     {
         $category = $record->category_id === null
             ? __('assestme.workspace.list.category_missing')

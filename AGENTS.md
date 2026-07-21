@@ -17,7 +17,7 @@ Read `plan.md` completely before changing code. `plan.md` version 2.3 is the aut
 - Laravel 13.
 - Filament 5.
 - SQLite.
-- Native Filament 5 `Repeater::table()` for the assessment workspace.
+- Filament Table Builder as the authoritative Finding navigator, with native Filament components for the selected-Finding editor.
 - Spatie Laravel PDF with DOMPDF.
 - PhpSpreadsheet.
 - Opis JSON Schema.
@@ -94,13 +94,14 @@ Run development and verification commands through the Docker Compose development
 
 ## UI
 
-- The native Filament 5 table Repeater is the central grid and must be proven with 10, 25, and 50 findings.
-- Long fields are multiline.
-- Nested solutions/evidence use a row slide-over, not visible grid cells.
+- The Finding workspace is an application-style three-area workbench: compact navigator, dominant editor, and contextual properties panel.
+- Filament Table Builder remains the authoritative Finding list engine and must be proven with 10, 25, and 50 findings.
+- Long fields are multiline; solutions and evidence are edited in the selected-Finding workbench, never in navigator cells.
 - Show explicit saving, saved, unsaved, offline, error, and conflict states.
 - Right-click actions always have visible accessible equivalents.
 - Do not use color alone.
-- Mobile supports essential vertical editing and evidence capture; do not claim spreadsheet parity.
+- Narrow viewports use deliberate sequential navigator/editor views; contextual properties remain accessible from the editor.
+- Mobile supports essential vertical editing and evidence capture; do not claim desktop workbench parity.
 
 ## Tests and gates
 

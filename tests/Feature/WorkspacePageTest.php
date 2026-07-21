@@ -124,6 +124,55 @@ it('selects one persisted finding and loads its complete inspector state', funct
         ->assertSee(__('assestme.workspace.inspector.description'));
 });
 
+it('persists main editor and contextual property changes through one signed finding save', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->set('findingData.title', 'Finding aggiornato dal workbench')
+        ->set('findingData.status', 'planned')
+        ->set('findingData.include_in_report', false)
+        ->call('saveFinding')
+        ->assertHasNoErrors()
+        ->assertSet('saveStatus', WorkspaceAssessment::STATUS_SAVED)
+        ->assertSee(__('assestme.workspace.properties.label'));
+
+    $saved = $finding->fresh();
+    expect($saved->title)->toBe('Finding aggiornato dal workbench')
+        ->and($saved->status->value)->toBe('planned')
+        ->and($saved->include_in_report)->toBeFalse()
+        ->and($assessment->fresh()->lock_version)->toBe(1);
+});
+
+it('keeps an invalid contextual scope visible without persisting partial workbench changes', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create([
+        'title' => 'Finding invariato',
+        'scope_type' => ScopeType::Organization,
+        'sort_order' => 1,
+    ]);
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->set('findingData.title', 'Modifica non persistita')
+        ->set('findingData.scope_type', ScopeType::SelectedAssets->value)
+        ->set('findingData.asset_ids', [])
+        ->call('saveFinding')
+        ->assertSet('findingData.title', 'Modifica non persistita')
+        ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
+        ->assertHasErrors(['findingData.scope']);
+
+    $persisted = $finding->fresh();
+    expect($persisted->title)->toBe('Finding invariato')
+        ->and($persisted->scope_type)->toBe(ScopeType::Organization)
+        ->and($assessment->fresh()->lock_version)->toBe(0);
+});
+
 it('exposes one native reorder mode and one visible row action menu', function (): void {
     $administrator = User::factory()->create();
     $assessment = Assessment::factory()->create();

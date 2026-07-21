@@ -199,10 +199,14 @@ final class MilestoneZeroTest extends DuskTestCase
                 JS);
             $browser->waitUntil('return document.querySelectorAll(\'.assestme-finding-row\').length === 10');
 
-            $browser->select('[data-dusk="finding-inline-status"] select', 'planned')
-                ->waitUntil('return document.querySelector(\'[data-dusk="finding-inline-status"] select\').value === "planned"')
-                ->click('[data-dusk="finding-inline-report"] [role="switch"]')
-                ->waitUntil('return document.querySelector(\'[data-dusk="finding-inline-report"] [role="switch"]\').getAttribute("aria-checked") === "false"');
+            $browser->click('.assestme-finding-row:first-of-type')
+                ->waitFor('[data-assestme-finding-inspector]')
+                ->select('[data-dusk="finding-property-status"] select', 'planned')
+                ->click('[data-dusk="finding-property-report"]')
+                ->click('[data-dusk="save-finding"]')
+                ->waitUntil('return document.querySelector(\'[data-assestme-save-status]\').dataset.status === "saved"')
+                ->click('[data-dusk="finding-close"]')
+                ->waitUntilMissing('[data-assestme-finding-inspector]');
 
             $browser->script(<<<'JS'
                 const root = document.querySelector('.assestme-findings-workspace').closest('[wire\\:id]');
@@ -220,13 +224,11 @@ final class MilestoneZeroTest extends DuskTestCase
                 const workspace = document.querySelector('.assestme-findings-workspace');
                 const list = document.querySelector('.assestme-findings-list');
                 const firstRow = document.querySelector('.assestme-finding-row');
-                const problem = firstRow.querySelector('.assestme-finding-row__problem');
 
                 return {
                     documentClientWidth: document.documentElement.clientWidth,
                     documentScrollWidth: document.documentElement.scrollWidth,
                     firstRowHeight: firstRow.getBoundingClientRect().height,
-                    problemHeight: problem.getBoundingClientRect().height,
                     workspaceWidth: workspace.getBoundingClientRect().width,
                     listClientWidth: list.clientWidth,
                     listScrollWidth: list.scrollWidth,
@@ -236,8 +238,7 @@ final class MilestoneZeroTest extends DuskTestCase
                 JS)[0];
 
             Assert::assertGreaterThanOrEqual(72, $desktopLayout['firstRowHeight']);
-            Assert::assertLessThanOrEqual(110, $desktopLayout['firstRowHeight']);
-            Assert::assertLessThanOrEqual(44, $desktopLayout['problemHeight']);
+            Assert::assertLessThanOrEqual(120, $desktopLayout['firstRowHeight']);
             Assert::assertLessThanOrEqual($desktopLayout['listClientWidth'] + 1, $desktopLayout['listScrollWidth']);
             Assert::assertLessThanOrEqual($desktopLayout['documentClientWidth'] + 1, $desktopLayout['documentScrollWidth']);
             Assert::assertSame('false', $desktopLayout['selected']);
@@ -247,28 +248,34 @@ final class MilestoneZeroTest extends DuskTestCase
             $browser->click('.assestme-finding-row:first-of-type')
                 ->waitFor('[data-assestme-finding-inspector]')
                 ->assertSee('Descrizione')
-                ->assertSee('Ambito e rischio')
                 ->assertSee('Soluzioni')
-                ->assertSee('Evidenze');
+                ->assertSee('Evidenze')
+                ->assertSee('Proprietà');
+            $propertyText = $browser->script("return document.querySelector('.assestme-workbench-properties__body').textContent")[0];
+            Assert::assertStringContainsString('Si applica a', $propertyText);
+            Assert::assertStringContainsString('Rischio', $propertyText);
 
             $selectedLayout = $browser->script(<<<'JS'
                 const workspace = document.querySelector('.assestme-findings-workspace');
-                const inspector = document.querySelector('.assestme-finding-inspector');
+                const editor = document.querySelector('.assestme-workbench-editor');
+                const properties = document.querySelector('.assestme-workbench-properties');
                 const selected = document.querySelector('.assestme-finding-row.is-selected');
 
                 return {
                     hasInspector: workspace.classList.contains('has-inspector'),
-                    inspectorWidth: inspector.getBoundingClientRect().width,
+                    editorWidth: editor.getBoundingClientRect().width,
+                    propertiesWidth: properties.getBoundingClientRect().width,
                     selected: selected?.getAttribute('aria-selected'),
                 };
                 JS)[0];
             Assert::assertTrue($selectedLayout['hasInspector']);
-            Assert::assertGreaterThan(0, $selectedLayout['inspectorWidth']);
+            Assert::assertGreaterThan(0, $selectedLayout['editorWidth']);
+            Assert::assertGreaterThan(0, $selectedLayout['propertiesWidth']);
             Assert::assertSame('true', $selectedLayout['selected']);
             $browser->driver->takeScreenshot("{$artifactRoot}/workspace-inspector-1440-light.png");
 
             $browser->script(<<<'JS'
-                const title = document.querySelector('.assestme-finding-inspector input');
+                const title = document.querySelector('[data-dusk="finding-editor-title"]');
                 title.value = 'Finding salvato da inspector';
                 title.dispatchEvent(new Event('input', { bubbles: true }));
                 document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
@@ -317,9 +324,9 @@ final class MilestoneZeroTest extends DuskTestCase
                 ->waitFor('button[aria-label="Riordina record"]')
                 ->click('button[aria-label="Riordina record"]')
                 ->waitFor('.fi-ta-reorder-handle');
-            $firstReorderKey = $browser->attribute('.fi-ta-record[x-sortable-item]', 'wire:key');
+            $firstReorderKey = $browser->attribute('[x-sortable-item]', 'wire:key');
             $browser->script(<<<'JS'
-                const sortable = document.querySelector('.fi-ta-content[x-sortable]');
+                const sortable = document.querySelector('[x-sortable-item]').parentElement;
                 const records = Array.from(sortable.querySelectorAll(':scope > [x-sortable-item]'));
                 const dragged = records[0];
                 sortable.insertBefore(dragged, records[3].nextSibling);
@@ -327,7 +334,7 @@ final class MilestoneZeroTest extends DuskTestCase
                 Object.defineProperty(event, 'item', { value: dragged });
                 sortable.dispatchEvent(event);
                 JS);
-            $browser->waitUntil("return document.querySelector('.fi-ta-record[x-sortable-item]').getAttribute('wire:key') !== ".json_encode($firstReorderKey))
+            $browser->waitUntil("return document.querySelector('[x-sortable-item]').getAttribute('wire:key') !== ".json_encode($firstReorderKey))
                 ->click('button[aria-label="Termina riordino record"]');
 
             $browser->refresh()->waitFor('[data-dusk="finding-actions"]');

@@ -49,6 +49,14 @@ return [
             'report' => false,
         ],
 
+        // Livewire selects this disk for HTTP uploads while the application runs in the test environment.
+        'tmp-for-tests' => [
+            'driver' => 'local',
+            'root' => storage_path('framework/testing/disks/tmp-for-tests'),
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

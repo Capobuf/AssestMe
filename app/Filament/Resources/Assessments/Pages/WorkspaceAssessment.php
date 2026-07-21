@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Assessments\Pages;
 
+use App\Actions\Assessments\AssessFindingCompleteness;
 use App\Actions\Assessments\CompleteAssessment;
 use App\Actions\Assessments\CopyTemplateToAssessment;
 use App\Actions\Assessments\CreateBlankFinding;
@@ -116,6 +117,13 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
     public function findingEditor(Schema $schema): Schema
     {
         return FindingEditorSchema::configure($schema)
+            ->model($this->selectedFinding())
+            ->statePath('findingData');
+    }
+
+    public function findingProperties(Schema $schema): Schema
+    {
+        return FindingEditorSchema::properties($schema)
             ->model($this->selectedFinding())
             ->statePath('findingData');
     }
@@ -467,6 +475,14 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
         return is_int($index) ? $index + 1 : null;
     }
 
+    /** @return list<string> */
+    public function selectedFindingCompleteness(): array
+    {
+        $finding = $this->selectedFinding();
+
+        return $finding instanceof Finding ? app(AssessFindingCompleteness::class)($finding) : [];
+    }
+
     public function summaryPreview(): string
     {
         return __('assestme.workspace.summary_preview', [
@@ -632,7 +648,9 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
         }
 
         $this->selectedFindingId = $findingId;
-        $this->findingEditorSchema()->model($finding)->fill(FindingEditorSchema::data($finding));
+        $data = FindingEditorSchema::data($finding);
+        $this->findingPropertiesSchema()->model($finding)->fill($data);
+        $this->findingEditorSchema()->model($finding)->fill($data);
         $this->saveStatus = self::STATUS_SAVED;
         $this->saveError = null;
         $this->resetErrorBag();
@@ -716,6 +734,16 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
         $schema = $this->getSchema('findingEditor');
         if (! $schema instanceof Schema) {
             throw new \LogicException('The finding editor schema is unavailable.');
+        }
+
+        return $schema;
+    }
+
+    private function findingPropertiesSchema(): Schema
+    {
+        $schema = $this->getSchema('findingProperties');
+        if (! $schema instanceof Schema) {
+            throw new \LogicException('The finding properties schema is unavailable.');
         }
 
         return $schema;

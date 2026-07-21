@@ -2,7 +2,15 @@
     @forelse ($evidences as $evidence)
         <div class="assestme-finding-evidence-list__item">
             <div>
-                <strong>{{ $evidence->title }}</strong>
+                @if ($evidence->type === \App\Enums\EvidenceType::File)
+                    <a href="{{ route('evidence.download', $evidence) }}" target="_blank" rel="noopener">
+                        <strong>{{ $evidence->title }}</strong>
+                    </a>
+                @else
+                    <a href="{{ $evidence->url }}" target="_blank" rel="noopener noreferrer">
+                        <strong>{{ $evidence->title }}</strong>
+                    </a>
+                @endif
                 <span>{{ $evidence->type->value }}</span>
             </div>
             <span>

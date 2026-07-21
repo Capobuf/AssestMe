@@ -24,26 +24,37 @@
                 data-assestme-findings-workspace
                 data-selected-finding="{{ $selectedFindingId }}"
             >
-                <section class="assestme-findings-list" aria-label="{{ __('assestme.workspace.findings') }}">
-                    <div class="assestme-findings-list__counters" aria-live="polite">
-                        <span>{{ trans_choice('assestme.workspace.list.total_count', $this->totalFindings(), ['count' => $this->totalFindings()]) }}</span>
-                        <span>{{ trans_choice('assestme.workspace.list.report_count', $this->reportFindings(), ['count' => $this->reportFindings()]) }}</span>
+                <nav class="assestme-findings-list" aria-label="{{ __('assestme.workspace.navigator.label') }}">
+                    <div class="assestme-findings-list__heading">
+                        <div>
+                            <span class="assestme-findings-list__eyebrow">{{ __('assestme.workspace.navigator.eyebrow') }}</span>
+                            <h2>{{ __('assestme.workspace.navigator.label') }}</h2>
+                        </div>
+                        <div
+                            class="assestme-findings-list__counters"
+                            aria-label="{{ trans_choice('assestme.workspace.list.total_count', $this->totalFindings(), ['count' => $this->totalFindings()]) }}"
+                            aria-live="polite"
+                        >
+                            {{ $this->totalFindings() }}
+                        </div>
                     </div>
                     {{ $this->table }}
-                </section>
+                </nav>
 
                 @if ($selectedFindingId && ($finding = $this->selectedFinding()))
-                    <aside
-                        class="assestme-finding-inspector"
-                        aria-label="{{ __('assestme.workspace.inspector.label') }}"
+                    <form
+                        wire:submit="saveFinding"
+                        class="assestme-workbench-form"
+                        aria-label="{{ __('assestme.workspace.editor.label') }}"
                         data-assestme-finding-inspector
                     >
-                        <header class="assestme-finding-inspector__header">
-                            <div class="assestme-finding-inspector__heading">
-                                <span class="assestme-finding-inspector__number">
+                        <header class="assestme-workbench-editor__header">
+                            <div class="assestme-workbench-editor__heading">
+                                <span class="assestme-workbench-editor__number">
                                     {{ str_pad((string) ($this->selectedFindingPosition() ?? 0), 2, '0', STR_PAD_LEFT) }}
                                 </span>
                                 <div>
+                                    <span class="assestme-workbench-editor__eyebrow">{{ __('assestme.workspace.editor.eyebrow') }}</span>
                                     <h2>{{ $finding->title ?: __('assestme.workspace.list.untitled') }}</h2>
                                     <p>
                                         {{ $finding->priorityLevel?->label ?? __('assestme.workspace.list.priority_missing') }}
@@ -51,15 +62,15 @@
                                     </p>
                                 </div>
                             </div>
-                            <div class="assestme-finding-inspector__navigation">
+                            <div class="assestme-workbench-editor__navigation">
                                 <x-filament::icon-button
-                                    icon="heroicon-o-chevron-up"
+                                    icon="heroicon-o-chevron-left"
                                     wire:click="selectPreviousFinding"
                                     :label="__('assestme.workspace.inspector.previous')"
                                     data-dusk="finding-previous"
                                 />
                                 <x-filament::icon-button
-                                    icon="heroicon-o-chevron-down"
+                                    icon="heroicon-o-chevron-right"
                                     wire:click="selectNextFinding"
                                     :label="__('assestme.workspace.inspector.next')"
                                     data-dusk="finding-next"
@@ -73,34 +84,67 @@
                             </div>
                         </header>
 
-                        <form wire:submit="saveFinding" class="assestme-finding-inspector__form">
-                            <div class="assestme-finding-inspector__body">
-                                {{ $this->findingEditor }}
-                            </div>
+                        <main class="assestme-workbench-editor" data-assestme-workbench-editor>
+                            {{ $this->findingEditor }}
+                        </main>
 
-                            <footer class="assestme-finding-inspector__footer">
-                                <div>
-                                    @include('filament.workspace-save-status', [
-                                        'status' => $saveStatus,
-                                        'label' => $this->getSaveStatusLabel(),
-                                    ])
-                                    @if ($saveError)
-                                        <p class="assestme-finding-inspector__error">{{ $saveError }}</p>
+                        @php($completeness = $this->selectedFindingCompleteness())
+                        <details class="assestme-workbench-properties" open data-assestme-workbench-properties>
+                            <summary class="assestme-workbench-properties__header">
+                                <span>
+                                    <span class="assestme-workbench-properties__eyebrow">{{ __('assestme.workspace.properties.eyebrow') }}</span>
+                                    <strong>{{ __('assestme.workspace.properties.label') }}</strong>
+                                </span>
+                                <x-filament::icon icon="heroicon-m-chevron-down" class="assestme-workbench-properties__chevron" />
+                            </summary>
+                            <div class="assestme-workbench-properties__body">
+                                <div class="assestme-workbench-completeness {{ $completeness === [] ? 'is-complete' : 'is-incomplete' }}">
+                                    <div>
+                                        <span>{{ __('assestme.workspace.properties.completeness') }}</span>
+                                        <strong>
+                                            {{ $completeness === [] ? __('assestme.workspace.list.complete') : __('assestme.workspace.list.incomplete') }}
+                                        </strong>
+                                    </div>
+                                    @if ($completeness !== [])
+                                        <ul>
+                                            @foreach ($completeness as $message)
+                                                <li>{{ $message }}</li>
+                                            @endforeach
+                                        </ul>
                                     @endif
                                 </div>
-                                @if (! $this->isWorkspaceReadOnly())
-                                    <div class="assestme-finding-inspector__save-actions">
-                                        <x-filament::button type="submit" data-dusk="save-finding">
-                                            {{ __('assestme.workspace.inspector.save') }}
-                                        </x-filament::button>
-                                        <x-filament::button type="button" color="gray" wire:click="saveFindingAndNext" data-dusk="save-finding-next">
-                                            {{ __('assestme.workspace.inspector.save_next') }}
-                                        </x-filament::button>
-                                    </div>
+                                {{ $this->findingProperties }}
+                            </div>
+                        </details>
+
+                        <footer class="assestme-workbench-footer">
+                            <div>
+                                @include('filament.workspace-save-status', [
+                                    'status' => $saveStatus,
+                                    'label' => $this->getSaveStatusLabel(),
+                                ])
+                                @if ($saveError)
+                                    <p class="assestme-workbench-footer__error">{{ $saveError }}</p>
                                 @endif
-                            </footer>
-                        </form>
-                    </aside>
+                            </div>
+                            @if (! $this->isWorkspaceReadOnly())
+                                <div class="assestme-workbench-footer__actions">
+                                    <x-filament::button type="submit" data-dusk="save-finding">
+                                        {{ __('assestme.workspace.inspector.save') }}
+                                    </x-filament::button>
+                                    <x-filament::button type="button" color="gray" wire:click="saveFindingAndNext" data-dusk="save-finding-next">
+                                        {{ __('assestme.workspace.inspector.save_next') }}
+                                    </x-filament::button>
+                                </div>
+                            @endif
+                        </footer>
+                    </form>
+                @else
+                    <section class="assestme-workbench-empty" aria-label="{{ __('assestme.workspace.editor.empty') }}">
+                        <x-filament::icon icon="heroicon-o-cursor-arrow-rays" />
+                        <h2>{{ __('assestme.workspace.editor.empty') }}</h2>
+                        <p>{{ __('assestme.workspace.editor.empty_description') }}</p>
+                    </section>
                 @endif
             </div>
         </div>

@@ -40,6 +40,9 @@ final class FindingEditorSchema
             ->components([
                 Section::make(__('assestme.workspace.inspector.description'))
                     ->compact()
+                    ->contained(false)
+                    ->divided()
+                    ->extraAttributes(['class' => 'assestme-workbench-section assestme-workbench-section--primary'])
                     ->schema([
                         TextInput::make('title')
                             ->label(__('assestme.findings.fields.title'))
@@ -57,93 +60,10 @@ final class FindingEditorSchema
                             ->maxLength(20000)
                             ->disabled(self::isReadOnly(...)),
                     ]),
-                Section::make(__('assestme.templates.fields.technical_notes'))
-                    ->collapsible()
-                    ->collapsed()
-                    ->compact()
-                    ->schema([
-                        Textarea::make('technical_notes')
-                            ->label(__('assestme.templates.fields.technical_notes'))
-                            ->rows(4)
-                            ->maxLength(20000)
-                            ->disabled(self::isReadOnly(...)),
-                    ]),
-                Section::make(__('assestme.workspace.inspector.scope_risk'))
-                    ->collapsible()
-                    ->collapsed()
-                    ->columns(2)
-                    ->schema([
-                        Select::make('category_id')
-                            ->label(__('assestme.templates.fields.category'))
-                            ->options(fn (): array => Category::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('name', 'id')->all())
-                            ->searchable()
-                            ->preload()
-                            ->disabled(self::isReadOnly(...)),
-                        Select::make('tag_ids')
-                            ->label(__('assestme.templates.fields.tags'))
-                            ->options(fn (): array => Tag::query()->orderBy('name')->pluck('name', 'id')->all())
-                            ->multiple()
-                            ->searchable()
-                            ->preload()
-                            ->disabled(self::isReadOnly(...)),
-                        Select::make('scope_type')
-                            ->label(__('assestme.assessments.fields.scope'))
-                            ->options(self::scopeOptions())
-                            ->live()
-                            ->required()
-                            ->disabled(self::isReadOnly(...)),
-                        Textarea::make('scope_description')
-                            ->label(__('assestme.assessments.fields.scope_description'))
-                            ->rows(3)
-                            ->maxLength(20000)
-                            ->disabled(self::isReadOnly(...)),
-                        Select::make('site_ids')
-                            ->label(__('assestme.assessments.fields.sites'))
-                            ->options(fn (WorkspaceAssessment $livewire): array => $livewire->assessmentRecord()->client->sites()->pluck('name', 'id')->all())
-                            ->multiple()
-                            ->searchable()
-                            ->visible(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedSites->value)
-                            ->required(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedSites->value)
-                            ->disabled(self::isReadOnly(...))
-                            ->columnSpanFull(),
-                        Select::make('asset_ids')
-                            ->label(__('assestme.findings.fields.assets'))
-                            ->options(fn (WorkspaceAssessment $livewire): array => $livewire->assessmentRecord()->client->assets()->get()->mapWithKeys(
-                                static fn (Asset $asset): array => [$asset->id => $asset->name ?? $asset->hostname ?? "Asset {$asset->id}"],
-                            )->all())
-                            ->multiple()
-                            ->searchable()
-                            ->visible(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedAssets->value)
-                            ->required(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedAssets->value)
-                            ->disabled(self::isReadOnly(...))
-                            ->columnSpanFull(),
-                        Select::make('consequence_level_id')
-                            ->label(__('assestme.templates.fields.consequence'))
-                            ->options(fn (): array => ConsequenceLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())
-                            ->disabled(self::isReadOnly(...)),
-                        Select::make('likelihood_level_id')
-                            ->label(__('assestme.templates.fields.likelihood'))
-                            ->options(fn (): array => LikelihoodLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())
-                            ->disabled(self::isReadOnly(...)),
-                        Toggle::make('priority_is_overridden')
-                            ->label(__('assestme.findings.fields.priority_override'))
-                            ->live()
-                            ->disabled(self::isReadOnly(...)),
-                        Select::make('priority_level_id')
-                            ->label(__('assestme.findings.fields.priority'))
-                            ->options(fn (): array => PriorityLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())
-                            ->disabled(self::isReadOnly(...)),
-                        Textarea::make('priority_rationale')
-                            ->label(__('assestme.templates.fields.priority_rationale'))
-                            ->rows(3)
-                            ->maxLength(20000)
-                            ->required(fn (Get $get): bool => (bool) $get('priority_is_overridden'))
-                            ->disabled(self::isReadOnly(...))
-                            ->columnSpanFull(),
-                    ]),
                 Section::make(__('assestme.templates.sections.solutions'))
-                    ->collapsible()
-                    ->collapsed()
+                    ->contained(false)
+                    ->divided()
+                    ->extraAttributes(['class' => 'assestme-workbench-section assestme-workbench-section--solutions'])
                     ->schema([
                         Repeater::make('solutions')
                             ->hiddenLabel()
@@ -221,8 +141,9 @@ final class FindingEditorSchema
                             ->columnSpanFull(),
                     ]),
                 Section::make(__('assestme.workspace.inspector.evidence'))
-                    ->collapsible()
-                    ->collapsed()
+                    ->contained(false)
+                    ->divided()
+                    ->extraAttributes(['class' => 'assestme-workbench-section assestme-workbench-section--evidence'])
                     ->schema([
                         Placeholder::make('existing_evidence')
                             ->hiddenLabel()
@@ -241,6 +162,7 @@ final class FindingEditorSchema
                             ->storeFileNamesIn('evidence_original_names')
                             ->preventFilePathTampering()
                             ->multiple()
+                            ->pasteable()
                             ->maxFiles(20)
                             ->maxSize(25 * 1024)
                             ->acceptedFileTypes([
@@ -249,6 +171,8 @@ final class FindingEditorSchema
                                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                                 'application/vnd.oasis.opendocument.spreadsheet',
                             ])
+                            ->helperText(__('assestme.workspace.evidence_upload_hint'))
+                            ->extraInputAttributes(['data-dusk' => 'finding-evidence-upload'])
                             ->disabled(self::isReadOnly(...)),
                         Hidden::make('evidence_original_names'),
                         TextInput::make('evidence_title')
@@ -261,25 +185,140 @@ final class FindingEditorSchema
                             ->maxLength(2048)
                             ->disabled(self::isReadOnly(...)),
                     ]),
-                Section::make(__('assestme.workspace.inspector.status_report'))
+                Section::make(__('assestme.templates.fields.technical_notes'))
                     ->collapsible()
                     ->collapsed()
-                    ->columns(2)
+                    ->compact()
+                    ->contained(false)
+                    ->extraAttributes(['class' => 'assestme-workbench-section assestme-workbench-section--secondary'])
+                    ->schema([
+                        Textarea::make('technical_notes')
+                            ->label(__('assestme.templates.fields.technical_notes'))
+                            ->rows(4)
+                            ->maxLength(20000)
+                            ->disabled(self::isReadOnly(...)),
+                    ]),
+            ]);
+    }
+
+    public static function properties(Schema $schema): Schema
+    {
+        return $schema
+            ->columns(1)
+            ->components([
+                Section::make(__('assestme.workspace.inspector.status_report'))
+                    ->compact()
+                    ->contained(false)
+                    ->divided()
+                    ->extraAttributes(['class' => 'assestme-workbench-section assestme-workbench-section--properties'])
                     ->schema([
                         Select::make('status')
                             ->label(__('assestme.findings.fields.status'))
                             ->options(FindingStatus::options())
                             ->required()
+                            ->extraAttributes(['data-dusk' => 'finding-property-status'])
                             ->disabled(self::isReadOnly(...)),
                         Toggle::make('include_in_report')
                             ->label(__('assestme.findings.fields.include'))
+                            ->extraAttributes(['data-dusk' => 'finding-property-report'])
                             ->disabled(self::isReadOnly(...)),
+                    ]),
+                Section::make(__('assestme.workspace.properties.classification'))
+                    ->compact()
+                    ->contained(false)
+                    ->divided()
+                    ->extraAttributes(['class' => 'assestme-workbench-section assestme-workbench-section--properties'])
+                    ->schema([
+                        Select::make('category_id')
+                            ->label(__('assestme.templates.fields.category'))
+                            ->options(fn (): array => Category::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('name', 'id')->all())
+                            ->searchable()
+                            ->preload()
+                            ->disabled(self::isReadOnly(...)),
+                        Select::make('tag_ids')
+                            ->label(__('assestme.templates.fields.tags'))
+                            ->options(fn (): array => Tag::query()->orderBy('name')->pluck('name', 'id')->all())
+                            ->multiple()
+                            ->searchable()
+                            ->preload()
+                            ->disabled(self::isReadOnly(...)),
+                    ]),
+                Section::make(__('assestme.workspace.properties.scope'))
+                    ->compact()
+                    ->contained(false)
+                    ->divided()
+                    ->extraAttributes(['class' => 'assestme-workbench-section assestme-workbench-section--properties'])
+                    ->schema([
+                        Select::make('scope_type')
+                            ->label(__('assestme.assessments.fields.scope'))
+                            ->options(self::scopeOptions())
+                            ->live()
+                            ->required()
+                            ->disabled(self::isReadOnly(...)),
+                        Textarea::make('scope_description')
+                            ->label(__('assestme.assessments.fields.scope_description'))
+                            ->rows(3)
+                            ->maxLength(20000)
+                            ->disabled(self::isReadOnly(...)),
+                        Select::make('site_ids')
+                            ->label(__('assestme.assessments.fields.sites'))
+                            ->options(fn (WorkspaceAssessment $livewire): array => $livewire->assessmentRecord()->client->sites()->pluck('name', 'id')->all())
+                            ->multiple()
+                            ->searchable()
+                            ->visible(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedSites->value)
+                            ->required(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedSites->value)
+                            ->disabled(self::isReadOnly(...)),
+                        Select::make('asset_ids')
+                            ->label(__('assestme.findings.fields.assets'))
+                            ->options(fn (WorkspaceAssessment $livewire): array => $livewire->assessmentRecord()->client->assets()->get()->mapWithKeys(
+                                static fn (Asset $asset): array => [$asset->id => $asset->name ?? $asset->hostname ?? "Asset {$asset->id}"],
+                            )->all())
+                            ->multiple()
+                            ->searchable()
+                            ->visible(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedAssets->value)
+                            ->required(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedAssets->value)
+                            ->disabled(self::isReadOnly(...)),
+                    ]),
+                Section::make(__('assestme.workspace.properties.risk'))
+                    ->compact()
+                    ->contained(false)
+                    ->divided()
+                    ->extraAttributes(['class' => 'assestme-workbench-section assestme-workbench-section--properties'])
+                    ->schema([
+                        Select::make('consequence_level_id')
+                            ->label(__('assestme.templates.fields.consequence'))
+                            ->options(fn (): array => ConsequenceLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())
+                            ->disabled(self::isReadOnly(...)),
+                        Select::make('likelihood_level_id')
+                            ->label(__('assestme.templates.fields.likelihood'))
+                            ->options(fn (): array => LikelihoodLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())
+                            ->disabled(self::isReadOnly(...)),
+                        Toggle::make('priority_is_overridden')
+                            ->label(__('assestme.findings.fields.priority_override'))
+                            ->live()
+                            ->disabled(self::isReadOnly(...)),
+                        Select::make('priority_level_id')
+                            ->label(__('assestme.findings.fields.priority'))
+                            ->options(fn (): array => PriorityLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())
+                            ->disabled(self::isReadOnly(...)),
+                        Textarea::make('priority_rationale')
+                            ->label(__('assestme.templates.fields.priority_rationale'))
+                            ->rows(3)
+                            ->maxLength(20000)
+                            ->required(fn (Get $get): bool => (bool) $get('priority_is_overridden'))
+                            ->disabled(self::isReadOnly(...)),
+                    ]),
+                Section::make(__('assestme.workspace.properties.resolution'))
+                    ->compact()
+                    ->contained(false)
+                    ->divided()
+                    ->extraAttributes(['class' => 'assestme-workbench-section assestme-workbench-section--properties'])
+                    ->schema([
                         Textarea::make('resolution_notes')
                             ->label(__('assestme.findings.fields.resolution_notes'))
                             ->rows(4)
                             ->maxLength(20000)
-                            ->disabled(self::isReadOnly(...))
-                            ->columnSpanFull(),
+                            ->disabled(self::isReadOnly(...)),
                     ]),
             ]);
     }

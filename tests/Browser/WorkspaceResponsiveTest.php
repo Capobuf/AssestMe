@@ -6,6 +6,7 @@ namespace Tests\Browser;
 
 use App\Actions\Assessments\CopyTemplateToAssessment;
 use App\Enums\FindingStatus;
+use App\Enums\ScopeType;
 use App\Models\Assessment;
 use App\Models\Finding;
 use App\Models\FindingTemplate;
@@ -28,9 +29,13 @@ final class WorkspaceResponsiveTest extends DuskTestCase
     {
         [$administrator, $assessment, $firstFinding] = $this->responsiveFixture();
         $artifactRoot = base_path('storage/app/qa-artifacts');
+        $clipboardPng = json_encode(
+            base64_encode(File::get(base_path('fixtures/evidence/valid-small.png'))),
+            JSON_THROW_ON_ERROR,
+        );
         File::ensureDirectoryExists($artifactRoot);
 
-        $this->browse(function (Browser $browser) use ($administrator, $assessment, $firstFinding, $artifactRoot): void {
+        $this->browse(function (Browser $browser) use ($administrator, $assessment, $firstFinding, $artifactRoot, $clipboardPng): void {
             $browser->loginAs($administrator)
                 ->visit("/admin/assessments/{$assessment->getKey()}/workspace?finding={$firstFinding->getKey()}")
                 ->waitFor('[data-assestme-finding-inspector]')
@@ -48,45 +53,52 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                     $measurements["{$width}x{$height}"]['document']['scrollWidth'],
                     "The {$width}x{$height} document must not have horizontal overflow.",
                 );
-                Assert::assertSame('static', $measurements["{$width}x{$height}"]['inspector']['position']);
+                Assert::assertSame('static', $measurements["{$width}x{$height}"]['form']['position']);
             }
 
             foreach (['2560x1440', '1920x1080', '1440x900'] as $viewport) {
                 $geometry = $measurements[$viewport];
-                Assert::assertSame('block', $geometry['list']['display']);
-                Assert::assertSame('flex', $geometry['inspector']['display']);
-                Assert::assertGreaterThanOrEqual(512, $geometry['list']['width']);
-                Assert::assertGreaterThanOrEqual(448, $geometry['inspector']['width']);
+                Assert::assertSame('flex', $geometry['list']['display']);
+                Assert::assertSame('grid', $geometry['form']['display']);
+                Assert::assertEqualsWithDelta(288, $geometry['list']['width'], 2);
+                Assert::assertEqualsWithDelta(288, $geometry['properties']['width'], 2);
+                Assert::assertGreaterThan($geometry['list']['width'], $geometry['editor']['width']);
+                Assert::assertGreaterThan($geometry['properties']['width'], $geometry['editor']['width']);
                 Assert::assertLessThanOrEqual($geometry['list']['clientWidth'] + 1, $geometry['list']['scrollWidth']);
-                Assert::assertLessThanOrEqual($geometry['inspector']['clientWidth'] + 1, $geometry['inspector']['scrollWidth']);
+                Assert::assertLessThanOrEqual($geometry['form']['clientWidth'] + 1, $geometry['form']['scrollWidth']);
                 Assert::assertGreaterThanOrEqual(
                     $geometry['list']['right'] - 1,
-                    $geometry['inspector']['left'],
-                    "The inspector must be positioned to the right at {$viewport}.",
+                    $geometry['editor']['left'],
+                    "The editor must be positioned to the right of the navigator at {$viewport}.",
                 );
                 Assert::assertGreaterThanOrEqual(
-                    min($geometry['list']['height'], $geometry['inspector']['height']) - 2,
-                    $geometry['verticalOverlap'],
-                    "List and inspector must overlap vertically for almost their full height at {$viewport}.",
+                    $geometry['editor']['right'] - 1,
+                    $geometry['properties']['left'],
+                    "The properties panel must be positioned to the right of the editor at {$viewport}.",
                 );
-                Assert::assertLessThan($geometry['list']['bottom'], $geometry['inspector']['top'] + 1);
+                Assert::assertGreaterThanOrEqual(
+                    min($geometry['list']['height'], $geometry['form']['height']) - 2,
+                    $geometry['verticalOverlap'],
+                    "Navigator and editor must share the workbench height at {$viewport}.",
+                );
                 Assert::assertLessThanOrEqual($geometry['viewport']['height'], $geometry['header']['bottom']);
                 Assert::assertLessThanOrEqual($geometry['viewport']['height'], $geometry['footer']['bottom']);
-                Assert::assertSame('auto', $geometry['body']['overflowY']);
-                Assert::assertGreaterThanOrEqual($geometry['body']['clientHeight'], $geometry['body']['scrollHeight']);
+                Assert::assertSame('auto', $geometry['editor']['overflowY']);
+                Assert::assertSame('auto', $geometry['propertiesBody']['overflowY']);
                 Assert::assertSame('true', $geometry['selected']);
             }
 
             foreach (['1280x800', '390x844'] as $viewport) {
                 $geometry = $measurements[$viewport];
                 Assert::assertSame('none', $geometry['list']['display']);
-                Assert::assertSame('flex', $geometry['inspector']['display']);
+                Assert::assertSame('grid', $geometry['form']['display']);
                 Assert::assertEqualsWithDelta(
                     $geometry['workspace']['width'],
-                    $geometry['inspector']['width'],
+                    $geometry['form']['width'],
                     2,
-                    "The sequential inspector must use the workspace width at {$viewport}.",
+                    "The sequential editor must use the workspace width at {$viewport}.",
                 );
+                Assert::assertEqualsWithDelta($geometry['form']['width'], $geometry['editor']['width'], 20);
             }
 
             Assert::assertSame('loaded', $measurements['1920x1080']['asset']['marker']);
@@ -96,30 +108,58 @@ final class WorkspaceResponsiveTest extends DuskTestCase
             Assert::assertStringContainsString('/js/app/assestme-workspace.js', $measurements['1920x1080']['asset']['jsUrl']);
 
             File::put(
-                "{$artifactRoot}/workspace-final-geometry.json",
+                "{$artifactRoot}/workbench-after-geometry.json",
                 json_encode($measurements, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR),
             );
 
             self::resizeViewport($browser, 1280, 800);
             $browser->click('[data-dusk="finding-close"]')->waitUntilMissing('[data-assestme-finding-inspector]');
-            Assert::assertSame('block', $browser->script(
+            Assert::assertSame('flex', $browser->script(
                 "return getComputedStyle(document.querySelector('.assestme-findings-list')).display",
             )[0]);
             $browser->click('.assestme-finding-row:first-of-type')->waitFor('[data-assestme-finding-inspector]');
             Assert::assertSame('none', self::measureWorkspace($browser)['list']['display']);
 
             self::resizeViewport($browser, 1920, 1080);
-            $browser->driver->takeScreenshot("{$artifactRoot}/workspace-desktop-split-1920x1080.png");
+            $browser->driver->takeScreenshot("{$artifactRoot}/workbench-after-1920x1080.png");
+            $pasteEnabled = $browser->script(<<<JS
+                const editor = document.querySelector('[data-assestme-workbench-editor]');
+                editor.scrollTop = editor.scrollHeight;
+                const input = document.querySelector('.assestme-workbench-section--evidence input[type="file"]');
+                document.activeElement?.blur();
+                document.body.focus();
+                const bytes = Uint8Array.from(atob({$clipboardPng}), (character) => character.charCodeAt(0));
+                const transfer = new DataTransfer();
+                transfer.items.add(new File([bytes], 'screenshot-incollato.png', { type: 'image/png' }));
+                const paste = new Event('paste', { bubbles: true, cancelable: true });
+                Object.defineProperty(paste, 'clipboardData', { value: transfer });
+                document.dispatchEvent(paste);
+
+                return {
+                    input: Boolean(input),
+                    status: document.documentElement.dataset.assestmeEvidencePaste ?? null,
+                };
+                JS)[0];
+            Assert::assertSame(['input' => true, 'status' => 'queued'], $pasteEnabled);
+            $browser->waitUntil('return document.documentElement.dataset.assestmeEvidencePaste !== "queued"');
+            Assert::assertSame('added', $browser->script(
+                'return document.documentElement.dataset.assestmeEvidencePaste',
+            )[0]);
+            $browser->waitUntil('return document.querySelectorAll(".filepond--item").length === 1')
+                ->pause(1000)
+                ->click('[data-dusk="save-finding"]')
+                ->waitUntil('return document.querySelector("[data-assestme-save-status]").dataset.status === "saved"')
+                ->assertSee('screenshot-incollato.png');
             $browser->script(<<<'JS'
-                for (const label of ['Note tecniche', 'Ambito e rischio']) {
+                for (const label of ['Note tecniche']) {
                     const heading = Array.from(document.querySelectorAll('.fi-section-header-heading'))
                         .find((element) => element.textContent.trim() === label);
                     heading?.closest('.fi-section-header')?.click();
                 }
                 JS);
             $browser->pause(250);
-            $browser->script("document.querySelector('.assestme-finding-inspector__body').scrollTop = 240");
-            $browser->driver->takeScreenshot("{$artifactRoot}/workspace-desktop-long-form-1920x1080.png");
+            $browser->script("document.querySelector('[data-assestme-workbench-editor]').scrollTop = 240");
+            $browser->driver->takeScreenshot("{$artifactRoot}/workbench-editor-scroll-1920x1080.png");
 
             $browser->script(<<<'JS'
                 const root = document.querySelector('.assestme-findings-workspace').closest('[wire\\:id]');
@@ -127,14 +167,14 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 JS);
             $browser->pause(250)->click('[data-dusk="save-finding"]')
                 ->waitUntil('return document.querySelector("[data-assestme-save-status]").dataset.status === "error"');
-            $browser->driver->takeScreenshot("{$artifactRoot}/workspace-validation-error-1920x1080.png");
+            $browser->driver->takeScreenshot("{$artifactRoot}/workbench-validation-error-1920x1080.png");
 
             $browser->refresh()
                 ->waitFor('[data-assestme-finding-inspector]')
                 ->waitUntil('return document.documentElement.dataset.assestmeWorkspaceAsset === "loaded"');
             self::resizeViewport($browser, 390, 844);
             $browser->click('[data-dusk="finding-close"]')->waitUntilMissing('[data-assestme-finding-inspector]');
-            $browser->driver->takeScreenshot("{$artifactRoot}/workspace-narrow-list-390x844.png");
+            $browser->driver->takeScreenshot("{$artifactRoot}/workbench-narrow-navigator-390x844.png");
 
             $browser->type('input[type="search"]', 'Finding incompleto')
                 ->waitUntil('return document.querySelectorAll(".assestme-finding-row").length === 5');
@@ -144,10 +184,15 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 const list = document.querySelector('.assestme-findings-list');
                 list.scrollTop = 80;
                 JS);
-            $browser->element('.assestme-finding-row:first-of-type')?->sendKeys(WebDriverKeys::ENTER);
+            $browser->waitUntil('return document.querySelector(".assestme-finding-row:first-of-type")?.dataset.assestmeKeyboardReady === "true"');
+            $browser->script(<<<'JS'
+                const row = document.querySelector('.assestme-finding-row:first-of-type');
+                row.focus();
+                row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+                JS);
             $browser->waitFor('[data-assestme-finding-inspector]')->assertQueryStringHas('finding');
             Assert::assertSame('none', self::measureWorkspace($browser)['list']['display']);
-            $browser->driver->takeScreenshot("{$artifactRoot}/workspace-narrow-inspector-390x844.png");
+            $browser->driver->takeScreenshot("{$artifactRoot}/workbench-narrow-editor-390x844.png");
             $browser->click('[data-dusk="finding-close"]')->waitUntilMissing('[data-assestme-finding-inspector]');
             $browser->assertInputValue('input[type="search"]', 'Finding incompleto')
                 ->waitUntil('return document.querySelectorAll(".assestme-finding-row").length > 0');
@@ -280,7 +325,8 @@ final class WorkspaceResponsiveTest extends DuskTestCase
 
         FindingTemplate::query()->where('is_enabled', true)->orderBy('id')->limit(5)->get()
             ->each(function (FindingTemplate $template, int $index) use ($assessment, $priorities): void {
-                app(CopyTemplateToAssessment::class)($assessment, $template)->update([
+                $finding = app(CopyTemplateToAssessment::class)($assessment, $template);
+                $finding->update([
                     'title' => $index === 1
                         ? 'Finding con un titolo volutamente molto lungo per verificare il limite massimo di due righe'
                         : "Finding completo {$index}",
@@ -289,6 +335,7 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                     'priority_level_id' => $priorities[$index % $priorities->count()],
                     'status' => [FindingStatus::Open, FindingStatus::Planned, FindingStatus::InProgress][$index % 3],
                     'include_in_report' => $index % 2 === 0,
+                    ...($index === 0 ? ['scope_type' => ScopeType::Organization] : []),
                 ]);
             });
 
@@ -313,10 +360,12 @@ final class WorkspaceResponsiveTest extends DuskTestCase
             const workspace = document.querySelector('.assestme-findings-workspace');
             const container = document.querySelector('.assestme-findings-container');
             const list = document.querySelector('.assestme-findings-list');
-            const inspector = document.querySelector('.assestme-finding-inspector');
-            const header = document.querySelector('.assestme-finding-inspector__header');
-            const body = document.querySelector('.assestme-finding-inspector__body');
-            const footer = document.querySelector('.assestme-finding-inspector__footer');
+            const form = document.querySelector('.assestme-workbench-form');
+            const header = document.querySelector('.assestme-workbench-editor__header');
+            const editor = document.querySelector('[data-assestme-workbench-editor]');
+            const properties = document.querySelector('[data-assestme-workbench-properties]');
+            const propertiesBody = document.querySelector('.assestme-workbench-properties__body');
+            const footer = document.querySelector('.assestme-workbench-footer');
             const selected = document.querySelector('.assestme-finding-row.is-selected');
             const cssLink = document.querySelector('link[href*="assestme-workspace.css"]');
             const jsScript = document.querySelector('script[src*="assestme-workspace.js"]');
@@ -326,7 +375,7 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 return { top: value.top, right: value.right, bottom: value.bottom, left: value.left, width: value.width, height: value.height };
             };
             const listRect = rect(list);
-            const inspectorRect = rect(inspector);
+            const formRect = rect(form);
 
             return {
                 viewport: { width: innerWidth, height: innerHeight },
@@ -334,17 +383,29 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 container: { ...rect(container), containerType: getComputedStyle(container).containerType },
                 workspace: { ...rect(workspace), gridTemplateColumns: getComputedStyle(workspace).gridTemplateColumns },
                 list: { ...listRect, display: getComputedStyle(list).display, scrollWidth: list.scrollWidth, clientWidth: list.clientWidth },
-                inspector: {
-                    ...inspectorRect,
-                    display: getComputedStyle(inspector).display,
-                    position: getComputedStyle(inspector).position,
-                    clientWidth: inspector.clientWidth,
-                    scrollWidth: inspector.scrollWidth,
+                form: {
+                    ...formRect,
+                    display: getComputedStyle(form).display,
+                    position: getComputedStyle(form).position,
+                    clientWidth: form.clientWidth,
+                    scrollWidth: form.scrollWidth,
+                },
+                editor: {
+                    ...rect(editor),
+                    clientHeight: editor.clientHeight,
+                    scrollHeight: editor.scrollHeight,
+                    overflowY: getComputedStyle(editor).overflowY,
+                },
+                properties: rect(properties),
+                propertiesBody: {
+                    ...rect(propertiesBody),
+                    clientHeight: propertiesBody.clientHeight,
+                    scrollHeight: propertiesBody.scrollHeight,
+                    overflowY: getComputedStyle(propertiesBody).overflowY,
                 },
                 header: rect(header),
-                body: { ...rect(body), clientHeight: body.clientHeight, scrollHeight: body.scrollHeight, overflowY: getComputedStyle(body).overflowY },
                 footer: rect(footer),
-                verticalOverlap: Math.max(0, Math.min(listRect.bottom, inspectorRect.bottom) - Math.max(listRect.top, inspectorRect.top)),
+                verticalOverlap: Math.max(0, Math.min(listRect.bottom, formRect.bottom) - Math.max(listRect.top, formRect.top)),
                 selected: selected?.getAttribute('aria-selected') ?? null,
                 asset: {
                     marker: document.documentElement.dataset.assestmeWorkspaceAsset ?? null,
