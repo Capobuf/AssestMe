@@ -154,7 +154,7 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
 
     public function setWorkspaceTab(string $tab): void
     {
-        if (! in_array($tab, ['findings', 'assessment-details', 'summary', 'generated-files'], true)) {
+        if (! in_array($tab, ['findings', 'assessment-details', 'generated-files'], true)) {
             return;
         }
 
@@ -356,11 +356,7 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
 
     public function canReorderFindings(): bool
     {
-        $hasActiveFilters = collect($this->tableFilters ?? [])->flatten()->contains(
-            static fn (mixed $value): bool => is_bool($value) ? $value : filled($value),
-        );
-
-        return ! $this->isWorkspaceReadOnly() && blank($this->tableSearch) && ! $hasActiveFilters;
+        return ! $this->isWorkspaceReadOnly() && blank($this->tableSearch);
     }
 
     public function totalFindings(): int
@@ -484,15 +480,6 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
         return $finding instanceof Finding ? app(AssessFindingCompleteness::class)($finding) : [];
     }
 
-    public function summaryPreview(): string
-    {
-        return __('assestme.workspace.summary_preview', [
-            'client' => $this->assessmentRecord()->client->displayName(),
-            'title' => $this->assessmentRecord()->report_title_override ?: $this->assessmentRecord()->title,
-            'findings' => $this->assessmentRecord()->findings()->where('include_in_report', true)->count(),
-        ]);
-    }
-
     /** @return array<Action | ActionGroup> */
     protected function getHeaderActions(): array
     {
@@ -564,6 +551,9 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
             ->label(__('assestme.reports.delete.action'))
             ->icon('heroicon-o-trash')
             ->color('danger')
+            ->button()
+            ->outlined()
+            ->size('sm')
             ->requiresConfirmation()
             ->modalHeading(__('assestme.reports.delete.heading'))
             ->modalDescription(__('assestme.reports.delete.description'))

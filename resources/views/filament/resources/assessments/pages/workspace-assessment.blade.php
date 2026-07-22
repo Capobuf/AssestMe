@@ -3,7 +3,6 @@
         @foreach ([
             'findings' => __('assestme.workspace.tabs.findings'),
             'assessment-details' => __('assestme.workspace.tabs.assessment_details'),
-            'summary' => __('assestme.workspace.tabs.summary_preview'),
             'generated-files' => __('assestme.workspace.tabs.generated_files'),
         ] as $tab => $label)
             <x-filament::tabs.item
@@ -90,14 +89,13 @@
                         </main>
 
                         @php($completeness = $this->selectedFindingCompleteness())
-                        <details class="assestme-workbench-properties" open data-assestme-workbench-properties>
-                            <summary class="assestme-workbench-properties__header">
+                        <aside class="assestme-workbench-properties" data-assestme-workbench-properties>
+                            <header class="assestme-workbench-properties__header">
                                 <span>
                                     <span class="assestme-workbench-properties__eyebrow">{{ __('assestme.workspace.properties.eyebrow') }}</span>
                                     <strong>{{ __('assestme.workspace.properties.label') }}</strong>
                                 </span>
-                                <x-filament::icon icon="heroicon-m-chevron-down" class="assestme-workbench-properties__chevron" />
-                            </summary>
+                            </header>
                             <div class="assestme-workbench-properties__body">
                                 <div class="assestme-workbench-completeness {{ $completeness === [] ? 'is-complete' : 'is-incomplete' }}">
                                     <div>
@@ -116,7 +114,7 @@
                                 </div>
                                 {{ $this->findingProperties }}
                             </div>
-                        </details>
+                        </aside>
 
                         <footer class="assestme-workbench-footer">
                             <div>
@@ -160,12 +158,13 @@
                 </div>
             @endif
         </form>
-    @elseif ($activeWorkspaceTab === 'summary')
-        <x-filament::section>
-            {{ $this->summaryPreview() }}
-        </x-filament::section>
     @else
-        <x-filament::section>
+        <x-filament::section
+            icon="heroicon-o-document-arrow-down"
+            :heading="__('assestme.workspace.tabs.generated_files')"
+            :description="__('assestme.workspace.generated_files_description')"
+            class="assestme-generated-files-section"
+        >
             @include('filament.generated-report-history', [
                 'reports' => $this->assessmentRecord()->generatedReports()->latest('generated_at')->get(),
                 'timezone' => app(\App\Settings\GeneralSettings::class)->timezone,

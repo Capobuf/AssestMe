@@ -452,10 +452,9 @@ return [
         'tabs' => [
             'findings' => 'Finding',
             'assessment_details' => 'Dettagli assessment',
-            'summary_preview' => 'Anteprima riepilogo',
             'generated_files' => 'File Generati',
         ],
-        'summary_preview' => ':client — :title. Finding inclusi nel report: :findings.',
+        'generated_files_description' => 'Archivio immutabile dei PDF e XLSX generati per questo assessment.',
         'no_generated_files' => 'Non sono ancora stati generati file per questo assessment.',
         'add_finding' => 'Aggiungi Finding',
         'add_template' => 'Aggiungi da template',

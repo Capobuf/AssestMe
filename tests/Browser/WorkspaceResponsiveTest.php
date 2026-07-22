@@ -122,6 +122,60 @@ final class WorkspaceResponsiveTest extends DuskTestCase
             Assert::assertStringContainsString('/css/app/assestme-workspace.css', $measurements['1920x1080']['asset']['cssUrl']);
             Assert::assertStringContainsString('/js/app/assestme-workspace.js', $measurements['1920x1080']['asset']['jsUrl']);
 
+            self::resizeViewport($browser, 1920, 1080);
+            $propertySections = $browser->script(<<<'JS'
+                return Array.from(document.querySelectorAll('.assestme-workbench-properties .fi-section'))
+                    .map((section) => ({
+                        heading: section.querySelector('.fi-section-header-heading')?.textContent.trim(),
+                        expanded: section.querySelector('.fi-section-content-ctn')?.getAttribute('aria-expanded'),
+                    }));
+                JS)[0];
+            Assert::assertSame(
+                [
+                    ['expanded' => 'false', 'heading' => 'Stato e report'],
+                    ['expanded' => 'false', 'heading' => 'Classificazione'],
+                    ['expanded' => 'false', 'heading' => 'Si applica a'],
+                    ['expanded' => 'false', 'heading' => 'Rischio'],
+                    ['expanded' => 'false', 'heading' => 'Risoluzione'],
+                ],
+                $propertySections,
+            );
+            self::resizeViewport($browser, 1440, 900);
+            $browser->script(<<<'JS'
+                const body = document.querySelector('.assestme-workbench-properties__body');
+                for (const label of ['Rischio', 'Risoluzione']) {
+                    Array.from(body.querySelectorAll('.fi-section-header-heading'))
+                        .find((heading) => heading.textContent.trim() === label)
+                        .closest('.fi-section-header')
+                        .click();
+                }
+                JS);
+            $browser->pause(600);
+            $propertiesScroll = $browser->script(<<<'JS'
+                const body = document.querySelector('.assestme-workbench-properties__body');
+                const bodyRect = body.getBoundingClientRect();
+                const resolution = Array.from(body.querySelectorAll('.fi-section-header-heading'))
+                    .find((heading) => heading.textContent.trim() === 'Risoluzione')
+                    .closest('.assestme-workbench-section');
+                const resolutionRect = resolution.getBoundingClientRect();
+
+                return {
+                    clientHeight: body.clientHeight,
+                    scrollHeight: body.scrollHeight,
+                    scrollTop: body.scrollTop,
+                    resolutionTop: resolutionRect.top,
+                    resolutionBottom: resolutionRect.bottom,
+                    bodyTop: bodyRect.top,
+                    bodyBottom: bodyRect.bottom,
+                    resolutionExpanded: resolution.querySelector('.fi-section-content-ctn').getAttribute('aria-expanded'),
+                };
+                JS)[0];
+            Assert::assertGreaterThan($propertiesScroll['clientHeight'], $propertiesScroll['scrollHeight']);
+            Assert::assertGreaterThan(0, $propertiesScroll['scrollTop']);
+            Assert::assertGreaterThanOrEqual($propertiesScroll['bodyTop'], $propertiesScroll['resolutionTop']);
+            Assert::assertLessThanOrEqual($propertiesScroll['bodyBottom'], $propertiesScroll['resolutionBottom']);
+            Assert::assertSame('true', $propertiesScroll['resolutionExpanded']);
+
             File::put(
                 "{$artifactRoot}/workbench-after-geometry.json",
                 json_encode($measurements, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR),
@@ -215,12 +269,12 @@ final class WorkspaceResponsiveTest extends DuskTestCase
             $browser->click('[data-dusk="finding-close"]')->waitUntilMissing('[data-assestme-finding-inspector]');
             $browser->driver->takeScreenshot("{$artifactRoot}/workbench-narrow-navigator-390x844.png");
 
-            $browser->type('input[type="search"]', 'Finding incompleto')
+            $browser->click('.fi-ta-search-field')
+                ->waitUntil('return document.querySelector(".fi-ta-search-field").getBoundingClientRect().width > 100')
+                ->type('input[type="search"]', 'Finding incompleto')
                 ->waitUntil('return document.querySelectorAll(".assestme-finding-row").length === 5');
             $browser->script(<<<'JS'
-                const root = document.querySelector('.assestme-findings-workspace').closest('[wire\\:id]');
-                Livewire.find(root.getAttribute('wire:id')).$set('tableFilters.incomplete', { isActive: true });
-                const list = document.querySelector('.assestme-findings-list');
+                const list = document.querySelector('.assestme-findings-list .fi-ta-content-ctn');
                 list.scrollTop = 80;
                 JS);
             $browser->waitUntil('return document.querySelector(".assestme-finding-row:first-of-type")?.dataset.assestmeKeyboardReady === "true"');
@@ -235,12 +289,7 @@ final class WorkspaceResponsiveTest extends DuskTestCase
             $browser->click('[data-dusk="finding-close"]')->waitUntilMissing('[data-assestme-finding-inspector]');
             $browser->assertInputValue('input[type="search"]', 'Finding incompleto')
                 ->waitUntil('return document.querySelectorAll(".assestme-finding-row").length > 0');
-            $filterIsStillActive = $browser->script(<<<'JS'
-                const root = document.querySelector('.assestme-findings-workspace').closest('[wire\\:id]');
-
-                return Livewire.find(root.getAttribute('wire:id')).$get('tableFilters').incomplete.isActive;
-                JS)[0];
-            Assert::assertTrue($filterIsStillActive);
+            $browser->assertMissing('.fi-ta-filters-dropdown');
 
             $browser->element('.assestme-finding-row:first-of-type')?->sendKeys(WebDriverKeys::SPACE);
             $browser->waitFor('[data-assestme-finding-inspector]')

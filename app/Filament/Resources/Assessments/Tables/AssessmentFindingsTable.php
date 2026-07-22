@@ -4,19 +4,13 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Assessments\Tables;
 
-use App\Actions\Assessments\AssessFindingCompleteness;
-use App\Enums\FindingStatus;
 use App\Filament\Resources\Assessments\Pages\WorkspaceAssessment;
-use App\Models\Category;
 use App\Models\Finding;
 use App\Models\FindingTemplate;
-use App\Models\PriorityLevel;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\ViewColumn;
-use Filament\Tables\Filters\Filter;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -46,26 +40,6 @@ final class AssessmentFindingsTable
                             ->orWhere('description', 'like', $term));
                 });
             })
-            ->filters([
-                SelectFilter::make('priority_level_id')
-                    ->label(__('assestme.findings.fields.priority'))
-                    ->options(fn (): array => PriorityLevel::query()->orderBy('sort_order')->pluck('label', 'id')->all()),
-                SelectFilter::make('status')
-                    ->label(__('assestme.findings.fields.status'))
-                    ->options(FindingStatus::options()),
-                SelectFilter::make('category_id')
-                    ->label(__('assestme.templates.fields.category'))
-                    ->options(fn (): array => Category::query()->orderBy('sort_order')->pluck('name', 'id')->all()),
-                SelectFilter::make('include_in_report')
-                    ->label(__('assestme.findings.fields.include'))
-                    ->options([
-                        1 => __('assestme.workspace.list.included'),
-                        0 => __('assestme.workspace.list.excluded'),
-                    ]),
-                Filter::make('incomplete')
-                    ->label(__('assestme.workspace.list.incomplete_filter'))
-                    ->query(fn (Builder $query): Builder => app(AssessFindingCompleteness::class)->applyIncompleteFilter($query)),
-            ])
             ->headerActions([
                 ActionGroup::make([
                     Action::make('add_blank')
@@ -146,9 +120,13 @@ final class AssessmentFindingsTable
                 ->label($isReordering
                     ? __('assestme.workspace.list.finish_reordering')
                     : __('assestme.workspace.list.reorder'))
-                ->button()
-                ->outlined()
-                ->size('xs'))
+                ->tooltip($isReordering
+                    ? __('assestme.workspace.list.finish_reordering')
+                    : __('assestme.workspace.list.reorder'))
+                ->extraAttributes([
+                    'class' => 'assestme-reorder-action',
+                    'data-dusk' => 'reorder-findings',
+                ]))
             ->paginationPageOptions([10, 25, 50])
             ->defaultPaginationPageOption(50)
             ->emptyStateHeading(__('assestme.workspace.list.empty'))

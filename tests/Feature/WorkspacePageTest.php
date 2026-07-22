@@ -76,7 +76,7 @@ it('mounts the structured findings table workspace with fifty related findings',
         ->assertSet('saveStatus', WorkspaceAssessment::STATUS_SAVED)
         ->assertSee('Finding')
         ->assertSee('Dettagli assessment')
-        ->assertSee('Anteprima riepilogo')
+        ->assertDontSee('Anteprima riepilogo')
         ->assertSee('File Generati');
 });
 
@@ -193,7 +193,7 @@ it('exposes one native reorder mode and one visible row action menu', function (
         ->assertSeeHtml('data-dusk="finding-actions"');
 });
 
-it('searches and filters the synthetic finding list without relationship query growth', function (): void {
+it('keeps navigator search without cramped filters or relationship query growth', function (): void {
     $this->seed(DatabaseSeeder::class);
     $administrator = User::factory()->create();
     $assessment = Assessment::factory()->create();
@@ -202,32 +202,26 @@ it('searches and filters the synthetic finding list without relationship query g
         FindingTemplate::query()->where('default_scope_type', ScopeType::Organization->value)->firstOrFail(),
     );
     $complete->update(['title' => 'Unico finding ricercabile']);
-    $incomplete = Finding::factory()->for($assessment)->create([
+    Finding::factory()->for($assessment)->create([
         'title' => 'Finding privo di contenuto',
         'problem' => null,
         'sort_order' => 2,
         'include_in_report' => true,
     ]);
-    $excluded = Finding::factory()->for($assessment)->create([
+    Finding::factory()->for($assessment)->create([
         'title' => 'Finding escluso',
         'sort_order' => 3,
         'include_in_report' => false,
     ]);
     $this->actingAs($administrator);
 
-    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+    $component = Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
         ->searchTable('ricercabile')
         ->assertCanSeeTableRecords([$complete])
-        ->assertCanNotSeeTableRecords([$incomplete])
-        ->searchTable()
-        ->filterTable('include_in_report', 0)
-        ->assertCanSeeTableRecords([$excluded])
-        ->assertCanNotSeeTableRecords([$incomplete])
-        ->assertCanNotSeeTableRecords([$complete])
-        ->resetTableFilters()
-        ->filterTable('incomplete')
-        ->assertCanSeeTableRecords([$incomplete])
-        ->assertCanNotSeeTableRecords([$complete]);
+        ->assertCountTableRecords(1)
+        ->assertDontSeeHtml('fi-ta-filters-dropdown');
+
+    expect($component->instance()->getTable()->getFilters())->toBe([]);
 
     Finding::factory()->count(48)->for($assessment)->sequence(
         fn ($sequence): array => ['sort_order' => $sequence->index + 4],

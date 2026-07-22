@@ -71,7 +71,39 @@ final class MilestoneFourPdfTest extends DuskTestCase
                 ->waitForText($workbook->file_name)
                 ->assertSee($pdfReport->file_name)
                 ->assertSee($workbook->file_name)
-                ->assertSee('Scarica file')
+                ->assertSee('Scarica file');
+
+            $historyGeometry = $browser->script(<<<'JS'
+                const table = document.querySelector('.assestme-generated-files__table');
+                const headings = table.querySelectorAll('thead th');
+                const firstRow = table.querySelector('tbody tr');
+                const cells = firstRow.children;
+                const actions = firstRow.querySelector('.assestme-generated-files__actions');
+                const buttons = actions.querySelectorAll('a, button');
+                const rect = (element) => element.getBoundingClientRect();
+                const centerY = (element) => {
+                    const value = rect(element);
+
+                    return value.top + (value.height / 2);
+                };
+
+                return {
+                    documentClientWidth: document.documentElement.clientWidth,
+                    documentScrollWidth: document.documentElement.scrollWidth,
+                    nameHeadingLeft: rect(headings[1]).left,
+                    nameCellLeft: rect(cells[1]).left,
+                    actionsHeadingRight: rect(headings[4]).right,
+                    actionsCellRight: rect(cells[4]).right,
+                    actionCenterDelta: Math.abs(centerY(buttons[0]) - centerY(buttons[1])),
+                };
+                JS)[0];
+            Assert::assertLessThanOrEqual($historyGeometry['documentClientWidth'] + 1, $historyGeometry['documentScrollWidth']);
+            Assert::assertEqualsWithDelta($historyGeometry['nameHeadingLeft'], $historyGeometry['nameCellLeft'], 1);
+            Assert::assertEqualsWithDelta($historyGeometry['actionsHeadingRight'], $historyGeometry['actionsCellRight'], 1);
+            Assert::assertLessThanOrEqual(2, $historyGeometry['actionCenterDelta']);
+
+            $browser->driver->takeScreenshot(base_path('storage/app/qa-artifacts/generated-files-refined-1920x1080-dark.png'));
+            $browser
                 ->click('[data-dusk="download-generated-report"][data-report-id="'.$workbook->getKey().'"]')
                 ->pause(500)
                 ->assertPathIs("/admin/assessments/{$assessment->getKey()}/workspace")

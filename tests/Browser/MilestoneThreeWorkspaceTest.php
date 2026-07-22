@@ -31,7 +31,7 @@ final class MilestoneThreeWorkspaceTest extends DuskTestCase
                 ->waitFor('.assestme-finding-row')
                 ->assertSee('Nuovo finding')
                 ->assertSee('Completa assessment')
-                ->assertSee('Anteprima riepilogo')
+                ->assertDontSee('Anteprima riepilogo')
                 ->assertSee('File Generati')
                 ->click('.assestme-finding-row:first-of-type')
                 ->waitFor('[data-assestme-finding-inspector]')

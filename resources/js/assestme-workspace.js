@@ -9,6 +9,9 @@
     let workspaceHeightFrame = null;
 
     const statusElement = () => document.querySelector('[data-assestme-save-status]');
+    const listScroller = (list = document.querySelector('.assestme-findings-list')) => (
+        list?.querySelector('.fi-ta-content-ctn') ?? list
+    );
 
     const showStatus = (status, element = statusElement()) => {
         if (!element) {
@@ -63,6 +66,43 @@
             });
     };
 
+    const revealExpandedPropertySection = (event) => {
+        const header = event.target.closest?.('.assestme-workbench-properties .fi-section-header');
+        if (!header) {
+            return;
+        }
+
+        const section = header.closest('.fi-section');
+        const panel = header.closest('.assestme-workbench-properties__body');
+        window.setTimeout(() => {
+            const content = section?.querySelector('.fi-section-content-ctn');
+            if (!panel || content?.getAttribute('aria-expanded') !== 'true') {
+                return;
+            }
+
+            const target = section.closest('.assestme-workbench-section') ?? section;
+            const panelRect = panel.getBoundingClientRect();
+            const targetRect = target.getBoundingClientRect();
+            const bottomOverflow = targetRect.bottom - panelRect.bottom + 8;
+            const topOverflow = targetRect.top - panelRect.top - 8;
+
+            if (bottomOverflow > 0) {
+                panel.scrollTo({ top: panel.scrollTop + bottomOverflow, behavior: 'smooth' });
+            } else if (topOverflow < 0) {
+                panel.scrollTo({ top: panel.scrollTop + topOverflow, behavior: 'smooth' });
+            }
+        }, 180);
+    };
+
+    const activateCompactSearch = (event) => {
+        const field = event.target.closest?.('.assestme-findings-list .fi-ta-search-field');
+        if (!field) {
+            return;
+        }
+
+        field.querySelector('input[type="search"]')?.focus();
+    };
+
     const updateWorkspaceAvailableHeight = () => {
         if (workspaceHeightFrame !== null) {
             cancelAnimationFrame(workspaceHeightFrame);
@@ -96,7 +136,7 @@
                     return;
                 }
 
-                listScrollTop = row.closest('.assestme-findings-list')?.scrollTop ?? 0;
+                listScrollTop = listScroller(row.closest('.assestme-findings-list'))?.scrollTop ?? 0;
                 row.querySelector('.fi-ta-col')?.click();
             });
             row.addEventListener('keydown', (event) => {
@@ -105,7 +145,7 @@
                 }
 
                 event.preventDefault();
-                listScrollTop = row.closest('.assestme-findings-list')?.scrollTop ?? 0;
+                listScrollTop = listScroller(row.closest('.assestme-findings-list'))?.scrollTop ?? 0;
                 row.querySelector('.fi-ta-col')?.click();
             });
         });
@@ -121,7 +161,7 @@
 
         const list = document.querySelector('.assestme-findings-list');
         if (list && getComputedStyle(list).display !== 'none') {
-            list.scrollTop = listScrollTop;
+            listScroller(list).scrollTop = listScrollTop;
         }
 
         const editor = document.querySelector('[data-assestme-workbench-editor]');
@@ -159,9 +199,11 @@
         showStatus(navigator.onLine ? 'unsaved' : 'offline', element);
     });
     document.addEventListener('paste', addPastedEvidence);
+    document.addEventListener('click', activateCompactSearch);
+    document.addEventListener('click', revealExpandedPropertySection);
 
     document.addEventListener('scroll', (event) => {
-        if (event.target.matches?.('.assestme-findings-list')) {
+        if (event.target.matches?.('.assestme-findings-list, .assestme-findings-list .fi-ta-content-ctn')) {
             listScrollTop = event.target.scrollTop;
         } else if (event.target.matches?.('[data-assestme-workbench-editor]')) {
             editorScrollTop = event.target.scrollTop;

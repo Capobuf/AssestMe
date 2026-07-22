@@ -206,6 +206,8 @@ final class FindingEditorSchema
             ->columns(1)
             ->components([
                 Section::make(__('assestme.workspace.inspector.status_report'))
+                    ->collapsible()
+                    ->collapsed()
                     ->compact()
                     ->contained(false)
                     ->divided()
@@ -223,6 +225,8 @@ final class FindingEditorSchema
                             ->disabled(self::isReadOnly(...)),
                     ]),
                 Section::make(__('assestme.workspace.properties.classification'))
+                    ->collapsible()
+                    ->collapsed()
                     ->compact()
                     ->contained(false)
                     ->divided()
@@ -236,6 +240,8 @@ final class FindingEditorSchema
                             ->disabled(self::isReadOnly(...)),
                     ]),
                 Section::make(__('assestme.workspace.properties.scope'))
+                    ->collapsible()
+                    ->collapsed()
                     ->compact()
                     ->contained(false)
                     ->divided()
@@ -272,6 +278,8 @@ final class FindingEditorSchema
                             ->disabled(self::isReadOnly(...)),
                     ]),
                 Section::make(__('assestme.workspace.properties.risk'))
+                    ->collapsible()
+                    ->collapsed()
                     ->compact()
                     ->contained(false)
                     ->divided()
@@ -301,6 +309,8 @@ final class FindingEditorSchema
                             ->disabled(self::isReadOnly(...)),
                     ]),
                 Section::make(__('assestme.workspace.properties.resolution'))
+                    ->collapsible()
+                    ->collapsed()
                     ->compact()
                     ->contained(false)
                     ->divided()

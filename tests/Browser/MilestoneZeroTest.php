@@ -196,7 +196,9 @@ final class MilestoneZeroTest extends DuskTestCase
                 ->waitUntil('return document.documentElement.dataset.assestmeWorkspaceAsset === "loaded"');
             $browser->click('[data-dusk="new-finding-menu"]');
 
-            $browser->type('input[type="search"]', 'ricerca Dusk')
+            $browser->click('.fi-ta-search-field')
+                ->waitUntil('return document.querySelector(".fi-ta-search-field").getBoundingClientRect().width > 100')
+                ->type('input[type="search"]', 'ricerca Dusk')
                 ->waitUntil('return document.querySelectorAll(\'.assestme-finding-row\').length === 1');
             $browser->script(<<<'JS'
                 const search = document.querySelector('input[type="search"]');
@@ -207,6 +209,7 @@ final class MilestoneZeroTest extends DuskTestCase
 
             $browser->click('.assestme-finding-row:first-of-type')
                 ->waitFor('[data-assestme-finding-inspector]')
+                ->click('.assestme-workbench-properties .fi-section:first-of-type .fi-section-header')
                 ->select('[data-dusk="finding-property-status"] select', 'planned')
                 ->click('[data-dusk="finding-property-report"]')
                 ->click('[data-dusk="save-finding"]')
@@ -214,22 +217,27 @@ final class MilestoneZeroTest extends DuskTestCase
                 ->click('[data-dusk="finding-close"]')
                 ->waitUntilMissing('[data-assestme-finding-inspector]');
 
-            $browser->script(<<<'JS'
-                const root = document.querySelector('.assestme-findings-workspace').closest('[wire\\:id]');
-                Livewire.find(root.getAttribute('wire:id')).$set('tableFilters.incomplete', { isActive: true });
-                JS);
-            $browser->waitUntil('return document.querySelectorAll(\'.assestme-finding-row\').length === 9');
-            $browser->script(<<<'JS'
-                const root = document.querySelector('.assestme-findings-workspace').closest('[wire\\:id]');
-                Livewire.find(root.getAttribute('wire:id')).$set('tableFilters.incomplete', { isActive: false });
-                JS);
-            $browser->waitUntil('return document.querySelectorAll(\'.assestme-finding-row\').length === 10');
+            $browser->assertMissing('.fi-ta-filters-dropdown');
 
             $browser->resize(1440, 1000)->pause(400);
             $desktopLayout = $browser->script(<<<'JS'
                 const workspace = document.querySelector('.assestme-findings-workspace');
                 const list = document.querySelector('.assestme-findings-list');
                 const firstRow = document.querySelector('.assestme-finding-row');
+                const newFinding = document.querySelector('[data-dusk="new-finding-menu"]');
+                const search = document.querySelector('.fi-ta-search-field');
+                const reorder = document.querySelector('[data-dusk="reorder-findings"]');
+                document.activeElement?.blur();
+                const centerX = (element) => {
+                    const rect = element.getBoundingClientRect();
+
+                    return rect.left + (rect.width / 2);
+                };
+                const centerY = (element) => {
+                    const rect = element.getBoundingClientRect();
+
+                    return rect.top + (rect.height / 2);
+                };
 
                 return {
                     documentClientWidth: document.documentElement.clientWidth,
@@ -240,6 +248,11 @@ final class MilestoneZeroTest extends DuskTestCase
                     listScrollWidth: list.scrollWidth,
                     selected: firstRow.getAttribute('aria-selected'),
                     tabIndex: firstRow.tabIndex,
+                    newFindingCenter: centerX(newFinding),
+                    listCenter: centerX(list),
+                    searchCenterY: centerY(search),
+                    reorderCenterY: centerY(reorder),
+                    searchWidth: search.getBoundingClientRect().width,
                 };
                 JS)[0];
 
@@ -249,6 +262,29 @@ final class MilestoneZeroTest extends DuskTestCase
             Assert::assertLessThanOrEqual($desktopLayout['documentClientWidth'] + 1, $desktopLayout['documentScrollWidth']);
             Assert::assertSame('false', $desktopLayout['selected']);
             Assert::assertSame(0, $desktopLayout['tabIndex']);
+            Assert::assertEqualsWithDelta($desktopLayout['listCenter'], $desktopLayout['newFindingCenter'], 2);
+            Assert::assertEqualsWithDelta($desktopLayout['searchCenterY'], $desktopLayout['reorderCenterY'], 2);
+            Assert::assertLessThanOrEqual(40, $desktopLayout['searchWidth']);
+
+            $scrollGeometry = $browser->script(<<<'JS'
+                const listHeading = document.querySelector('.assestme-findings-list__heading').getBoundingClientRect();
+                const tableHeader = document.querySelector('.assestme-findings-list .fi-ta-header-ctn').getBoundingClientRect();
+                const content = document.querySelector('.assestme-findings-list .fi-ta-content-ctn');
+                const contentRect = content.getBoundingClientRect();
+                content.scrollTop = 160;
+
+                return {
+                    contentTop: contentRect.top,
+                    listHeadingBottom: listHeading.bottom,
+                    tableHeaderTop: tableHeader.top,
+                    tableHeaderBottom: tableHeader.bottom,
+                    scrollTop: content.scrollTop,
+                };
+                JS)[0];
+            Assert::assertGreaterThan(0, $scrollGeometry['scrollTop']);
+            Assert::assertLessThanOrEqual($scrollGeometry['contentTop'] + 1, $scrollGeometry['tableHeaderBottom']);
+            Assert::assertLessThanOrEqual($scrollGeometry['tableHeaderBottom'] + 1, $scrollGeometry['contentTop']);
+            Assert::assertLessThanOrEqual($scrollGeometry['tableHeaderTop'] + 1, $scrollGeometry['listHeadingBottom']);
             $browser->driver->takeScreenshot("{$artifactRoot}/workspace-list-1440-light.png");
 
             $browser->click('.assestme-finding-row:first-of-type')
@@ -327,9 +363,10 @@ final class MilestoneZeroTest extends DuskTestCase
                 component.$set('tableSearch', '');
                 JS);
             $browser->pause(500)
-                ->waitForText('Riordina')
-                ->press('Riordina')
-                ->waitFor('.fi-ta-reorder-handle');
+                ->waitFor('[data-dusk="reorder-findings"]')
+                ->click('[data-dusk="reorder-findings"]')
+                ->waitFor('.fi-ta-reorder-handle')
+                ->assertSee('Finding salvato da inspector');
             $firstReorderKey = $browser->attribute('[x-sortable-item]', 'wire:key');
             $browser->script(<<<'JS'
                 const sortable = document.querySelector('[x-sortable-item]').parentElement;
@@ -341,7 +378,7 @@ final class MilestoneZeroTest extends DuskTestCase
                 sortable.dispatchEvent(event);
                 JS);
             $browser->waitUntil("return document.querySelector('[x-sortable-item]').getAttribute('wire:key') !== ".json_encode($firstReorderKey))
-                ->press('Fine riordino');
+                ->click('[data-dusk="reorder-findings"]');
 
             $browser->refresh()->waitFor('[data-dusk="finding-actions"]');
             $beforeDeleteLogs = array_values(array_filter(
