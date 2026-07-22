@@ -58,6 +58,38 @@ final readonly class AssessmentReportData
         return $this->settingsSnapshot[$key] ?? null;
     }
 
+    /**
+     * @return list<array{
+     *     label: string,
+     *     color: string,
+     *     count: int
+     * }>
+     */
+    public function priorityCounts(): array
+    {
+        $counts = [];
+
+        foreach ($this->priorityLegend as $priority) {
+            $count = 0;
+
+            foreach ($this->findings as $finding) {
+                if ($finding->priorityLabel === $priority->label) {
+                    $count++;
+                }
+            }
+
+            if ($count > 0) {
+                $counts[] = [
+                    'label' => $priority->label,
+                    'color' => $priority->color,
+                    'count' => $count,
+                ];
+            }
+        }
+
+        return $counts;
+    }
+
     /** @return list<ReportEvidenceData> */
     public function attachments(): array
     {

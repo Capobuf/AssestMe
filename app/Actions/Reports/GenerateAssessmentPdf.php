@@ -129,13 +129,25 @@ final class GenerateAssessmentPdf
         }
 
         try {
+            $headerText = trim((string) $snapshot->setting('header_text'));
+            $footerText = trim((string) $snapshot->setting('footer_text'));
+            $businessName = trim((string) $snapshot->setting('business_name'));
+            $consultantName = trim((string) $snapshot->setting('consultant_name'));
+            $applicationName = trim((string) $snapshot->setting('application_name'));
+
             $driver = new DomPdfCanvasDriver([
                 'is_remote_enabled' => false,
                 'chroot' => storage_path('app/private'),
                 'page_chrome' => [
-                    'header' => (string) ($snapshot->setting('header_text') ?: $snapshot->title),
-                    'footer' => (string) ($snapshot->setting('footer_text') ?: $snapshot->setting('business_name') ?: ''),
-                    'confidentiality' => (string) $snapshot->setting('confidentiality_label'),
+                    'header' => $headerText !== '' ? $headerText : __('assestme.reports.document.header_fallback', [
+                        'client' => $snapshot->clientName,
+                    ]),
+                    'footer' => match (true) {
+                        $footerText !== '' => $footerText,
+                        $businessName !== '' => $businessName,
+                        $consultantName !== '' => $consultantName,
+                        default => $applicationName,
+                    },
                     'show_cover' => $snapshot->setting('cover') === true,
                     'show_header_footer' => $snapshot->setting('repeated_header_footer') === true,
                     'show_page_numbers' => $snapshot->setting('page_numbers') === true,

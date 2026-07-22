@@ -23,8 +23,7 @@ final class DomPdfCanvasDriver extends DomPdfDriver
         $dompdf->render();
 
         $header = (string) ($this->config['page_chrome']['header'] ?? 'AssestMe');
-        $footer = (string) ($this->config['page_chrome']['footer'] ?? 'Riservato');
-        $confidentiality = (string) ($this->config['page_chrome']['confidentiality'] ?? '');
+        $footer = (string) ($this->config['page_chrome']['footer'] ?? '');
         $showCover = (bool) ($this->config['page_chrome']['show_cover'] ?? false);
         $showHeaderFooter = (bool) ($this->config['page_chrome']['show_header_footer'] ?? true);
         $showPageNumbers = (bool) ($this->config['page_chrome']['show_page_numbers'] ?? true);
@@ -35,7 +34,7 @@ final class DomPdfCanvasDriver extends DomPdfDriver
                 int $pageCount,
                 Canvas $canvas,
                 FontMetrics $fontMetrics,
-            ) use ($header, $footer, $confidentiality, $showCover, $showHeaderFooter, $showPageNumbers): void {
+            ) use ($header, $footer, $showCover, $showHeaderFooter, $showPageNumbers): void {
                 if ($showCover && $pageNumber === 1) {
                     return;
                 }
@@ -46,6 +45,12 @@ final class DomPdfCanvasDriver extends DomPdfDriver
                 $fontSize = 9.0;
                 $left = 42.0;
                 $right = $canvas->get_width() - $left;
+                $headerLineY = 38.0;
+                $footerLineY = $canvas->get_height() - 42.0;
+                $footerTextY = $canvas->get_height() - 28.0;
+                $primaryTextColor = [0.067, 0.067, 0.067];
+                $secondaryTextColor = [0.4, 0.4, 0.4];
+                $lineColor = [0.843, 0.843, 0.824];
                 $pageText = __('assestme.reports.document.page_number', [
                     'current' => $contentPage,
                     'total' => $contentPages,
@@ -64,32 +69,29 @@ final class DomPdfCanvasDriver extends DomPdfDriver
                 };
 
                 if ($showHeaderFooter && $header !== '') {
-                    $canvas->text($left, 22.0, $fitText($header, $right - $left), $font, $fontSize, [0.12, 0.25, 0.45]);
+                    $canvas->text($left, 22.0, $fitText($header, $right - $left), $font, $fontSize, $primaryTextColor);
+                    $canvas->line($left, $headerLineY, $right, $headerLineY, $lineColor, 0.5);
                 }
 
-                $rightParts = [];
-                if ($confidentiality !== '') {
-                    $rightParts[] = $confidentiality;
-                }
-                if ($showPageNumbers) {
-                    $rightParts[] = $pageText;
-                }
-                $rightText = implode(' — ', $rightParts);
+                $rightText = $showPageNumbers ? $pageText : '';
                 $rightText = $fitText($rightText, ($right - $left) * 0.55);
                 $rightTextWidth = $fontMetrics->getTextWidth($rightText, $font, $fontSize);
                 $footerWidth = max(0.0, ($right - $left) - $rightTextWidth - 12.0);
 
+                if (($showHeaderFooter && $footer !== '') || $rightText !== '') {
+                    $canvas->line($left, $footerLineY, $right, $footerLineY, $lineColor, 0.5);
+                }
                 if ($showHeaderFooter && $footer !== '') {
-                    $canvas->text($left, $canvas->get_height() - 28.0, $fitText($footer, $footerWidth), $font, $fontSize, [0.35, 0.35, 0.35]);
+                    $canvas->text($left, $footerTextY, $fitText($footer, $footerWidth), $font, $fontSize, $secondaryTextColor);
                 }
                 if ($rightText !== '') {
                     $canvas->text(
                         $right - $rightTextWidth,
-                        $canvas->get_height() - 28.0,
+                        $footerTextY,
                         $rightText,
                         $font,
                         $fontSize,
-                        [0.35, 0.35, 0.35],
+                        $secondaryTextColor,
                     );
                 }
             },

@@ -22,7 +22,7 @@ return [
         'chroot' => env('LARAVEL_PDF_DOMPDF_CHROOT'),
         'page_chrome' => [
             'header' => env('LARAVEL_PDF_HEADER', 'AssestMe — Proof Milestone 0'),
-            'footer' => env('LARAVEL_PDF_FOOTER', 'Riservato'),
+            'footer' => env('LARAVEL_PDF_FOOTER', 'AssestMe'),
             'show_cover' => false,
         ],
     ],

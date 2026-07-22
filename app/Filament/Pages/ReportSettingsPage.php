@@ -15,7 +15,10 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Pages\SettingsPage;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 
@@ -42,55 +45,106 @@ final class ReportSettingsPage extends SettingsPage
     public function form(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make(__('assestme.settings.report.identity'))
+            Grid::make([
+                'default' => 1,
+                'xl' => 3,
+            ])
                 ->schema([
-                    TextInput::make('consultant_name')->label(__('assestme.settings.fields.consultant_name'))->maxLength(255),
-                    TextInput::make('business_name')->label(__('assestme.settings.fields.business_name'))->maxLength(255),
-                    TextInput::make('consultant_role')->label(__('assestme.settings.fields.consultant_role'))->maxLength(255),
-                    TextInput::make('consultant_email')->label(__('assestme.settings.fields.consultant_email'))->email()->maxLength(254),
-                    TextInput::make('consultant_phone')->label(__('assestme.settings.fields.consultant_phone'))->maxLength(40),
-                    TextInput::make('consultant_website')->label(__('assestme.settings.fields.consultant_website'))->url()->regex('/^https?:\/\//i')->maxLength(2048),
-                    Textarea::make('consultant_address')->label(__('assestme.settings.fields.consultant_address'))->rows(3)->maxLength(20000),
-                    TextInput::make('consultant_vat_number')->label(__('assestme.settings.fields.consultant_vat_number'))->maxLength(32),
-                    TextInput::make('consultant_pec')->label(__('assestme.settings.fields.consultant_pec'))->email()->maxLength(254),
-                    TextInput::make('consultant_tax_code')->label(__('assestme.settings.fields.consultant_tax_code'))->maxLength(32),
-                    FileUpload::make('consultant_logo_path')
-                        ->label(__('assestme.settings.fields.consultant_logo'))
-                        ->disk('local')
-                        ->directory('branding')
-                        ->visibility('private')
-                        ->acceptedFileTypes(['image/png', 'image/jpeg'])
-                        ->maxSize(5120)
-                        ->preventFilePathTampering(),
-                    TextInput::make('signature_name')->label(__('assestme.settings.fields.signature_name'))->maxLength(255),
-                    TextInput::make('signature_role')->label(__('assestme.settings.fields.signature_role'))->maxLength(255),
-                ])->columns(2),
-            Section::make(__('assestme.settings.report.layout'))
-                ->schema([
-                    TextInput::make('default_title_pattern')->label(__('assestme.settings.fields.default_title_pattern'))->required()->maxLength(255),
-                    ColorPicker::make('primary_color')->label(__('assestme.settings.fields.primary_color'))->required()->regex('/^#[0-9A-Fa-f]{6}$/'),
-                    Select::make('branding')->label(__('assestme.settings.fields.branding'))->options([
-                        'consultant' => __('assestme.settings.values.consultant'),
-                        'client' => __('assestme.settings.values.client'),
-                        'both' => __('assestme.settings.values.both'),
-                    ])->required(),
-                    Select::make('cover_title_mode')
-                        ->label(__('assestme.settings.fields.cover_title_mode'))
-                        ->options(CoverTitleMode::options())
-                        ->required(),
-                    Toggle::make('show_priority_descriptions')
-                        ->label(__('assestme.settings.fields.show_priority_descriptions')),
-                    TextInput::make('confidentiality_label')->label(__('assestme.settings.fields.confidentiality_label'))->required()->maxLength(40),
-                    TextInput::make('header_text')->label(__('assestme.settings.fields.header_text'))->maxLength(120),
-                    TextInput::make('footer_text')->label(__('assestme.settings.fields.footer_text'))->maxLength(120),
-                    ...self::toggleFields(),
-                ])->columns(2),
-            Section::make(__('assestme.settings.report.texts'))
-                ->schema([
-                    Textarea::make('methodology_text')->label(__('assestme.settings.fields.methodology_text'))->rows(5)->maxLength(20000),
-                    Textarea::make('disclaimer_text')->label(__('assestme.settings.fields.disclaimer_text'))->rows(5)->maxLength(20000),
-                    Textarea::make('signature_text')->label(__('assestme.settings.fields.signature_text'))->rows(3)->maxLength(20000),
-                ]),
+                    Group::make([
+                        Section::make(__('assestme.settings.report.identity'))
+                            ->schema([
+                                TextInput::make('consultant_name')
+                                    ->label(__('assestme.settings.fields.consultant_name'))
+                                    ->live(debounce: 500)
+                                    ->maxLength(255),
+                                TextInput::make('business_name')
+                                    ->label(__('assestme.settings.fields.business_name'))
+                                    ->live(debounce: 500)
+                                    ->maxLength(255),
+                                TextInput::make('consultant_role')->label(__('assestme.settings.fields.consultant_role'))->maxLength(255),
+                                TextInput::make('consultant_email')->label(__('assestme.settings.fields.consultant_email'))->email()->maxLength(254),
+                                TextInput::make('consultant_phone')->label(__('assestme.settings.fields.consultant_phone'))->maxLength(40),
+                                TextInput::make('consultant_website')->label(__('assestme.settings.fields.consultant_website'))->url()->regex('/^https?:\/\//i')->maxLength(2048),
+                                Textarea::make('consultant_address')->label(__('assestme.settings.fields.consultant_address'))->rows(3)->maxLength(20000),
+                                TextInput::make('consultant_vat_number')->label(__('assestme.settings.fields.consultant_vat_number'))->maxLength(32),
+                                TextInput::make('consultant_pec')->label(__('assestme.settings.fields.consultant_pec'))->email()->maxLength(254),
+                                TextInput::make('consultant_tax_code')->label(__('assestme.settings.fields.consultant_tax_code'))->maxLength(32),
+                                FileUpload::make('consultant_logo_path')
+                                    ->label(__('assestme.settings.fields.consultant_logo'))
+                                    ->disk('local')
+                                    ->directory('branding')
+                                    ->visibility('private')
+                                    ->acceptedFileTypes(['image/png', 'image/jpeg'])
+                                    ->maxSize(5120)
+                                    ->preventFilePathTampering(),
+                                TextInput::make('signature_name')->label(__('assestme.settings.fields.signature_name'))->maxLength(255),
+                                TextInput::make('signature_role')->label(__('assestme.settings.fields.signature_role'))->maxLength(255),
+                            ])
+                            ->columns(2),
+                        Section::make(__('assestme.settings.report.layout'))
+                            ->schema([
+                                TextInput::make('default_title_pattern')
+                                    ->label(__('assestme.settings.fields.default_title_pattern'))
+                                    ->required()
+                                    ->live(debounce: 500)
+                                    ->extraInputAttributes(['data-dusk' => 'report-preview-title-input'])
+                                    ->maxLength(255),
+                                ColorPicker::make('primary_color')
+                                    ->label(__('assestme.settings.fields.primary_color'))
+                                    ->helperText(__('assestme.settings.help.primary_color'))
+                                    ->required()
+                                    ->live(debounce: 300)
+                                    ->extraInputAttributes(['data-dusk' => 'report-preview-color-input'])
+                                    ->regex('/^#[0-9A-Fa-f]{6}$/'),
+                                Select::make('branding')
+                                    ->label(__('assestme.settings.fields.branding'))
+                                    ->helperText(__('assestme.settings.help.branding'))
+                                    ->options([
+                                        'consultant' => __('assestme.settings.values.consultant'),
+                                        'client' => __('assestme.settings.values.client'),
+                                        'both' => __('assestme.settings.values.both'),
+                                    ])
+                                    ->required()
+                                    ->live(),
+                                Select::make('cover_title_mode')
+                                    ->label(__('assestme.settings.fields.cover_title_mode'))
+                                    ->options(CoverTitleMode::options())
+                                    ->required()
+                                    ->live(),
+                                Toggle::make('show_priority_descriptions')
+                                    ->label(__('assestme.settings.fields.show_priority_descriptions')),
+                                TextInput::make('header_text')
+                                    ->label(__('assestme.settings.fields.header_text'))
+                                    ->helperText(__('assestme.settings.help.header_text'))
+                                    ->live(debounce: 500)
+                                    ->extraInputAttributes(['data-dusk' => 'report-preview-header-input'])
+                                    ->maxLength(120),
+                                TextInput::make('footer_text')
+                                    ->label(__('assestme.settings.fields.footer_text'))
+                                    ->helperText(__('assestme.settings.help.footer_text'))
+                                    ->live(debounce: 500)
+                                    ->extraInputAttributes(['data-dusk' => 'report-preview-footer-input'])
+                                    ->maxLength(120),
+                                ...self::toggleFields(),
+                            ])
+                            ->columns(2),
+                        Section::make(__('assestme.settings.report.texts'))
+                            ->schema([
+                                Textarea::make('methodology_text')->label(__('assestme.settings.fields.methodology_text'))->rows(5)->maxLength(20000),
+                                Textarea::make('disclaimer_text')->label(__('assestme.settings.fields.disclaimer_text'))->rows(5)->maxLength(20000),
+                                Textarea::make('signature_text')->label(__('assestme.settings.fields.signature_text'))->rows(3)->maxLength(20000),
+                            ]),
+                    ])->columnSpan([
+                        'default' => 1,
+                        'xl' => 2,
+                    ]),
+                    View::make('filament.pages.report-settings-preview')
+                        ->columnSpan([
+                            'default' => 1,
+                            'xl' => 1,
+                        ]),
+                ])
+                ->columnSpanFull(),
         ]);
     }
 
@@ -127,9 +181,23 @@ final class ReportSettingsPage extends SettingsPage
             'freeze_after_generation',
         ];
 
-        return array_map(
-            static fn (string $field): Toggle => Toggle::make($field)->label(__("assestme.settings.fields.{$field}")),
-            $fields,
-        );
+        $liveFields = ['cover', 'summary_table', 'alternative_solutions', 'costs', 'evidence'];
+        $helpFields = [
+            'cover', 'executive_summary', 'risk_legend', 'summary_table', 'technical_notes',
+            'alternative_solutions', 'costs', 'evidence', 'evidence_captions', 'new_page_per_finding',
+        ];
+
+        return array_map(static function (string $field) use ($liveFields, $helpFields): Toggle {
+            $toggle = Toggle::make($field)->label(__("assestme.settings.fields.{$field}"));
+
+            if (in_array($field, $liveFields, true)) {
+                $toggle->live();
+            }
+            if (in_array($field, $helpFields, true)) {
+                $toggle->helperText(__("assestme.settings.help.{$field}"));
+            }
+
+            return $toggle;
+        }, $fields);
     }
 }

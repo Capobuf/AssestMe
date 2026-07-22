@@ -65,8 +65,6 @@ final class ReportSettings extends Settings
 
     public bool $disclaimer;
 
-    public string $confidentiality_label;
-
     public bool $technical_notes;
 
     public bool $alternative_solutions;

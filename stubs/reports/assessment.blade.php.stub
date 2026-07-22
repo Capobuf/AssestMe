@@ -54,15 +54,6 @@
             color: #6b7280;
         }
 
-        .confidentiality {
-            border: 1px solid #9ca3af;
-            display: inline-block;
-            font-size: 8pt;
-            margin-top: 20mm;
-            padding: 2mm 4mm;
-            text-transform: uppercase;
-        }
-
         .section-title {
             border-bottom: 2px solid {{ $report->primaryColor }};
             font-size: 17pt;
@@ -182,9 +173,6 @@
             <p>{{ $report->clientName }}</p>
             <p class="muted">{{ $report->assessmentDateLabel }}</p>
 
-            @if ($report->confidentialityLabel !== null)
-                <div class="confidentiality">{{ $report->confidentialityLabel }}</div>
-            @endif
         </section>
 
         <div class="page-break"></div>

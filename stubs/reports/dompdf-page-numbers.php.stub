@@ -7,8 +7,8 @@ use Dompdf\Dompdf;
 use Dompdf\FontMetrics;
 
 /**
- * Draws the repeated report header, footer, confidentiality label, and page
- * numbers after DOMPDF knows the final page count.
+ * Draws the repeated report header, footer, and page numbers after DOMPDF
+ * knows the final page count.
  *
  * The caller passes whether a cover exists. When present, the cover is skipped
  * and content numbering starts from one on DOMPDF's second physical page.
@@ -18,7 +18,6 @@ return static function (
     bool $hasCover,
     ?string $headerText,
     ?string $footerText,
-    ?string $confidentialityLabel,
     bool $showPageNumbers,
 ): void {
     $canvas = $dompdf->getCanvas();
@@ -42,7 +41,6 @@ return static function (
             $coverOffset,
             $headerText,
             $footerText,
-            $confidentialityLabel,
             $showPageNumbers,
         ): void {
             if ($pageNumber <= $coverOffset) {
@@ -90,19 +88,12 @@ return static function (
             $footerY = $pageHeight - 28.0;
             $pageCanvas->line($left, $footerY - 6.0, $right, $footerY - 6.0, $lineColor, 0.5);
 
-            $rightParts = [];
-
-            if ($confidentialityLabel !== null && $confidentialityLabel !== '') {
-                $rightParts[] = $confidentialityLabel;
-            }
-
+            $rightText = '';
             if ($showPageNumbers) {
                 $contentPage = $pageNumber - $coverOffset;
                 $contentCount = max(1, $pageCount - $coverOffset);
-                $rightParts[] = sprintf('Pagina %d di %d', $contentPage, $contentCount);
+                $rightText = sprintf('Pagina %d di %d', $contentPage, $contentCount);
             }
-
-            $rightText = implode(' — ', $rightParts);
             $rightWidth = $rightText === ''
                 ? 0.0
                 : $pageFontMetrics->getTextWidth($rightText, $font, $fontSize);

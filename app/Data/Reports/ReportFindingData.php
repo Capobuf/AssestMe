@@ -85,6 +85,15 @@ final readonly class ReportFindingData
     }
 
     /** @return list<ReportEvidenceData> */
+    public function includedEvidence(): array
+    {
+        return array_values(array_filter(
+            $this->evidences,
+            static fn (ReportEvidenceData $evidence): bool => $evidence->included,
+        ));
+    }
+
+    /** @return list<ReportEvidenceData> */
     public function includedImageEvidence(): array
     {
         return array_values(array_filter(

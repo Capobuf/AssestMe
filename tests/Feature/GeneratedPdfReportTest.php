@@ -45,6 +45,7 @@ it('persists immutable versioned PDF snapshots and downloads the authoritative f
     $firstPath = Storage::disk('local')->path($first->file_path);
     $pdf = (new Parser)->parseFile($firstPath);
     $text = $pdf->getText();
+    $normalizedText = (string) preg_replace('/\s+/u', ' ', $text);
     $fixedNote = 'Tutti gli importi indicati sono stime orientative e si intendono IVA esclusa.';
 
     expect($first->version)->toBe(1)
@@ -55,7 +56,9 @@ it('persists immutable versioned PDF snapshots and downloads the authoritative f
         ->and($first->payload_snapshot['findings'][0])->not->toHaveKey('tags')
         ->and($first->payload_snapshot['client']['name'])->not->toBeEmpty()
         ->and($first->settings_snapshot['primary_color'])->toBe('#2563EB')
-        ->and($text)->toContain($finding->title, 'Pagina 1 di')
+        ->and($first->settings_snapshot)->not->toHaveKey('confidentiality_label')
+        ->and(file_get_contents($firstPath, false, null, 0, 5))->toBe('%PDF-')
+        ->and($normalizedText)->toContain($finding->title, 'Pagina 1 di')
         ->and(substr_count($text, $fixedNote))->toBe(1);
 
     $finding->update(['problem' => 'Problema modificato dopo il primo snapshot.']);
@@ -138,7 +141,7 @@ it('applies cover title company address and optional priority legend presentatio
     $settings->save();
     $combined = app(BuildAssessmentSnapshot::class)($assessment->fresh());
     $combinedHtml = view('reports.assessment', ['report' => $combined])->render();
-    preg_match('/<section class="cover">(.*?)<\/section>/s', $combinedHtml, $coverMatch);
+    preg_match('/<section class="cover"[^>]*>(.*?)<\/section>/s', $combinedHtml, $coverMatch);
 
     expect($combined->title)->toBe('Assessment IT — Azienda Copertina')
         ->and($combinedHtml)->toContain('Descrizione priorità visibile')
@@ -353,7 +356,7 @@ it('renders verified evidence, links, alternatives, branding, scope, and resolut
 
     $finding->update([
         'problem' => str_repeat('Testo lungo verificabile per il report definitivo. ', 120),
-        'technical_notes' => 'Nota tecnica riservata inclusa.',
+        'technical_notes' => 'Nota tecnica interna inclusa.',
         'status' => FindingStatus::Resolved,
         'implemented_solution_id' => $recommended->getKey(),
         'resolution_notes' => 'Risoluzione verificata durante il collaudo.',
@@ -411,7 +414,7 @@ it('renders verified evidence, links, alternatives, branding, scope, and resolut
             'Verbale tecnico allegato',
             'application/pdf',
             'Riferimento sicurezza online',
-            'Nota tecnica riservata inclusa',
+            'Nota tecnica interna inclusa',
             'Risoluzione verificata durante il collaudo.',
         )
         ->and($pageTexts->contains(static fn (string $page): bool => str_contains($page, 'Evidenze')

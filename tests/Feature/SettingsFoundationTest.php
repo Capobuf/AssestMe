@@ -16,12 +16,32 @@ use Livewire\Livewire;
 it('resolves report settings from the real migrated settings state', function (): void {
     expect(DB::table('migrations')
         ->where('migration', '2026_07_18_000015_add_report_presentation_settings')
-        ->exists())->toBeTrue();
+        ->exists())->toBeTrue()
+        ->and(DB::table('migrations')
+            ->where('migration', '2026_07_22_000020_remove_report_confidentiality_label')
+            ->exists())->toBeTrue()
+        ->and(DB::table('settings')
+            ->where('group', 'report')
+            ->where('name', 'confidentiality_label')
+            ->exists())->toBeFalse();
 
     $settings = app(ReportSettings::class);
 
     expect($settings->cover_title_mode)->toBe(CoverTitleMode::Separate)
-        ->and($settings->show_priority_descriptions)->toBeTrue();
+        ->and($settings->show_priority_descriptions)->toBeTrue()
+        ->and($settings->toArray())->not->toHaveKey('confidentiality_label');
+
+    $settings->business_name = 'Consulenza Migrazione S.r.l.';
+    $settings->header_text = 'Header persistente';
+    $settings->primary_color = '#1A2B3C';
+    $settings->save()->refresh();
+
+    expect($settings->business_name)->toBe('Consulenza Migrazione S.r.l.')
+        ->and($settings->header_text)->toBe('Header persistente')
+        ->and($settings->primary_color)->toBe('#1A2B3C')
+        ->and($settings->cover_title_mode)->toBe(CoverTitleMode::Separate)
+        ->and($settings->show_priority_descriptions)->toBeTrue()
+        ->and($settings->toArray())->not->toHaveKey('confidentiality_label');
 });
 
 it('mounts the report settings Filament page from migrated values', function (): void {

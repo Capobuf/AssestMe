@@ -448,7 +448,6 @@ final class BuildAssessmentSnapshot
             'page_numbers' => $this->reportSettings->page_numbers,
             'signature_block' => $this->reportSettings->signature_block,
             'disclaimer' => $this->reportSettings->disclaimer,
-            'confidentiality_label' => $this->reportSettings->confidentiality_label,
             'technical_notes' => $this->reportSettings->technical_notes,
             'alternative_solutions' => $this->reportSettings->alternative_solutions,
             'costs' => $this->reportSettings->costs,
