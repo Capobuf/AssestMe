@@ -38,7 +38,6 @@ use App\Models\FindingTemplate;
 use App\Models\GeneratedReport;
 use App\Models\RiskProfile;
 use App\Models\Site;
-use App\Models\Tag;
 use App\Models\User;
 use App\Policies\SingletonAdministratorPolicy;
 use Illuminate\Support\Facades\Gate;
@@ -127,7 +126,6 @@ it('maps every directly exposed model to the singleton administrator policy', fu
     GeneratedReport::class,
     RiskProfile::class,
     Site::class,
-    Tag::class,
 ]);
 
 it('allows only the persisted singleton administrator and denies deletion bypass abilities', function (): void {

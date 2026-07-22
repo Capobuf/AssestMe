@@ -55,3 +55,18 @@ it('rejects invalid and duplicate input with zero database changes', function (s
     'duplicate template identifier' => 'invalid-duplicate-external-id.json',
     'invalid custom billing' => 'invalid-custom-billing.json',
 ]);
+
+it('rejects the removed tags property under schema version one', function (): void {
+    $payload = json_decode(
+        (string) file_get_contents(base_path('fixtures/imports/valid-all-branches.json')),
+        true,
+        flags: JSON_THROW_ON_ERROR,
+    );
+    $payload['templates'][0]['tags'] = ['legacy'];
+
+    expect(fn () => app(ImportFindingTemplates::class)(
+        json_encode($payload, JSON_THROW_ON_ERROR),
+        'replace',
+    ))->toThrow(ValidationException::class)
+        ->and(FindingTemplate::query()->count())->toBe(0);
+});

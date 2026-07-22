@@ -41,11 +41,6 @@ class ClientResource extends Resource
         return __('assestme.clients.plural');
     }
 
-    public static function getNavigationGroup(): ?string
-    {
-        return __('assestme.navigation.registry');
-    }
-
     public static function form(Schema $schema): Schema
     {
         return ClientForm::configure($schema);

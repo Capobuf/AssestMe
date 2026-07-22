@@ -118,8 +118,6 @@ final class SaveFindingDetails
             'problem' => ['nullable', 'string', 'max:20000'],
             'entrepreneur_notes' => ['nullable', 'string', 'max:20000'],
             'category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->whereNull('deleted_at')],
-            'tag_ids' => ['array'],
-            'tag_ids.*' => ['integer', 'distinct', Rule::exists('tags', 'id')->whereNull('deleted_at')],
             'technical_notes' => ['nullable', 'string', 'max:20000'],
             'scope_type' => ['required', Rule::enum(ScopeType::class)],
             'scope_description' => ['nullable', 'string', 'max:20000'],
@@ -165,7 +163,7 @@ final class SaveFindingDetails
         }
 
         $current = Finding::query()
-            ->with(['assessment.client', 'tags', 'sites', 'assets', 'solutions'])
+            ->with(['assessment.client', 'sites', 'assets', 'solutions'])
             ->where('assessment_id', $finding->assessment_id)
             ->findOrFail($finding->getKey());
 
@@ -204,7 +202,7 @@ final class SaveFindingDetails
         $priorityLevelId = isset($validated['priority_level_id']) ? (int) $validated['priority_level_id'] : null;
         $priorityRationale = isset($validated['priority_rationale']) ? (string) $validated['priority_rationale'] : null;
         $finding->fill(collect($validated)->except([
-            'tag_ids', 'site_ids', 'asset_ids', 'solutions', 'status',
+            'site_ids', 'asset_ids', 'solutions', 'status',
             'priority_level_id', 'priority_is_overridden', 'priority_rationale',
         ])->all());
         $finding->save();
@@ -226,7 +224,6 @@ final class SaveFindingDetails
                 'priority_rationale' => $priorityRationale,
             ])->save();
         }
-        $finding->tags()->sync($validated['tag_ids'] ?? []);
         $finding->sites()->sync($validated['site_ids'] ?? []);
         $finding->assets()->sync($validated['asset_ids'] ?? []);
 

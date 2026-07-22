@@ -48,7 +48,6 @@ use Illuminate\Support\Collection;
  * @property-read FindingSolution|null $implementedSolution
  * @property-read Collection<int, FindingSolution> $solutions
  * @property-read Collection<int, Evidence> $evidences
- * @property-read Collection<int, Tag> $tags
  * @property-read Collection<int, Site> $sites
  * @property-read Collection<int, Asset> $assets
  */
@@ -142,12 +141,6 @@ class Finding extends Model
     public function evidences(): HasMany
     {
         return $this->hasMany(Evidence::class)->orderBy('sort_order');
-    }
-
-    /** @return BelongsToMany<Tag, $this> */
-    public function tags(): BelongsToMany
-    {
-        return $this->belongsToMany(Tag::class, 'finding_tag');
     }
 
     /** @return BelongsToMany<Site, $this> */

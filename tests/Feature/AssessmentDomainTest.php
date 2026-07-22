@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Assessments\ArchiveAssessment;
+use App\Actions\Assessments\AssessFindingCompleteness;
 use App\Actions\Assessments\CompleteAssessment;
 use App\Actions\Assessments\CopyTemplateToAssessment;
 use App\Actions\Assessments\CreateAssessment;
@@ -17,6 +18,7 @@ use App\Actions\Assessments\SaveFindingDetails;
 use App\Actions\Assessments\SetImplementedSolution;
 use App\Actions\Assessments\SetRecommendedSolution;
 use App\Actions\Assessments\TransitionFindingStatus;
+use App\Actions\Reports\BuildAssessmentSnapshot;
 use App\Data\Assessments\FindingSaveData;
 use App\Enums\AssessmentStatus;
 use App\Enums\BillingFrequency;
@@ -356,7 +358,6 @@ it('requires assets only for the explicitly selected asset scope', function (): 
     $assessment = Assessment::factory()->create();
     $finding = app(CopyTemplateToAssessment::class)($assessment, FindingTemplate::query()->firstOrFail());
     $site = Site::factory()->for($assessment->client)->create();
-    $asset = Asset::factory()->for($assessment->client)->create();
 
     foreach ([
         [ScopeType::Organization, null, [], []],
@@ -373,6 +374,24 @@ it('requires assets only for the explicitly selected asset scope', function (): 
         expect($finding->scope_type)->toBe($scope);
     }
 
+    expect($assessment->client->assets()->count())->toBe(0);
+
+    foreach ([
+        [ScopeType::SelectedSites, null],
+        [ScopeType::Network, null],
+        [ScopeType::Custom, null],
+    ] as [$invalidScope, $invalidDescription]) {
+        $payload = findingDetailsPayload($finding->fresh());
+        $payload['scope_type'] = $invalidScope->value;
+        $payload['scope_description'] = $invalidDescription;
+        $payload['site_ids'] = [];
+        $payload['asset_ids'] = [];
+
+        expect(fn () => saveFindingAggregate($finding->fresh(), $payload))
+            ->toThrow(ValidationException::class);
+    }
+
+    $asset = Asset::factory()->for($assessment->client)->create();
     $payload = findingDetailsPayload($finding->fresh());
     $payload['scope_type'] = ScopeType::SelectedAssets->value;
     $payload['scope_description'] = null;
@@ -384,6 +403,47 @@ it('requires assets only for the explicitly selected asset scope', function (): 
     $payload['asset_ids'] = [$asset->id];
     $saved = saveFindingAggregate($finding->fresh(), $payload);
     expect($saved->assets)->toHaveCount(1);
+});
+
+it('applies the same optional asset rule to completeness completion reports and incomplete filtering', function (): void {
+    $assessment = Assessment::factory()->create();
+    $site = Site::factory()->for($assessment->client)->create();
+    $asset = Asset::factory()->for($assessment->client)->create();
+    $template = FindingTemplate::query()->firstOrFail();
+    $findings = [];
+
+    foreach ([
+        [ScopeType::Organization, null, [], []],
+        [ScopeType::SelectedSites, null, [$site->id], []],
+        [ScopeType::SelectedAssets, null, [], [$asset->id]],
+        [ScopeType::Network, 'Rete perimetrale', [], []],
+        [ScopeType::Custom, 'Ambito personalizzato', [], []],
+    ] as [$scope, $description, $siteIds, $assetIds]) {
+        $finding = app(CopyTemplateToAssessment::class)($assessment->fresh(), $template);
+        $finding->update([
+            'scope_type' => $scope,
+            'scope_description' => $description,
+        ]);
+        $finding->sites()->sync($siteIds);
+        $finding->assets()->sync($assetIds);
+        $finding->refresh();
+        $findings[] = $finding;
+
+        expect(app(AssessFindingCompleteness::class)($finding))->toBe([]);
+    }
+
+    $incompleteIds = app(AssessFindingCompleteness::class)
+        ->applyIncompleteFilter(Finding::query()->where('assessment_id', $assessment->id))
+        ->pluck('id')
+        ->all();
+    $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh())->toArray();
+
+    expect($incompleteIds)->toBe([])
+        ->and($snapshot['findings'])->toHaveCount(5)
+        ->and($snapshot['findings'])->each->not->toHaveKey('tags');
+
+    $completed = app(CompleteAssessment::class)($assessment->fresh());
+    expect($completed->status)->toBe(AssessmentStatus::Completed);
 });
 
 function createFindingSolution(Finding $finding, string $suffix): FindingSolution
@@ -403,14 +463,13 @@ function createFindingSolution(Finding $finding, string $suffix): FindingSolutio
 /** @return array<string, mixed> */
 function findingDetailsPayload(Finding $finding): array
 {
-    $finding->load(['tags', 'sites', 'assets', 'solutions']);
+    $finding->load(['sites', 'assets', 'solutions']);
 
     return [
         'title' => $finding->title,
         'problem' => $finding->problem,
         'entrepreneur_notes' => $finding->entrepreneur_notes,
         'category_id' => $finding->category_id,
-        'tag_ids' => $finding->tags->pluck('id')->all(),
         'technical_notes' => $finding->technical_notes,
         'scope_type' => $finding->scope_type->value,
         'scope_description' => $finding->scope_description,

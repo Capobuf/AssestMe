@@ -117,9 +117,6 @@ final class BuildAssessmentSnapshot
                 $relation->getQuery()->orderBy('sort_order');
             },
             'findings.category' => $withArchived,
-            'findings.tags' => static function (Relation $relation): void {
-                $relation->getQuery()->withoutGlobalScope(SoftDeletingScope::class)->orderBy('name');
-            },
             'findings.consequenceLevel',
             'findings.likelihoodLevel',
             'findings.priorityLevel',
@@ -157,7 +154,6 @@ final class BuildAssessmentSnapshot
             includeInReport: $finding->include_in_report,
             title: (string) $finding->title,
             category: (string) $finding->category?->name,
-            tags: $finding->tags->pluck('name')->values()->all(),
             scopeType: $finding->scope_type->value,
             scopeLabel: $this->scopeLabel($finding->scope_type, $finding->scope_description),
             scopeDescription: $finding->scope_description,

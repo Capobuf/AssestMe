@@ -51,7 +51,6 @@ final class AssessmentWorkbookBuilder
             __('assestme.reports.workbook.findings.number'),
             __('assestme.reports.workbook.findings.title'),
             __('assestme.reports.workbook.findings.category'),
-            __('assestme.reports.workbook.findings.tags'),
             __('assestme.reports.workbook.findings.scope'),
             __('assestme.reports.workbook.findings.assets'),
             __('assestme.reports.workbook.findings.problem'),
@@ -64,7 +63,7 @@ final class AssessmentWorkbookBuilder
             __('assestme.reports.workbook.findings.estimate'),
             __('assestme.reports.workbook.findings.status'),
         ];
-        $widths = [10, 28, 20, 22, 30, 38, 48, 40, 44, 44, 16, 36, 16, 28, 16];
+        $widths = [10, 28, 20, 30, 38, 48, 40, 44, 44, 16, 36, 16, 28, 16];
         if ($includeTechnicalNotes) {
             $headers[] = __('assestme.reports.workbook.findings.technical_notes');
             $widths[] = 40;
@@ -85,7 +84,6 @@ final class AssessmentWorkbookBuilder
                 $finding->number,
                 $finding->title,
                 $finding->category,
-                implode(', ', $finding->tags),
                 $this->scope($finding),
                 implode("\n", array_map(static fn (ReportAssetData $asset): string => $asset->displayLabel, $finding->assets)),
                 $finding->problem,

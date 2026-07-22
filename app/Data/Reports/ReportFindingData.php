@@ -7,7 +7,6 @@ namespace App\Data\Reports;
 final readonly class ReportFindingData
 {
     /**
-     * @param  list<string>  $tags
      * @param  list<string>  $sites
      * @param  list<ReportAssetData>  $assets
      * @param  list<ReportSolutionData>  $solutions
@@ -19,7 +18,6 @@ final readonly class ReportFindingData
         public bool $includeInReport,
         public string $title,
         public string $category,
-        public array $tags,
         public string $scopeType,
         public string $scopeLabel,
         public ?string $scopeDescription,
@@ -122,7 +120,6 @@ final readonly class ReportFindingData
             'include_in_report' => $this->includeInReport,
             'title' => $this->title,
             'category' => $this->category,
-            'tags' => $this->tags,
             'scope_type' => $this->scopeType,
             'scope_label' => $this->scopeLabel,
             'scope_description' => $this->scopeDescription,

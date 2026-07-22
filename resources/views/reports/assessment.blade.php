@@ -207,7 +207,6 @@
             @if ($finding->assets !== [])
                 <div class="content-block"><div class="label">{{ __('assestme.reports.document.assets') }}</div><ul>@foreach ($finding->assets as $asset)<li>{{ $asset->displayLabel }}</li>@endforeach</ul></div>
             @endif
-            @if ($finding->tags !== [])<div class="content-block"><div class="label">{{ __('assestme.reports.document.tags') }}</div>{{ implode(', ', $finding->tags) }}</div>@endif
             <div class="content-block"><div class="label">{{ __('assestme.reports.document.priority_and_risk') }}</div>
                 {{ $finding->priorityLabel }}
                 @if (filled($finding->category)) — {{ __('assestme.reports.document.category') }}: {{ $finding->category }}@endif

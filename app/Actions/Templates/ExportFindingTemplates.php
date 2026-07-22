@@ -14,7 +14,7 @@ final class ExportFindingTemplates
     public function __invoke(bool $includeInactive = false): string
     {
         $templates = FindingTemplate::query()
-            ->with(['category', 'tags', 'solutions.effortLevel', 'defaultConsequenceLevel', 'defaultLikelihoodLevel', 'defaultPriorityLevel'])
+            ->with(['category', 'solutions.effortLevel', 'defaultConsequenceLevel', 'defaultLikelihoodLevel', 'defaultPriorityLevel'])
             ->when(! $includeInactive, fn ($query) => $query->where('is_enabled', true))
             ->orderBy('external_id')
             ->get()
@@ -22,7 +22,6 @@ final class ExportFindingTemplates
                 'external_id' => $template->external_id,
                 'title' => $template->title,
                 'category' => $template->category->name,
-                'tags' => $template->tags->sortBy(fn ($tag) => mb_strtolower($tag->name))->pluck('name')->values()->all(),
                 'problem' => $template->problem,
                 'entrepreneur_notes' => $template->entrepreneur_notes,
                 'technical_notes' => $template->technical_notes,

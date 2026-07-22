@@ -309,13 +309,6 @@
                 <span class="badge">{{ $finding->category }}</span>
             </header>
 
-            @if ($finding->tags !== [])
-                <div class="content-block">
-                    <div class="label">{{ __('report.fields.tags') }}</div>
-                    <div>{{ implode(', ', $finding->tags) }}</div>
-                </div>
-            @endif
-
             <div class="content-block">
                 <div class="label">{{ __('report.fields.scope') }}</div>
                 <div>{!! nl2br(e($finding->scopeLabel)) !!}</div>

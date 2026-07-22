@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Browser;
 
+use App\Filament\Resources\Clients\ClientResource;
 use App\Models\Assessment;
 use App\Models\Client;
 use App\Models\Finding;
@@ -31,7 +32,7 @@ final class MilestoneZeroTest extends DuskTestCase
 
         $this->browse(function (Browser $browser) use ($administrator, $assessment, $client): void {
             $browser->loginAs($administrator)
-                ->visit("/admin/clients/{$client->getKey()}/edit")
+                ->visit(ClientResource::getUrl('edit', ['record' => $client]))
                 ->waitForText('Ragione sociale');
 
             $browser->script(<<<'JS'

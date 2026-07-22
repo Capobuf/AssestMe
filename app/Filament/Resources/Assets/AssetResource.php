@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Assets;
 
+use App\Filament\Clusters\AssetCluster;
 use App\Filament\Resources\Assets\Pages\CreateAsset;
 use App\Filament\Resources\Assets\Pages\EditAsset;
 use App\Filament\Resources\Assets\Pages\ListAssets;
@@ -20,11 +21,13 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class AssetResource extends Resource
 {
+    protected static ?string $cluster = AssetCluster::class;
+
     protected static ?string $model = Asset::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedComputerDesktop;
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 1;
 
     public static function getNavigationLabel(): string
     {
@@ -39,11 +42,6 @@ class AssetResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return __('assestme.assets.plural');
-    }
-
-    public static function getNavigationGroup(): ?string
-    {
-        return __('assestme.navigation.registry');
     }
 
     public static function form(Schema $schema): Schema

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Actions\Assets\SaveAsset;
 use App\Actions\AssetTypes\SaveAssetType;
+use App\Filament\Resources\Assets\AssetResource;
 use App\Filament\Resources\Assets\Pages\CreateAsset;
+use App\Filament\Resources\AssetTypes\AssetTypeResource;
 use App\Models\Asset;
 use App\Models\AssetType;
 use App\Models\Client;
@@ -117,7 +119,7 @@ it('creates an asset through its Filament resource', function (): void {
     $assetType = AssetType::factory()->create();
     $this->actingAs($administrator);
 
-    Livewire::test(CreateAsset::class)
+    $component = Livewire::test(CreateAsset::class)
         ->fillForm([
             'client_id' => $client->id,
             'site_id' => $site->id,
@@ -128,8 +130,10 @@ it('creates an asset through its Filament resource', function (): void {
         ->call('create')
         ->assertHasNoFormErrors();
 
-    expect(Asset::query()->where('hostname', 'server-01.example.test')->firstOrFail()->mac_address)
-        ->toBe('00:11:22:33:44:55');
+    $created = Asset::query()->where('hostname', 'server-01.example.test')->firstOrFail();
+    $component->assertRedirect(AssetResource::getUrl('edit', ['record' => $created]));
+
+    expect($created->mac_address)->toBe('00:11:22:33:44:55');
 });
 
 it('filters sites by company and clears a stale site when the company changes', function (): void {
@@ -148,6 +152,6 @@ it('filters sites by company and clears a stale site when the company changes', 
 });
 
 it('requires authentication for asset and asset type resources', function (): void {
-    $this->get('/admin/assets')->assertRedirect('/admin/login');
-    $this->get('/admin/asset-types')->assertRedirect('/admin/login');
+    $this->get(AssetResource::getUrl('index'))->assertRedirect('/admin/login');
+    $this->get(AssetTypeResource::getUrl('index'))->assertRedirect('/admin/login');
 });

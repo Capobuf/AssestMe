@@ -15,9 +15,10 @@ use App\Models\FindingTemplate;
 use App\Models\GeneratedReport;
 use App\Models\RiskProfile;
 use App\Models\Site;
-use App\Models\Tag;
 use App\Policies\SingletonAdministratorPolicy;
 use App\Services\Reporting\DomPdfCanvasDriver;
+use App\Support\CanaryClusterRequester;
+use Baspa\FilamentCanary\Sweep\Requester;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Spatie\LaravelPdf\Drivers\PdfDriver;
@@ -42,6 +43,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if ($this->app->environment('testing') && interface_exists(Requester::class)) {
+            $this->app->bind(Requester::class, CanaryClusterRequester::class);
+        }
+
         Gate::policy(Assessment::class, SingletonAdministratorPolicy::class);
         Gate::policy(Asset::class, SingletonAdministratorPolicy::class);
         Gate::policy(AssetType::class, SingletonAdministratorPolicy::class);
@@ -53,6 +58,5 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(GeneratedReport::class, SingletonAdministratorPolicy::class);
         Gate::policy(RiskProfile::class, SingletonAdministratorPolicy::class);
         Gate::policy(Site::class, SingletonAdministratorPolicy::class);
-        Gate::policy(Tag::class, SingletonAdministratorPolicy::class);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Enums\CoverTitleMode;
+use App\Filament\Clusters\SettingsCluster;
 use App\Settings\ReportSettings;
 use BackedEnum;
 use Filament\Forms\Components\ColorPicker;
@@ -20,11 +21,13 @@ use Filament\Support\Icons\Heroicon;
 
 final class ReportSettingsPage extends SettingsPage
 {
+    protected static ?string $cluster = SettingsCluster::class;
+
     protected static string $settings = ReportSettings::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
 
-    protected static ?int $navigationSort = 31;
+    protected static ?int $navigationSort = 2;
 
     public static function getNavigationLabel(): string
     {
@@ -34,11 +37,6 @@ final class ReportSettingsPage extends SettingsPage
     public function getTitle(): string
     {
         return __('assestme.settings.report.title');
-    }
-
-    public static function getNavigationGroup(): string
-    {
-        return __('assestme.navigation.configuration');
     }
 
     public function form(Schema $schema): Schema

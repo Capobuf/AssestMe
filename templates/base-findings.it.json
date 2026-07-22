@@ -5,11 +5,6 @@
       "external_id": "nas.notifications.missing",
       "title": "Notifiche del NAS non configurate",
       "category": "NAS e Storage",
-      "tags": [
-        "Monitoraggio",
-        "Continuità operativa",
-        "Backup"
-      ],
       "problem": "Il NAS non è configurato per inviare notifiche relative a guasti, volumi degradati, errori dei dischi o attività di backup non riuscite.",
       "entrepreneur_notes": "Senza notifiche, un problema può rimanere inosservato fino a quando causa un'interruzione o rende indisponibili i dati. La presenza del NAS non garantisce che il suo stato venga controllato automaticamente.",
       "technical_notes": "Verificare gli eventi supportati dal dispositivo, il canale SMTP o webhook disponibile e l'effettiva consegna degli avvisi.",
@@ -44,11 +39,6 @@
       "external_id": "infrastructure.nas.on-ups",
       "title": "NAS appoggiato sopra l'UPS senza supporto adeguato",
       "category": "Cablaggio e Infrastruttura Fisica",
-      "tags": [
-        "Rack",
-        "Sicurezza fisica",
-        "Continuità operativa"
-      ],
       "problem": "Il NAS è appoggiato direttamente sopra l'UPS e non è installato su guide, staffe o un ripiano rack idoneo.",
       "entrepreneur_notes": "Una sistemazione non stabile può favorire cadute, urti, surriscaldamento e difficoltà durante la manutenzione. L'UPS non deve essere usato come piano di appoggio per altri apparati.",
       "technical_notes": "Verificare peso, ventilazione, profondità del rack, compatibilità delle guide e distribuzione dei carichi.",
@@ -83,11 +73,6 @@
       "external_id": "security.rdp.public",
       "title": "Servizio RDP esposto direttamente su Internet",
       "category": "Sicurezza",
-      "tags": [
-        "Accesso remoto",
-        "Firewall",
-        "Identità"
-      ],
       "problem": "Il servizio Remote Desktop è raggiungibile direttamente da Internet senza un livello di accesso remoto protetto intermedio.",
       "entrepreneur_notes": "L'esposizione diretta aumenta in modo significativo la possibilità di tentativi automatizzati, furto di credenziali e compromissione dei sistemi aziendali.",
       "technical_notes": "Verificare NAT, regole firewall, autenticazione, MFA, log e sistemi che dipendono dall'accesso corrente prima della modifica.",
@@ -122,11 +107,6 @@
       "external_id": "network.cabling.unlabelled",
       "title": "Cablaggio disordinato o non identificato",
       "category": "Cablaggio e Infrastruttura Fisica",
-      "tags": [
-        "Cablaggio",
-        "Manutenibilità",
-        "Documentazione"
-      ],
       "problem": "I cavi e le porte di rete non sono organizzati e identificati in modo coerente, rendendo difficile stabilire rapidamente le connessioni.",
       "entrepreneur_notes": "La mancanza di ordine e identificazione aumenta i tempi degli interventi e il rischio di scollegare servizi errati durante manutenzioni o guasti.",
       "technical_notes": "Verificare patch panel, prese, schema di numerazione, lunghezze dei patch cord, passacavi e documentazione delle porte.",
@@ -161,11 +141,6 @@
       "external_id": "network.dhcp.invalid-dns",
       "title": "Il DHCP distribuisce server DNS non corretti",
       "category": "Rete",
-      "tags": [
-        "DHCP",
-        "DNS",
-        "Continuità operativa"
-      ],
       "problem": "Il servizio DHCP assegna ai dispositivi server DNS non coerenti con l'architettura della rete o non disponibili.",
       "entrepreneur_notes": "Una configurazione DNS errata può causare accessi intermittenti a Internet, applicazioni, server e risorse aziendali, anche quando la connettività di base sembra funzionare.",
       "technical_notes": "Verificare scope DHCP, VLAN, DNS interni, forwarder, domini locali, ridondanza e lease già assegnati.",
@@ -200,11 +175,6 @@
       "external_id": "backup.restore-test.missing",
       "title": "Ripristino dei backup non verificato",
       "category": "Backup",
-      "tags": [
-        "Ripristino",
-        "Continuità operativa",
-        "Dati"
-      ],
       "problem": "Non risultano prove recenti e documentate di ripristino dei dati dai backup disponibili.",
       "entrepreneur_notes": "Un backup può risultare completato ma essere inutilizzabile quando serve. Solo una prova di ripristino consente di verificare che dati, credenziali e procedure siano realmente disponibili.",
       "technical_notes": "Verificare campione di dati, tempi di ripristino, integrità, cifratura, credenziali, destinazione alternativa e registrazione dell'esito.",
@@ -239,11 +209,6 @@
       "external_id": "infrastructure.rack.unsuitable-location",
       "title": "Armadio rack installato in un locale non idoneo",
       "category": "Cablaggio e Infrastruttura Fisica",
-      "tags": [
-        "Rack",
-        "Ambiente",
-        "Sicurezza fisica"
-      ],
       "problem": "L'armadio rack è installato in un locale esposto a condizioni ambientali, accessi o utilizzi non compatibili con la presenza di apparati IT.",
       "entrepreneur_notes": "Umidità, calore, polvere, acqua, accessi non controllati o attività estranee possono danneggiare gli apparati e aumentare la probabilità di interruzioni.",
       "technical_notes": "Valutare temperatura, umidità, ventilazione, rischio acqua, alimentazione, accesso, spazio di manutenzione e protezione fisica.",
@@ -278,11 +243,6 @@
       "external_id": "ups.monitoring.missing",
       "title": "Monitoraggio dell'UPS non configurato",
       "category": "Continuità Operativa",
-      "tags": [
-        "UPS",
-        "Monitoraggio",
-        "Spegnimento controllato"
-      ],
       "problem": "L'UPS non comunica il proprio stato ai sistemi e non sono configurati avvisi o procedure automatiche di spegnimento controllato.",
       "entrepreneur_notes": "In caso di blackout prolungato, i sistemi possono spegnersi bruscamente e l'azienda può non ricevere avvisi sullo stato delle batterie o su un guasto dell'UPS.",
       "technical_notes": "Verificare USB, SNMP, scheda di rete, software del produttore, autonomia, soglie e sequenza di arresto.",

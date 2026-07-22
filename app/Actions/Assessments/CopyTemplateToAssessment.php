@@ -10,7 +10,6 @@ use App\Models\Assessment;
 use App\Models\Finding;
 use App\Models\FindingSolution;
 use App\Models\FindingTemplate;
-use App\Models\Tag;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -29,7 +28,7 @@ final class CopyTemplateToAssessment
             throw ValidationException::withMessages(['template' => __('assestme.templates.errors.disabled')]);
         }
 
-        $template->loadMissing(['tags', 'solutions']);
+        $template->loadMissing('solutions');
         $activeSolutions = $template->solutions->whereNull('deleted_at')->values();
         if ($activeSolutions->isEmpty() || $activeSolutions->where('is_recommended', true)->count() !== 1) {
             throw ValidationException::withMessages(['template' => __('assestme.templates.errors.recommended_count')]);
@@ -62,8 +61,6 @@ final class CopyTemplateToAssessment
                     'include_in_report' => true,
                     'sort_order' => ((int) $persistedAssessment->findings()->max('sort_order')) + 1,
                 ]);
-                $finding->tags()->sync($template->tags->map(static fn (Tag $tag): int => $tag->id)->all());
-
                 $recommended = null;
                 foreach ($activeSolutions as $templateSolution) {
                     $solution = $finding->solutions()->create([

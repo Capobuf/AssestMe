@@ -41,7 +41,6 @@
         "external_id",
         "title",
         "category",
-        "tags",
         "problem",
         "entrepreneur_notes",
         "technical_notes",
@@ -67,15 +66,6 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 120
-        },
-        "tags": {
-          "type": "array",
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 80
-          }
         },
         "problem": {
           "type": "string",

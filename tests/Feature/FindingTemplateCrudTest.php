@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Templates\SaveFindingTemplate;
+use App\Filament\Resources\FindingTemplates\FindingTemplateResource;
 use App\Filament\Resources\FindingTemplates\Pages\CreateFindingTemplate;
 use App\Models\Category;
 use App\Models\FindingTemplate;
@@ -81,16 +82,19 @@ it('rolls back a template when recommendations or estimates are invalid', functi
 it('creates a template through its Filament resource', function (): void {
     $this->actingAs(User::factory()->create());
 
-    Livewire::test(CreateFindingTemplate::class)
+    $component = Livewire::test(CreateFindingTemplate::class)
         ->fillForm(findingTemplateData())
         ->call('create')
         ->assertHasNoFormErrors();
 
-    expect(FindingTemplate::query()->where('external_id', 'template-di-test')->exists())->toBeTrue();
+    $created = FindingTemplate::query()->where('external_id', 'template-di-test')->firstOrFail();
+    $component->assertRedirect(FindingTemplateResource::getUrl('edit', ['record' => $created]));
+
+    expect($created->exists)->toBeTrue();
 });
 
 it('requires authentication for the template library', function (): void {
-    $this->get('/admin/finding-templates')->assertRedirect('/admin/login');
+    $this->get(FindingTemplateResource::getUrl('index'))->assertRedirect('/admin/login');
 });
 
 /** @return array<string, mixed> */
@@ -99,7 +103,6 @@ function findingTemplateData(): array
     return [
         'title' => 'Template di test',
         'category_id' => Category::query()->where('slug', 'sicurezza')->firstOrFail()->getKey(),
-        'tag_ids' => [],
         'problem' => 'Problema sufficientemente descritto.',
         'entrepreneur_notes' => null,
         'technical_notes' => null,

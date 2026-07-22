@@ -45,8 +45,8 @@ Never:
 3. Update Progress before the milestone.
 4. Implement one vertical slice.
 5. Add success and failure-path tests.
-6. Run focused tests.
-7. Run `composer quality`, Dusk where applicable, diagnostics, and the milestone acceptance commands.
+6. Run focused checks selected from the files and behavior changed, rerunning a failed command or test before broadening the scope.
+7. Run `scripts/verify.sh` only at the conclusion of a coherent set of changes, before merging to `main`, at milestone completion, after dependency/runtime/test-infrastructure changes, or when explicitly requested. Ordinary implementation prompts and intermediate edits do not implicitly start the complete gate.
 8. Record discoveries, locked versions, and evidence in `plan.md`.
 9. Keep `main` releasable.
 10. Do not declare completion until URL, login, PDF, XLSX, backup/restore, automated tests, manual QA, and benchmark pass.
@@ -112,6 +112,8 @@ scripts/verify.sh
 ```
 
 It orchestrates the required Composer validation/audit, Pint, PHPStan, application tests, strict Canary, diagnostics, the 50-Finding benchmark, storage audit, and Dusk exactly once. `composer quality` and `composer browser` remain supported focused subgates. Successful subgates write content- and runtime-addressed receipts, so `scripts/verify.sh` may reuse them only when the exact executable source, authoritative plan through section 21, dependency, and runtime fingerprint still matches. Factual updates confined to plan Progress, Discoveries, or Final outcome do not invalidate executable evidence. Focused Dusk invocations never write a full-browser receipt. Any relevant source, dependency, or runtime change invalidates reuse.
+
+During one implementation, verification is proportional to the affected areas. A graphical or navigation change does not automatically require the benchmark, backup/restore, complete PDF or XLSX suites, storage audit, or the whole Dusk suite. Focused checks do not weaken, replace, or certify the complete gate. After a failure, rerun the failing test or command first; broaden only when the failure or dependency surface justifies it.
 
 The underlying commands remain independently callable for diagnosis, but do not run them and then repeat them through the aggregate gate without receipt reuse:
 

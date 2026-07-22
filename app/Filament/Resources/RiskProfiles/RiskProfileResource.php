@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\RiskProfiles;
 
+use App\Filament\Clusters\SettingsCluster;
 use App\Filament\Resources\RiskProfiles\Pages\CreateRiskProfile;
 use App\Filament\Resources\RiskProfiles\Pages\EditRiskProfile;
 use App\Filament\Resources\RiskProfiles\Pages\ListRiskProfiles;
@@ -18,11 +19,13 @@ use Filament\Tables\Table;
 
 final class RiskProfileResource extends Resource
 {
+    protected static ?string $cluster = SettingsCluster::class;
+
     protected static ?string $model = RiskProfile::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSquares2x2;
 
-    protected static ?int $navigationSort = 19;
+    protected static ?int $navigationSort = 5;
 
     public static function getNavigationLabel(): string
     {
@@ -37,11 +40,6 @@ final class RiskProfileResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return __('assestme.risk.plural');
-    }
-
-    public static function getNavigationGroup(): string
-    {
-        return __('assestme.navigation.configuration');
     }
 
     public static function form(Schema $schema): Schema

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Browser;
 
+use App\Filament\Resources\RiskProfiles\RiskProfileResource;
 use App\Models\RiskProfile;
 use App\Models\User;
 use Database\Seeders\MilestoneOneSeeder;
@@ -39,7 +40,7 @@ final class RiskMatrixFieldTest extends DuskTestCase
         $this->browse(function (Browser $browser) use ($administrator, $artifactRoot, $profile, $replacement, $selector): void {
             $browser->loginAs($administrator)
                 ->resize(1366, 768)
-                ->visit("/admin/risk-profiles/{$profile->getKey()}/edit")
+                ->visit(RiskProfileResource::getUrl('edit', ['record' => $profile]))
                 ->waitFor('[data-dusk="risk-matrix-grid"]')
                 ->waitUntil('return document.querySelectorAll(\'[data-dusk^="risk-matrix-cell-"]\').length === 16')
                 ->script("localStorage.setItem('theme', 'dark'); document.documentElement.classList.add('dark');");

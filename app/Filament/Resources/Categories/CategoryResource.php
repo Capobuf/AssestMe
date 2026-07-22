@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Categories;
 
+use App\Filament\Clusters\SettingsCluster;
 use App\Filament\Resources\Categories\Pages\CreateCategory;
 use App\Filament\Resources\Categories\Pages\EditCategory;
 use App\Filament\Resources\Categories\Pages\ListCategories;
@@ -20,11 +21,13 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class CategoryResource extends Resource
 {
+    protected static ?string $cluster = SettingsCluster::class;
+
     protected static ?string $model = Category::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedFolder;
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 4;
 
     public static function getNavigationLabel(): string
     {
@@ -39,11 +42,6 @@ class CategoryResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return __('assestme.categories.plural');
-    }
-
-    public static function getNavigationGroup(): ?string
-    {
-        return __('assestme.navigation.library');
     }
 
     public static function form(Schema $schema): Schema

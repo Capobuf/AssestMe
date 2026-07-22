@@ -122,6 +122,7 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-054 | APPROVED | The Finding workspace has exactly two intentional container-responsive modes: lateral desktop split at an effective workspace-container width of at least 64rem, and sequential list/detail below that threshold; the intermediate absolute-positioned inspector is removed |
 | D-055 | APPROVED | The Finding workspace presents a three-area application workbench with a compact Filament Table navigator, a dominant selected-Finding editor, and contextual properties; narrow containers retain deliberate sequential navigator/editor behavior |
 | D-056 | APPROVED | The Finding workbench uses the approved lime/green/white/black palette, one solid primary action per context, aggregated export and Finding-creation actions, and a reduced navigator row containing only selection-critical information |
+| D-057 | APPROVED | Filament 5 native clusters and parent items define the hierarchical sidebar; Tag is removed from v1; Finding assets remain required only for `selected_assets`; and implementation verification is proportional while `scripts/verify.sh` remains the complete authoritative gate |
 
 ### D-001 — Framework
 
@@ -500,7 +501,7 @@ Required behavior:
 - `scripts/bootstrap-local.sh` is the environment-neutral application bootstrap reused by the Docker entrypoint and technically reusable by CI; it is not a direct-host installation profile;
 - tests proving backup/restore or deployment behavior operate only on temporary paths.
 
-Until a reference installation and test devices exist, the blocking automated gate is Composer validation/audit, Pint, PHPStan, Pest, Canary strict zero-skip, the maintained Dusk suite where ChromeDriver is available, diagnostics against an isolated initialized database, the isolated 50-finding benchmark, storage audit, and `scripts/verify.sh`. Manual cross-browser/device QA is recorded as deferred, never falsely reported as passed.
+Until a reference installation and test devices exist, the complete blocking automated acceptance gate remains Composer validation/audit, Pint, PHPStan, Pest, Canary strict zero-skip, the maintained Dusk suite where ChromeDriver is available, diagnostics against an isolated initialized database, the isolated 50-finding benchmark, storage audit, and `scripts/verify.sh`. D-057 governs proportional verification during implementation. Manual cross-browser/device QA is recorded as deferred, never falsely reported as passed.
 
 ### D-042 — Docker development profile
 
@@ -642,6 +643,29 @@ The approved workbench palette is Primary Lime `#E1FB15`, Secondary Green `#32D5
 Each action context has at most one solid Primary Lime button. The selected-Finding editor uses it only for `Salva`; `Salva e passa al successivo`, assessment completion, and export use neutral hierarchy. PDF and XLSX generation are grouped under one visible `Esporta` action without changing either report operation. Blank and template-based Finding creation are grouped under one compact `Nuovo finding` action without changing either creation operation.
 
 The Filament Table remains the authoritative navigator engine. Each Finding row always shows only its progressive number, title clamped to two lines, textual priority, and native secondary-action menu. A non-open status and incomplete state appear only when applicable. Report exclusion uses an accessible compact icon. Category, scope, problem excerpts, solution/evidence counts, repeated `Aperto`, repeated `Completo`, and percentages remain available through search/filter/editor/properties behavior but are not rendered as permanent row metadata. The implementation uses the existing Blade, Livewire, application CSS/JavaScript, and Filament asset publication path; it adds no frontend build, dependency, domain change, or persistence path.
+
+### D-057 — Native hierarchical navigation, Tag removal, scope assets, and proportional verification
+
+The sidebar uses only Filament 5 native navigation and Cluster mechanisms verified against the exact version in `composer.lock`. No custom navigation view, replacement Blade sidebar, navigation plugin, or manual third-level menu is introduced.
+
+The visible hierarchy is:
+
+1. Dashboard;
+2. Assessment, containing Assessment;
+3. Aziende, a clickable `ClientResource` navigation item whose native child items are Sedi and Asset;
+4. Impostazioni, a `SettingsCluster` navigation item.
+
+`SiteResource` is a normal child of Aziende. `AssetCluster` is also a child of Aziende, uses Asset as its navigation label and first real destination, and contains `AssetResource` then `AssetTypeResource`. Its native page sub-navigation is Asset and Tipologie asset. `SettingsCluster` uses Impostazioni as its only main-sidebar entry, redirects to the first real page Generale, and contains, in order, `GeneralSettingsPage`, `ReportSettingsPage`, `FindingTemplateResource`, `CategoryResource`, `RiskProfileResource`, and `EffortLevelResource`. Its native page sub-navigation is Generale, Report, Template, Categorie, Matrice priorità, and Livelli di impegno. Navigation labels and internal page titles use distinct translation keys where their text differs. Clustered resources/pages do not also appear independently in the main sidebar.
+
+The panel keeps resource and page discovery and adds native `discoverClusters()` with the application cluster namespace/directory. Cluster membership may be declared on existing resource/page classes; physical relocation is not required. Cluster URL and route-name prefixes are approved parts of the new structure. Every application link, redirect, test destination, dashboard link, table link, Workspace link, notification link, and Canary target uses a Filament class URL generator or named route rather than a hardcoded admin URL. No legacy URL redirect is added.
+
+Filament `v5.6.8` source proves that `Cluster` inherits navigation parent/group properties and `getNavigationParentItem()`. Because its navigation manager resolves a parent label only among items in the same group, Aziende, Sedi, and `AssetCluster` use the same group. If a future locked version cannot keep `AssetCluster` as a child of the clickable Aziende item through that native mechanism, the navigation part is BLOCKED; no custom-navigation fallback is authorized.
+
+Tag is removed from the v1 runtime and interchange contract. There is no Tag resource, model, action, factory, seeder behavior, Finding/template relation, form state, validation, pivot synchronization, eager loading, template copy, property, filter, badge, translation, snapshot field, DTO field, PDF value, XLSX column, import/export/preview comparison field, JSON fixture field, or JSON Schema property. A forward migration drops `finding_tag`, then `finding_template_tag`, then `tags`; its rollback recreates the schema in dependency-safe order. Existing migrations are not rewritten. JSON Schema remains version 1 with `additionalProperties: false`, so a document containing `tags` is rejected rather than treated as a legacy format.
+
+D-045 remains the single Finding scope rule. `selected_assets` requires at least one same-company Asset and is the only scope that shows and requires the Asset selector. `selected_sites` requires at least one same-company Site and no Asset. `organization` requires no Asset. `network` and `custom` require no Asset and retain their existing description requirement. Workspace save/autosave, completeness, assessment completion, reports, template copy, and the incomplete-Finding filter all delegate to or reproduce exactly this rule.
+
+`scripts/verify.sh` remains the complete authoritative gate without reducing any command, criterion, or receipt behavior. During a single implementation, checks are selected proportionally from the modified PHP files/directories and affected Feature, Canary, schema/migration, and focused Dusk behavior. The complete gate runs at the conclusion of a coherent set of changes, before merge to `main`, at milestone completion, after dependency/runtime/test-infrastructure changes, or on explicit request. An ordinary prompt or intermediate graphical/navigation edit does not implicitly require the benchmark, backup/restore, complete PDF/XLSX suites, full storage audit, or complete Dusk suite. After a failure, the failing command or test is rerun first. Focused success never certifies or replaces the complete gate.
 
 ### D-028 — Authentication and MFA
 
@@ -1401,7 +1425,7 @@ At least one identifying value is required: name, model, hostname, IP, MAC, or s
 
 MAC is normalized uppercase colon-separated. Asset-specific custom JSON fields and interface history are outside v1.
 
-### 7.7 Categories and tags
+### 7.7 Categories
 
 `categories`:
 
@@ -1411,13 +1435,7 @@ MAC is normalized uppercase colon-separated. Asset-specific custom JSON fields a
 - enabled;
 - soft deletes.
 
-`tags`:
-
-- name, slug;
-- optional validated color;
-- soft deletes.
-
-Each finding/template has exactly one category and zero or more tags.
+Each finding/template has exactly one category.
 
 Seed exactly, in this order:
 
@@ -1440,7 +1458,7 @@ Seed exactly, in this order:
 17. Licenze e Conformità
 18. Altro
 
-Archived category/tag records remain visible on existing findings and cannot be attached to new records.
+Archived category records remain visible on existing findings and cannot be attached to new records.
 
 ### 7.8 Risk configuration
 
@@ -1643,7 +1661,6 @@ Generating a report does not automatically complete the assessment unless `freez
 
 Pivots:
 
-- `finding_tag`;
 - `finding_asset`;
 - `finding_site`.
 
@@ -1661,13 +1678,13 @@ Rules:
 Template copying copies:
 
 - title and all text;
-- category/tag references;
+- the category reference;
 - scope defaults;
 - risk defaults/rationale;
 - every solution and its import-managed values;
 - recommended solution selection.
 
-Later template edits never change the finding. Category/tag label changes remain live for current UI; generated reports preserve snapshots.
+Later template edits never change the finding. Category label changes remain live for current UI; generated reports preserve snapshots.
 
 Finding state machine:
 
@@ -1871,22 +1888,18 @@ Defaults:
 1. Dashboard
 2. Assessment
    - Assessment
-3. Anagrafica
-   - Aziende
+3. Aziende
    - Sedi
    - Asset
-4. Libreria
-   - Template finding
+4. Impostazioni
+   - Generale
+   - Report
+   - Template
    - Categorie
-   - Tag
-   - Tipologie asset
-5. Configurazione
    - Matrice priorità
    - Livelli di impegno
-   - Impostazioni generali
-   - Impostazioni report
 
-Italian labels; English class names.
+Italian labels; English class names. Aziende remains clickable and is the native parent item of Sedi and `AssetCluster`. Asset and Impostazioni are native Filament clusters; their members use native page sub-navigation and do not appear separately in the main sidebar. Cluster-prefixed URLs and route names are generated through Filament classes or named routes, without hardcoded admin URLs or legacy redirects.
 
 ### 9.2 Dashboard
 
@@ -1980,9 +1993,9 @@ Compact mode means:
 
 The Milestone 0 `recommended_solution_summary` field is explicitly temporary and is treated as a projection of the recommended related solution. The definitive model edits the related solution record and does not keep a second authoritative solution text on the finding.
 
-Row slide-over:
+Selected-Finding editor:
 
-- category/tags;
+- category;
 - scope/sites/assets;
 - consequence/likelihood;
 - override reason;
@@ -2214,16 +2227,16 @@ Before preview reject the entire document when:
 - invalid enum/reference;
 - invalid UTF-8 or excessive text length.
 
-### 11.3 Category/tag resolution
+### 11.3 Category resolution
 
 Matching is case-insensitive Unicode-normalized by name.
 
-Unknown category/tag:
+Unknown category:
 
 - create automatically during the import transaction;
 - generate slug with Laravel slugification;
 - resolve collision with numeric suffix;
-- never rename an existing category/tag based on import text.
+- never rename an existing category based on import text.
 
 ### 11.4 Preview
 
@@ -2250,13 +2263,13 @@ Matching template: exact normalized `external_id`.
 Replace mode:
 
 1. update all template import-managed fields;
-2. sync category/tags;
+2. sync category;
 3. match solutions by solution `external_id`;
 4. update matched solutions;
 5. create new solutions;
 6. soft-delete template solutions absent from the file; detached assessment findings are unaffected;
 7. set the one recommended solution;
-8. leave unrelated category/tag records untouched.
+8. leave unrelated category records untouched.
 
 Fields are full-state: explicit `null` clears a nullable field. Omitted required fields invalidate the file.
 
@@ -2288,7 +2301,6 @@ Deterministic JSON:
 - fixed key order;
 - templates sorted by external ID;
 - solutions sorted by sort order then external ID;
-- tags sorted by normalized name;
 - no database IDs/timestamps.
 
 Default export includes active templates. UI can explicitly include inactive templates.
@@ -2490,7 +2502,7 @@ Render in this recipient-oriented hierarchy without omitting the previously requ
 4. recommended solution;
 5. effort and estimate, including their notes;
 6. alternatives and comparison notes when enabled;
-7. scope, selected sites/assets, category/tags, consequence/likelihood, and rationale;
+7. scope, selected sites/assets, category, consequence/likelihood, and rationale;
 8. image evidence, non-image attachment references, and clickable URL evidence;
 9. technical notes when enabled;
 10. resolution details when applicable.
@@ -2628,20 +2640,19 @@ Columns:
 1. Numero
 2. Titolo
 3. Categoria
-4. Tag
-5. Ambito
-6. Asset
-7. Problema
-8. Note per l'imprenditore
-9. Soluzione raccomandata
-10. Soluzioni alternative
-11. Priorità
-12. Motivazione priorità
-13. Impegno
-14. Stima economica
-15. Stato
-16. Note tecniche, when enabled
-17. Evidenze
+4. Ambito
+5. Asset
+6. Problema
+7. Note per l'imprenditore
+8. Soluzione raccomandata
+9. Soluzioni alternative
+10. Priorità
+11. Motivazione priorità
+12. Impegno
+13. Stima economica
+14. Stato
+15. Note tecniche, when enabled
+16. Evidenze
 
 ### 14.2 Sheet `Soluzioni`
 
@@ -2901,7 +2912,7 @@ scripts/verify.sh
 
 `composer.lock` is mandatory.
 
-For final acceptance, run `scripts/verify.sh` as the single aggregate entry point. `composer quality` and `composer browser` are maintained focused subgates; when either has already succeeded for the exact current repository and runtime fingerprint, the aggregate verifier consumes its non-versioned receipt instead of repeating the same expensive work. The verifier never treats a focused Dusk selection, stale receipt, failed command, or changed source/dependency/runtime as success.
+For final acceptance, run `scripts/verify.sh` as the single aggregate entry point. During implementation, run proportional focused checks under D-057 and rerun a failing command before broadening scope. `composer quality` and `composer browser` are maintained subgates; when either has already succeeded for the exact current repository and runtime fingerprint, the aggregate verifier consumes its non-versioned receipt instead of repeating the same expensive work. The verifier never treats a focused Dusk selection, stale receipt, failed command, or changed source/dependency/runtime as success.
 
 `migrate:fresh --seed`, standalone Canary, diagnostics, storage audit, and Dusk are executed inside the maintained isolated scripts. They are not accepted as direct development-verification entry points against the configured application environment. `scripts/bootstrap-local.sh` remains the explicit command for initializing an intended local installation.
 
@@ -3100,7 +3111,7 @@ Failure of central grid or DOMPDF blocks the project.
 - singleton administrator;
 - optional MFA/recovery/reset;
 - clients/sites/assets;
-- categories/tags/types;
+- categories/types;
 - risk/effort;
 - settings;
 - backup/restore;
@@ -3266,6 +3277,12 @@ No unresolved product or architecture decision remains at implementation handoff
 
 The implementation agent must maintain this section.
 
+The D-057 implementation slice completed its proportional verification on 2026-07-22 without running or claiming the complete acceptance gate. Native `AssetCluster` and `SettingsCluster` are discovered alongside the existing resources/pages, use top-positioned native sub-navigation, suppress duplicate main-sidebar entries, and redirect only to their first real destinations. Cluster membership changes Asset URLs to `/admin/asset/assets` and `/admin/asset/asset-types`; settings destinations now use `/admin/settings/...`. All affected application and test destinations use Filament class URL generation or named routes. Tag runtime classes, relationships, state, validation, persistence, import/export/preview, schema/fixtures, report snapshots, PDF presentation, workbook column, translations, policies, and tests were removed. Forward migration `2026_07_22_000019_remove_tags` drops `finding_tag`, `finding_template_tag`, then `tags`, and recreates the original dependency-safe schema in `down()`. The configured non-reference database was deliberately not mutated and therefore reports this new migration as pending; both upgrade and fresh-install proofs used marked disposable file-SQLite environments.
+
+Accepted focused evidence for the slice is: Pint clean over all 54 changed/new PHP files; PHPStan clean over all 31 changed/new application and migration files; 147 relevant Feature tests with 1,314 assertions; the focused immutable workbook test with 57 assertions; two focused PDF/scope tests with 25 assertions; valid parsing of every changed JSON fixture and schema proof that Tag is absent while `additionalProperties` remains false; isolated `migrate:fresh --seed` success; isolated upgrade success from populated Tag tables (`tags=1`, `finding_template_tag=1`, `finding_tag=1`) to all three tables absent; Canary strict with 33 passed, zero failed, zero needs-auth, and zero skipped; and focused Dusk with one test/20 assertions covering real sidebar clicks, native hierarchy/sub-navigation, cluster destinations, cancel routing, absence of Tag navigation, scope-dependent Asset visibility/required state, validation failure, and zero severe console errors. `scripts/verify.sh`, the complete Dusk suite, 50-Finding benchmark, backup/restore suite, complete PDF/XLSX suites, and full storage audit were intentionally not run; focused success is not final acceptance. No dependency, lock file, vendor file, custom navigation view/plugin, legacy redirect, gate receipt, or commit was created or changed.
+
+Hierarchical Filament navigation, proportional verification, Tag removal, and Finding asset-optionality implementation started on 2026-07-22 at commit `541a81c4837e12b224728fbb51b943696847e165` on clean branch `develop`. The authoritative Docker services are healthy. The configured non-reference database is not empty: every existing migration has run, with one administrator, three clients, two assessments, eighteen Tag rows, twelve `finding_tag` rows, and twenty-four `finding_template_tag` rows. Composer locks Filament `v5.6.8`. Installed source inspection confirms that `Cluster` extends `Page`, inherits native `navigationParentItem`, `navigationGroup`, icon, label, sort, slug, and sub-navigation position capabilities, and redirects its own route to the first accessible clustered component; `discoverClusters()` discovers clusters plus their contained pages/resources; clustered components suppress independent main-navigation registration; and cluster membership prefixes both URLs and route names. The native navigation manager resolves children by parent label within the same navigation group, so `AssetCluster` can be a child of the clickable `Aziende` resource without custom navigation. This coherent slice will add D-057, update the superseded sidebar and proportional-verification rules, remove Tag through a forward migration and every runtime/import/export/report contract, preserve schema version 1 with strict rejection of `tags`, and verify the existing D-045 asset rule for every Finding scope. No dependency, vendor file, custom Blade navigation, legacy redirect, alternate storage/report implementation, or full `scripts/verify.sh` invocation is authorized by this slice.
+
 Finding workbench palette and navigator-density refinement started on 2026-07-21 at commit `433f21c46f55a97dae509a195c675e9134ff7dc0` on branch `develop`. The initial working tree was not clean: `.github/workflows/quality.yml` was already deleted before this activity and is being preserved untouched as unrelated user work. D-056 records the user-approved four-color presentation, rare Lime primary hierarchy, success-only Green usage, aggregated export/creation actions, and selection-focused navigator rows. The authoritative three-area layout, Filament Table, `WorkspaceAssessment`, `findingData`, signed optimistic/idempotent persistence, lifecycle, reports, evidence, read-only state, and responsive modes remain unchanged. The healthy Docker profile served `http://127.0.0.1:8000/admin`; the isolated Chromium baseline passed 1 test/119 assertions and produced `palette-before-1920x1080-dark.png`, `palette-before-1440x900-dark.png`, and `palette-before-1440x900-light.png` under the non-versioned QA-artifact directory. The optional `agent-browser` CLI was unavailable, so the repository-authoritative Laravel Dusk/Selenium browser path supplied the real baseline evidence without adding a tool or dependency.
 
 Finding workbench palette and navigator-density refinement completed on 2026-07-21. `AdminPanelProvider` now registers explicit 50–950 Lime and success-green Filament scales; `WorkspaceAssessment` groups unchanged PDF/XLSX operations under the neutral `Esporta` action; `AssessmentFindingsTable` groups unchanged blank/template creation under the neutral `Nuovo finding` action and exposes compact labelled reorder/search/filter controls; the Finding row Blade renders only number, two-line title, textual priority, secondary menu, and applicable non-open/incomplete/report-exclusion exceptions. The existing workspace Blade and application CSS provide one solid Lime `Salva`, neutral secondary actions, green-only success states, coherent neutral light/dark surfaces, Lime tabs/focus/selection, a three-column row grid, stable padding, fixed menu track, and no blue or purple workbench token. Italian translations, focused Feature/Dusk assertions, and the officially published CSS asset were updated; application JavaScript, domain, schema, persistence, editor structure, evidence, reports, lifecycle, and responsive modes were not changed. Source and published CSS are byte-identical SHA-256 `2c8ef66b90cc6616a0a49b1f0b3b6fec9fd5f3212f359d9dc83156d12b47ce8f`; unchanged source and published JavaScript are byte-identical SHA-256 `8d7b6fec72bb1df48397a2f6fa6bf574aa87e3ffd309ee7f87720d993de6174d`.
@@ -3405,6 +3422,8 @@ Milestone 3 completed with the complete assessment/finding schema, native Filame
 
 ## 23. Discoveries and deviations
 
+- 2026-07-22: Filament `v5.6.8` resolves Sedi and `AssetCluster` as native children of the clickable Aziende item because all three have the same blank navigation group and their parent labels match. Its sidebar renders a clickable parent item's children while that item or one of its children is active; clicking Aziende therefore opens the company list and exposes Sedi/Asset through the native branch behavior, with no custom expansion Blade or third sidebar level. Cluster routes and route names are automatically prefixed, and the Cluster mount redirects to the first sorted accessible sub-navigation item.
+- 2026-07-22: Filament Canary `v1.2.0` treats every authorized 3xx response as `needs-auth`, including the two intentional native Cluster-to-first-page redirects. The application testing adapter follows only an authenticated redirect whose source route is exactly `AssetCluster` or `SettingsCluster` and whose target exactly matches the approved first resource/page; guests and every other redirect retain Canary's original status. The strict rerun covers both Cluster routes as passed pages rather than excluding or skipping them: 33 passed, zero needs-auth, zero skipped.
 - 2026-07-21: Filament's generated color helper normalizes lightness across its scale and does not retain a supplied high-luminance Lime as the intended central token. Registering an explicit, non-flat 50–950 array preserves `#E1FB15` at 500 while still giving hover, active, light, and dark Lime tones; Filament's native color manager accepts that array and emits its runtime variables without a frontend build.
 - 2026-07-21: Native Filament `ActionGroup` preserves the existing nested action names, callbacks, modal schema, keyboard shortcuts, permissions, and report download behavior. It therefore aggregates creation and export without application JavaScript, a new Livewire component, or an alternate domain/persistence path. The PDF download action leaves its open menu available for choosing XLSX; the browser test now follows that native state rather than toggling the menu closed.
 - 2026-07-21: The final Chromium screenshots at 1920×1080 dark, 1440×900 dark, and 1440×900 light show the same three-area geometry with neutral surfaces, no blue primary action, one Lime editor save action, neutral completion/export/creation actions, and selected rows using only a narrow Lime edge plus a lightly mixed neutral surface. Navigator rows use the fixed `1.75rem minmax(0, 1fr) 2rem` grid, two-line titles, textual priorities, conditional non-open state, missing-information text, and an accessible compact report-exclusion icon; no row renders category, scope, problem excerpt, counts, repeated `Aperto`, repeated `Completo`, or percentages.

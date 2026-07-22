@@ -52,6 +52,7 @@ it('persists immutable versioned PDF snapshots and downloads the authoritative f
         ->and(Storage::disk('local')->exists($first->file_path))->toBeTrue()
         ->and(hash_file('sha256', $firstPath))->toBe($first->file_sha256)
         ->and($first->payload_snapshot['findings'][0]['category'])->not->toBeEmpty()
+        ->and($first->payload_snapshot['findings'][0])->not->toHaveKey('tags')
         ->and($first->payload_snapshot['client']['name'])->not->toBeEmpty()
         ->and($first->settings_snapshot['primary_color'])->toBe('#2563EB')
         ->and($text)->toContain($finding->title, 'Pagina 1 di')

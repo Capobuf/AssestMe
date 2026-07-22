@@ -30,7 +30,6 @@ final class EditFindingTemplate extends EditRecord
             throw new LogicException('The finding-template resource received an invalid model.');
         }
 
-        $data['tag_ids'] = $template->tags()->pluck('tags.id')->all();
         $data['solutions'] = $template->solutions()->get()->map(static fn (FindingTemplateSolution $solution): array => [
             'id' => $solution->getKey(),
             'external_id' => $solution->external_id,

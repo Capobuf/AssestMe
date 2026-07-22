@@ -7,6 +7,15 @@ namespace Tests\Browser;
 use App\Actions\Operations\RecordOperationalCheck;
 use App\Enums\OperationalCheckStatus;
 use App\Enums\OperationalCheckType;
+use App\Filament\Pages\GeneralSettingsPage;
+use App\Filament\Pages\ReportSettingsPage;
+use App\Filament\Resources\Assets\AssetResource;
+use App\Filament\Resources\AssetTypes\AssetTypeResource;
+use App\Filament\Resources\Categories\CategoryResource;
+use App\Filament\Resources\Clients\ClientResource;
+use App\Filament\Resources\EffortLevels\EffortLevelResource;
+use App\Filament\Resources\RiskProfiles\RiskProfileResource;
+use App\Filament\Resources\Sites\SiteResource;
 use App\Models\Assessment;
 use App\Models\Asset;
 use App\Models\AssetType;
@@ -15,7 +24,6 @@ use App\Models\Client;
 use App\Models\EffortLevel;
 use App\Models\RiskProfile;
 use App\Models\Site;
-use App\Models\Tag;
 use App\Models\User;
 use Database\Seeders\MilestoneOneSeeder;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
@@ -50,7 +58,6 @@ final class MilestoneOneFoundationTest extends DuskTestCase
             ->for($assetType, 'assetType')
             ->create(['name' => 'Asset prova browser']);
         Category::factory()->create(['name' => 'Categoria prova browser', 'sort_order' => 0]);
-        Tag::factory()->create(['name' => 'Tag prova browser']);
         Assessment::factory()->for($client)->create(['title' => 'Assessment dashboard browser']);
         app(RecordOperationalCheck::class)(
             OperationalCheckType::Backup,
@@ -77,12 +84,12 @@ final class MilestoneOneFoundationTest extends DuskTestCase
                 ->assertDontSee('risolvere il problema prima di continuare')
                 ->waitForText('Ultimi assessment')
                 ->waitForText('Cliente Browser')
-                ->visit('/admin/clients')
+                ->visit(ClientResource::getUrl('index'))
                 ->waitForText('Aziende')
                 ->assertSee('Cliente prova browser S.r.l.')
                 ->assertSee('Cliente Browser')
                 ->assertSee('Esporta tabella')
-                ->assertPresent("a[href$='/admin/clients/{$client->getKey()}/edit']")
+                ->assertPresent("a[href='".ClientResource::getUrl('edit', ['record' => $client])."']")
                 ->waitUntil('window.FilamentRightClick !== undefined');
 
             $contextMenuState = $browser->script(<<<'JS'
@@ -121,7 +128,7 @@ final class MilestoneOneFoundationTest extends DuskTestCase
                 ->click('.fi-right-click-menu.fi-open [data-action="contextEdit"]')
                 ->waitForText('Modifica azienda')
                 ->assertSee('Ragione sociale')
-                ->visit("/admin/clients/{$client->getKey()}/edit")
+                ->visit(ClientResource::getUrl('edit', ['record' => $client]))
                 ->waitForText('Ragione sociale')
                 ->assertSee('Archivia');
 
@@ -130,11 +137,11 @@ final class MilestoneOneFoundationTest extends DuskTestCase
             );
             Assert::assertContains('Cliente prova browser S.r.l.', $clientInputValues[0] ?? []);
 
-            $browser->visit('/admin/sites')
+            $browser->visit(SiteResource::getUrl('index'))
                 ->waitForText('Sedi')
                 ->assertSee('Sede prova browser')
                 ->assertSee('Torino')
-                ->visit("/admin/sites/{$site->getKey()}/edit")
+                ->visit(SiteResource::getUrl('edit', ['record' => $site]))
                 ->waitForText('Azienda');
 
             $siteInputValues = $browser->script(
@@ -142,14 +149,14 @@ final class MilestoneOneFoundationTest extends DuskTestCase
             );
             Assert::assertContains('Sede prova browser', $siteInputValues[0] ?? []);
 
-            $browser->visit('/admin/asset-types')
+            $browser->visit(AssetTypeResource::getUrl('index'))
                 ->waitForText('Tipologie asset')
                 ->assertSee('Server browser')
-                ->visit('/admin/assets')
+                ->visit(AssetResource::getUrl('index'))
                 ->waitForText('Asset')
                 ->assertSee('Asset prova browser')
                 ->assertSee('Cliente prova browser S.r.l.')
-                ->visit("/admin/assets/{$asset->getKey()}/edit")
+                ->visit(AssetResource::getUrl('edit', ['record' => $asset]))
                 ->waitForText('Identificazione');
 
             $assetInputValues = $browser->script(
@@ -157,31 +164,28 @@ final class MilestoneOneFoundationTest extends DuskTestCase
             );
             Assert::assertContains('Asset prova browser', $assetInputValues[0] ?? []);
 
-            $browser->visit('/admin/categories')
+            $browser->visit(CategoryResource::getUrl('index'))
                 ->waitForText('Categorie')
                 ->assertSee('Categoria prova browser')
-                ->visit('/admin/tags')
-                ->waitForText('Tag')
-                ->assertSee('Tag prova browser')
                 ->visit('/admin/profile')
                 ->waitForText('Autenticazione a due fattori (2FA)')
                 ->assertSee('App di autenticazione')
                 ->assertSee('Configurazione')
-                ->visit('/admin/risk-profiles')
+                ->visit(RiskProfileResource::getUrl('index'))
                 ->waitForText('Profilo predefinito')
                 ->assertSee('Profilo predefinito')
-                ->visit("/admin/risk-profiles/{$riskProfile->getKey()}/edit")
+                ->visit(RiskProfileResource::getUrl('edit', ['record' => $riskProfile]))
                 ->waitForText('Conseguenze')
                 ->assertSee('Matrice')
-                ->visit('/admin/effort-levels')
+                ->visit(EffortLevelResource::getUrl('index'))
                 ->waitForText('Basso')
                 ->assertSee('Basso')
-                ->visit("/admin/effort-levels/{$effortLevel->getKey()}/edit")
+                ->visit(EffortLevelResource::getUrl('edit', ['record' => $effortLevel]))
                 ->waitForText('Codice')
-                ->visit('/admin/general-settings-page')
+                ->visit(GeneralSettingsPage::getUrl())
                 ->waitForText('Impostazioni generali')
                 ->assertSee('Profilo di rischio attivo')
-                ->visit('/admin/report-settings-page')
+                ->visit(ReportSettingsPage::getUrl())
                 ->waitForText('Impostazioni report')
                 ->assertSee('Identità del consulente');
 

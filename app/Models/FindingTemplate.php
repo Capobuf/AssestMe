@@ -9,7 +9,6 @@ use Database\Factories\FindingTemplateFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
@@ -31,7 +30,6 @@ use LogicException;
  * @property string|null $priority_rationale
  * @property bool $is_enabled
  * @property-read Category $category
- * @property-read Collection<int, Tag> $tags
  * @property-read Collection<int, FindingTemplateSolution> $solutions
  * @property-read ConsequenceLevel|null $defaultConsequenceLevel
  * @property-read LikelihoodLevel|null $defaultLikelihoodLevel
@@ -64,12 +62,6 @@ class FindingTemplate extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
-    }
-
-    /** @return BelongsToMany<Tag, $this> */
-    public function tags(): BelongsToMany
-    {
-        return $this->belongsToMany(Tag::class, 'finding_template_tag');
     }
 
     /** @return HasMany<FindingTemplateSolution, $this> */

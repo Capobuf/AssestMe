@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Browser;
 
+use App\Filament\Resources\FindingTemplates\FindingTemplateResource;
 use App\Models\FindingTemplate;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -24,11 +25,11 @@ final class MilestoneTwoTemplateTest extends DuskTestCase
 
         $this->browse(function (Browser $browser) use ($administrator, $template): void {
             $browser->loginAs($administrator)
-                ->visit('/admin/finding-templates')
+                ->visit(FindingTemplateResource::getUrl('index'))
                 ->waitForText('Notifiche del NAS non configurate')
                 ->assertSee('Importa JSON')
                 ->assertSee('Esporta JSON')
-                ->visit("/admin/finding-templates/{$template->getKey()}/edit")
+                ->visit(FindingTemplateResource::getUrl('edit', ['record' => $template]))
                 ->waitForText('Soluzioni')
                 ->assertSee('Problema');
 

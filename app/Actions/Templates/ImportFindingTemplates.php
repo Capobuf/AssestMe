@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace App\Actions\Templates;
 
 use App\Actions\Categories\SaveCategory;
-use App\Actions\Tags\SaveTag;
 use App\Models\Category;
 use App\Models\EffortLevel;
 use App\Models\FindingTemplate;
 use App\Models\FindingTemplateSolution;
 use App\Models\RiskProfile;
-use App\Models\Tag;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use JsonException;
@@ -65,8 +63,6 @@ final class ImportFindingTemplates
                 $template->save();
                 $template->restore();
 
-                $tagIds = array_map(fn (string $name): int => (int) $this->resolveTag($name)->getKey(), $row['tags']);
-                $template->tags()->sync($tagIds);
                 $this->replaceSolutions($template, $row['solutions']);
                 $result[$created ? 'created' : 'replaced']++;
             }
@@ -80,7 +76,7 @@ final class ImportFindingTemplates
     {
         $document = $this->validatedDocument($json);
         $existing = FindingTemplate::withTrashed()
-            ->with(['category', 'tags', 'solutions.effortLevel', 'defaultConsequenceLevel', 'defaultLikelihoodLevel', 'defaultPriorityLevel'])
+            ->with(['category', 'solutions.effortLevel', 'defaultConsequenceLevel', 'defaultLikelihoodLevel', 'defaultPriorityLevel'])
             ->whereIn('external_id', array_column($document['templates'], 'external_id'))
             ->get()
             ->keyBy('external_id');
@@ -110,7 +106,6 @@ final class ImportFindingTemplates
         $current = [
             'title' => $template->title,
             'category' => $template->category->name,
-            'tags' => $template->tags->sortBy(fn (Tag $tag) => $this->normalizeName($tag->name))->pluck('name')->values()->all(),
             'problem' => $template->problem,
             'entrepreneur_notes' => $template->entrepreneur_notes,
             'technical_notes' => $template->technical_notes,
@@ -127,10 +122,6 @@ final class ImportFindingTemplates
 
         foreach ($current as $field => $value) {
             $incomingValue = $incoming[$field] ?? null;
-            if ($field === 'tags') {
-                sort($value);
-                sort($incomingValue);
-            }
             if ($value !== $incomingValue) {
                 $differences[] = $field;
             }
@@ -207,14 +198,6 @@ final class ImportFindingTemplates
         return $category ?? app(SaveCategory::class)->handle(null, [
             'name' => $name, 'sort_order' => Category::query()->max('sort_order') + 1, 'is_enabled' => true,
         ]);
-    }
-
-    private function resolveTag(string $name): Tag
-    {
-        $normalized = $this->normalizeName($name);
-        $tag = Tag::withTrashed()->get()->first(fn (Tag $item): bool => $this->normalizeName($item->name) === $normalized);
-
-        return $tag ?? app(SaveTag::class)->handle(null, ['name' => $name]);
     }
 
     private function normalizeName(string $name): string

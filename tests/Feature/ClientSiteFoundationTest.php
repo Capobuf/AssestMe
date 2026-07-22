@@ -8,6 +8,7 @@ use App\Actions\Sites\SaveSite;
 use App\Filament\Resources\Clients\ClientResource;
 use App\Filament\Resources\Clients\Pages\CreateClient;
 use App\Filament\Resources\Sites\Pages\CreateSite;
+use App\Filament\Resources\Sites\SiteResource;
 use App\Models\Client;
 use App\Models\Site;
 use App\Models\User;
@@ -128,6 +129,6 @@ it('keeps the company creation page empty after Save and new', function (): void
 });
 
 it('requires authentication for client and site resource pages', function (): void {
-    $this->get('/admin/clients')->assertRedirect('/admin/login');
-    $this->get('/admin/sites')->assertRedirect('/admin/login');
+    $this->get(ClientResource::getUrl('index'))->assertRedirect('/admin/login');
+    $this->get(SiteResource::getUrl('index'))->assertRedirect('/admin/login');
 });

@@ -3,11 +3,9 @@
 declare(strict_types=1);
 
 use App\Actions\Categories\SaveCategory;
-use App\Actions\Tags\SaveTag;
+use App\Filament\Resources\Categories\CategoryResource;
 use App\Filament\Resources\Categories\Pages\CreateCategory;
-use App\Filament\Resources\Tags\Pages\CreateTag;
 use App\Models\Category;
-use App\Models\Tag;
 use App\Models\User;
 use Database\Seeders\MilestoneOneSeeder;
 use Illuminate\Validation\ValidationException;
@@ -45,46 +43,37 @@ it('normalizes valid colors and rejects invalid colors', function (): void {
         'sort_order' => 1,
         'is_enabled' => true,
     ]);
-    $tag = app(SaveTag::class)->handle(null, [
-        'name' => 'Urgente',
-        'color' => '#d4e5f6',
-    ]);
+    expect($category->color)->toBe('#A1B2C3');
 
-    expect($category->color)->toBe('#A1B2C3')
-        ->and($tag->color)->toBe('#D4E5F6');
-
-    expect(fn () => app(SaveTag::class)->handle(null, [
+    expect(fn () => app(SaveCategory::class)->handle(null, [
         'name' => 'Colore non valido',
         'color' => 'red',
+        'sort_order' => 2,
+        'is_enabled' => true,
     ]))->toThrow(ValidationException::class);
 });
 
-it('keeps category and tag slugs reserved after archival', function (): void {
+it('keeps category slugs reserved after archival', function (): void {
     $category = app(SaveCategory::class)->handle(null, [
         'name' => 'Backup',
         'sort_order' => 1,
         'is_enabled' => true,
     ]);
-    $tag = app(SaveTag::class)->handle(null, ['name' => 'Critico']);
     $category->delete();
-    $tag->delete();
 
     $replacementCategory = app(SaveCategory::class)->handle(null, [
         'name' => 'Backup',
         'sort_order' => 2,
         'is_enabled' => true,
     ]);
-    $replacementTag = app(SaveTag::class)->handle(null, ['name' => 'Critico']);
-
-    expect($replacementCategory->slug)->toBe('backup-2')
-        ->and($replacementTag->slug)->toBe('critico-2');
+    expect($replacementCategory->slug)->toBe('backup-2');
 });
 
-it('creates categories and tags through their Filament resources', function (): void {
+it('creates categories through their Filament resource', function (): void {
     $administrator = User::factory()->create();
     $this->actingAs($administrator);
 
-    Livewire::test(CreateCategory::class)
+    $component = Livewire::test(CreateCategory::class)
         ->fillForm([
             'name' => 'Categoria Filament',
             'color' => '#abcdef',
@@ -94,19 +83,12 @@ it('creates categories and tags through their Filament resources', function (): 
         ->call('create')
         ->assertHasNoFormErrors();
 
-    Livewire::test(CreateTag::class)
-        ->fillForm([
-            'name' => 'Tag Filament',
-            'color' => '#123abc',
-        ])
-        ->call('create')
-        ->assertHasNoFormErrors();
+    $created = Category::query()->where('slug', 'categoria-filament')->firstOrFail();
+    $component->assertRedirect(CategoryResource::getUrl('edit', ['record' => $created]));
 
-    expect(Category::query()->where('slug', 'categoria-filament')->firstOrFail()->color)->toBe('#ABCDEF')
-        ->and(Tag::query()->where('slug', 'tag-filament')->firstOrFail()->color)->toBe('#123ABC');
+    expect($created->color)->toBe('#ABCDEF');
 });
 
-it('requires authentication for category and tag resources', function (): void {
-    $this->get('/admin/categories')->assertRedirect('/admin/login');
-    $this->get('/admin/tags')->assertRedirect('/admin/login');
+it('requires authentication for the clustered category resource', function (): void {
+    $this->get(CategoryResource::getUrl('index'))->assertRedirect('/admin/login');
 });

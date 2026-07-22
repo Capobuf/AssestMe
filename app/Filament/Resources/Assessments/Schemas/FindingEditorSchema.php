@@ -17,7 +17,6 @@ use App\Models\Finding;
 use App\Models\FindingSolution;
 use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
-use App\Models\Tag;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -235,13 +234,6 @@ final class FindingEditorSchema
                             ->searchable()
                             ->preload()
                             ->disabled(self::isReadOnly(...)),
-                        Select::make('tag_ids')
-                            ->label(__('assestme.templates.fields.tags'))
-                            ->options(fn (): array => Tag::query()->orderBy('name')->pluck('name', 'id')->all())
-                            ->multiple()
-                            ->searchable()
-                            ->preload()
-                            ->disabled(self::isReadOnly(...)),
                     ]),
                 Section::make(__('assestme.workspace.properties.scope'))
                     ->compact()
@@ -326,7 +318,7 @@ final class FindingEditorSchema
     /** @return array<string, mixed> */
     public static function data(Finding $finding): array
     {
-        $finding->load(['tags', 'sites', 'assets', 'solutions', 'evidences']);
+        $finding->load(['sites', 'assets', 'solutions', 'evidences']);
 
         return [
             ...$finding->only([
@@ -336,7 +328,6 @@ final class FindingEditorSchema
             ]),
             'scope_type' => $finding->scope_type->value,
             'status' => $finding->status->value,
-            'tag_ids' => $finding->tags->pluck('id')->all(),
             'site_ids' => $finding->sites->pluck('id')->all(),
             'asset_ids' => $finding->assets->pluck('id')->all(),
             'solutions' => $finding->solutions->map(static fn (FindingSolution $solution): array => [

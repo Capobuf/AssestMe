@@ -5,10 +5,6 @@
       "external_id": "fixture.exact.monthly",
       "title": "Stima esatta mensile",
       "category": "Fixture",
-      "tags": [
-        "Fixture",
-        "Import"
-      ],
       "problem": "Problema di prova: Stima esatta mensile.",
       "entrepreneur_notes": "Nota non tecnica usata per verificare import ed export.",
       "technical_notes": "Nota tecnica usata esclusivamente nelle fixture.",

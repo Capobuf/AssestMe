@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Clusters\SettingsCluster;
 use App\Models\RiskProfile;
 use App\Settings\GeneralSettings;
 use BackedEnum;
@@ -18,11 +19,13 @@ use Illuminate\Validation\ValidationException;
 
 final class GeneralSettingsPage extends SettingsPage
 {
+    protected static ?string $cluster = SettingsCluster::class;
+
     protected static string $settings = GeneralSettings::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 
-    protected static ?int $navigationSort = 30;
+    protected static ?int $navigationSort = 1;
 
     public static function getNavigationLabel(): string
     {
@@ -32,11 +35,6 @@ final class GeneralSettingsPage extends SettingsPage
     public function getTitle(): string
     {
         return __('assestme.settings.general.title');
-    }
-
-    public static function getNavigationGroup(): string
-    {
-        return __('assestme.navigation.configuration');
     }
 
     public function form(Schema $schema): Schema

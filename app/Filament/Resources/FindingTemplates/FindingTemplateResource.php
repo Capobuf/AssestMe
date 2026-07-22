@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\FindingTemplates;
 
+use App\Filament\Clusters\SettingsCluster;
 use App\Filament\Resources\FindingTemplates\Pages\CreateFindingTemplate;
 use App\Filament\Resources\FindingTemplates\Pages\EditFindingTemplate;
 use App\Filament\Resources\FindingTemplates\Pages\ListFindingTemplates;
@@ -20,11 +21,13 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 final class FindingTemplateResource extends Resource
 {
+    protected static ?string $cluster = SettingsCluster::class;
+
     protected static ?string $model = FindingTemplate::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 3;
 
     public static function getNavigationLabel(): string
     {
@@ -39,11 +42,6 @@ final class FindingTemplateResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return __('assestme.templates.plural');
-    }
-
-    public static function getNavigationGroup(): string
-    {
-        return __('assestme.navigation.library');
     }
 
     public static function form(Schema $schema): Schema

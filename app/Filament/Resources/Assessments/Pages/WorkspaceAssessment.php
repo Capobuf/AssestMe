@@ -460,7 +460,7 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
         }
 
         return $this->assessmentRecord()->findings()
-            ->with(['category', 'priorityLevel', 'consequenceLevel', 'likelihoodLevel', 'solutions', 'evidences', 'tags', 'sites', 'assets'])
+            ->with(['category', 'priorityLevel', 'consequenceLevel', 'likelihoodLevel', 'solutions', 'evidences', 'sites', 'assets'])
             ->find($this->selectedFindingId);
     }
 

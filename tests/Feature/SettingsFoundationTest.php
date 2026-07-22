@@ -106,6 +106,6 @@ it('normalizes report identity values without introducing VAT calculations', fun
 });
 
 it('requires authentication for both settings pages', function (): void {
-    $this->get('/admin/general-settings-page')->assertRedirect('/admin/login');
-    $this->get('/admin/report-settings-page')->assertRedirect('/admin/login');
+    $this->get(GeneralSettingsPage::getUrl())->assertRedirect('/admin/login');
+    $this->get(ReportSettingsPage::getUrl())->assertRedirect('/admin/login');
 });

@@ -69,7 +69,6 @@ function minimalFindingPayload(Finding $finding): array
         'entrepreneur_notes' => $finding->entrepreneur_notes,
         'technical_notes' => $finding->technical_notes,
         'category_id' => $finding->category_id,
-        'tag_ids' => [],
         'scope_type' => $finding->getRawOriginal('scope_type') ?: ScopeType::Organization->value,
         'scope_description' => $finding->scope_description,
         'site_ids' => [],

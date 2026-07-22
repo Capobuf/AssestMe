@@ -5,10 +5,6 @@
       "external_id": "fixture.exact.monthly",
       "title": "Stima esatta mensile",
       "category": "Fixture",
-      "tags": [
-        "Fixture",
-        "Import"
-      ],
       "problem": "Problema di prova: Stima esatta mensile.",
       "entrepreneur_notes": "Nota non tecnica usata per verificare import ed export.",
       "technical_notes": "Nota tecnica usata esclusivamente nelle fixture.",
@@ -60,10 +56,6 @@
       "external_id": "fixture.range.yearly",
       "title": "Stima a intervallo annuale",
       "category": "Fixture",
-      "tags": [
-        "Fixture",
-        "Import"
-      ],
       "problem": "Problema di prova: Stima a intervallo annuale.",
       "entrepreneur_notes": "Nota non tecnica usata per verificare import ed export.",
       "technical_notes": "Nota tecnica usata esclusivamente nelle fixture.",
@@ -115,10 +107,6 @@
       "external_id": "fixture.non-monetary",
       "title": "Stime non monetarie",
       "category": "Fixture",
-      "tags": [
-        "Fixture",
-        "Import"
-      ],
       "problem": "Problema di prova: Stime non monetarie.",
       "entrepreneur_notes": "Nota non tecnica usata per verificare import ed export.",
       "technical_notes": "Nota tecnica usata esclusivamente nelle fixture.",
@@ -221,10 +209,6 @@
       "external_id": "fixture.custom-scope",
       "title": "Ambito personalizzato",
       "category": "Fixture",
-      "tags": [
-        "Fixture",
-        "Import"
-      ],
       "problem": "Problema di prova: Ambito personalizzato.",
       "entrepreneur_notes": "Nota non tecnica usata per verificare import ed export.",
       "technical_notes": "Nota tecnica usata esclusivamente nelle fixture.",
@@ -259,10 +243,6 @@
       "external_id": "fixture.network-scope",
       "title": "Ambito rete",
       "category": "Fixture",
-      "tags": [
-        "Fixture",
-        "Import"
-      ],
       "problem": "Problema di prova: Ambito rete.",
       "entrepreneur_notes": "Nota non tecnica usata per verificare import ed export.",
       "technical_notes": "Nota tecnica usata esclusivamente nelle fixture.",

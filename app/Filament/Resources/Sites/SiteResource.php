@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Sites;
 
+use App\Filament\Resources\Clients\ClientResource;
 use App\Filament\Resources\Sites\Pages\CreateSite;
 use App\Filament\Resources\Sites\Pages\EditSite;
 use App\Filament\Resources\Sites\Pages\ListSites;
@@ -41,9 +42,9 @@ class SiteResource extends Resource
         return __('assestme.sites.plural');
     }
 
-    public static function getNavigationGroup(): ?string
+    public static function getNavigationParentItem(): string
     {
-        return __('assestme.navigation.registry');
+        return ClientResource::getNavigationLabel();
     }
 
     public static function form(Schema $schema): Schema

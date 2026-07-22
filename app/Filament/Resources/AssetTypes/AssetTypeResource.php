@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\AssetTypes;
 
+use App\Filament\Clusters\AssetCluster;
 use App\Filament\Resources\AssetTypes\Pages\CreateAssetType;
 use App\Filament\Resources\AssetTypes\Pages\EditAssetType;
 use App\Filament\Resources\AssetTypes\Pages\ListAssetTypes;
@@ -18,11 +19,13 @@ use Filament\Tables\Table;
 
 class AssetTypeResource extends Resource
 {
+    protected static ?string $cluster = AssetCluster::class;
+
     protected static ?string $model = AssetType::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedServerStack;
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 2;
 
     public static function getNavigationLabel(): string
     {
@@ -37,11 +40,6 @@ class AssetTypeResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return __('assestme.asset_types.plural');
-    }
-
-    public static function getNavigationGroup(): ?string
-    {
-        return __('assestme.navigation.library');
     }
 
     public static function form(Schema $schema): Schema

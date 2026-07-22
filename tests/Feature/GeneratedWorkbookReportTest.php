@@ -18,7 +18,6 @@ use App\Models\Finding;
 use App\Models\FindingTemplate;
 use App\Models\GeneratedReport;
 use App\Models\Site;
-use App\Models\Tag;
 use App\Models\User;
 use App\Settings\GeneralSettings;
 use App\Settings\ReportSettings;
@@ -51,10 +50,8 @@ it('persists and downloads complete immutable three-sheet workbook versions', fu
         'hostname' => 'srv-gestionale',
         'ip_address' => '10.20.30.40',
     ]);
-    $tag = Tag::factory()->create(['name' => 'Continuità', 'slug' => 'continuita']);
     $finding->sites()->attach($site);
     $finding->assets()->attach($asset);
-    $finding->tags()->attach($tag);
     $finding->update([
         'scope_type' => ScopeType::SelectedAssets,
         'priority_rationale' => 'Priorità confermata dalla matrice.',
@@ -129,26 +126,27 @@ it('persists and downloads complete immutable three-sheet workbook versions', fu
         ->and($first->payload_snapshot['export_options']['include_excluded_findings'])->toBeFalse()
         ->and($first->settings_snapshot['xlsx_include_excluded_findings'])->toBeFalse()
         ->and($first->payload_snapshot['findings'][0]['include_in_report'])->toBeTrue()
+        ->and($first->payload_snapshot['findings'][0])->not->toHaveKey('tags')
         ->and($workbook->getSheetNames())->toBe(['Finding', 'Soluzioni', 'Evidenze'])
         ->and($findingSheet)->not->toBeNull()
         ->and($solutionSheet)->not->toBeNull()
         ->and($evidenceSheet)->not->toBeNull()
-        ->and($findingSheet?->getMergeCells())->toHaveKey('A1:Q1')
+        ->and($findingSheet?->getMergeCells())->toHaveKey('A1:P1')
         ->and($findingSheet?->getCell('A1')->getValue())->toBe($fixedNote)
         ->and(countWorkbookValue($workbook, $fixedNote))->toBe(1)
         ->and($findingSheet?->getFreezePane())->toBe('A3')
-        ->and($findingSheet?->getAutoFilter()->getRange())->toBe('A2:Q3')
+        ->and($findingSheet?->getAutoFilter()->getRange())->toBe('A2:P3')
         ->and($findingSheet?->getCell('B3')->getValue())->toBe($finding->title)
-        ->and($findingSheet?->getCell('D3')->getValue())->toContain('Continuità')
-        ->and($findingSheet?->getCell('E3')->getValue())->toContain('Asset selezionati', 'Sede Nord')
-        ->and($findingSheet?->getCell('F3')->getValue())->toContain('Server gestionale', 'srv-gestionale', '10.20.30.40')
-        ->and($findingSheet?->getCell('G3')->getValue())->toContain("\n")
-        ->and($findingSheet?->getCell('I3')->getValue())->toContain($recommended->title, $recommended->description)
-        ->and($findingSheet?->getCell('J3')->getValue())->toContain('Soluzione alternativa', 'Minore impatto')
-        ->and($findingSheet?->getCell('N3')->getValue())->toBe('Circa 250 € una tantum')
-        ->and($findingSheet?->getCell('P3')->getValue())->toContain('Nota tecnica riga due')
-        ->and($findingSheet?->getCell('Q3')->getValue())->toContain('Verbale tecnico', 'Riferimento online')
-        ->and($findingSheet?->getStyle('G3')->getAlignment()->getWrapText())->toBeTrue()
+        ->and($findingSheet?->getCell('D2')->getValue())->toBe('Ambito')
+        ->and($findingSheet?->getCell('D3')->getValue())->toContain('Asset selezionati', 'Sede Nord')
+        ->and($findingSheet?->getCell('E3')->getValue())->toContain('Server gestionale', 'srv-gestionale', '10.20.30.40')
+        ->and($findingSheet?->getCell('F3')->getValue())->toContain("\n")
+        ->and($findingSheet?->getCell('H3')->getValue())->toContain($recommended->title, $recommended->description)
+        ->and($findingSheet?->getCell('I3')->getValue())->toContain('Soluzione alternativa', 'Minore impatto')
+        ->and($findingSheet?->getCell('M3')->getValue())->toBe('Circa 250 € una tantum')
+        ->and($findingSheet?->getCell('O3')->getValue())->toContain('Nota tecnica riga due')
+        ->and($findingSheet?->getCell('P3')->getValue())->toContain('Verbale tecnico', 'Riferimento online')
+        ->and($findingSheet?->getStyle('F3')->getAlignment()->getWrapText())->toBeTrue()
         ->and($solutionSheet?->getHighestDataRow())->toBe(3)
         ->and($solutionSheet?->getFreezePane())->toBe('A2')
         ->and($solutionSheet?->getAutoFilter()->getRange())->toBe('A1:N3')
@@ -203,9 +201,9 @@ it('honors explicit and configured inclusion of incomplete excluded findings', f
         ->and($configured->payload_snapshot['findings'])->toHaveCount(2)
         ->and($includedWorkbook->getSheetByName('Finding')?->getHighestDataRow())->toBe(3)
         ->and($excludedWorkbook->getSheetByName('Finding')?->getHighestDataRow())->toBe(4)
-        ->and($excludedWorkbook->getSheetByName('Finding')?->getHighestDataColumn())->toBe('P')
-        ->and($excludedWorkbook->getSheetByName('Finding')?->getCell('P2')->getValue())->toBe('Evidenze')
-        ->and($excludedWorkbook->getSheetByName('Finding')?->getCell('I4')->getValue())->toBeNull();
+        ->and($excludedWorkbook->getSheetByName('Finding')?->getHighestDataColumn())->toBe('O')
+        ->and($excludedWorkbook->getSheetByName('Finding')?->getCell('O2')->getValue())->toBe('Evidenze')
+        ->and($excludedWorkbook->getSheetByName('Finding')?->getCell('H4')->getValue())->toBeNull();
 
     $includedWorkbook->disconnectWorksheets();
     $excludedWorkbook->disconnectWorksheets();

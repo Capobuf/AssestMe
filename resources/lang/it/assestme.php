@@ -6,10 +6,8 @@ return [
     'app' => [
         'name' => 'AssestMe',
     ],
-    'navigation' => [
-        'registry' => 'Anagrafica',
-        'library' => 'Libreria',
-        'configuration' => 'Configurazione',
+    'clusters' => [
+        'settings' => 'Impostazioni',
     ],
     'dashboard' => [
         'draft_assessments' => 'Assessment in bozza',
@@ -157,13 +155,8 @@ return [
         'singular' => 'categoria',
         'plural' => 'categorie',
     ],
-    'tags' => [
-        'navigation' => 'Tag',
-        'singular' => 'tag',
-        'plural' => 'tag',
-    ],
     'templates' => [
-        'navigation' => 'Template Finding',
+        'navigation' => 'Template',
         'singular' => 'template Finding',
         'plural' => 'template Finding',
         'sections' => [
@@ -173,7 +166,7 @@ return [
             'advanced' => 'Opzioni avanzate',
         ],
         'fields' => [
-            'external_id' => 'ID esterno', 'title' => 'Titolo', 'category' => 'Categoria', 'tags' => 'Tag',
+            'external_id' => 'ID esterno', 'title' => 'Titolo', 'category' => 'Categoria',
             'technical_notes' => 'Note tecniche', 'scope' => 'Ambito', 'scope_description' => 'Descrizione ambito',
             'consequence' => 'Conseguenza', 'likelihood' => 'Probabilità', 'priority_rationale' => 'Motivazione priorità',
             'recommended' => 'Raccomandata', 'comparison_notes' => 'Note comparative', 'effort_notes' => 'Note impegno',
@@ -258,14 +251,14 @@ return [
     ],
     'settings' => [
         'general' => [
-            'navigation' => 'Impostazioni generali',
+            'navigation' => 'Generale',
             'title' => 'Impostazioni generali',
             'application' => 'Applicazione',
             'evidence' => 'Evidenze',
             'report' => 'Valori e report',
         ],
         'report' => [
-            'navigation' => 'Impostazioni report',
+            'navigation' => 'Report',
             'title' => 'Impostazioni report',
             'identity' => 'Identità del consulente',
             'layout' => 'Layout e sezioni',
@@ -612,7 +605,6 @@ return [
             'priority' => 'Priorità',
             'effort' => 'Impegno',
             'estimate' => 'Stima',
-            'tags' => 'Tag',
             'sites' => 'Sedi',
             'assets' => 'Asset',
             'priority_and_risk' => 'Priorità e rischio',
@@ -663,7 +655,6 @@ return [
                 'number' => 'Numero',
                 'title' => 'Titolo',
                 'category' => 'Categoria',
-                'tags' => 'Tag',
                 'scope' => 'Ambito',
                 'assets' => 'Asset',
                 'problem' => 'Problema',

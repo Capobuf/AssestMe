@@ -5,10 +5,6 @@
       "external_id": "fixture.non-monetary",
       "title": "Stime non monetarie",
       "category": "Fixture",
-      "tags": [
-        "Fixture",
-        "Import"
-      ],
       "problem": "Problema di prova: Stime non monetarie.",
       "entrepreneur_notes": "Nota non tecnica usata per verificare import ed export.",
       "technical_notes": "Nota tecnica usata esclusivamente nelle fixture.",

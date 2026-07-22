@@ -7,10 +7,6 @@
       "number": 1,
       "title": "Finding di prova 01",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-01"
@@ -36,10 +32,6 @@
       "number": 2,
       "title": "Finding di prova 02",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-02"
@@ -65,10 +57,6 @@
       "number": 3,
       "title": "Finding di prova 03",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Alta",
@@ -92,10 +80,6 @@
       "number": 4,
       "title": "Finding di prova 04",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-04"
@@ -121,10 +105,6 @@
       "number": 5,
       "title": "Finding di prova 05",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-05"
@@ -150,10 +130,6 @@
       "number": 6,
       "title": "Finding di prova 06",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Moderata",
@@ -177,10 +153,6 @@
       "number": 7,
       "title": "Finding di prova 07",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-07"
@@ -206,10 +178,6 @@
       "number": 8,
       "title": "Finding di prova 08",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-08"
@@ -235,10 +203,6 @@
       "number": 9,
       "title": "Finding di prova 09",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Bassa",
@@ -262,10 +226,6 @@
       "number": 10,
       "title": "Finding di prova 10",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-10"
@@ -291,10 +251,6 @@
       "number": 11,
       "title": "Finding di prova 11",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-11"
@@ -320,10 +276,6 @@
       "number": 12,
       "title": "Finding di prova 12",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Critica",
@@ -347,10 +299,6 @@
       "number": 13,
       "title": "Finding di prova 13",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-13"
@@ -376,10 +324,6 @@
       "number": 14,
       "title": "Finding di prova 14",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-14"
@@ -405,10 +349,6 @@
       "number": 15,
       "title": "Finding di prova 15",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Alta",
@@ -432,10 +372,6 @@
       "number": 16,
       "title": "Finding di prova 16",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-16"
@@ -461,10 +397,6 @@
       "number": 17,
       "title": "Finding di prova 17",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-17"
@@ -490,10 +422,6 @@
       "number": 18,
       "title": "Finding di prova 18",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Moderata",
@@ -517,10 +445,6 @@
       "number": 19,
       "title": "Finding di prova 19",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-19"
@@ -546,10 +470,6 @@
       "number": 20,
       "title": "Finding di prova 20",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-20"
@@ -575,10 +495,6 @@
       "number": 21,
       "title": "Finding di prova 21",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Bassa",
@@ -602,10 +518,6 @@
       "number": 22,
       "title": "Finding di prova 22",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-22"
@@ -631,10 +543,6 @@
       "number": 23,
       "title": "Finding di prova 23",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-23"
@@ -660,10 +568,6 @@
       "number": 24,
       "title": "Finding di prova 24",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Critica",
@@ -687,10 +591,6 @@
       "number": 25,
       "title": "Finding di prova 25",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-25"
@@ -716,10 +616,6 @@
       "number": 26,
       "title": "Finding di prova 26",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-26"
@@ -745,10 +641,6 @@
       "number": 27,
       "title": "Finding di prova 27",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Alta",
@@ -772,10 +664,6 @@
       "number": 28,
       "title": "Finding di prova 28",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-28"
@@ -801,10 +689,6 @@
       "number": 29,
       "title": "Finding di prova 29",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-29"
@@ -830,10 +714,6 @@
       "number": 30,
       "title": "Finding di prova 30",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Moderata",
@@ -857,10 +737,6 @@
       "number": 31,
       "title": "Finding di prova 31",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-31"
@@ -886,10 +762,6 @@
       "number": 32,
       "title": "Finding di prova 32",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-32"
@@ -915,10 +787,6 @@
       "number": 33,
       "title": "Finding di prova 33",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Bassa",
@@ -942,10 +810,6 @@
       "number": 34,
       "title": "Finding di prova 34",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-34"
@@ -971,10 +835,6 @@
       "number": 35,
       "title": "Finding di prova 35",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-35"
@@ -1000,10 +860,6 @@
       "number": 36,
       "title": "Finding di prova 36",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Critica",
@@ -1027,10 +883,6 @@
       "number": 37,
       "title": "Finding di prova 37",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-37"
@@ -1056,10 +908,6 @@
       "number": 38,
       "title": "Finding di prova 38",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-38"
@@ -1085,10 +933,6 @@
       "number": 39,
       "title": "Finding di prova 39",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Alta",
@@ -1112,10 +956,6 @@
       "number": 40,
       "title": "Finding di prova 40",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-40"
@@ -1141,10 +981,6 @@
       "number": 41,
       "title": "Finding di prova 41",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-41"
@@ -1170,10 +1006,6 @@
       "number": 42,
       "title": "Finding di prova 42",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Moderata",
@@ -1197,10 +1029,6 @@
       "number": 43,
       "title": "Finding di prova 43",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-43"
@@ -1226,10 +1054,6 @@
       "number": 44,
       "title": "Finding di prova 44",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-44"
@@ -1255,10 +1079,6 @@
       "number": 45,
       "title": "Finding di prova 45",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Bassa",
@@ -1282,10 +1102,6 @@
       "number": 46,
       "title": "Finding di prova 46",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-46"
@@ -1311,10 +1127,6 @@
       "number": 47,
       "title": "Finding di prova 47",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-47"
@@ -1340,10 +1152,6 @@
       "number": 48,
       "title": "Finding di prova 48",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Intera organizzazione",
       "assets": [],
       "priority": "Critica",
@@ -1367,10 +1175,6 @@
       "number": 49,
       "title": "Finding di prova 49",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-49"
@@ -1396,10 +1200,6 @@
       "number": 50,
       "title": "Finding di prova 50",
       "category": "Fixture",
-      "tags": [
-        "Prestazioni",
-        "PDF"
-      ],
       "scope": "Rete aziendale",
       "assets": [
         "Asset-50"

@@ -10,7 +10,6 @@ use App\Filament\Resources\AssetTypes\Pages\ListAssetTypes;
 use App\Filament\Resources\Categories\Pages\ListCategories;
 use App\Filament\Resources\Clients\Pages\ListClients;
 use App\Filament\Resources\Sites\Pages\ListSites;
-use App\Filament\Resources\Tags\Pages\ListTags;
 use App\Models\Client;
 use App\Models\DeletionOperation;
 use App\Models\Site;
@@ -118,5 +117,4 @@ it('enhances every approved standard resource table', function (string $page): v
     ListAssets::class,
     ListAssetTypes::class,
     ListCategories::class,
-    ListTags::class,
 ]);

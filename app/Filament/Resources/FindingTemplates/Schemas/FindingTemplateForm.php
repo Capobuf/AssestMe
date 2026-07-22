@@ -12,7 +12,6 @@ use App\Models\ConsequenceLevel;
 use App\Models\EffortLevel;
 use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
-use App\Models\Tag;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -30,7 +29,6 @@ final class FindingTemplateForm
             Section::make(__('assestme.templates.sections.finding'))->schema([
                 TextInput::make('title')->label(__('assestme.templates.fields.title'))->required()->maxLength(255),
                 Select::make('category_id')->label(__('assestme.templates.fields.category'))->options(fn (): array => Category::query()->where('is_enabled', true)->orderBy('name')->pluck('name', 'id')->all())->searchable()->required(),
-                Select::make('tag_ids')->label(__('assestme.templates.fields.tags'))->options(fn (): array => Tag::query()->orderBy('name')->pluck('name', 'id')->all())->multiple()->searchable(),
                 Toggle::make('is_enabled')->label(__('assestme.common.enabled'))->required()->default(true),
                 Textarea::make('problem')->label(__('assestme.findings.fields.problem'))->required()->rows(5)->maxLength(20000)->columnSpanFull(),
                 Textarea::make('entrepreneur_notes')->label(__('assestme.findings.fields.entrepreneur_notes'))->rows(4)->maxLength(20000)->columnSpanFull(),

@@ -7,6 +7,13 @@ namespace Tests\Browser;
 use App\Actions\Assessments\CopyTemplateToAssessment;
 use App\Actions\Reports\GenerateAssessmentPdf;
 use App\Enums\ScopeType;
+use App\Filament\Pages\ReportSettingsPage;
+use App\Filament\Resources\Assessments\AssessmentResource;
+use App\Filament\Resources\Assets\AssetResource;
+use App\Filament\Resources\Clients\ClientResource;
+use App\Filament\Resources\FindingTemplates\FindingTemplateResource;
+use App\Filament\Resources\RiskProfiles\RiskProfileResource;
+use App\Filament\Resources\Sites\SiteResource;
 use App\Models\Assessment;
 use App\Models\Asset;
 use App\Models\AssetType;
@@ -50,16 +57,16 @@ final class ApprovedUxQaTest extends DuskTestCase
 
         $pages = [
             'dashboard' => '/admin',
-            'assessment-list' => '/admin/assessments',
-            'assessment-create' => '/admin/assessments/create',
-            'workspace' => "/admin/assessments/{$assessment->getKey()}/workspace",
-            'company-create' => '/admin/clients/create',
-            'site-create' => '/admin/sites/create',
-            'asset-create' => '/admin/assets/create',
-            'template-create' => '/admin/finding-templates/create',
-            'template-edit' => "/admin/finding-templates/{$template->getKey()}/edit",
-            'risk-profile-edit' => "/admin/risk-profiles/{$profile->getKey()}/edit",
-            'report-settings' => '/admin/report-settings-page',
+            'assessment-list' => AssessmentResource::getUrl('index'),
+            'assessment-create' => AssessmentResource::getUrl('create'),
+            'workspace' => AssessmentResource::getUrl('workspace', ['record' => $assessment]),
+            'company-create' => ClientResource::getUrl('create'),
+            'site-create' => SiteResource::getUrl('create'),
+            'asset-create' => AssetResource::getUrl('create'),
+            'template-create' => FindingTemplateResource::getUrl('create'),
+            'template-edit' => FindingTemplateResource::getUrl('edit', ['record' => $template]),
+            'risk-profile-edit' => RiskProfileResource::getUrl('edit', ['record' => $profile]),
+            'report-settings' => ReportSettingsPage::getUrl(),
         ];
 
         $this->browse(function (Browser $browser) use ($administrator, $assessment, $artifactRoot, $pages, $profile, $report, $template): void {
@@ -90,7 +97,7 @@ final class ApprovedUxQaTest extends DuskTestCase
                 }
 
                 $browser->resize($width, $height)
-                    ->visit("/admin/assessments/{$assessment->getKey()}/workspace")
+                    ->visit(AssessmentResource::getUrl('workspace', ['record' => $assessment]))
                     ->waitForText('File Generati')
                     ->press('File Generati')
                     ->waitForText($report->file_name)
@@ -105,7 +112,7 @@ final class ApprovedUxQaTest extends DuskTestCase
                     ->pause(250);
                 $browser->driver->takeScreenshot("{$artifactRoot}/dashboard-application-status-{$width}x{$height}-dark.png");
 
-                $browser->visit("/admin/risk-profiles/{$profile->getKey()}/edit")
+                $browser->visit(RiskProfileResource::getUrl('edit', ['record' => $profile]))
                     ->waitFor('[data-dusk="risk-matrix-grid"]')
                     ->scrollIntoView('[data-dusk="risk-matrix-grid"]')
                     ->pause(250);
@@ -115,7 +122,7 @@ final class ApprovedUxQaTest extends DuskTestCase
                 $browser->driver->takeScreenshot("{$artifactRoot}/risk-matrix-{$width}x{$height}-light.png");
                 $browser->script("localStorage.setItem('theme', 'dark'); document.documentElement.classList.add('dark');");
 
-                $browser->visit("/admin/finding-templates/{$template->getKey()}/edit")
+                $browser->visit(FindingTemplateResource::getUrl('edit', ['record' => $template]))
                     ->waitUntil(<<<'JS'
                         return Array.from(document.querySelectorAll('.fi-sc-section'))
                             .some((section) => section.textContent.includes('Soluzioni'));

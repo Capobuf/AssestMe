@@ -30,8 +30,6 @@ final class SaveFindingTemplate
             'external_id' => ['required', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/', Rule::unique('finding_templates', 'external_id')->ignore($template?->getKey())],
             'title' => ['required', 'string', 'max:255'],
             'category_id' => ['required', 'integer', Rule::exists('categories', 'id')->whereNull('deleted_at')],
-            'tag_ids' => ['array'],
-            'tag_ids.*' => ['integer', 'distinct', Rule::exists('tags', 'id')->whereNull('deleted_at')],
             'problem' => ['required', 'string', 'max:20000'],
             'entrepreneur_notes' => ['nullable', 'string', 'max:20000'],
             'technical_notes' => ['nullable', 'string', 'max:20000'],
@@ -65,9 +63,8 @@ final class SaveFindingTemplate
 
         return DB::transaction(function () use ($template, $validated): FindingTemplate {
             $record = $template ?? new FindingTemplate;
-            $record->fill(collect($validated)->except(['tag_ids', 'solutions'])->all());
+            $record->fill(collect($validated)->except('solutions')->all());
             $record->save();
-            $record->tags()->sync($validated['tag_ids'] ?? []);
 
             $keptIds = [];
             foreach ($validated['solutions'] as $row) {

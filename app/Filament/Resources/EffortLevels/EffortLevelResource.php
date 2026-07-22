@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\EffortLevels;
 
+use App\Filament\Clusters\SettingsCluster;
 use App\Filament\Resources\EffortLevels\Pages\CreateEffortLevel;
 use App\Filament\Resources\EffortLevels\Pages\EditEffortLevel;
 use App\Filament\Resources\EffortLevels\Pages\ListEffortLevels;
@@ -18,11 +19,13 @@ use Filament\Tables\Table;
 
 final class EffortLevelResource extends Resource
 {
+    protected static ?string $cluster = SettingsCluster::class;
+
     protected static ?string $model = EffortLevel::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWrenchScrewdriver;
 
-    protected static ?int $navigationSort = 20;
+    protected static ?int $navigationSort = 6;
 
     public static function getNavigationLabel(): string
     {
@@ -37,11 +40,6 @@ final class EffortLevelResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return __('assestme.effort_levels.plural');
-    }
-
-    public static function getNavigationGroup(): string
-    {
-        return __('assestme.navigation.configuration');
     }
 
     public static function form(Schema $schema): Schema
