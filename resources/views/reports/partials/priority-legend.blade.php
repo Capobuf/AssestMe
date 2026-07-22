@@ -2,7 +2,7 @@
 
 <section class="avoid-break">
     <h2 class="editorial-heading">{{ __('assestme.reports.document.priority_legend') }}</h2>
-    <table class="priority-legend">
+    <table class="priority-legend {{ $report->setting('show_priority_descriptions') === true ? '' : 'priority-legend--compact' }}">
         @foreach ($report->priorityLegend as $priority)
             <tr>
                 <td class="priority-legend__marker">

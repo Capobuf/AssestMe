@@ -31,20 +31,22 @@
                 </td>
             </tr>
             <tr class="finding-summary__details">
-                <td></td>
-                <td>
+                <td class="finding-summary__number"></td>
+                <td class="finding-summary__scope">
                     <span class="label">{{ __('assestme.reports.document.scope') }}</span>
                     {{ $finding->scopeLabel }}
                 </td>
-                <td colspan="2">
+                <td class="finding-summary__solution">
                     <span class="label">{{ __('assestme.reports.document.recommended_solution') }}</span>
                     <strong>{{ $recommended->title }}</strong>
                 </td>
-                <td>
+                <td class="finding-summary__effort">
                     <span class="label">{{ __('assestme.reports.document.effort') }}</span>
                     {{ $recommended->effortLabel ?? __('assestme.reports.document.not_available') }}
+                </td>
+                <td class="finding-summary__estimate">
                     @if ($report->setting('costs') === true)
-                        <span class="label" style="margin-top: 2mm">{{ __('assestme.reports.document.estimate') }}</span>
+                        <span class="label">{{ __('assestme.reports.document.estimate') }}</span>
                         {{ $recommended->estimateLabel }}
                     @endif
                 </td>

@@ -47,7 +47,7 @@ it('preserves mixed evidence order image proportions captions and the immutable 
 
     $finding->evidences()->create([
         'type' => EvidenceType::File,
-        'title' => 'Vista verticale armadio',
+        'title' => 'ARMADIO-VERTICALE.PNG',
         'file_path' => $verticalPath,
         'original_filename' => 'armadio-verticale.png',
         'caption' => 'Didascalia verticale visibile',
@@ -139,6 +139,7 @@ it('preserves mixed evidence order image proportions captions and the immutable 
             'application/pdf',
         )
         ->and($normalizedText)->not->toContain(
+            'ARMADIO-VERTICALE.PNG',
             'Evidenza esclusa dal report',
             'https://example.test/excluded-evidence',
             $verticalPath,
@@ -150,7 +151,6 @@ it('preserves mixed evidence order image proportions captions and the immutable 
 
     $orderedTokens = [
         'IMMAGINE 01',
-        'Vista verticale armadio',
         'LINK 02',
         'Procedura continuità online',
         'FILE 03',
@@ -168,7 +168,7 @@ it('preserves mixed evidence order image proportions captions and the immutable 
 
     $evidenceSnapshot = $withCaptions->payload_snapshot['findings'][0]['evidences'];
     expect(array_column($evidenceSnapshot, 'title'))->toBe([
-        'Vista verticale armadio',
+        'ARMADIO-VERTICALE.PNG',
         'Procedura continuità online',
         'Evidenza esclusa dal report',
         'Verbale tecnico PDF',
@@ -212,8 +212,8 @@ it('preserves mixed evidence order image proportions captions and the immutable 
     expect($withoutCaptionsContents)->toBeString()
         ->and(substr($withoutCaptionsContents, 0, 5))->toBe('%PDF-')
         ->and($withoutCaptions->settings_snapshot['evidence_captions'])->toBeFalse()
-        ->and($withoutCaptionsText)->toContain('Vista verticale armadio', 'Vista orizzontale sala')
-        ->and($withoutCaptionsText)->not->toContain('Didascalia verticale visibile', 'Didascalia orizzontale visibile')
+        ->and($withoutCaptionsText)->toContain('Vista orizzontale sala')
+        ->and($withoutCaptionsText)->not->toContain('ARMADIO-VERTICALE.PNG', 'Didascalia verticale visibile', 'Didascalia orizzontale visibile')
         ->and(GeneratedReport::query()->where('assessment_id', $assessment->getKey())->count())->toBe(2);
 });
 

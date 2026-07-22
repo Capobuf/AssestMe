@@ -11,6 +11,12 @@ use Spatie\LaravelPdf\PdfOptions;
 
 final class DomPdfCanvasDriver extends DomPdfDriver
 {
+    private const POINTS_PER_MILLIMETRE = 72 / 25.4;
+
+    private const CONTENT_LEFT_MARGIN_MM = 20.0;
+
+    private const CONTENT_RIGHT_MARGIN_MM = 17.0;
+
     /**
      * DOMPDF exposes page chrome only through its Canvas after rendering.
      * Spatie's stock driver returns the bytes immediately, so this
@@ -43,11 +49,12 @@ final class DomPdfCanvasDriver extends DomPdfDriver
                 $contentPages = $showCover ? $pageCount - 1 : $pageCount;
                 $font = $fontMetrics->getFont('DejaVu Sans', 'normal');
                 $fontSize = 9.0;
-                $left = 42.0;
-                $right = $canvas->get_width() - $left;
-                $headerLineY = 38.0;
-                $footerLineY = $canvas->get_height() - 42.0;
-                $footerTextY = $canvas->get_height() - 28.0;
+                $left = self::CONTENT_LEFT_MARGIN_MM * self::POINTS_PER_MILLIMETRE;
+                $right = $canvas->get_width() - (self::CONTENT_RIGHT_MARGIN_MM * self::POINTS_PER_MILLIMETRE);
+                $headerTextY = 3.0 * self::POINTS_PER_MILLIMETRE;
+                $headerLineY = 10.0 * self::POINTS_PER_MILLIMETRE;
+                $footerLineY = $canvas->get_height() - (20.0 * self::POINTS_PER_MILLIMETRE);
+                $footerTextY = $canvas->get_height() - (14.0 * self::POINTS_PER_MILLIMETRE);
                 $primaryTextColor = [0.067, 0.067, 0.067];
                 $secondaryTextColor = [0.4, 0.4, 0.4];
                 $lineColor = [0.843, 0.843, 0.824];
@@ -69,7 +76,7 @@ final class DomPdfCanvasDriver extends DomPdfDriver
                 };
 
                 if ($showHeaderFooter && $header !== '') {
-                    $canvas->text($left, 22.0, $fitText($header, $right - $left), $font, $fontSize, $primaryTextColor);
+                    $canvas->text($left, $headerTextY, $fitText($header, $right - $left), $font, $fontSize, $primaryTextColor);
                     $canvas->line($left, $headerLineY, $right, $headerLineY, $lineColor, 0.5);
                 }
 

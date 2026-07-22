@@ -157,7 +157,7 @@ final class GenerateAssessmentPdf
             Pdf::view('reports.assessment', ['report' => $snapshot])
                 ->setDriver($driver)
                 ->format(Format::A4)
-                ->margins(top: 24, right: 16, bottom: 22, left: 16)
+                ->margins(top: 13, right: 17, bottom: 23, left: 20)
                 ->save($temporaryPath);
 
             $contents = file_get_contents($temporaryPath);

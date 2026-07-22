@@ -8,6 +8,7 @@ use App\Actions\Reports\GenerateAssessmentPdf;
 use App\Data\Reports\AssessmentReportData;
 use App\Enums\BillingFrequency;
 use App\Enums\EstimateType;
+use App\Enums\EvidenceType;
 use App\Enums\ScopeType;
 use App\Models\Assessment;
 use App\Models\Asset;
@@ -93,6 +94,10 @@ it('selects the deterministic finding title class without truncating PDF text', 
         'Continuità operativa non garantita',
         'finding-title--default',
     ],
+    'title between seventy-one and one hundred and ten characters' => [
+        'Continuità operativa non garantita per i servizi essenziali durante un fermo',
+        'finding-title--medium',
+    ],
     'title longer than one hundred and ten characters' => [
         'Continuità operativa non garantita per i sistemi informativi principali e per tutti i servizi essenziali dell’azienda durante un fermo prolungato',
         'finding-title--compact',
@@ -143,6 +148,161 @@ it('renders a single recommended solution or ordered alternatives', function (bo
     'one solution' => [false],
     'multiple solutions' => [true],
 ]);
+
+it('keeps page chrome titles classification and assets in non-overlapping editorial flow', function (): void {
+    [$assessment, $finding] = editorialPdfReportReadyAssessment();
+    $site = Site::factory()->for($assessment->client)->create(['name' => 'Sede Composizione']);
+    $asset = Asset::factory()->for($assessment->client)->create([
+        'site_id' => $site->getKey(),
+        'asset_type_id' => AssetType::query()->where('name', 'NAS')->firstOrFail()->getKey(),
+        'name' => 'NAS Composizione',
+        'manufacturer' => 'Synology',
+        'model' => 'DS923+',
+    ]);
+    $finding->assets()->attach($asset);
+
+    $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh());
+    $html = view('reports.assessment', ['report' => $snapshot])->render();
+    $normalizedHtml = editorialPdfReportNormalizeText($html);
+
+    preg_match('/<article class="finding-detail[^"]*">(.*?)<\/article>/s', $html, $articleMatch);
+    preg_match('/<table class="classification-table">(.*?)<\/table>/s', $articleMatch[1] ?? '', $classificationMatch);
+
+    expect($normalizedHtml)
+        ->toContain(
+            '@page { margin: 13mm 17mm 23mm 20mm; }',
+            '.section-heading__number { color: #111111; font-size: 42pt; font-weight: bold; line-height: 0.9; width: 20mm;',
+            '.finding-title--default { font-size: 26pt; }',
+            '.finding-title--medium { font-size: 22pt; }',
+            '.finding-title--compact { font-size: 19pt; }',
+            '.finding-detail--new-page { page-break-before: always; padding-top: 12mm; }',
+            '.finding-evidence { page-break-before: always; padding-top: 12mm; }',
+            'class="associated-assets__first"',
+        )
+        ->and($normalizedHtml)->not->toMatch('/margin:\s*-\d/u')
+        ->and($normalizedHtml)->not->toContain('background: #FFFFFF;', '<div class="page-break"></div>')
+        ->and($articleMatch)->toHaveKey(1)
+        ->and($articleMatch[1])->toMatch('/<div class="finding-heading__number">01<\/div>\s*<h1 class="finding-title/u')
+        ->and($articleMatch[1])->not->toContain('class="finding-heading__content"')
+        ->and($classificationMatch)->toHaveKey(1)
+        ->and($classificationMatch[1])->toContain(__('assestme.reports.document.scope'))
+        ->and($classificationMatch[1])->not->toContain(__('assestme.reports.document.category'))
+        ->and(substr_count($articleMatch[1], $finding->category->name))->toBe(1);
+});
+
+it('uses the compact priority legend when descriptions are disabled', function (): void {
+    [$assessment] = editorialPdfReportReadyAssessment();
+    editorialPdfReportSettings(['show_priority_descriptions' => false]);
+
+    $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh());
+    $html = view('reports.assessment', ['report' => $snapshot])->render();
+
+    expect($html)->toContain('class="priority-legend priority-legend--compact"');
+    foreach ($snapshot->priorityLegend as $priority) {
+        expect($html)->toContain($priority->label);
+        if (filled($priority->description)) {
+            expect($html)->not->toContain((string) $priority->description);
+        }
+    }
+});
+
+it('keeps the four-finding NAS and image composition on eight meaningful pages', function (): void {
+    $assessment = Assessment::factory()->create([
+        'title' => 'Assessment',
+        'assessment_date' => '2026-07-18',
+        'introduction' => null,
+        'executive_summary' => null,
+        'methodology_notes' => null,
+    ]);
+    $assessment->client->update([
+        'legal_name' => 'VIP Estintori',
+        'trade_name' => 'VIP Estintori',
+    ]);
+
+    $titles = [
+        'Il DHCP distribuisce server DNS non corretti',
+        'Notifiche del NAS non configurate',
+        'Cablaggio disordinato o non identificato',
+        "NAS appoggiato sopra l'UPS senza supporto adeguato",
+    ];
+    $findings = [];
+    foreach ($titles as $title) {
+        $template = FindingTemplate::query()->where('title', $title)->firstOrFail();
+        $findings[] = app(CopyTemplateToAssessment::class)($assessment, $template);
+    }
+
+    $site = Site::factory()->for($assessment->client)->create(['name' => 'Sede Principale']);
+    $asset = Asset::factory()->for($assessment->client)->create([
+        'site_id' => $site->getKey(),
+        'asset_type_id' => AssetType::query()->where('name', 'NAS')->firstOrFail()->getKey(),
+        'name' => 'NAS',
+        'manufacturer' => 'Synology',
+        'model' => 'DS923+',
+        'hostname' => null,
+        'ip_address' => null,
+    ]);
+    foreach ([0, 1, 3] as $findingIndex) {
+        $findings[$findingIndex]->assets()->attach($asset);
+    }
+
+    $image = editorialPdfReportPng(720, 960);
+    $imagePath = 'evidence/editorial/vip-cablaggio.png';
+    Storage::disk('local')->put($imagePath, $image);
+    $findings[2]->evidences()->create([
+        'type' => EvidenceType::File,
+        'title' => 'VIP-CABLAGGIO.PNG',
+        'file_path' => $imagePath,
+        'original_filename' => 'vip-cablaggio.png',
+        'caption' => null,
+        'mime_type' => 'image/png',
+        'size_bytes' => strlen($image),
+        'sha256' => hash('sha256', $image),
+        'include_in_report' => true,
+        'sort_order' => 1,
+    ]);
+
+    editorialPdfReportSettings([
+        'cover' => true,
+        'content_index' => false,
+        'executive_summary' => true,
+        'risk_legend' => true,
+        'summary_table' => true,
+        'methodology' => true,
+        'disclaimer' => true,
+        'technical_notes' => false,
+        'alternative_solutions' => true,
+        'costs' => true,
+        'evidence' => true,
+        'evidence_captions' => true,
+        'new_page_per_finding' => true,
+    ]);
+
+    $result = editorialPdfReportRenderAndGenerate($assessment->fresh());
+
+    $pageDiagnostics = array_map(
+        static fn (string $page): array => [mb_strlen($page), mb_substr($page, 0, 160)],
+        $result['pages'],
+    );
+    expect(count($result['pages']))->toBe(8, json_encode($pageDiagnostics, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
+
+    expect($result['pages'][0])->toContain('VIP Estintori')
+        ->and($result['pages'][1])->toContain(__('assestme.reports.document.assessment_overview'))
+        ->and($result['pages'][2])->toContain(__('assestme.reports.document.findings_summary'))
+        ->and($result['pages'][3])->toContain($titles[0], mb_strtoupper(__('assestme.reports.document.associated_assets')), 'NAS')
+        ->and($result['pages'][4])->toContain($titles[1], mb_strtoupper(__('assestme.reports.document.associated_assets')), 'NAS')
+        ->and($result['pages'][5])->toContain($titles[2])
+        ->and($result['pages'][6])->toContain(__('assestme.reports.document.evidence'), __('assestme.reports.document.image_number', ['number' => '01']))
+        ->and($result['pages'][6])->not->toContain('VIP-CABLAGGIO.PNG', 'vip-cablaggio.png')
+        ->and($result['pages'][7])->toContain($titles[3], mb_strtoupper(__('assestme.reports.document.associated_assets')), 'NAS');
+
+    foreach ($result['pages'] as $index => $page) {
+        if ($index === 0 || $index === 6) {
+            continue;
+        }
+
+        expect(mb_strlen($page))->toBeGreaterThan(180);
+    }
+});
 
 it('omits disabled costs or an absent effort metric from HTML and PDF', function (bool $costs, bool $withEffort): void {
     [$assessment, $finding] = editorialPdfReportReadyAssessment();
@@ -481,4 +641,29 @@ function editorialPdfReportMetricsMarkup(string $html): string
     expect($matches)->toHaveKey(1);
 
     return $matches[1];
+}
+
+function editorialPdfReportPng(int $width, int $height): string
+{
+    $image = imagecreatetruecolor($width, $height);
+    if ($image === false) {
+        throw new RuntimeException('Unable to create the composition image fixture.');
+    }
+
+    $background = imagecolorallocate($image, 45, 55, 72);
+    $line = imagecolorallocate($image, 225, 235, 220);
+    imagefill($image, 0, 0, $background);
+    imageline($image, 0, 0, $width - 1, $height - 1, $line);
+    imageline($image, $width - 1, 0, 0, $height - 1, $line);
+
+    ob_start();
+    $encoded = imagepng($image);
+    $contents = ob_get_clean();
+    imagedestroy($image);
+
+    if (! $encoded || ! is_string($contents)) {
+        throw new RuntimeException('Unable to encode the composition image fixture.');
+    }
+
+    return $contents;
 }

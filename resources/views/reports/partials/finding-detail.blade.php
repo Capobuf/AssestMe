@@ -10,47 +10,37 @@
     };
     $showEffort = $recommended->effortLabel !== null;
     $showEstimate = $report->setting('costs') === true;
+    $scopeValue = $finding->scopeLabel;
+    if ($finding->sites !== []) {
+        $scopeValue .= "\n".__('assestme.reports.document.sites').': '.implode(', ', $finding->sites);
+    }
     $classification = [
-        ['label' => __('assestme.reports.document.scope'), 'value' => $finding->scopeLabel],
+        ['label' => __('assestme.reports.document.scope'), 'value' => $scopeValue],
     ];
 
-    if ($finding->sites !== []) {
-        $classification[] = ['label' => __('assestme.reports.document.sites'), 'value' => implode(', ', $finding->sites)];
-    }
     if (filled($finding->consequenceLabel)) {
         $classification[] = ['label' => __('assestme.reports.document.consequence'), 'value' => $finding->consequenceLabel];
     }
     if (filled($finding->likelihoodLabel)) {
         $classification[] = ['label' => __('assestme.reports.document.likelihood'), 'value' => $finding->likelihoodLabel];
     }
-    if (filled($finding->category)) {
-        $classification[] = ['label' => __('assestme.reports.document.category'), 'value' => $finding->category];
-    }
-    if ($finding->priorityOverridden) {
-        $classification[] = ['label' => __('assestme.reports.document.manual_priority'), 'value' => $finding->priorityLabel];
-    }
-    if (filled($finding->priorityRationale)) {
+    if ($finding->priorityOverridden && filled($finding->priorityRationale)) {
         $classification[] = ['label' => __('assestme.reports.document.priority_rationale'), 'value' => $finding->priorityRationale];
     }
 @endphp
 
 <article class="finding-detail {{ $report->setting('new_page_per_finding') === true ? 'finding-detail--new-page' : '' }}">
-    <table class="finding-heading">
-        <tr>
-            <td class="finding-heading__number">{{ str_pad((string) $finding->number, 2, '0', STR_PAD_LEFT) }}</td>
-            <td class="finding-heading__content">
-                <h1 class="finding-title {{ $titleClass }}">{{ $finding->title }}</h1>
-            </td>
-        </tr>
-    </table>
-
-    <div class="finding-indicators">
-        <span class="finding-indicator finding-indicator--priority" style="border-left-color: {{ $finding->priorityColor }}">{{ $finding->priorityLabel }}</span>
-        <span class="finding-indicator">{{ $finding->statusLabel }}</span>
-        @if (filled($finding->category))
-            <span class="finding-indicator">{{ $finding->category }}</span>
-        @endif
-    </div>
+    <header class="finding-heading">
+        <div class="finding-heading__number">{{ str_pad((string) $finding->number, 2, '0', STR_PAD_LEFT) }}</div>
+        <h1 class="finding-title {{ $titleClass }}">{{ $finding->title }}</h1>
+        <div class="finding-indicators">
+            <span class="finding-indicator finding-indicator--priority" style="border-left-color: {{ $finding->priorityColor }}">{{ $finding->priorityLabel }}</span>
+            <span class="finding-indicator">{{ $finding->statusLabel }}</span>
+            @if (filled($finding->category))
+                <span class="finding-indicator">{{ $finding->category }}</span>
+            @endif
+        </div>
+    </header>
 
     @if (filled($finding->entrepreneurNotes))
         <section class="management-note" style="border-left-color: {{ $finding->priorityColor }}">
@@ -156,32 +146,13 @@
 
     @if ($finding->assets !== [])
         <section class="finding-section associated-assets">
-            <div class="finding-section__label">{{ __('assestme.reports.document.associated_assets') }}</div>
+            <div class="associated-assets__first">
+                <div class="finding-section__label">{{ __('assestme.reports.document.associated_assets') }}</div>
+                @include('reports.partials.asset-details', ['asset' => $finding->assets[0]])
+            </div>
 
-            @foreach ($finding->assets as $asset)
-                <table class="asset-details">
-                    <tr>
-                        <td class="asset-details__name" colspan="2"><strong>{{ $asset->name ?: $asset->type }}</strong></td>
-                    </tr>
-                    @if (filled($asset->type))
-                        <tr><th>{{ __('assestme.reports.document.asset_type') }}</th><td>{{ $asset->type }}</td></tr>
-                    @endif
-                    @if (filled($asset->site))
-                        <tr><th>{{ __('assestme.reports.document.site') }}</th><td>{{ $asset->site }}</td></tr>
-                    @endif
-                    @if (filled($asset->manufacturer) || filled($asset->model))
-                        <tr>
-                            <th>{{ __('assestme.reports.document.manufacturer_model') }}</th>
-                            <td>{{ trim(($asset->manufacturer ?? '').' '.($asset->model ?? '')) }}</td>
-                        </tr>
-                    @endif
-                    @if (filled($asset->hostname))
-                        <tr><th>{{ __('assestme.reports.document.hostname') }}</th><td>{{ $asset->hostname }}</td></tr>
-                    @endif
-                    @if (filled($asset->ipAddress))
-                        <tr><th>{{ __('assestme.reports.document.ip_address') }}</th><td>{{ $asset->ipAddress }}</td></tr>
-                    @endif
-                </table>
+            @foreach (array_slice($finding->assets, 1) as $asset)
+                @include('reports.partials.asset-details', ['asset' => $asset])
             @endforeach
         </section>
     @endif
