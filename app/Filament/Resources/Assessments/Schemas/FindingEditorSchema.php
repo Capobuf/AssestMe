@@ -91,6 +91,7 @@ final class FindingEditorSchema
                                 Select::make('estimate_type')
                                     ->label(__('assestme.findings.fields.estimate_type'))
                                     ->options(EstimateType::options())
+                                    ->extraAttributes(['data-dusk' => 'finding-estimate-type'])
                                     ->live()
                                     ->required(),
                                 TextInput::make('amount_min')

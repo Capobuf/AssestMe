@@ -3,10 +3,10 @@
 
     let dirty = false;
     let listScrollTop = 0;
-    let editorScrollTop = 0;
-    let propertiesScrollTop = 0;
     let livewireHookRegistered = false;
     let workspaceHeightFrame = null;
+    let workspaceScrollRestoreFrame = null;
+    const workspaceScrollSnapshots = new Map();
 
     const statusElement = () => document.querySelector('[data-assestme-save-status]');
     const listScroller = (list = document.querySelector('.assestme-findings-list')) => (
@@ -151,28 +151,94 @@
         });
     };
 
-    const clearDirtyAfterSave = () => {
+    const refreshWorkspaceAfterMorph = () => {
         if (statusElement()?.dataset.status === 'saved') {
             dirty = false;
         }
 
         enhanceFindingRows();
         updateWorkspaceAvailableHeight();
+    };
 
+    const captureWorkspaceScroll = ({ component }) => {
+        const componentElement = component?.el;
+        const status = statusElement();
+        const containsWorkspace = (status && componentElement?.contains?.(status))
+            || componentElement?.hasAttribute?.('data-assestme-findings-workspace')
+            || componentElement?.querySelector?.('[data-assestme-findings-workspace]');
+        if (!containsWorkspace) {
+            return;
+        }
+
+        cancelScheduledScrollRestore();
         const list = document.querySelector('.assestme-findings-list');
-        if (list && getComputedStyle(list).display !== 'none') {
-            listScroller(list).scrollTop = listScrollTop;
-        }
-
+        const form = document.querySelector('.assestme-workbench-form');
         const editor = document.querySelector('[data-assestme-workbench-editor]');
-        if (editor && getComputedStyle(editor).overflowY === 'auto') {
-            editor.scrollTop = editorScrollTop;
+        const properties = document.querySelector('.assestme-workbench-properties__body');
+        const snapshot = {
+            documentLeft: window.scrollX,
+            documentTop: window.scrollY,
+            editorTop: editor?.scrollTop ?? 0,
+            formTop: form?.scrollTop ?? 0,
+            listTop: listScroller(list)?.scrollTop ?? listScrollTop,
+            propertiesTop: properties?.scrollTop ?? 0,
+        };
+
+        listScrollTop = snapshot.listTop;
+        workspaceScrollSnapshots.set(component.id, snapshot);
+    };
+
+    const cancelScheduledScrollRestore = () => {
+        if (workspaceScrollRestoreFrame === null) {
+            return;
         }
 
-        const properties = document.querySelector('.assestme-workbench-properties__body');
-        if (properties && getComputedStyle(properties).overflowY === 'auto') {
-            properties.scrollTop = propertiesScrollTop;
+        cancelAnimationFrame(workspaceScrollRestoreFrame);
+        workspaceScrollRestoreFrame = null;
+    };
+
+    const restoreWorkspaceScroll = ({ component }) => {
+        const snapshot = workspaceScrollSnapshots.get(component?.id);
+        if (!snapshot) {
+            return;
         }
+
+        workspaceScrollSnapshots.delete(component.id);
+        refreshWorkspaceAfterMorph();
+
+        const restore = () => {
+            const list = document.querySelector('.assestme-findings-list');
+            const form = document.querySelector('.assestme-workbench-form');
+            const editor = document.querySelector('[data-assestme-workbench-editor]');
+            const properties = document.querySelector('.assestme-workbench-properties__body');
+
+            if (list) {
+                listScroller(list).scrollTop = snapshot.listTop;
+            }
+
+            if (form) {
+                form.scrollTop = snapshot.formTop;
+            }
+
+            if (editor) {
+                editor.scrollTop = snapshot.editorTop;
+            }
+
+            if (properties) {
+                properties.scrollTop = snapshot.propertiesTop;
+            }
+
+            window.scrollTo(snapshot.documentLeft, snapshot.documentTop);
+        };
+
+        cancelScheduledScrollRestore();
+        restore();
+        workspaceScrollRestoreFrame = requestAnimationFrame(() => {
+            workspaceScrollRestoreFrame = requestAnimationFrame(() => {
+                workspaceScrollRestoreFrame = null;
+                restore();
+            });
+        });
     };
 
     const registerLivewireHook = () => {
@@ -181,7 +247,8 @@
         }
 
         livewireHookRegistered = true;
-        window.Livewire.hook('morph.updated', clearDirtyAfterSave);
+        window.Livewire.hook('morph', captureWorkspaceScroll);
+        window.Livewire.hook('morphed', restoreWorkspaceScroll);
     };
 
     document.documentElement.dataset.assestmeWorkspaceAsset = 'loaded';
@@ -205,10 +272,6 @@
     document.addEventListener('scroll', (event) => {
         if (event.target.matches?.('.assestme-findings-list, .assestme-findings-list .fi-ta-content-ctn')) {
             listScrollTop = event.target.scrollTop;
-        } else if (event.target.matches?.('[data-assestme-workbench-editor]')) {
-            editorScrollTop = event.target.scrollTop;
-        } else if (event.target.matches?.('.assestme-workbench-properties__body')) {
-            propertiesScrollTop = event.target.scrollTop;
         }
     }, true);
 
@@ -268,9 +331,8 @@
     document.addEventListener('livewire:init', registerLivewireHook, { once: true });
     window.addEventListener('resize', updateWorkspaceAvailableHeight);
     window.addEventListener('assestme-finding-selected', () => {
+        cancelScheduledScrollRestore();
         requestAnimationFrame(() => {
-            editorScrollTop = 0;
-            propertiesScrollTop = 0;
             enhanceFindingRows();
             updateWorkspaceAvailableHeight();
             const editor = document.querySelector('[data-assestme-workbench-editor]');
@@ -285,6 +347,7 @@
         });
     });
     window.addEventListener('assestme-finding-validation-failed', () => {
+        cancelScheduledScrollRestore();
         requestAnimationFrame(() => document.querySelector('.assestme-workbench-form [aria-invalid="true"]')?.focus());
     });
     registerLivewireHook();

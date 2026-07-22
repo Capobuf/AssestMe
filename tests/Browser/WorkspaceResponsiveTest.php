@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Browser;
 
 use App\Actions\Assessments\CopyTemplateToAssessment;
+use App\Enums\EstimateType;
 use App\Enums\FindingStatus;
 use App\Enums\ScopeType;
 use App\Models\Assessment;
@@ -299,6 +300,65 @@ final class WorkspaceResponsiveTest extends DuskTestCase
             Assert::assertSame('true', $browser->attribute('.assestme-finding-row.is-selected', 'aria-selected'));
 
             self::assertNoSevereBrowserLogs($browser, 'The responsive workspace produced severe console errors.');
+        });
+    }
+
+    public function test_reactive_finding_fields_preserve_the_visible_scroll_position(): void
+    {
+        [$administrator, $assessment, $firstFinding] = $this->responsiveFixture();
+        $firstFinding->solutions()->firstOrFail()->update([
+            'estimate_type' => EstimateType::RequiresQuote,
+        ]);
+
+        $this->browse(function (Browser $browser) use ($administrator, $assessment, $firstFinding): void {
+            $browser->loginAs($administrator)
+                ->visit("/admin/assessments/{$assessment->getKey()}/workspace?finding={$firstFinding->getKey()}")
+                ->waitFor('[data-dusk="finding-estimate-type"] select')
+                ->waitUntil('return document.documentElement.dataset.assestmeWorkspaceAsset === "loaded"');
+
+            self::resizeViewport($browser, 1440, 900);
+            $desktopBefore = $browser->script(<<<'JS'
+                const editor = document.querySelector('[data-assestme-workbench-editor]');
+                const field = document.querySelector('[data-dusk="finding-estimate-type"]');
+                editor.scrollTop += field.getBoundingClientRect().top - editor.getBoundingClientRect().top - 120;
+
+                return editor.scrollTop;
+                JS)[0];
+            Assert::assertGreaterThan(0, $desktopBefore);
+
+            $browser->select('[data-dusk="finding-estimate-type"] select', EstimateType::Exact->value)
+                ->waitUntil(<<<'JS'
+                    return document.querySelector('[data-dusk="finding-estimate-type"] select')?.value === 'exact'
+                        && Array.from(document.querySelectorAll('label')).some((label) => label.textContent.includes('Importo minimo'));
+                    JS)
+                ->pause(250);
+            $desktopAfter = $browser->script(
+                "return document.querySelector('[data-assestme-workbench-editor]').scrollTop",
+            )[0];
+            Assert::assertEqualsWithDelta($desktopBefore, $desktopAfter, 2);
+
+            self::resizeViewport($browser, 1280, 800);
+            $narrowBefore = $browser->script(<<<'JS'
+                const form = document.querySelector('.assestme-workbench-form');
+                const field = document.querySelector('[data-dusk="finding-estimate-type"]');
+                form.scrollTop += field.getBoundingClientRect().top - form.getBoundingClientRect().top - 120;
+
+                return form.scrollTop;
+                JS)[0];
+            Assert::assertGreaterThan(0, $narrowBefore);
+
+            $browser->select('[data-dusk="finding-estimate-type"] select', EstimateType::Range->value)
+                ->waitUntil(<<<'JS'
+                    return document.querySelector('[data-dusk="finding-estimate-type"] select')?.value === 'range'
+                        && Array.from(document.querySelectorAll('label')).some((label) => label.textContent.includes('Importo massimo'));
+                    JS)
+                ->pause(250);
+            $narrowAfter = $browser->script(
+                "return document.querySelector('.assestme-workbench-form').scrollTop",
+            )[0];
+            Assert::assertEqualsWithDelta($narrowBefore, $narrowAfter, 2);
+
+            self::assertNoSevereBrowserLogs($browser, 'Reactive Finding fields produced severe console errors.');
         });
     }
 
