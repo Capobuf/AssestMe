@@ -17,10 +17,12 @@ use App\Enums\ScopeType;
 use App\Filament\Resources\Assessments\Pages\WorkspaceAssessment;
 use App\Models\Assessment;
 use App\Models\Finding;
+use App\Models\FindingSolution;
 use App\Models\FindingTemplate;
 use App\Models\GeneratedReport;
 use App\Models\Site;
 use App\Models\User;
+use App\Services\Reporting\FindingPagePlanner;
 use App\Settings\ReportSettings;
 use Database\Seeders\MilestoneOneSeeder;
 use Database\Seeders\MilestoneTwoSeeder;
@@ -48,6 +50,103 @@ it('uses WeasyPrint as the only installed production PDF renderer', function ():
         ->and($composer['require-dev'])->not->toHaveKey('pontedilana/php-weasyprint')
         ->and($packageNames)->toContain('pontedilana/php-weasyprint')
         ->and($packageNames)->not->toContain('dompdf/dompdf', 'chrome-php/chrome');
+});
+
+it('keeps one fitting solution on one finding page', function (): void {
+    [, $finding] = createPdfReadyAssessment();
+    $finding->update([
+        'title' => 'Titolo breve',
+        'entrepreneur_notes' => null,
+        'problem' => 'Problema breve.',
+        'technical_notes' => null,
+        'resolution_notes' => null,
+        'consequence_level_id' => null,
+        'likelihood_level_id' => null,
+    ]);
+    $solution = $finding->solutions()->firstOrFail();
+    $solution->update([
+        'title' => 'Soluzione breve',
+        'description' => 'Descrizione breve.',
+        'comparison_notes' => null,
+        'effort_notes' => null,
+        'estimate_notes' => null,
+    ]);
+
+    $plan = app(FindingPagePlanner::class)->plan($finding->fresh());
+
+    expect($plan->hasSecondPage)->toBeFalse()
+        ->and($plan->firstPageSolutionIds)->toBe([$solution->getKey()])
+        ->and($plan->secondPageSolutionIds)->toBe([]);
+});
+
+it('balances three fitting solutions two on the first page and one on the continuation', function (): void {
+    [, $finding] = createPdfReadyAssessment();
+    $recommended = $finding->solutions()->firstOrFail();
+    $recommended->update([
+        'title' => 'Soluzione raccomandata',
+        'description' => str_repeat('R', 120),
+        'comparison_notes' => null,
+        'effort_notes' => null,
+        'estimate_notes' => null,
+        'sort_order' => 1,
+    ]);
+    $alternative = duplicatePlannerSolution($recommended, 'Alternativa', 2, 120);
+    $implemented = duplicatePlannerSolution($recommended, 'Implementata primaria', 3, 120);
+    $finding->update([
+        'title' => 'Titolo bilanciato',
+        'entrepreneur_notes' => str_repeat('N', 120),
+        'problem' => str_repeat('P', 240),
+        'technical_notes' => null,
+        'resolution_notes' => null,
+        'implemented_solution_id' => $implemented->getKey(),
+    ]);
+
+    $plan = app(FindingPagePlanner::class)->plan($finding->fresh());
+    $planned = [...$plan->firstPageSolutionIds, ...$plan->secondPageSolutionIds];
+
+    expect($plan->hasSecondPage)->toBeTrue()
+        ->and($plan->firstPageSolutionIds)->toBe([
+            $implemented->getKey(),
+            $recommended->getKey(),
+        ])
+        ->and($plan->secondPageSolutionIds)->toBe([$alternative->getKey()])
+        ->and($planned)->toHaveCount(3)
+        ->and(array_unique($planned))->toHaveCount(3)
+        ->and($planned[0])->toBe($implemented->getKey());
+});
+
+it('uses a one-two split when putting two solutions on the opening page exceeds its budget', function (): void {
+    [, $finding] = createPdfReadyAssessment();
+    $primary = $finding->solutions()->firstOrFail();
+    $primary->update([
+        'title' => 'Soluzione primaria',
+        'description' => str_repeat('A', 250),
+        'comparison_notes' => null,
+        'effort_notes' => null,
+        'estimate_notes' => null,
+        'sort_order' => 1,
+    ]);
+    $second = duplicatePlannerSolution($primary, 'Seconda soluzione estesa', 2, 650);
+    $third = duplicatePlannerSolution($primary, 'Terza soluzione', 3, 150);
+    $finding->update([
+        'title' => str_repeat('T', 150),
+        'entrepreneur_notes' => str_repeat('N', 500),
+        'problem' => str_repeat('P', 550),
+        'technical_notes' => null,
+        'resolution_notes' => null,
+    ]);
+
+    $plan = app(FindingPagePlanner::class)->plan($finding->fresh());
+    $planned = [...$plan->firstPageSolutionIds, ...$plan->secondPageSolutionIds];
+
+    expect($plan->hasSecondPage)->toBeTrue()
+        ->and($plan->firstPageSolutionIds)->toBe([$primary->getKey()])
+        ->and($plan->secondPageSolutionIds)->toBe([$second->getKey(), $third->getKey()])
+        ->and($planned)->toBe([
+            $primary->getKey(),
+            $second->getKey(),
+            $third->getKey(),
+        ]);
 });
 
 it('produces searchable mixed-orientation pages through the real production action', function (): void {
@@ -522,15 +621,14 @@ it('plans a three-solution resolved finding onto exactly two logical pages with 
     $plan = $report->payload_snapshot['findings'][0]['page_plan'];
 
     expect($plan['has_second_page'])->toBeTrue()
-        ->and($plan['first_page_solution_ids'])->toBe([$implemented->getKey()])
-        ->and($plan['second_page_solution_ids'])->toBe([$recommended->getKey(), $alternative->getKey()])
+        ->and($plan['first_page_solution_ids'])->toBe([$implemented->getKey(), $recommended->getKey()])
+        ->and($plan['second_page_solution_ids'])->toBe([$alternative->getKey()])
         ->and($pages)->toHaveCount(2)
-        ->and($pages[0]->getText())->toContain('Soluzione implementata primaria')
-        ->and($pages[0]->getText())->not->toContain($recommended->title, $alternative->title)
+        ->and($pages[0]->getText())->toContain('Soluzione implementata primaria', $recommended->title)
+        ->and($pages[0]->getText())->not->toContain($alternative->title)
         ->and($pages[1]->getText())->toContain(
             $finding->title,
             'continua',
-            $recommended->title,
             $alternative->title,
             'Risoluzione collaudata e chiusa.',
         );
@@ -602,4 +700,23 @@ function createPdfReadyAssessment(): array
     ]);
 
     return [$assessment->fresh(), $finding->fresh()];
+}
+
+function duplicatePlannerSolution(
+    FindingSolution $source,
+    string $title,
+    int $sortOrder,
+    int $descriptionLength,
+): FindingSolution {
+    $solution = $source->replicate();
+    $solution->external_key = 'planner-'.$sortOrder;
+    $solution->title = $title;
+    $solution->description = str_repeat('S', $descriptionLength);
+    $solution->comparison_notes = null;
+    $solution->effort_notes = null;
+    $solution->estimate_notes = null;
+    $solution->sort_order = $sortOrder;
+    $solution->save();
+
+    return $solution->refresh();
 }

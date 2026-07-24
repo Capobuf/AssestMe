@@ -24,6 +24,7 @@ use Database\Seeders\MilestoneTwoSeeder;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Smalot\PdfParser\Parser;
+use Symfony\Component\Process\Process;
 
 beforeEach(function (): void {
     $this->seed(MilestoneOneSeeder::class);
@@ -86,7 +87,7 @@ it('selects the deterministic finding title class without truncating PDF text', 
 
     $result = editorialPdfReportRenderAndGenerate($assessment);
 
-    expect($result['html'])->toContain('<h1 class="finding-title '.$titleClass.'">'.$title.'</h1>')
+    expect($result['html'])->toContain('class="finding-title '.$titleClass.'"', $title)
         ->and($result['text'])->toContain($title)
         ->and($result['report']->payload_snapshot['findings'][0]['title'])->toBe($title);
 })->with([
@@ -194,21 +195,58 @@ it('keeps page chrome titles risk evaluation and assets in non-overlapping edito
         )
         ->and($html)->toContain(
             'data-finding-page="1"',
-            'class="risk-matrix"',
+            'class="finding-body"',
+            'class="finding-context-layout"',
+            'class="risk-mini-matrix"',
             'class="affected-systems"',
             'class="asset-details"',
         )
         ->and(__('assestme.reports.document.assessment_overview'))->toBe('Quadro generale')
-        ->and($html)->toMatch('/<div class="finding-heading__number">01<\/div>\s*<h1 class="finding-title/u')
+        ->and($html)->toMatch('/<table class="finding-heading__table"[^>]*>.*?<td class="finding-heading__number">\s*01\s*<\/td>.*?<td class="finding-heading__content">/su')
         ->and($riskMatch)->toHaveKey(1)
         ->and($riskMatch[1])->toContain(
             __('assestme.reports.document.risk_evaluation'),
-            __('assestme.reports.document.consequence'),
-            __('assestme.reports.document.likelihood'),
-            __('assestme.reports.document.resulting_priority'),
+            'class="risk-compact-layout"',
+            'class="risk-result-compact"',
+            (string) $snapshot->findings[0]->consequenceLabel,
+            (string) $snapshot->findings[0]->likelihoodLabel,
+            $snapshot->findings[0]->priorityLabel,
         )
         ->and($snapshot->findings[0]->riskMatrix)->not->toBeNull()
-        ->and($riskMatch[1])->toContain('risk-matrix__current');
+        ->and($riskMatch[1])->toContain('risk-dot--current');
+});
+
+it('uses print-safe table structures and a symbol-only compact risk matrix', function (): void {
+    [$assessment] = editorialPdfReportReadyAssessment();
+    $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh());
+    $html = view('reports.assessment', ['report' => $snapshot])->render();
+
+    preg_match('/\.solution-metrics\s*\{([^}]*)\}/u', $html, $metricsRule);
+    preg_match('/\.finding-meta\s*\{([^}]*)\}/u', $html, $metaRule);
+    preg_match('/\.summary-table th\s*\{([^}]*)\}/u', $html, $summaryHeaderRule);
+    preg_match('/<table\s+class="risk-mini-matrix".*?<\/table>/su', $html, $matrixMatch);
+
+    expect($metricsRule)->toHaveKey(1)
+        ->and($metricsRule[1])->not->toContain('display: grid', 'grid-template-columns')
+        ->and($metaRule)->toHaveKey(1)
+        ->and($metaRule[1])->not->toContain('margin-left: 20mm', 'display: flex', 'gap:')
+        ->and($summaryHeaderRule)->toHaveKey(1)
+        ->and($summaryHeaderRule[1])->toContain('background: #F0F0EC', 'color: var(--ink)')
+        ->and($html)->toContain(
+            'class="finding-body"',
+            'class="finding-heading__table"',
+            'class="finding-heading__content"',
+            'class="solution-metrics__effort"',
+            'class="solution-metrics__estimate"',
+        )
+        ->and($matrixMatch)->toHaveKey(0);
+
+    $matrix = $matrixMatch[0];
+
+    expect(preg_match_all('/class="risk-dot(?:\s|")/u', $matrix))->toBe(16)
+        ->and(substr_count($matrix, 'risk-dot--current'))->toBe(1)
+        ->and(substr_count($matrix, 'risk-dot__current-mark'))->toBe(1)
+        ->and(trim((string) preg_replace('/\s+/u', '', strip_tags($matrix))))->toBe('');
 });
 
 it('uses the compact priority legend when descriptions are disabled', function (): void {
@@ -271,8 +309,8 @@ it('connects consequence likelihood and priority while keeping scope and manual 
             (string) $snapshotFinding->consequenceLabel,
             (string) $snapshotFinding->likelihoodLabel,
             $snapshotFinding->priorityLabel,
-            'class="risk-matrix"',
-            'class="risk-matrix__current"',
+            'class="risk-mini-matrix"',
+            'risk-dot--current',
         )
         ->and($snapshotFinding->priorityOverridden)->toBe($overridden)
         ->and($snapshotFinding->priorityRationale)->toBe($rationale)
@@ -290,7 +328,7 @@ it('connects consequence likelihood and priority while keeping scope and manual 
         return;
     }
 
-    expect($riskMatch[1])->toContain(__('assestme.reports.document.resulting_priority'));
+    expect($riskMatch[1])->toContain($snapshotFinding->riskMatrix?->resultingPriorityLabel ?? '');
 })->with([
     'matrix priority' => [false],
     'manual priority' => [true],
@@ -307,9 +345,11 @@ it('uses text labels with priority and status markers', function (): void {
 
     expect($html)->toContain(
         '<span class="priority-glyph" style="color: '.$snapshot->findings[0]->priorityColor.'">●</span>',
-        'class="status-open">○ '.$snapshot->findings[0]->statusLabel.'</span>',
-        '<i class="priority-marker"',
+        'class="priority-marker"',
     )
+        ->and(editorialPdfReportNormalizeText($html))->toContain(
+            'class="status-open"> ○ '.$snapshot->findings[0]->statusLabel.' </span>',
+        )
         ->and($normalizedHtml)->not->toMatch('/\\.priority-marker\\s*\\{[^}]*background/u')
         ->and($result['text'])->toContain('○', mb_strtoupper($snapshot->findings[0]->statusLabel))
         ->and($finding->status->value)->toBe('open');
@@ -336,7 +376,7 @@ it('uses the report primary color and open editorial treatment for the problem e
         ->and($normalizedHtml)->toContain(
             '--accent: #135E75;',
             '.problem-explanation { border-left: .8mm solid var(--accent);',
-            '.problem-explanation .pre-line { font-size: 9.8pt; line-height: 1.5; }',
+            '.problem-explanation .pre-line { font-size: 9.4pt; line-height: 1.45; }',
         );
 });
 
@@ -354,7 +394,9 @@ it('maps every persisted finding status to the approved editorial glyph', functi
     $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh());
     $html = view('reports.assessment', ['report' => $snapshot])->render();
 
-    expect($html)->toContain('class="status-'.$status.'">'.$glyph.' '.$snapshot->findings[0]->statusLabel.'</span>')
+    expect(editorialPdfReportNormalizeText($html))->toContain(
+        'class="status-'.$status.'"> '.$glyph.' '.$snapshot->findings[0]->statusLabel.' </span>',
+    )
         ->and($snapshot->findings[0]->status)->toBe($status);
 })->with([
     'open' => ['open', '○'],
@@ -456,7 +498,7 @@ it('keeps the four-finding NAS and image composition on eight meaningful pages',
         ->and($result['pages'][7])->toContain($titles[3], 'NAS')
         ->and($result['html'])->toContain('class="affected-systems"');
 
-    expect(substr_count($result['html'], 'class="risk-matrix"'))->toBe(4)
+    expect(substr_count($result['html'], 'class="risk-mini-matrix"'))->toBe(4)
         ->and($result['html'])->not->toContain(__('assestme.reports.document.classification'));
 
     foreach ($result['pages'] as $index => $page) {
@@ -511,6 +553,55 @@ it('omits disabled costs or an absent effort metric from HTML and PDF', function
     'costs disabled' => [false, true],
     'effort absent' => [true, false],
 ]);
+
+it('aligns effort and estimate labels on the same PDF baseline', function (): void {
+    [$assessment] = editorialPdfReportReadyAssessment();
+    editorialPdfReportSettings([
+        'cover' => false,
+        'executive_summary' => false,
+        'summary_table' => false,
+        'content_index' => false,
+        'methodology' => false,
+        'disclaimer' => false,
+        'signature_block' => false,
+        'costs' => true,
+    ]);
+
+    $result = editorialPdfReportRenderAndGenerate($assessment->fresh());
+    $finding = $result['snapshot']->findings[0];
+    $pdfText = mb_strtolower($result['text']);
+    $priorityLabelOccurrences = 0;
+    foreach ($result['snapshot']->priorityLegend as $priority) {
+        $count = substr_count($pdfText, mb_strtolower($priority->label));
+        $priorityLabelOccurrences += $count;
+        expect($count)->toBeLessThanOrEqual(2);
+    }
+    expect($priorityLabelOccurrences)->toBeLessThanOrEqual(3)
+        ->and(substr_count($pdfText, mb_strtolower($finding->priorityLabel)))->toBe(2);
+
+    $path = Storage::disk('local')->path($result['report']->file_path);
+    $process = new Process(['pdftotext', '-bbox-layout', $path, '-']);
+    $process->mustRun();
+    $document = new DOMDocument;
+    $loaded = $document->loadXML($process->getOutput());
+    expect($loaded)->toBeTrue();
+
+    $coordinates = [];
+    foreach ((new DOMXPath($document))->query('//*[local-name()="word"]') ?: [] as $word) {
+        $label = mb_strtolower(trim($word->textContent));
+        if (in_array($label, ['impegno', 'stima'], true)) {
+            $coordinates[$label][] = (float) $word->attributes?->getNamedItem('yMin')?->nodeValue;
+        }
+    }
+
+    expect($coordinates)->toHaveKeys(['impegno', 'stima'])
+        ->and($coordinates['impegno'])->toHaveCount(1)
+        ->and($coordinates['stima'])->not->toBeEmpty()
+        ->and(min(array_map(
+            static fn (float $estimateY): float => abs($coordinates['impegno'][0] - $estimateY),
+            $coordinates['stima'],
+        )))->toBeLessThan(0.2);
+});
 
 it('omits the evidence page when the finding has no evidence', function (): void {
     [$assessment] = editorialPdfReportReadyAssessment();

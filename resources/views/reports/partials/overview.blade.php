@@ -42,11 +42,21 @@
         </tr>
     </table>
 
-    <div class="priority-distribution">
-        @foreach ($priorityCounts as $priorityCount)
-            <span><b style="border-color: {{ $priorityCount['color'] }}">{{ $priorityCount['count'] }}</b> {{ $priorityCount['label'] }}</span>
-        @endforeach
-    </div>
+    <table class="priority-distribution" role="presentation">
+        <tr>
+            @foreach ($priorityCounts as $priorityCount)
+                <td>
+                    <span
+                        class="priority-distribution__marker"
+                        style="border-color: {{ $priorityCount['color'] }}"
+                    ></span>
+
+                    <strong>{{ $priorityCount['count'] }}</strong>
+                    {{ $priorityCount['label'] }}
+                </td>
+            @endforeach
+        </tr>
+    </table>
 
     @if (filled($report->introduction))
         <div class="overview__introduction pre-line">{{ $report->introduction }}</div>

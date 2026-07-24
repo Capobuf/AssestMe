@@ -14,35 +14,39 @@
 <article class="sheet report-sheet finding-detail" data-finding="{{ $finding->number }}" data-finding-page="1">
     @include('reports.partials.finding-header', ['continuation' => false])
 
-    @if (filled($finding->entrepreneurNotes))
-        <section class="problem-explanation">
-            <div class="finding-section__label">{{ __('assestme.reports.document.entrepreneur_notes') }}</div>
-            <div class="pre-line">{{ $finding->entrepreneurNotes }}</div>
+    <div class="finding-body">
+        @if (filled($finding->entrepreneurNotes))
+            <section class="problem-explanation">
+                <div class="finding-section__label">{{ __('assestme.reports.document.entrepreneur_notes') }}</div>
+                <div class="pre-line">{{ $finding->entrepreneurNotes }}</div>
+            </section>
+        @endif
+
+        <section class="finding-section">
+            <div class="finding-section__label">{{ __('assestme.reports.document.problem') }}</div>
+            <div class="pre-line">{{ $finding->problem }}</div>
         </section>
-    @endif
 
-    <section class="finding-section">
-        <div class="finding-section__label">{{ __('assestme.reports.document.problem') }}</div>
-        <div class="pre-line">{{ $finding->problem }}</div>
-    </section>
+        @foreach ($firstPageSolutions as $solution)
+            @include('reports.partials.solution-block', ['solution' => $solution, 'primary' => $loop->first])
+        @endforeach
 
-    @foreach ($firstPageSolutions as $solution)
-        @include('reports.partials.solution-block', ['solution' => $solution, 'primary' => $loop->first])
-    @endforeach
-
-    @if (! $finding->pagePlan->hasSecondPage)
-        @include('reports.partials.finding-context')
-    @endif
+        @if (! $finding->pagePlan->hasSecondPage)
+            @include('reports.partials.finding-context')
+        @endif
+    </div>
 </article>
 
 @if ($finding->pagePlan->hasSecondPage)
     <article class="sheet report-sheet finding-detail finding-detail--continuation" data-finding="{{ $finding->number }}" data-finding-page="2">
         @include('reports.partials.finding-header', ['continuation' => true])
 
-        @foreach ($secondPageSolutions as $solution)
-            @include('reports.partials.solution-block', ['solution' => $solution, 'primary' => false])
-        @endforeach
+        <div class="finding-body">
+            @foreach ($secondPageSolutions as $solution)
+                @include('reports.partials.solution-block', ['solution' => $solution, 'primary' => false])
+            @endforeach
 
-        @include('reports.partials.finding-context')
+            @include('reports.partials.finding-context')
+        </div>
     </article>
 @endif

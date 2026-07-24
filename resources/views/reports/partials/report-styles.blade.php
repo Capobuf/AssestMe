@@ -41,9 +41,9 @@
     .kpi-row td { border-left: .25mm solid var(--line); padding: 1mm 5mm; width: 33.333%; }
     .kpi-row td:first-child { border-left: 0; padding-left: 0; }
     .kpi__value { font-size: 22pt; font-weight: 700; line-height: 1; }
-    .priority-distribution { border-bottom: .25mm solid var(--line); border-top: .25mm solid var(--line); display: flex; gap: 7mm; margin-bottom: 5mm; padding: 2.5mm 0; }
-    .priority-distribution span { white-space: nowrap; }
-    .priority-distribution b { border-left: 1mm solid; margin-right: 1mm; padding-left: 1.5mm; }
+    .priority-distribution { border-bottom: .25mm solid var(--line); border-collapse: collapse; border-top: .25mm solid var(--line); margin-bottom: 5mm; table-layout: fixed; width: 100%; }
+    .priority-distribution td { padding: 2.5mm 4mm 2.5mm 0; vertical-align: middle; }
+    .priority-distribution__marker { border-left: 1mm solid; display: inline-block; height: 4mm; margin-right: 1.5mm; vertical-align: middle; }
     .overview__introduction { font-size: 9.5pt; margin-bottom: 4mm; }
     .information-grid { background: var(--soft); margin-bottom: 5mm; table-layout: fixed; }
     .information-grid td { padding: 2.5mm 4mm; width: 50%; }
@@ -62,11 +62,11 @@
     .consultant-information__grid td { border-top: .25mm solid var(--line); padding: 2mm; width: 50%; }
 
     .summary { page: summary; }
-    .findings-summary__description { color: var(--muted); margin-bottom: 5mm; }
-    .summary-table { font-size: 7pt; table-layout: fixed; }
+    .findings-summary__description { color: var(--muted); margin-bottom: 3mm; }
+    .summary-table { font-size: 7.4pt; table-layout: fixed; }
     .summary-table thead { display: table-header-group; }
-    .summary-table th { background: var(--ink); color: #fff; font-size: 6.5pt; letter-spacing: .04em; padding: 2.2mm; text-align: left; text-transform: uppercase; }
-    .summary-table td { border-bottom: .25mm solid var(--line); overflow-wrap: anywhere; padding: 2.2mm; }
+    .summary-table th { background: #F0F0EC; border-bottom: .45mm solid var(--ink); border-top: .25mm solid var(--line); color: var(--ink); font-size: 6.5pt; font-weight: 700; letter-spacing: .045em; padding: 2mm 2.2mm; text-align: left; text-transform: uppercase; }
+    .summary-table td { border-bottom: .25mm solid var(--line); line-height: 1.35; overflow-wrap: anywhere; padding: 2.5mm 2.2mm; }
     .summary-table tr { break-inside: avoid; }
     .summary-table th:nth-child(1), .summary-table td:nth-child(1) { width: 20%; }
     .summary-table th:nth-child(2), .summary-table td:nth-child(2) { width: 22%; }
@@ -74,51 +74,74 @@
     .summary-table th:nth-child(4), .summary-table td:nth-child(4) { width: 10%; }
     .summary-table th:nth-child(5), .summary-table td:nth-child(5) { width: 9%; }
     .summary-table th:nth-child(6), .summary-table td:nth-child(6) { width: 14%; }
-    .summary-role { color: var(--accent); display: block; font-size: 6pt; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+    .summary-table td:nth-child(4), .summary-table td:nth-child(5), .summary-table td:nth-child(6) { vertical-align: middle; }
+    .summary-role { color: var(--accent); display: block; font-size: 6pt; font-weight: 700; letter-spacing: .05em; margin-bottom: .5mm; text-transform: uppercase; }
     .priority-marker { border-left: 1mm solid; display: inline-block; height: 3.5mm; margin-right: 1.5mm; vertical-align: middle; }
 
     .finding-detail { min-height: 260mm; }
     .finding-heading { border-bottom: .35mm solid var(--ink); break-inside: avoid; margin-bottom: 4mm; padding-bottom: 3mm; }
-    .finding-heading__line { display: flex; }
-    .finding-heading__number { flex: 0 0 16mm; font-size: 24pt; font-weight: 700; line-height: 1; margin-right: 4mm; }
-    .finding-title { flex: 1 1 auto; line-height: 1.07; margin: 0; overflow-wrap: anywhere; }
-    .finding-title--default { font-size: 25pt; }
-    .finding-title--medium { font-size: 21pt; }
-    .finding-title--compact { font-size: 18pt; }
-    .finding-detail--continuation .finding-heading { margin-bottom: 2mm; padding-bottom: 1.5mm; }
-    .finding-detail--continuation .finding-heading__number { font-size: 18pt; }
-    .finding-detail--continuation .finding-title--default { font-size: 18pt; }
+    .finding-heading__table { border-collapse: collapse; table-layout: fixed; width: 100%; }
+    .finding-heading__number { font-size: 20pt; font-weight: 700; line-height: 1; padding: 0 4mm 0 0; vertical-align: top; width: 17mm; }
+    .finding-heading__content { padding: 0; vertical-align: top; }
+    .finding-title { line-height: 1.08; margin: 0; overflow-wrap: anywhere; }
+    .finding-title--default { font-size: 21pt; }
+    .finding-title--medium { font-size: 18pt; }
+    .finding-title--compact { font-size: 16pt; }
+    .finding-detail--continuation .finding-heading { margin-bottom: 3mm; padding-bottom: 2mm; }
+    .finding-detail--continuation .finding-heading__number { font-size: 16pt; }
+    .finding-detail--continuation .finding-title--default,
     .finding-detail--continuation .finding-title--medium { font-size: 16pt; }
-    .finding-detail--continuation .finding-title--compact { font-size: 13.5pt; }
+    .finding-detail--continuation .finding-title--compact { font-size: 14pt; }
     .continuation-label { color: var(--muted); font-size: .55em; font-weight: 400; }
-    .finding-meta { display: flex; font-size: 7.2pt; font-weight: 700; gap: 5mm; margin: 3mm 0 0 20mm; text-transform: uppercase; }
-    .finding-meta > span { margin-right: 5mm; }
+    .finding-meta { font-size: 7.2pt; font-weight: 700; margin-top: 2.5mm; text-transform: uppercase; }
+    .finding-meta > span { display: inline-block; margin-right: 4mm; vertical-align: middle; }
+    .finding-body { margin-left: 21mm; }
+    .finding-body > :first-child { margin-top: 0; }
     .status-accepted { color: #15803D; }
     .status-not_applicable { color: #777777; }
-    .problem-explanation { border-left: .8mm solid var(--accent); margin: 0 0 4mm; padding: 1mm 0 1mm 4mm; }
-    .problem-explanation .pre-line { font-size: 9.8pt; line-height: 1.5; }
+    .problem-explanation { border-left: .8mm solid var(--accent); margin: 0 0 4mm; padding: 1mm 0 1mm 3.5mm; }
+    .problem-explanation .finding-section__label { margin-bottom: 1mm; }
+    .problem-explanation .pre-line { font-size: 9.4pt; line-height: 1.45; }
     .finding-section { margin-top: 4mm; }
+    .finding-section__label { margin-bottom: 1mm; }
     .solution-block { border: .25mm solid var(--line); break-inside: avoid; margin-top: 4mm; padding: 3.5mm; }
-    .solution-block--primary { background: var(--soft); border-left: 1mm solid var(--accent); }
-    .solution-block h2 { font-size: 12pt; margin-bottom: 1.5mm; }
-    .finding-detail--continuation .solution-block { margin-top: 2.5mm; padding: 2.5mm; }
-    .finding-detail--continuation .solution-block h2 { font-size: 11pt; margin-bottom: 1mm; }
-    .finding-detail--continuation .solution-metrics > div { padding-top: 1.2mm; }
+    .solution-block--primary { background: #F0F0EC; border-left: 1mm solid var(--accent); }
+    .solution-block h2 { font-size: 11.5pt; line-height: 1.2; margin-bottom: 1.5mm; }
+    .finding-detail--continuation .solution-block { margin-top: 3mm; padding: 3mm; }
     .solution-comparison { border-left: .5mm solid var(--line); color: var(--muted); margin-top: 2mm; padding-left: 2.5mm; }
-    .solution-metrics { border-top: .25mm solid var(--line); display: grid; grid-template-columns: 1fr 1fr; margin-top: 2.5mm; }
-    .solution-metrics > div { padding: 2mm 3mm 0 0; }
-    .solution-metrics > div + div { border-left: .25mm solid var(--line); padding-left: 3mm; }
+    .solution-metrics { border-collapse: collapse; border-top: .25mm solid var(--line); margin-top: 3mm; table-layout: fixed; width: 100%; }
+    .solution-metrics td { padding: 2mm 0 0; vertical-align: top; }
+    .solution-metrics__effort { padding-right: 3mm !important; width: 42%; }
+    .solution-metrics__estimate { border-left: .25mm solid var(--line); padding-left: 3mm !important; width: 58%; }
+    .solution-metrics--single .solution-metrics__effort { padding-right: 0 !important; width: 100%; }
+    .solution-metrics strong { display: block; line-height: 1.25; margin-bottom: .8mm; }
+    .solution-metrics .muted { line-height: 1.35; }
+    .finding-context-layout { border-collapse: collapse; break-inside: avoid; margin-top: 5mm; table-layout: fixed; width: 100%; }
+    .finding-context-layout > tbody > tr > td { padding: 0; vertical-align: top; }
+    .finding-context-layout__risk { padding-right: 6mm !important; width: 56%; }
+    .finding-context-layout__systems { border-left: .25mm solid var(--line); padding-left: 5mm !important; width: 44%; }
+    .finding-context-layout__systems--full { border-left: 0; padding-left: 0 !important; width: 100%; }
     .risk-evaluation { break-inside: avoid; margin-top: 5mm; }
-    .risk-layout { display: block; }
-    .risk-matrix { font-size: 6.3pt; table-layout: fixed; }
-    .risk-matrix th, .risk-matrix td { border: .25mm solid var(--line); padding: .8mm; text-align: center; }
-    .risk-matrix th { background: var(--soft); font-weight: 700; }
-    .risk-matrix__current { border-width: .9mm !important; font-weight: 700; }
-    .risk-result { border-left: .7mm solid var(--accent); margin-top: 2mm; padding-left: 3mm; }
-    .risk-result strong { font-size: 11pt; }
-    .risk-result span { display: inline; margin-right: 4mm; }
+    .finding-context-layout .risk-evaluation { margin-top: 0; }
+    .risk-compact-layout { border-collapse: collapse; table-layout: fixed; width: auto; }
+    .risk-compact-layout td { border: 0; padding: 0; vertical-align: middle; }
+    .risk-compact-layout__matrix { padding-right: 5mm !important; width: 34mm; }
+    .risk-compact-layout__result { width: 48mm; }
+    .risk-mini-layout { border-collapse: collapse; width: auto; }
+    .risk-mini-layout td { padding: 0; vertical-align: middle; }
+    .risk-axis { color: var(--muted); font-size: 9pt; font-weight: 700; line-height: 1; }
+    .risk-axis--vertical { padding-right: 1.5mm !important; vertical-align: middle !important; }
+    .risk-axis--horizontal { margin-top: .5mm; text-align: center; }
+    .risk-mini-matrix { border-collapse: separate; border-spacing: 1mm; table-layout: fixed; width: auto; }
+    .risk-mini-matrix td { border: 0; height: 5mm; padding: 0; text-align: center; vertical-align: middle; width: 5mm; }
+    .risk-dot { border: .25mm solid rgba(0, 0, 0, .18); border-radius: 50%; display: inline-block; height: 3.8mm; position: relative; vertical-align: middle; width: 3.8mm; }
+    .risk-dot--current { border: .75mm solid var(--ink); height: 5mm; width: 5mm; }
+    .risk-dot__current-mark { background: #FFFFFF; border: .2mm solid var(--ink); border-radius: 50%; display: block; height: 1.3mm; margin: 1.1mm auto 0; width: 1.3mm; }
+    .risk-result-compact strong { display: block; font-size: 12pt; line-height: 1.15; }
+    .risk-result-compact .priority-marker { float: left; height: 6mm; margin-right: 2mm; }
+    .risk-result-compact__factors { color: var(--muted); display: block; font-size: 8pt; margin-top: 1mm; }
     .risk-evaluation__rationale { color: var(--muted); margin-top: 2mm; }
-    .affected-systems { break-inside: avoid; margin-top: 3mm; }
+    .affected-systems { break-inside: avoid; margin-top: 0; }
     .asset-details { border-top: .25mm solid var(--line); padding: 1.2mm 0; }
     .asset-details__name { display: inline; font-weight: 700; }
     .asset-details__type { color: var(--muted); }
