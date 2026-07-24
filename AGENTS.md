@@ -8,7 +8,7 @@ Read `plan.md` completely before changing code. `plan.md` version 2.3 is the aut
 - You may update only Progress, Discoveries, exact locked dependency versions, and factual command results without user approval.
 - Do not reinterpret, weaken, or silently supersede an approved decision.
 - When an approved central decision is technically impossible, mark it `BLOCKED`, provide reproducible evidence, stop the affected milestone, and do not implement a fallback.
-- A mandatory native Filament workspace capability or DOMPDF incompatibility blocks the affected milestone.
+- A mandatory native Filament workspace capability blocks the affected milestone. PDF renderer validation follows approved D-009/D-059; do not bypass a blocking requirement or change the approved escalation order.
 
 ## Required stack
 
@@ -18,13 +18,13 @@ Read `plan.md` completely before changing code. `plan.md` version 2.3 is the aut
 - Filament 5.
 - SQLite.
 - Filament Table Builder as the authoritative Finding navigator, with native Filament components for the selected-Finding editor.
-- Spatie Laravel PDF with DOMPDF.
+- Spatie Laravel PDF; DOMPDF remains the production renderer until the D-009/D-059 spike accepts one replacement.
 - PhpSpreadsheet.
 - Opis JSON Schema.
 - File cache/session and synchronous queue.
 - Laravel Dusk for browser testing.
 
-Do not require Node.js, npm, pnpm, Vite builds, Redis, Chromium in production, or an external PDF/storage/service dependency. Docker Compose through `docker/compose.dev.yml` is the only supported development installation profile. CloudPanel is the approved production destination, but its configuration and procedure are not implemented yet.
+Do not require Node.js, npm, pnpm, Vite builds, Redis, or an external cloud PDF/storage/service dependency. Chromium is not a current production dependency and may become one only if the bounded D-009/D-059 spike accepts the Chrome renderer. Docker Compose through `docker/compose.dev.yml` is the only supported development installation profile. CloudPanel is the approved production destination, but its configuration and procedure are not implemented yet.
 
 ## No fallback and no fake success
 

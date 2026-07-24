@@ -72,7 +72,8 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-008 (v1) | SUPERSEDED | Advance Table Repeater was the selected assessment-grid component; superseded by D-008 on 2026-07-13 |
 | D-008 (v2) | SUPERSEDED | The assessment workspace used only the native Filament 5 table Repeater; superseded by D-008 on 2026-07-18 |
 | D-008 | APPROVED | The Finding workspace uses a Filament Table structured list with a single-record lateral inspector; native Repeaters remain permitted for bounded child collections such as Finding solutions |
-| D-009 | APPROVED | Spatie Laravel PDF with DOMPDF; no renderer fallback |
+| D-009 (v1) | SUPERSEDED | Spatie Laravel PDF with DOMPDF as the only renderer and no renderer validation path; superseded by D-009 on 2026-07-24 |
+| D-009 | APPROVED | Keep DOMPDF in production while a bounded Chrome-driver spike validates one future renderer; retain Spatie Laravel PDF, use WeasyPrint only for a functional Chrome blocker, and consider Gotenberg only for local-Chromium operations |
 | D-010 | APPROVED | One configurable professional report layout |
 | D-011 | APPROVED | Italian v1 UI/report, translation keys from the first commit |
 | D-012 | APPROVED | JSON Schema v1 is the canonical template interchange contract |
@@ -117,14 +118,15 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-049 | APPROVED | Risk profile and level technical codes are generated on creation and immutable after first save; existing level identity is preserved and the sixteen entries are edited through a deterministic 4×4 consequence-by-likelihood matrix |
 | D-050 | APPROVED | PDF generation creates one immutable authoritative report, applies any configured freeze, immediately downloads that same authenticated hash-verified file, and retains it in generated-file history |
 | D-051 | APPROVED | Report settings retain consultant/company/both branding and add typed cover-title mode plus optional priority-legend descriptions without changing immutable settings snapshots |
-| D-052 | APPROVED | The A4 portrait DOMPDF report uses the approved entrepreneur-oriented cover, company information, priority legend, two-row finding summaries, detail hierarchy, and page-safe evidence blocks while preserving all logical data |
+| D-052 | SUPERSEDED | The A4 portrait DOMPDF composition is retained as implementation history; its future report composition is superseded by D-059 on 2026-07-24 |
 | D-053 | APPROVED | Risk-matrix editing uses an application-owned custom Filament Field with one independent select in each semantic 4×4 table cell; nested Livewire state is keyed by persisted level IDs, `risk_matrix_entries` remains authoritative, and no plugin, Node.js pipeline, or runtime dependency is added |
 | D-054 | APPROVED | The Finding workspace has exactly two intentional container-responsive modes: lateral desktop split at an effective workspace-container width of at least 64rem, and sequential list/detail below that threshold; the intermediate absolute-positioned inspector is removed |
 | D-055 | APPROVED | The Finding workspace presents a three-area application workbench with a compact Filament Table navigator, a dominant selected-Finding editor, and contextual properties; narrow containers retain deliberate sequential navigator/editor behavior |
 | D-056 | APPROVED | The Finding workbench uses the approved lime/green/white/black palette, one solid primary action per context, aggregated export and Finding-creation actions, and a reduced navigator row containing only selection-critical information |
 | D-057 | APPROVED | Filament 5 native clusters and parent items define the hierarchical sidebar; Tag is removed from v1; Finding assets remain required only for `selected_assets`; and implementation verification is proportional while `scripts/verify.sh` remains the complete authoritative gate |
 | D-058 | APPROVED | The compact Finding navigator retains expandable icon search but removes its unusable filter control, places icon-only native reorder beside search, and keeps Finding titles visible during reorder; the non-functional summary preview tab is removed, contextual properties use compact collapsible sections with reliable internal scrolling, and generated-file history receives an aligned responsive tabular presentation |
-| D-059 | APPROVED | Assessment PDFs use one formally brutalist A4 editorial Blade layout, configured only through the existing report settings and accompanied by an indicative live HTML preview on the report-settings page; report confidentiality is removed from the product |
+| D-059 (v1) | SUPERSEDED | The portrait-only DOMPDF editorial layout and manually duplicated indicative HTML preview are retained as implementation history; superseded by D-059 on 2026-07-24 |
+| D-059 | APPROVED | Accepted pending technical validation: one Blade/CSS editorial report must support mixed A4 orientation and a same-view preview without changing immutable report persistence |
 
 ### D-001 — Framework
 
@@ -305,7 +307,7 @@ The native Filament Repeater remains permitted for bounded child collections suc
 
 This decision supersedes only the incompatible table-Repeater presentation and whole-Finding-collection submission rules in §§9.4–9.5, 10.1, 16.1, Milestones 0/3, and their corresponding acceptance wording. Assessment metadata may retain its separate signed persistence path. All other approved domain, persistence, optimistic-locking, idempotency, lifecycle, report, evidence, deployment, and test decisions remain authoritative. Every Finding mutation continues to serialize on the assessment save lock, compare and increment `lock_version`, and record an idempotent request UUID; no unsigned or last-write-wins path is permitted.
 
-### D-009 — PDF
+### D-009 (v1) — PDF renderer
 
 Use:
 
@@ -321,6 +323,16 @@ LARAVEL_PDF_DRIVER=dompdf
 ```
 
 DOMPDF is the only renderer. CSS must stay within tested DOMPDF capabilities.
+
+This decision records the renderer contract implemented and accepted on 2026-07-13. Its permanent DOMPDF exclusivity and absence of a validation path are **SUPERSEDED by D-009**; the implementation history and evidence remain valid.
+
+### D-009 — PDF renderer validation
+
+**Status: APPROVED — Accepted pending technical validation.**
+
+DOMPDF remains the only production renderer and `LARAVEL_PDF_DRIVER=dompdf` remains the current environment value until the bounded D-059 spike is accepted. `spatie/laravel-pdf` remains the application abstraction if technically possible. The spike evaluates its Chrome driver first; WeasyPrint is evaluated only if Chrome fails a blocking requirement, and Gotenberg only if local Chromium is functionally acceptable but operationally unmanageable. Html2Media is not a report renderer. The project will not implement two complete renderers: after validation, one production renderer is selected. `DomPdfCanvasDriver` and DOMPDF-specific layout workarounds are removed only after the replacement renderer has passed the blocking acceptance criteria.
+
+No renderer, dependency, binary, environment value, Docker image, CloudPanel procedure, Blade view, test, generated report, or application path changes as a consequence of this decision update alone.
 
 ### D-010 — Report model
 
@@ -515,7 +527,7 @@ docker compose -f docker/compose.dev.yml up --build
 
 No Compose file exists at the repository root. The topology contains only the required `app` service and the optional `selenium` service under the `browser` profile. Normal `up` starts only `app`; `app` has no mandatory dependency on Selenium. No custom network, reverse proxy, database service, cache, mail service, administration service, worker, or other infrastructure service is permitted.
 
-The project-owned development image uses the official Debian-based PHP `8.3.32-cli-bookworm` image, Composer `2.10.2` copied from the official Composer image, and Xdebug `3.5.3`. It supplies Bash, Git, Curl, Unzip, Zip, the utilities used by maintained scripts, and every D-004 extension. PHP extensions are built and enabled with the official PHP image helpers; Xdebug is installed through PECL without a third-party extension installer. The image contains no Nginx, PHP-FPM, Node.js, Redis, external database, Supervisor, systemd, Horizon, queue worker, Chrome, or ChromeDriver. The repository is not copied into the image.
+The project-owned development image uses the official Debian-based PHP `8.3.32-cli-bookworm` image, Composer `2.10.2` copied from the official Composer image, and Xdebug `3.5.3`. It supplies Bash, Git, Curl, Unzip, Zip, the utilities used by maintained scripts, and every D-004 extension. PHP extensions are built and enabled with the official PHP image helpers; Xdebug is installed through PECL without a third-party extension installer. The current image contains no Nginx, PHP-FPM, Node.js, Redis, external database, Supervisor, systemd, Horizon, queue worker, Chrome, or ChromeDriver. The repository is not copied into the image. D-059 authorizes a later bounded Chromium spike and, only after renderer acceptance, a deliberate image/runtime amendment; this current-state inventory is not an absolute Chromium prohibition.
 
 The `app` service:
 
@@ -584,6 +596,8 @@ The previous Workspace behavior that generated a PDF and only redirected to hist
 Branding values remain exactly consultant, company, and both. A typed cover-title mode is added with `separate` and `combined` values. Separate mode prints the effective report title and company name on distinct lines; combined mode prints `<effective title> — <azienda>` once and omits the separate company line. `report_title_override` and the title pattern remain supported without automatic company-name repetition. A typed boolean controls whether optional priority descriptions appear in the legend; color and label always appear and an empty description produces no placeholder.
 
 ### D-052 — Entrepreneur-oriented PDF composition
+
+**Status: SUPERSEDED by D-059 on 2026-07-24.** The following text records the accepted DOMPDF implementation and its historical evidence; D-059 now governs future report composition, orientation, pagination, and preview. Its immutable-data preservation and no-omission principles are carried forward explicitly by D-059.
 
 The “Exactly” nine-column summary table in §13.4 is **SUPERSEDED by D-052**; all nine logical values remain mandatory but each finding uses a readable dynamic-height two-row block on A4 portrait. The previous technical ordering in §13.5 is **SUPERSEDED only as to presentation order by D-052**; its data-inclusion requirements remain APPROVED. Detail order is number/title/priority/status, prominent entrepreneur notes when present, problem, recommended solution, effort/estimate, alternatives, scope/sites/assets/risk, evidence, optional technical notes, and resolution. Empty entrepreneur notes render no empty block. Company information omits duplicate display/legal names, country-only `IT` addresses, and empty rows. Evidence title, image, and caption form one DOMPDF-supported page-safe logical block; images preserve proportions, respect A4-safe maximum height, and never overflow or crop.
 
@@ -679,13 +693,15 @@ The selected-Finding contextual panel uses the existing single `findingData` sta
 
 The former `Anteprima riepilogo` tab is removed. Its implementation displayed only the company name, effective assessment title, and count of included Findings and was not a report preview, immutable snapshot, validation surface, or domain operation. This supersedes only the four-tab list in §9.4; the Workspace tabs are now Finding, Dettagli assessment, and File Generati. PDF/XLSX generation and immutable history remain unchanged. File Generati retains the D-047 semantic compact table and authenticated actions, with application-owned responsive spacing, explicit context, stable column alignment, and a horizontally contained narrow-viewport fallback.
 
-### D-059 — Single editorial assessment-report layout
+### D-059 (v1) — Single editorial assessment-report layout
+
+**Status: SUPERSEDED by D-059 on 2026-07-24.** The following text is retained as the historical DOMPDF implementation decision. Its accepted implementation and verification results are not rewritten; its portrait-only, DOMPDF-layout, Canvas-finality, and manually duplicated preview clauses are no longer the target architecture.
 
 The assessment report uses one formally brutalist A4 portrait Blade layout. Structural customization means editing the report Blade files in the repository. Ordinary customization continues to use only the existing report settings, including primary color, logos, branding, title, header/footer text, enabled sections, costs, alternative solutions, and evidence. No theme selector, theme or layout identifier/version, Blade trace field, uploadable template, visual editor, JSON layout configuration, alternate renderer, dependency, model, or application table is introduced.
 
 The layout uses asymmetric composition, prominent section and Finding numbers, strong DejaVu Sans hierarchy, thin horizontal and vertical rules, generous white space, square rectangular blocks, and the configured primary color only for short lines, markers, thin borders, cover details, and structural indicators. Priority colors remain independent functional colors. The report does not use gradients, shadows, rounded cards, crosshairs, decorative concentric circles, asterisks or decorative symbols, non-data icons, extensive colored backgrounds, or graphics without functional meaning.
 
-`resources/views/reports/assessment.blade.php` remains the readable document orchestrator and delegates to a small set of responsibility-focused partials with centralized DOMPDF-compatible CSS. Tables, normal block flow, explicit millimeter/point dimensions, and page-break controls implement the layout; CSS Grid, layout-critical Flexbox, remote fonts/images, JavaScript, and unsupported renderer behavior are not used. D-059 supersedes D-052 only where the new approved visual hierarchy and section presentation differ. All D-052 data-preservation, dynamic summary height, page-safe evidence, A4 portrait, and no-cropping requirements remain authoritative.
+`resources/views/reports/assessment.blade.php` remains the readable document orchestrator and delegates to a small set of responsibility-focused partials with centralized DOMPDF-compatible CSS. Tables, normal block flow, explicit millimeter/point dimensions, and page-break controls implement the layout; CSS Grid, layout-critical Flexbox, remote fonts/images, JavaScript, and unsupported renderer behavior are not used. D-059 (v1) superseded D-052 only where the then-approved visual hierarchy and section presentation differed. The D-052 data-preservation, dynamic summary height, page-safe evidence, A4 portrait, and no-cropping requirements remained authoritative for that implementation.
 
 The Blade receives and uses only `AssessmentReportData` and its report DTO graph. It performs no database query and automatically generates no assessment content. A section with no data is omitted without invented placeholder copy. The cover resolves consultant and client logos separately by `ReportLogoData::owner`; branding controls their approved placement without changing the logo contract. The internal overview, dynamic priority KPI counts, per-Finding two-row summaries, full untruncated Finding titles, recommended and ordered alternative solutions, classification, separately presented assets, mixed evidence in snapshot order, resolution, methodology, disclaimer, text signature, consultant information, index, priority legend, global attachment list, and the single mandatory VAT-excluded estimate note retain their approved data and setting gates.
 
@@ -694,6 +710,96 @@ The report-settings page contains a small indicative HTML style preview built wi
 Report confidentiality is removed from the product. The `ReportSettings` property, form field, settings snapshot value, translations, PDF generator input, Canvas rendering, cover/footer rendering, and related tests are removed. A forward Spatie settings migration deletes the persisted `report.confidentiality_label` key. This supersedes the confidentiality entry/default in §8.2, its validation in §8.3, the confidentiality wording in §13.2, the Canvas input in §13.3, and the default label in §13.8. Existing generated files and their immutable stored snapshots are not modified.
 
 Repeated page chrome remains implemented only by `DomPdfCanvasDriver`. After an optional cover, the header uses configured text or `ASSESTME / <azienda>` from the immutable snapshot. The footer uses configured text or, in order, business name, consultant name, and snapshot application name. Thin neutral rules separate header and footer from content; the right footer contains only `Pagina X di Y`, and no center block is rendered. Snapshot hashing, physical files, immutable generated-report history, authoritative authenticated download, versioning, and failure behavior remain unchanged.
+
+### D-059 — Editorial report architecture and renderer spike
+
+**Status: APPROVED — Accepted pending technical validation.**
+
+#### Verified problem
+
+The report is now an editorial document rather than simple HTML converted to PDF. The current DOMPDF path needs tables and workarounds for ordinary composition, provides fragile page-break control, can leave an indivisible solution on an unbalanced page, cannot reliably mix the required A4 landscape summary with A4 portrait content, and depends on `DomPdfCanvasDriver` for repeated chrome. The Filament preview manually reproduces the visual language instead of rendering the report view. The replacement must keep server-side generation and real selectable/searchable text. Immutable snapshots, versioning, payload/file hashing, generated history, private physical files, and authenticated hash-verified download do not change.
+
+#### Binding constraints
+
+- all software in the report path is free and open source; no SaaS, external cloud renderer, or assessment-data transfer to third parties is permitted;
+- generation is server-side and retains `spatie/laravel-pdf` as its abstraction if technically possible;
+- PDF text remains real, selectable, and searchable; only genuine supplied images may be raster content;
+- one document supports A4 portrait and landscape pages, images, and evidence;
+- layout remains application-owned Blade and CSS, with a preview coherent with the real PDF;
+- development remains compatible with `docker/compose.dev.yml`, and the selected runtime must have a manageable, documentable CloudPanel installation path;
+- additional dependencies are minimized; users receive no free-form HTML, Blade, or CSS editor;
+- the immutable assessment/settings snapshot model, generated-report persistence, versioning, hashes, history, and download authorization remain unchanged.
+
+#### Approved report composition
+
+The document order is:
+
+1. simplified A4 portrait cover;
+2. optional `Quadro generale`, enabled by default;
+3. A4 landscape Finding summary;
+4. A4 portrait Finding sheets;
+5. evidence;
+6. any enabled final sections.
+
+`Quadro generale` reuses the existing `executive_summary`; its interface label becomes `Riepilogo Assessment` without a duplicate database field. The page may be generated when that text is empty. It presents total, open, and resolved Finding KPIs, a compact priority distribution, and a separate priority legend under the editorial title `Quadro generale`.
+
+The landscape Finding summary contains number and title, a deterministic editorial excerpt of the problem, the primary solution, priority, effort, and estimate. Scope and category are removed; status is removed unless a later measured need is approved. The primary solution is the implemented solution when present, otherwise the recommended solution. Full problem and solution content remains in the Finding sheet; excerpts use a deterministic application rule, not renderer-dependent visual clipping.
+
+Each portrait Finding sheet places the number to the left of a title whose sizing follows deterministic length classes. Priority, status, and category use discrete text-labelled badges so color is never the sole signal. Status symbols are: open empty circle, planned calendar, in progress hourglass, resolved check mark, accepted green circle, and not applicable grey circle. `Nota per la direzione` is renamed `Spiegazione del problema`; it adopts the current open editorial treatment of the recommended solution, while the primary solution adopts the current neutral management-note container.
+
+Finding content order is:
+
+1. `Spiegazione del problema`;
+2. problem;
+3. implemented or recommended primary solution;
+4. other solutions;
+5. risk assessment;
+6. affected systems and assets;
+7. optional technical notes;
+8. optional resolution.
+
+A Finding has at most three solutions and always has a recommended solution; it may also have an implemented solution, and both references may identify the same solution. If they differ, both labels are explicit, and the implemented solution receives visual priority for a resolved Finding. Every solution always shows title, description, effort, and estimate. A solution block is indivisible and never starts on one page and continues on the next. A continued Finding page repeats a compact Finding heading. One Finding occupies at most two pages excluding evidence.
+
+Those pagination rules require hard text limits. D-059 does not invent character counts before the renderer and final layout are proven. The spike must identify realistic budgets proportional to the number of solutions; the later implementation must show remaining-character counters and enforce the same limits server-side.
+
+Risk uses a real dynamic mini-matrix derived from the configured risk profile and shows consequence, likelihood, and resulting priority with textual labels. A compact `Sistemi interessati` block follows where useful. Each asset preferably occupies one compact row containing name, site, manufacturer, and IP. The free-form scope description remains data but is not mandatory PDF content.
+
+A future typed `Mostra risoluzione` report setting defaults to enabled and is captured through the existing settings snapshot shape; it creates no empty `Risoluzione` block. Evidence initially remains on dedicated pages. Automatic placement of small images in residual page space is deferred until renderer feasibility is measured and is not promised by this decision.
+
+The cover removes section-number-like elements and repeated application naming. Internal headers are minimal; the footer contains only the page number, and the cover is excluded from numbering.
+
+#### Alternatives
+
+- **DOMPDF — current production renderer.** It is pure PHP, integrated, and operationally simple. Its documented CSS 2.1/partial CSS 3 limits, non-repeating native HTML header/footer behavior, current Canvas dependency, fragile pagination, duplicated preview, and unproven mixed orientation make it unsuitable as the permanent target for this document ([Spatie DOMPDF driver](https://spatie.be/docs/laravel-pdf/v2/drivers/using-the-dompdf-driver)).
+- **Spatie Chrome driver — primary spike candidate.** It drives local Chrome/Chromium directly from PHP through `chrome-php/chrome`, without Node.js, npm, Puppeteer, or a permanent service ([Spatie Chrome driver](https://spatie.be/docs/laravel-pdf/v2/drivers/using-the-chrome-driver), [chrome-php/chrome](https://github.com/chrome-php/chrome)). The spike must prove compatibility with locked Spatie Laravel PDF `2.12.0`, a compatible `chrome-php/chrome`, an explicitly provisioned Chromium binary, mixed CSS page orientation, header/footer behavior, `break-inside`, selectable text, same-view preview/print, and Docker/CloudPanel installation. Chromium's protocol can prefer CSS-defined page sizes, but the locked Spatie driver does not by itself prove the required mixed-page result ([Chrome DevTools `printToPDF`](https://chromedevtools.github.io/devtools-protocol/tot/Page/#method-printToPDF)).
+- **WeasyPrint — technical fallback.** It is a free BSD Python pagination engine with CSS Paged Media, named pages, page size/orientation, margin boxes, running elements, and page-break control ([WeasyPrint](https://doc.courtbouillon.org/weasyprint/stable/), [Spatie WeasyPrint driver](https://spatie.be/docs/laravel-pdf/v2/drivers/using-the-weasyprint-driver)). It requires a Python binary and native/font libraries and is not a browser engine, so screen preview and WeasyPrint output can differ.
+- **Gotenberg — operational fallback only.** It is an open-source Docker API backed by headless Chromium, considered only if local Chromium passes document requirements but is unstable or unmanageable. It adds a permanent service to development and deployment ([Gotenberg](https://gotenberg.dev/docs/getting-started/introduction), [Spatie Gotenberg driver](https://spatie.be/docs/laravel-pdf/v2/drivers/using-the-gotenberg-driver)).
+- **Html2Media — not selected.** Upstream code runs in the browser, renders DOM with `html2canvas`, slices canvases, and inserts PNG images into jsPDF under one global orientation; the resulting report is principally rasterized and is incompatible with searchable professional text and immutable server-side generation ([Html2Media source](https://github.com/torgodly/Html2Media/blob/main/resources/js/html2media-main.js)). Its preview/print/download interaction may inform UX only.
+
+Browsershot is excluded because it adds Node.js, Puppeteer, and Chromium when direct PHP-to-Chromium may suffice ([Browsershot requirements](https://github.com/spatie/browsershot/blob/main/docs/requirements.md)). Paged.js and Vivliostyle add a more complex JavaScript/Node editorial pipeline than required ([Paged.js](https://pagedjs.org/en/documentation/), [Vivliostyle CLI](https://docs.vivliostyle.org/en/cli/getting-started/)). Typst would rewrite the template outside Blade ([Typst](https://typst.app/docs/)). wkhtmltopdf is not suitable as a new dependency because its upstream repository is archived ([wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf)). SaaS renderers are excluded by privacy and external-dependency constraints.
+
+#### Bounded future spike
+
+The spike is small, reversible, and does not redesign the complete production report. It uses one deterministic snapshot inspired by the VIP Estintori report and the existing immutable DTO graph. It contains a portrait cover, portrait `Quadro generale`, landscape summary, four portrait Findings, one Finding with three solutions, an implemented solution different from the recommended solution, an indivisible solution, a continued-page Finding heading, a dynamic risk mini-matrix, assets, one image evidence item, a page-number-only footer, and a preview of the same view.
+
+Chrome passes only if one PDF proves all of the following:
+
+- A4 portrait and landscape in the same file;
+- selectable and searchable text, with no rasterized content except real images;
+- no overlap, truncation, or split solution;
+- correct continued-Finding heading and evidence;
+- unchanged snapshot, hashing, versioning, history, private storage, and authenticated-download behavior;
+- operation in the Docker development profile and a documentable CloudPanel installation path.
+
+Failure of any item is blocking for Chrome. Only then may the same bounded proof be attempted with WeasyPrint. Gotenberg is considered only for a proven operational problem with local Chromium. The spike selects one production renderer; it does not build parallel production implementations.
+
+#### Future preview
+
+After renderer acceptance, the duplicated illustrative thumbnail is removed. An authenticated preview route renders the same Blade view and CSS as the PDF in an iframe; `@media screen` represents paged sheets and `@media print` controls PDF output. Unsaved report settings refresh the preview with debounce. An optional action may generate an overwritable/deletable temporary PDF preview, but it creates no `GeneratedReport`, immutable file, version, history entry, or snapshot. No user-editable HTML, Blade, or CSS is introduced.
+
+#### Supersession scope
+
+D-059 supersedes D-052 and D-059 (v1) for future composition and supersedes the portrait-only, fixed-summary, unlimited-Finding-pagination, Canvas-finality, and duplicated-preview clauses in §§8, 13, 20, and review items B-02/B-12. D-009 supersedes permanent DOMPDF exclusivity. D-007 and D-042 continue to describe the current runtime, but their absence-of-Chromium clauses do not prohibit the bounded spike or a later explicitly accepted renderer runtime. No current Docker or CloudPanel configuration is changed now, and all historical implementation/test evidence remains factual.
 
 ### D-028 — Authentication and MFA
 
@@ -805,8 +911,16 @@ Use primary documentation and the installed-version Laravel Boost documentation 
 - Advanced Table Export: https://filamentphp.com/plugins/igor-clauss-advanced-table-export
 - Spatie settings: https://filamentphp.com/plugins/filament-spatie-settings
 - Spatie Laravel PDF: https://spatie.be/docs/laravel-pdf
+- Chrome driver: https://spatie.be/docs/laravel-pdf/v2/drivers/using-the-chrome-driver
+- Chrome PHP: https://github.com/chrome-php/chrome
+- Chrome DevTools `Page.printToPDF`: https://chromedevtools.github.io/devtools-protocol/tot/Page/#method-printToPDF
+- WeasyPrint driver: https://spatie.be/docs/laravel-pdf/v2/drivers/using-the-weasyprint-driver
+- WeasyPrint: https://doc.courtbouillon.org/weasyprint/stable/
+- Gotenberg driver: https://spatie.be/docs/laravel-pdf/v2/drivers/using-the-gotenberg-driver
+- Gotenberg: https://gotenberg.dev/docs/getting-started/introduction
 - DOMPDF driver: https://spatie.be/docs/laravel-pdf/v2/drivers/using-the-dompdf-driver
 - DOMPDF: https://github.com/dompdf/dompdf
+- Html2Media: https://github.com/torgodly/Html2Media
 - PhpSpreadsheet: https://github.com/PHPOffice/PhpSpreadsheet
 - PDF text test parser: https://github.com/smalot/pdfparser
 - Opis JSON Schema: https://opis.io/json-schema/
@@ -1005,6 +1119,8 @@ DEV_ADMIN_NAME=Administrator
 DEV_ADMIN_EMAIL=admin@assestme.local
 DEV_ADMIN_PASSWORD=
 ```
+
+`LARAVEL_PDF_DRIVER=dompdf` records the current production/development renderer pending D-059 validation; it is not a permanent driver lock.
 
 Compose overrides the environment at process level without writing Docker-only paths into `.env`:
 
@@ -1866,8 +1982,9 @@ VAT treatment is not an application setting. No VAT status, display mode, rate, 
 - risk legend;
 - summary table;
 - methodology;
-- repeated text header/footer after the cover, implemented by the application-owned DOMPDF Canvas page script;
+- repeated text header/footer after the cover, currently implemented by the application-owned DOMPDF Canvas page script until D-059 renderer acceptance;
 - page numbers;
+- future `Mostra risoluzione`, enabled by default when D-059 is implemented without restructuring the settings snapshot;
 - signature block;
 - disclaimer;
 - technical notes;
@@ -1903,7 +2020,7 @@ Defaults:
 - currency must be uppercase ISO 4217 shape;
 - numeric limits are bounded;
 - report header and footer text max 120 characters;
-- the Canvas page script truncates over-width page chrome with an ellipsis rather than overlapping;
+- the current Canvas page script truncates over-width page chrome with an ellipsis rather than overlapping; D-059 governs its eventual removal;
 - changing deletion policy affects future delete actions only;
 - changing report settings does not modify existing report snapshots.
 
@@ -2452,7 +2569,7 @@ Application-level file encryption is outside v1. Production must use restrictive
 
 ## 13. PDF report contract
 
-The output format is **A4 portrait**. Landscape output is outside v1.
+Until the D-059 spike is accepted, the production DOMPDF output remains A4 portrait. The approved target is one PDF with A4 portrait cover/general/Finding/evidence pages and an A4 landscape Finding summary. §§13.1–13.8 otherwise record the current production implementation; D-059 is authoritative wherever its future composition, pagination, chrome, or preview differs.
 
 ### 13.1 Title and branding
 
@@ -2470,6 +2587,8 @@ Primary color is passed to the view only after strict `#RRGGBB` normalization.
 
 ### 13.2 Sections
 
+The current DOMPDF section order is:
+
 1. optional cover;
 2. client/assessment information;
 3. scope;
@@ -2485,21 +2604,21 @@ Primary color is passed to the view only after strict `#RRGGBB` normalization.
 
 ### 13.3 Header/footer/page numbering
 
-Header and footer appear after the cover and are drawn by the application-owned DOMPDF Canvas page script. Do not use Spatie `headerHtml()` or `footerHtml()` for repetition because the DOMPDF driver only prepends/appends those fragments.
+In the current DOMPDF implementation, header and footer appear after the cover and are drawn by the application-owned DOMPDF Canvas page script. Spatie `headerHtml()` or `footerHtml()` cannot provide that repetition because the DOMPDF driver only prepends/appends those fragments.
 
-Implement repeated header/footer and DOMPDF page numbering through the supplied application-owned Canvas `page_script` after rendering:
+Until another renderer is accepted, repeated header/footer and DOMPDF page numbering use the supplied application-owned Canvas `page_script` after rendering:
 
 - cover has no header, footer, or number;
 - the page script receives `showCover`, header/footer text, and page-number visibility explicitly;
 - first content page displays `Pagina 1 di Y`;
 - total excludes cover;
-- no alternate implementation.
+- no parallel implementation before the D-059 spike selects one renderer.
 
-Test extracted text for first and last page labels.
+Current tests extract the first and last page labels. After renderer acceptance, D-059 replaces Canvas with a minimal internal header and page-number-only footer while continuing to exclude the cover from numbering.
 
 ### 13.4 Finding summary blocks
 
-The former nine narrow columns are superseded by D-052. Each included finding renders a two-row dynamic-height summary block while retaining exactly the same nine logical values.
+The following two-row portrait summary records the current DOMPDF implementation accepted under D-052 and is **SUPERSEDED for the future report by D-059**. D-059 requires the landscape summary and its reduced, editorially excerpted field set.
 
 First row:
 
@@ -2516,11 +2635,11 @@ Second row:
 - effort;
 - estimate.
 
-There is no total, landscape orientation, fixed row height, or data omission.
+The current block has no total or fixed row height and omits no historically required value. This does not override D-059's approved landscape target and deliberate removal of scope, category, and normally status.
 
 ### 13.5 Finding detail
 
-Render in this recipient-oriented hierarchy without omitting the previously required data:
+The following hierarchy records the current DOMPDF implementation and is **SUPERSEDED for future presentation and pagination by D-059** without authorizing loss from the immutable snapshot:
 
 1. number, title, priority, and status;
 2. prominent `Perché è importante per l’Azienda` entrepreneur notes, only when non-empty;
@@ -2535,7 +2654,7 @@ Render in this recipient-oriented hierarchy without omitting the previously requ
 
 When entrepreneur notes are empty, problem is the first main content section and no empty entrepreneur block appears.
 
-Default: each finding begins on a new page. It may span any number of pages.
+Currently each Finding begins on a new page and may span any number of pages. D-059 instead limits a Finding to two pages excluding evidence, keeps every solution indivisible, and requires a compact continuation heading; calibrated UI and server-side text budgets are prerequisites for enforcing that target.
 
 Asset display:
 
@@ -3050,7 +3169,7 @@ If an approved central dependency/decision is impossible:
 
 The agent may continue independent work only when it cannot create rework or hide the blocker.
 
-A mandatory native Filament workspace capability or DOMPDF failure blocks the affected milestone.
+A mandatory native Filament workspace capability blocks its affected milestone. Renderer validation follows D-009/D-059: a blocking Chrome failure permits only the approved bounded WeasyPrint evaluation, while an accepted production renderer failure blocks the affected milestone without a silent fallback.
 
 ### 18.4 Dependencies
 
@@ -3101,6 +3220,8 @@ Local test credentials may be shown once in final handoff. Production credential
 
 ### Milestone 0 — Reproducible bootstrap and compatibility gate
 
+This milestone records the historical DOMPDF bootstrap acceptance. D-009/D-059 govern the later renderer spike and do not rewrite its results.
+
 Deliver:
 
 - capability-based PHP preflight;
@@ -3128,7 +3249,7 @@ Acceptance:
 - browser console clean;
 - all commands green.
 
-Failure of central grid or DOMPDF blocks the project.
+The recorded central-grid or DOMPDF proof failure would have blocked this historical milestone; future renderer validation follows D-009/D-059.
 
 ### Milestone 1 — Foundation, security, settings, backup
 
@@ -3197,7 +3318,7 @@ Failure of central grid or DOMPDF blocks the project.
 
 - PHP 8.3 capability contract documented and verified without a normative host distribution;
 - clean `composer install` from lock;
-- no runtime Node/Redis/external renderer; Docker Compose is the authoritative development path;
+- no runtime Node/Redis or external cloud renderer; Docker Compose is the authoritative development path, and any local renderer binary must be the single renderer accepted through D-059;
 - SQLite PRAGMAs verified;
 - local URL reachable;
 - real login works.
@@ -3277,7 +3398,7 @@ This section records how the external blueprint review dated 2026-07-13 was reso
 | Review ID | Resolution in specification 2.0 |
 |---|---|
 | B-01 | SUPERSEDED by specification 2.3: PHP 8.3 remains exact, while runtime provisioning and preflight are capability-based with no normative host distribution or package source |
-| B-02 | Only `LARAVEL_PDF_DRIVER=dompdf`; verified Spatie configuration fragment |
+| B-02 | SUPERSEDED by D-009 on 2026-07-24: `LARAVEL_PDF_DRIVER=dompdf` remains current only until the bounded renderer spike selects one production driver |
 | B-03 | Nginx/PHP-FPM, paths, ownership, permissions, TLS, release deploy, rollback, cron, and PHP limits defined |
 | B-04 | `lock_version`, request UUID, payload hash, one in-flight request, coalescing, stale-tab conflict protocol |
 | B-05 | Complete assessment and finding state machines with transition effects |
@@ -3287,7 +3408,7 @@ This section records how the external blueprint review dated 2026-07-13 was reso
 | B-09 | Strengthened Draft 2020-12 schema plus mandatory application semantic validation and fixtures |
 | B-10 | Full-replace import by stable template and solution external IDs, with deterministic preview and conflict modes |
 | B-11 | Complete report stub covering summary, findings, assets, rationale, alternatives, evidence, technical notes, signature, and disclaimer |
-| B-12 | One Canvas page-script implementation for repeated page chrome and `Pagina X di Y` |
+| B-12 | SUPERSEDED by D-059 on 2026-07-24 for the future renderer: Canvas remains current production code and is removed only after replacement acceptance |
 | B-13 | Direct `phpoffice/phpspreadsheet` runtime dependency and three-sheet workbook contract |
 | B-14 | Laravel Dusk for browser automation plus blocking manual Edge/Firefox/iOS/Android checklist |
 | B-15 | SUPERSEDED on 2026-07-13: the unavailable community grid plugin was removed; Milestone 0 now proves the native Filament 5 table Repeater with real relationships and 10/25/50 findings |
@@ -3295,11 +3416,15 @@ This section records how the external blueprint review dated 2026-07-13 was reso
 | B-17 | Application-aware backup, retention, manifest verification, restore command, CI restore test, and quarterly production restore test |
 | B-18 | Domain-only seeder, separate admin bootstrap command, factory-created CI users, and one-time local credentials |
 
-No unresolved product or architecture decision remains at implementation handoff. Runtime values such as the production FQDN and secrets are explicit deployment inputs, not design decisions.
+No OPEN product decision remains. D-009/D-059 are accepted pending the explicitly bounded technical renderer validation; runtime values such as the production FQDN and secrets remain deployment inputs, not design decisions.
 
 ## 22. Progress
 
 The implementation agent must maintain this section.
+
+The PDF renderer architecture review started on 2026-07-24 at commit `73fa2eaaeacb2d742020811074699405b6c9a41b` on a clean `develop` branch. This is a documentation-only decision update: no renderer spike, PDF generation, package installation, dependency or lock-file change, Docker change, Blade/layout edit, test edit, or application-code change is authorized. Before updating the decision, `AGENTS.md`, this complete plan, both Composer manifests, the PDF configuration, generation and snapshot actions, application-owned DOMPDF Canvas driver, complete report Blade/partial tree, report-settings preview and settings class, Docker development profile, reporting/Docker/CloudPanel decisions, and relevant PDF/preview tests were read through EOF. The locked production implementation remains Spatie Laravel PDF `2.12.0` with DOMPDF `3.1.5`; `chrome-php/chrome` is not installed. Upstream primary documentation and source are being used to bound a future deterministic renderer spike without claiming renderer acceptance.
+
+The PDF renderer architecture review completed on 2026-07-24 as a documentation-only update to `AGENTS.md` and this authoritative decision log. D-009 (v1), D-052, and D-059 (v1) retain their historical text and are explicitly superseded where incompatible; current DOMPDF production behavior remains unchanged while D-009/D-059 define the bounded Chrome-first validation and approved escalation order. The new report composition, renderer blockers, single-snapshot VIP Estintori spike, same-view future preview, and immutable persistence constraints are recorded without selecting or running a new renderer. `git diff --check` passed; the targeted contradiction scan found none of the obsolete unqualified clauses, and no repository Markdown lint configuration exists. No application test, Dusk run, package installation, Docker command, PDF generation, or complete verifier was run for this documentation-only change.
 
 The editorial PDF composition and three-solution-limit correction started on 2026-07-24 at commit `0bf7ea9de7f27099574e7b5699bc16866d70b5c3` on a clean `develop` branch. Before application changes, `AGENTS.md`, this complete plan, both Composer manifests and all 188 locked packages, the report orchestrator/styles/overview/Finding/asset/summary/legend/evidence partials, the report-settings preview, report DTOs, snapshot/PDF/Canvas implementations, Finding and template forms/save actions, template schema/import validation, Italian translations, and all tests covering reports, solutions, templates, import, workspace persistence, and relevant browser behavior were read through EOF. The running Compose application and Selenium services are healthy. Read-only inspection found no Finding or template with more than three solutions in the configured local database; the observed maxima are one solution for each aggregate. The seeders create one solution per template/Finding. Two JSON fixtures conflict with the new bound because `valid-all-branches.json` and `invalid-nonmonetary-amount.json` each place five solutions in one template. No fixture solution will be truncated or deleted: the valid fixture's existing eleven solutions will be redistributed losslessly so every template has at most three, and the invalid fixture will retain all existing solution rows across schema-valid template groupings before its intended semantic rejection is asserted. Existing generated reports and immutable snapshots will not be modified. The current DOMPDF presentation emits every solution without slicing; its section heading uses an ambiguous fixed-layout second column and a horizontal pseudo-element, its status glyph/text are separate inline nodes, and its management-note border is overridden with the priority color. The existing VIP Estintori regression proves an exact eight-page cover/overview/summary/four-Finding/evidence allocation but does not yet exercise three solutions in one Finding. This slice will retain the Blade/DOMPDF/Canvas architecture and evidence/XLSX behavior, enforce `array|max:3` and native Repeater/schema bounds at every mutable entry point, update structural and real-render tests, generate a new immutable VIP Estintori report, rasterize every page at 150 DPI, inspect all pages, and invoke the aggregate verifier exactly once after focused acceptance.
 
@@ -3484,6 +3609,7 @@ Milestone 3 completed with the complete assessment/finding schema, native Filame
 
 ## 23. Discoveries and deviations
 
+- 2026-07-24: The locked `spatie/laravel-pdf` `2.12.0` includes a `ChromeDriver` that delegates directly to `chrome-php/chrome`, but `chrome-php/chrome` is not present in `composer.lock`. Source inspection shows that the driver sends global paper dimensions/orientation and does not set Chromium's `preferCSSPageSize` option. Chromium and `chrome-php/chrome` expose CSS-preferred page sizing, but mixed portrait/landscape pages are therefore unproven in the exact locked integration and remain a blocking D-059 spike criterion. No package was installed, no renderer was run, and no PDF was generated during this architecture review.
 - 2026-07-22: DOMPDF 3.1.5 applies the root `html` box to the shared base `@page` style; the former `html, body { margin: 0; }` rule therefore zeroed the configured page margins and allowed Blade content into Canvas bands. Keeping the zero margin on `body` only preserves the 13/17/23/20 mm page geometry. Empty page-break elements also made reflow evidence harder to reason about, so `page-break-before: always` remains directly on the existing Finding/evidence page roots. A random optional IP from `AssetFactory` can add an asset row and legitimately create a ninth page; the composition regression now fixes the exact requested NAS payload rather than relying on random optional fields.
 
 - 2026-07-22: Livewire morphing initially restored stale `x-cloak`/`x-show` state in the report-settings preview after an unsaved reactive update. The accepted native-view implementation keeps the preview root through `wire:ignore.self`, stores the selected cover/internal view in a local data attribute, and lets local Alpine tab handlers update that attribute and accessibility state. Filament/Livewire still morph every reactive preview value, with no nested component, poll, iframe, or global JavaScript; the final isolated Dusk regression passes.
