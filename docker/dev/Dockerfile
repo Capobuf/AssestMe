@@ -8,6 +8,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         bash \
         ca-certificates \
+        chromium \
         curl \
         file \
         git \
@@ -21,15 +22,18 @@ RUN apt-get update \
         libwebp-dev \
         libxml2-dev \
         libzip-dev \
+        poppler-utils \
         procps \
         rsync \
         unzip \
+        weasyprint \
         zip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install -j"$(nproc)" \
         bcmath \
         gd \
         intl \
+        sockets \
         zip \
     && pecl install "xdebug-${XDEBUG_VERSION}" \
     && docker-php-ext-enable xdebug \

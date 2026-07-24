@@ -22,6 +22,8 @@ services:
       DUSK_DRIVER_URL: http://selenium:4444
       DUSK_READY_HOST: 127.0.0.1
       DUSK_SERVER_BIND: 0.0.0.0
+      LARAVEL_PDF_CHROME_BINARY: /usr/bin/chromium
+      LARAVEL_PDF_CHROME_NO_SANDBOX: "true"
       LARAVEL_PDF_DOMPDF_CHROOT: /workspace
       XDEBUG_MODE: "${XDEBUG_MODE:-off}"
     extra_hosts:

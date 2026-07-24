@@ -80,6 +80,8 @@ it('defines the authoritative minimal Docker development topology semantically',
         ])->and($app['ports'])->toBe(['0.0.0.0:8000:8000'])
         ->and($app['volumes'])->toContain('../:/workspace')
         ->and($app['environment']['DB_DATABASE'])->toBe('/workspace/database/database.sqlite')
+        ->and($app['environment']['LARAVEL_PDF_CHROME_BINARY'])->toBe('/usr/bin/chromium')
+        ->and($app['environment']['LARAVEL_PDF_CHROME_NO_SANDBOX'])->toBe('true')
         ->and($app['environment']['LARAVEL_PDF_DOMPDF_CHROOT'])->toBe('/workspace')
         ->and($app['environment']['ASSESTME_BACKUP_ROOT'])->toBe('/workspace/backups')
         ->and($app['environment']['ASSESTME_UID'])->toBe('${UID:-}')
@@ -109,8 +111,12 @@ it('defines the authoritative minimal Docker development topology semantically',
         ->toContain('docker-php-ext-configure')
         ->toContain('docker-php-ext-install')
         ->toContain('docker-php-ext-enable')
+        ->toContain('chromium')
+        ->toContain('poppler-utils')
+        ->toContain('weasyprint')
+        ->toContain('sockets')
         ->not->toContain('copy . /workspace')
-        ->not->toMatch('/\b(?:alpine|nginx|php-fpm|node(?:js)?|npm|pnpm|yarn|vite|redis|mysql|postgres(?:ql)?|mariadb|supervisor|systemd|horizon|chromedriver|chromium)\b/');
+        ->not->toMatch('/\b(?:alpine|nginx|php-fpm|node(?:js)?|npm|pnpm|yarn|vite|redis|mysql|postgres(?:ql)?|mariadb|supervisor|systemd|horizon|chromedriver)\b/');
 });
 
 it('configures the Docker PHP runtime and idempotent bootstrap contract', function (): void {

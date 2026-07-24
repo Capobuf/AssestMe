@@ -24,6 +24,7 @@
     },
     "require-dev": {
         "baspa/filament-canary": "^1.2",
+        "chrome-php/chrome": "^1.0",
         "fakerphp/faker": "^1.23",
         "larastan/larastan": "^3.10",
         "laravel/boost": "^2.0",
@@ -34,6 +35,7 @@
         "pestphp/pest": "^4.0",
         "pestphp/pest-plugin-laravel": "^4.1",
         "phpunit/phpunit": "^12.5.12",
+        "pontedilana/php-weasyprint": "^2.7",
         "smalot/pdfparser": "^2.12"
     },
     "autoload": {
