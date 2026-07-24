@@ -1,4 +1,11 @@
 <?php declare(strict_types=1); ?>
+@php
+    $statusGlyph = static fn (string $status): string => match ($status) {
+        'open', 'planned' => '○',
+        'resolved' => '✓',
+        default => '–',
+    };
+@endphp
 <!DOCTYPE html>
 <html lang="{{ $report->locale }}">
 <head>

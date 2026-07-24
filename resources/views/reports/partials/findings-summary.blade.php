@@ -2,6 +2,10 @@
 
 <section class="findings-summary-section">
     <table class="section-heading">
+        <colgroup>
+            <col style="width: 20mm">
+            <col>
+        </colgroup>
         <tr>
             <td class="section-heading__number">02</td>
             <td class="section-heading__title">{{ __('assestme.reports.document.findings_summary') }}</td>
@@ -22,11 +26,12 @@
                 </td>
                 <td class="finding-summary__priority">
                     <span class="label">{{ __('assestme.reports.document.priority') }}</span>
-                    <span class="priority-marker" style="background-color: {{ $finding->priorityColor }}"></span>
+                    <span class="priority-glyph" style="color: {{ $finding->priorityColor }}">●</span>
                     {{ $finding->priorityLabel }}
                 </td>
                 <td class="finding-summary__status">
                     <span class="label">{{ __('assestme.reports.document.status') }}</span>
+                    <span class="status-glyph">{{ $statusGlyph($finding->status) }}</span>
                     {{ $finding->statusLabel }}
                 </td>
             </tr>

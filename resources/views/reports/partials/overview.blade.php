@@ -30,6 +30,10 @@
 
 <section class="overview">
     <table class="section-heading">
+        <colgroup>
+            <col style="width: 20mm">
+            <col>
+        </colgroup>
         <tr>
             <td class="section-heading__number">01</td>
             <td class="section-heading__title">{{ __('assestme.reports.document.assessment_overview') }}</td>
@@ -50,7 +54,7 @@
                 <td style="width: {{ $kpiWidth }}%">
                     <div class="kpi__value">{{ $priorityCount['count'] }}</div>
                     <div class="label">
-                        <span class="kpi__marker" style="background-color: {{ $priorityCount['color'] }}"></span>
+                        <span class="priority-glyph" style="color: {{ $priorityCount['color'] }}">●</span>
                         {{ $priorityCount['label'] }}
                     </div>
                 </td>

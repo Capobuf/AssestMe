@@ -149,7 +149,7 @@ it('renders a single recommended solution or ordered alternatives', function (bo
     'multiple solutions' => [true],
 ]);
 
-it('keeps page chrome titles classification and assets in non-overlapping editorial flow', function (): void {
+it('keeps page chrome titles risk evaluation and assets in non-overlapping editorial flow', function (): void {
     [$assessment, $finding] = editorialPdfReportReadyAssessment();
     $site = Site::factory()->for($assessment->client)->create(['name' => 'Sede Composizione']);
     $asset = Asset::factory()->for($assessment->client)->create([
@@ -161,17 +161,22 @@ it('keeps page chrome titles classification and assets in non-overlapping editor
     ]);
     $finding->assets()->attach($asset);
 
-    $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh());
-    $html = view('reports.assessment', ['report' => $snapshot])->render();
+    $result = editorialPdfReportRenderAndGenerate($assessment->fresh());
+    $snapshot = $result['snapshot'];
+    $html = $result['html'];
     $normalizedHtml = editorialPdfReportNormalizeText($html);
 
     preg_match('/<article class="finding-detail[^"]*">(.*?)<\/article>/s', $html, $articleMatch);
-    preg_match('/<table class="classification-table">(.*?)<\/table>/s', $articleMatch[1] ?? '', $classificationMatch);
+    preg_match('/<table class="finding-meta">(.*?)<\/table>/s', $articleMatch[1] ?? '', $metaMatch);
+    preg_match('/<section class="finding-scope">(.*?)<\/section>/s', $articleMatch[1] ?? '', $scopeMatch);
+    preg_match('/<section class="risk-evaluation">(.*?)<\/section>/s', $articleMatch[1] ?? '', $riskMatch);
 
     expect($normalizedHtml)
         ->toContain(
             '@page { margin: 13mm 17mm 23mm 20mm; }',
-            '.section-heading__number { color: #111111; font-size: 42pt; font-weight: bold; line-height: 0.9; width: 20mm;',
+            '.section-heading__number, .section-heading__title { vertical-align: top; }',
+            '.section-heading__number { color: #111111; font-size: 44pt; font-weight: bold; line-height: 0.9; width: 20mm;',
+            '.section-heading__title { font-size: 25pt; font-weight: bold; line-height: 1.08; padding-top: 0;',
             '.finding-title--default { font-size: 26pt; }',
             '.finding-title--medium { font-size: 22pt; }',
             '.finding-title--compact { font-size: 19pt; }',
@@ -184,27 +189,152 @@ it('keeps page chrome titles classification and assets in non-overlapping editor
         ->and($articleMatch)->toHaveKey(1)
         ->and($articleMatch[1])->toMatch('/<div class="finding-heading__number">01<\/div>\s*<h1 class="finding-title/u')
         ->and($articleMatch[1])->not->toContain('class="finding-heading__content"')
-        ->and($classificationMatch)->toHaveKey(1)
-        ->and($classificationMatch[1])->toContain(__('assestme.reports.document.scope'))
-        ->and($classificationMatch[1])->not->toContain(__('assestme.reports.document.category'))
-        ->and(substr_count($articleMatch[1], $finding->category->name))->toBe(1);
+        ->and($scopeMatch)->toHaveKey(1)
+        ->and($scopeMatch[1])->toContain(__('assestme.reports.document.scope'), $snapshot->findings[0]->scopeLabel)
+        ->and($riskMatch)->toHaveKey(1)
+        ->and($riskMatch[1])->toContain(
+            __('assestme.reports.document.risk_evaluation'),
+            __('assestme.reports.document.consequence'),
+            __('assestme.reports.document.likelihood'),
+            __('assestme.reports.document.resulting_priority'),
+        )
+        ->and($riskMatch[1])->not->toContain(__('assestme.reports.document.scope'))
+        ->and($articleMatch[1])->not->toContain(__('assestme.reports.document.classification'), 'classification-table')
+        ->and($metaMatch)->toHaveKey(1)
+        ->and($metaMatch[1])->toContain(mb_strtoupper($finding->category->name));
 });
 
 it('uses the compact priority legend when descriptions are disabled', function (): void {
     [$assessment] = editorialPdfReportReadyAssessment();
     editorialPdfReportSettings(['show_priority_descriptions' => false]);
 
-    $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh());
-    $html = view('reports.assessment', ['report' => $snapshot])->render();
+    $result = editorialPdfReportRenderAndGenerate($assessment->fresh());
+    $snapshot = $result['snapshot'];
+    $html = $result['html'];
 
-    expect($html)->toContain('class="priority-legend priority-legend--compact"');
+    expect($html)->toContain('class="priority-legend-inline avoid-break"')
+        ->and($html)->not->toContain(
+            'priority-legend--detailed',
+            'priority-legend-heading',
+            'class="editorial-heading">'.__('assestme.reports.document.priority_legend'),
+        );
     foreach ($snapshot->priorityLegend as $priority) {
-        expect($html)->toContain($priority->label);
+        expect($html)->toContain(
+            '<span class="priority-glyph" style="color: '.$priority->color.'">●</span>',
+            $priority->label,
+        );
         if (filled($priority->description)) {
             expect($html)->not->toContain((string) $priority->description);
         }
     }
 });
+
+it('uses the detailed priority legend without row rules when descriptions are enabled', function (): void {
+    [$assessment] = editorialPdfReportReadyAssessment();
+    editorialPdfReportSettings(['show_priority_descriptions' => true]);
+
+    $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh());
+    $html = view('reports.assessment', ['report' => $snapshot])->render();
+    $normalizedHtml = editorialPdfReportNormalizeText($html);
+
+    expect($html)->toContain('class="priority-legend priority-legend--detailed"')
+        ->and($html)->not->toContain('class="priority-legend-inline avoid-break"')
+        ->and($normalizedHtml)->toContain('.priority-legend--detailed td { border: 0;');
+});
+
+it('connects consequence likelihood and priority while keeping scope and manual rationale separate', function (
+    bool $overridden,
+): void {
+    [$assessment, $finding] = editorialPdfReportReadyAssessment();
+    $rationale = $overridden ? 'Priorità aumentata per esposizione operativa verificata' : null;
+    $finding->update([
+        'priority_is_overridden' => $overridden,
+        'priority_rationale' => $rationale,
+    ]);
+
+    $result = editorialPdfReportRenderAndGenerate($assessment->fresh());
+    $snapshot = $result['snapshot'];
+    $html = $result['html'];
+    preg_match('/<article class="finding-detail[^"]*">(.*?)<\/article>/s', $html, $articleMatch);
+    preg_match('/<section class="finding-scope">(.*?)<\/section>/s', $articleMatch[1] ?? '', $scopeMatch);
+    preg_match('/<section class="risk-evaluation">(.*?)<\/section>/s', $articleMatch[1] ?? '', $riskMatch);
+    $snapshotFinding = $snapshot->findings[0];
+
+    expect($scopeMatch)->toHaveKey(1)
+        ->and($scopeMatch[1])->toContain($snapshotFinding->scopeLabel)
+        ->and($riskMatch)->toHaveKey(1)
+        ->and($riskMatch[1])->toContain(
+            (string) $snapshotFinding->consequenceLabel,
+            (string) $snapshotFinding->likelihoodLabel,
+            $snapshotFinding->priorityLabel,
+        )
+        ->and($riskMatch[1])->not->toContain($snapshotFinding->scopeLabel)
+        ->and($snapshotFinding->priorityOverridden)->toBe($overridden)
+        ->and($snapshotFinding->priorityRationale)->toBe($rationale);
+
+    if ($overridden) {
+        expect($riskMatch[1])->toContain(__('assestme.reports.document.manual_priority'), (string) $rationale)
+            ->and($riskMatch[1])->not->toContain(__('assestme.reports.document.resulting_priority'))
+            ->and(substr_count($articleMatch[1], (string) $rationale))->toBe(1)
+            ->and(mb_strtoupper($result['text']))->toContain(mb_strtoupper(__('assestme.reports.document.manual_priority')))
+            ->and($result['text'])->toContain((string) $rationale);
+
+        return;
+    }
+
+    expect($riskMatch[1])->toContain(__('assestme.reports.document.resulting_priority'))
+        ->and($riskMatch[1])->not->toContain(
+            __('assestme.reports.document.manual_priority'),
+            __('assestme.reports.document.priority_rationale'),
+        )
+        ->and(mb_strtoupper($result['text']))->toContain(mb_strtoupper(__('assestme.reports.document.resulting_priority')))
+        ->and(mb_strtoupper($result['text']))->not->toContain(mb_strtoupper(__('assestme.reports.document.manual_priority')));
+})->with([
+    'matrix priority' => [false],
+    'manual priority' => [true],
+]);
+
+it('uses font glyphs instead of CSS squares for priority and status markers', function (): void {
+    [$assessment, $finding] = editorialPdfReportReadyAssessment();
+    editorialPdfReportSettings(['show_priority_descriptions' => false]);
+
+    $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh());
+    $html = view('reports.assessment', ['report' => $snapshot])->render();
+    $normalizedHtml = editorialPdfReportNormalizeText($html);
+
+    expect($html)->toContain(
+        '<span class="priority-glyph" style="color: '.$snapshot->findings[0]->priorityColor.'">●</span>',
+        '<span class="status-glyph">○</span>',
+    )
+        ->and($html)->not->toContain('kpi__marker', 'priority-marker', 'priority-legend__bar')
+        ->and($normalizedHtml)->not->toMatch('/\\.(?:kpi__marker|priority-marker)\\s*\\{[^}]*background/u')
+        ->and($finding->status->value)->toBe('open');
+});
+
+it('maps every persisted finding status to the approved editorial glyph', function (
+    string $status,
+    string $glyph,
+): void {
+    [$assessment, $finding] = editorialPdfReportReadyAssessment();
+    $finding->update([
+        'status' => $status,
+        'resolution_notes' => $status === 'resolved' ? 'Risoluzione verificata' : null,
+        'resolved_at' => $status === 'resolved' ? now() : null,
+    ]);
+
+    $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh());
+    $html = view('reports.assessment', ['report' => $snapshot])->render();
+
+    expect(substr_count($html, '<span class="status-glyph">'.$glyph.'</span>'))->toBeGreaterThanOrEqual(2)
+        ->and($snapshot->findings[0]->status)->toBe($status);
+})->with([
+    'open' => ['open', '○'],
+    'planned' => ['planned', '○'],
+    'in progress' => ['in_progress', '–'],
+    'resolved' => ['resolved', '✓'],
+    'accepted' => ['accepted', '–'],
+    'not applicable' => ['not_applicable', '–'],
+]);
 
 it('keeps the four-finding NAS and image composition on eight meaningful pages', function (): void {
     $assessment = Assessment::factory()->create([
@@ -275,6 +405,7 @@ it('keeps the four-finding NAS and image composition on eight meaningful pages',
         'evidence' => true,
         'evidence_captions' => true,
         'new_page_per_finding' => true,
+        'show_priority_descriptions' => false,
     ]);
 
     $result = editorialPdfReportRenderAndGenerate($assessment->fresh());
@@ -294,6 +425,15 @@ it('keeps the four-finding NAS and image composition on eight meaningful pages',
         ->and($result['pages'][6])->toContain(__('assestme.reports.document.evidence'), __('assestme.reports.document.image_number', ['number' => '01']))
         ->and($result['pages'][6])->not->toContain('VIP-CABLAGGIO.PNG', 'vip-cablaggio.png')
         ->and($result['pages'][7])->toContain($titles[3], mb_strtoupper(__('assestme.reports.document.associated_assets')), 'NAS');
+
+    foreach ([3, 4, 5, 7] as $findingPageIndex) {
+        $findingPage = mb_strtoupper($result['pages'][$findingPageIndex]);
+        expect($findingPage)->toContain(
+            mb_strtoupper(__('assestme.reports.document.risk_evaluation')),
+            mb_strtoupper(__('assestme.reports.document.consequence')),
+            mb_strtoupper(__('assestme.reports.document.likelihood')),
+        )->not->toContain(mb_strtoupper(__('assestme.reports.document.classification')));
+    }
 
     foreach ($result['pages'] as $index => $page) {
         if ($index === 0 || $index === 6) {

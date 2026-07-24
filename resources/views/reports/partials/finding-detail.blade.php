@@ -14,32 +14,27 @@
     if ($finding->sites !== []) {
         $scopeValue .= "\n".__('assestme.reports.document.sites').': '.implode(', ', $finding->sites);
     }
-    $classification = [
-        ['label' => __('assestme.reports.document.scope'), 'value' => $scopeValue],
-    ];
-
-    if (filled($finding->consequenceLabel)) {
-        $classification[] = ['label' => __('assestme.reports.document.consequence'), 'value' => $finding->consequenceLabel];
-    }
-    if (filled($finding->likelihoodLabel)) {
-        $classification[] = ['label' => __('assestme.reports.document.likelihood'), 'value' => $finding->likelihoodLabel];
-    }
-    if ($finding->priorityOverridden && filled($finding->priorityRationale)) {
-        $classification[] = ['label' => __('assestme.reports.document.priority_rationale'), 'value' => $finding->priorityRationale];
-    }
 @endphp
 
 <article class="finding-detail {{ $report->setting('new_page_per_finding') === true ? 'finding-detail--new-page' : '' }}">
     <header class="finding-heading">
         <div class="finding-heading__number">{{ str_pad((string) $finding->number, 2, '0', STR_PAD_LEFT) }}</div>
         <h1 class="finding-title {{ $titleClass }}">{{ $finding->title }}</h1>
-        <div class="finding-indicators">
-            <span class="finding-indicator finding-indicator--priority" style="border-left-color: {{ $finding->priorityColor }}">{{ $finding->priorityLabel }}</span>
-            <span class="finding-indicator">{{ $finding->statusLabel }}</span>
-            @if (filled($finding->category))
-                <span class="finding-indicator">{{ $finding->category }}</span>
-            @endif
-        </div>
+        <table class="finding-meta">
+            <tr>
+                <td class="finding-meta__priority">
+                    <span class="finding-meta__priority-bar" style="background-color: {{ $finding->priorityColor }}"></span>
+                    {{ mb_strtoupper($finding->priorityLabel) }}
+                </td>
+                <td>
+                    <span class="status-glyph">{{ $statusGlyph($finding->status) }}</span>
+                    {{ mb_strtoupper($finding->statusLabel) }}
+                </td>
+                @if (filled($finding->category))
+                    <td>{{ mb_strtoupper($finding->category) }}</td>
+                @endif
+            </tr>
+        </table>
     </header>
 
     @if (filled($finding->entrepreneurNotes))
@@ -132,16 +127,40 @@
         </section>
     @endif
 
-    <section class="finding-section">
-        <div class="finding-section__label">{{ __('assestme.reports.document.classification') }}</div>
-        <table class="classification-table">
-            @foreach ($classification as $item)
-                <tr>
-                    <th>{{ $item['label'] }}</th>
-                    <td class="pre-line">{{ $item['value'] }}</td>
-                </tr>
-            @endforeach
+    <section class="finding-scope">
+        <div class="label">{{ __('assestme.reports.document.scope') }}</div>
+        <div class="pre-line">{{ $scopeValue }}</div>
+    </section>
+
+    <section class="risk-evaluation">
+        <div class="finding-section__label">{{ __('assestme.reports.document.risk_evaluation') }}</div>
+        <table class="risk-evaluation__grid">
+            <tr>
+                <td>
+                    <span class="label">{{ __('assestme.reports.document.consequence') }}</span>
+                    <strong>{{ $finding->consequenceLabel }}</strong>
+                </td>
+                <td>
+                    <span class="label">{{ __('assestme.reports.document.likelihood') }}</span>
+                    <strong>{{ $finding->likelihoodLabel }}</strong>
+                </td>
+                <td class="risk-evaluation__result">
+                    <span class="label">
+                        {{ $finding->priorityOverridden
+                            ? __('assestme.reports.document.manual_priority')
+                            : __('assestme.reports.document.resulting_priority') }}
+                    </span>
+                    <strong>
+                        <span class="priority-glyph" style="color: {{ $finding->priorityColor }}">●</span>
+                        {{ $finding->priorityLabel }}
+                    </strong>
+                </td>
+            </tr>
         </table>
+
+        @if ($finding->priorityOverridden && filled($finding->priorityRationale))
+            <div class="risk-evaluation__rationale pre-line">{{ $finding->priorityRationale }}</div>
+        @endif
     </section>
 
     @if ($finding->assets !== [])

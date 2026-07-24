@@ -138,7 +138,38 @@ final class ReportSettingsPreviewTest extends DuskTestCase
 
             $browser
                 ->assertSeeIn('[data-dusk="report-preview-internal"]', 'Header interno Dusk')
-                ->assertSeeIn('[data-dusk="report-preview-internal"]', 'Footer interno Dusk');
+                ->assertSeeIn('[data-dusk="report-preview-internal"]', 'Footer interno Dusk')
+                ->assertSeeIn('[data-dusk="report-preview-priority-legend"]', '● Bassa')
+                ->assertSeeIn('[data-dusk="report-preview-risk-title"]', 'VALUTAZIONE DEL RISCHIO')
+                ->assertSeeIn('[data-dusk="report-preview-risk"]', 'CONSEGUENZA')
+                ->assertSeeIn('[data-dusk="report-preview-risk"]', 'PROBABILITÀ')
+                ->assertSeeIn('[data-dusk="report-preview-risk"]', 'PRIORITÀ RISULTANTE');
+
+            $editorialGeometry = $browser->script(<<<'JS'
+                const number = document.querySelector('[data-dusk="report-preview-section-number"]');
+                const title = document.querySelector('[data-dusk="report-preview-section-title"]');
+                const kpis = document.querySelector('[data-dusk="report-preview-kpis"]');
+                const legend = document.querySelector('[data-dusk="report-preview-priority-legend"]');
+                const risk = document.querySelector('[data-dusk="report-preview-risk"]');
+
+                return {
+                    numberVerticalAlign: number === null ? null : window.getComputedStyle(number).verticalAlign,
+                    titleVerticalAlign: title === null ? null : window.getComputedStyle(title).verticalAlign,
+                    titlePaddingTop: title === null ? null : window.getComputedStyle(title).paddingTop,
+                    kpiBorderTop: kpis === null ? null : window.getComputedStyle(kpis).borderTopWidth,
+                    kpiBorderBottom: kpis === null ? null : window.getComputedStyle(kpis).borderBottomWidth,
+                    legendBorderBottom: legend === null ? null : window.getComputedStyle(legend).borderBottomWidth,
+                    riskColumns: risk?.children.length ?? null,
+                };
+                JS);
+
+            Assert::assertSame('top', $editorialGeometry[0]['numberVerticalAlign'] ?? null);
+            Assert::assertSame('top', $editorialGeometry[0]['titleVerticalAlign'] ?? null);
+            Assert::assertSame('0px', $editorialGeometry[0]['titlePaddingTop'] ?? null);
+            Assert::assertSame('0px', $editorialGeometry[0]['kpiBorderTop'] ?? null);
+            Assert::assertSame('0px', $editorialGeometry[0]['kpiBorderBottom'] ?? null);
+            Assert::assertSame('0px', $editorialGeometry[0]['legendBorderBottom'] ?? null);
+            Assert::assertSame(3, $editorialGeometry[0]['riskColumns'] ?? null);
 
             $severeLogs = array_values(array_filter(
                 $browser->driver->manage()->getLog('browser'),
