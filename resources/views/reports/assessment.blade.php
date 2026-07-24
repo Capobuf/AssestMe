@@ -24,10 +24,6 @@
         @include('reports.partials.content-index')
     @endif
 
-    @if ($report->setting('risk_legend') === true && $report->priorityLegend !== [])
-        @include('reports.partials.priority-legend')
-    @endif
-
     @if ($report->setting('summary_table') === true)
         @include('reports.partials.findings-summary')
     @endif

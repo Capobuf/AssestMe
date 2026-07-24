@@ -286,6 +286,20 @@ it('returns row-numbered completion errors and enforces the assessment lifecycle
         ->toThrow(ValidationException::class);
 });
 
+it('refuses to complete a finding with more than three solutions without deleting data', function (): void {
+    $assessment = Assessment::factory()->create();
+    $finding = app(CopyTemplateToAssessment::class)($assessment, FindingTemplate::query()->firstOrFail());
+    $finding->update(['scope_type' => ScopeType::Organization, 'scope_description' => null]);
+    foreach (range(1, 3) as $number) {
+        createFindingSolution($finding, "alternativa-{$number}");
+    }
+
+    expect(fn () => app(CompleteAssessment::class)($assessment->fresh()))
+        ->toThrow(ValidationException::class)
+        ->and($finding->fresh()->solutions()->count())->toBe(4)
+        ->and($assessment->fresh()->status)->toBe(AssessmentStatus::Draft);
+});
+
 it('rejects a lifecycle transition when the caller holds stale assessment state', function (): void {
     $staleDraft = Assessment::factory()->create();
     Assessment::query()->whereKey($staleDraft)->update(['status' => AssessmentStatus::Archived]);

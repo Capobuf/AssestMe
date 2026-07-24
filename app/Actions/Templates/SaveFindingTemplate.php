@@ -40,7 +40,7 @@ final class SaveFindingTemplate
             'default_priority_level_id' => ['nullable', 'integer', 'exists:priority_levels,id'],
             'priority_rationale' => ['nullable', 'string', 'max:20000'],
             'is_enabled' => ['required', 'boolean'],
-            'solutions' => ['required', 'array', 'min:1'],
+            'solutions' => ['required', 'array', 'min:1', 'max:3'],
             'solutions.*.id' => ['nullable', 'integer'],
             'solutions.*.external_id' => ['required', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/', 'distinct'],
             'solutions.*.title' => ['required', 'string', 'max:255'],

@@ -133,7 +133,7 @@ final class SaveFindingDetails
             'status' => ['required', Rule::enum(FindingStatus::class)],
             'include_in_report' => ['required', 'boolean'],
             'resolution_notes' => ['nullable', 'string', 'max:20000'],
-            'solutions' => ['array'],
+            'solutions' => ['array', 'max:3'],
             'solutions.*.id' => ['nullable', 'integer', 'distinct'],
             'solutions.*.external_key' => ['nullable', 'string', 'max:160'],
             'solutions.*.title' => ['required', 'string', 'max:255'],

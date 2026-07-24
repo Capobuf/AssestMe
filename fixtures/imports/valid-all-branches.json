@@ -153,40 +153,6 @@
           "sort_order": 1
         },
         {
-          "external_id": "analysis",
-          "title": "Analisi preliminare",
-          "description": "Descrizione operativa per analisi preliminare.",
-          "comparison_notes": null,
-          "effort": "moderate",
-          "effort_notes": "Fixture destinata alla validazione dei rami dello schema.",
-          "estimate_type": "requires_analysis",
-          "amount_min": null,
-          "amount_max": null,
-          "currency_code": null,
-          "billing_frequency": "one_off",
-          "custom_billing_frequency": null,
-          "estimate_notes": "Valore di prova per importazione e formattazione.",
-          "recommended": false,
-          "sort_order": 2
-        },
-        {
-          "external_id": "variable",
-          "title": "Soluzione variabile",
-          "description": "Descrizione operativa per soluzione variabile.",
-          "comparison_notes": null,
-          "effort": "moderate",
-          "effort_notes": "Fixture destinata alla validazione dei rami dello schema.",
-          "estimate_type": "variable",
-          "amount_min": null,
-          "amount_max": null,
-          "currency_code": null,
-          "billing_frequency": "one_off",
-          "custom_billing_frequency": null,
-          "estimate_notes": "Valore di prova per importazione e formattazione.",
-          "recommended": false,
-          "sort_order": 3
-        },
-        {
           "external_id": "none",
           "title": "Nessun costo diretto",
           "description": "Descrizione operativa per nessun costo diretto.",
@@ -201,7 +167,7 @@
           "custom_billing_frequency": null,
           "estimate_notes": "Valore di prova per importazione e formattazione.",
           "recommended": false,
-          "sort_order": 4
+          "sort_order": 2
         }
       ]
     },
@@ -236,6 +202,23 @@
           "estimate_notes": "Valore di prova per importazione e formattazione.",
           "recommended": true,
           "sort_order": 0
+        },
+        {
+          "external_id": "analysis",
+          "title": "Analisi preliminare",
+          "description": "Descrizione operativa per analisi preliminare.",
+          "comparison_notes": null,
+          "effort": "moderate",
+          "effort_notes": "Fixture destinata alla validazione dei rami dello schema.",
+          "estimate_type": "requires_analysis",
+          "amount_min": null,
+          "amount_max": null,
+          "currency_code": null,
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Valore di prova per importazione e formattazione.",
+          "recommended": false,
+          "sort_order": 1
         }
       ]
     },
@@ -270,6 +253,23 @@
           "estimate_notes": "Valore di prova per importazione e formattazione.",
           "recommended": true,
           "sort_order": 0
+        },
+        {
+          "external_id": "variable",
+          "title": "Soluzione variabile",
+          "description": "Descrizione operativa per soluzione variabile.",
+          "comparison_notes": null,
+          "effort": "moderate",
+          "effort_notes": "Fixture destinata alla validazione dei rami dello schema.",
+          "estimate_type": "variable",
+          "amount_min": null,
+          "amount_max": null,
+          "currency_code": null,
+          "billing_frequency": "one_off",
+          "custom_billing_frequency": null,
+          "estimate_notes": "Valore di prova per importazione e formattazione.",
+          "recommended": false,
+          "sort_order": 1
         }
       ]
     }

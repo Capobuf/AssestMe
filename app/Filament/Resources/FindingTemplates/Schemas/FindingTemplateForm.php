@@ -67,9 +67,11 @@ final class FindingTemplateForm
                         TextInput::make('external_id')->label(__('assestme.templates.fields.external_id'))->disabled()->dehydrated()->maxLength(160),
                     ])
                     ->minItems(1)
+                    ->maxItems(3)
                     ->defaultItems(1)
                     ->reorderable()
                     ->columns(['default' => 1, 'md' => 2])
+                    ->helperText(__('assestme.templates.solutions_help'))
                     ->required(),
             ])->columnSpanFull(),
             Section::make(__('assestme.templates.sections.advanced'))

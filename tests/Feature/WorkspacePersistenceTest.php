@@ -85,6 +85,28 @@ function minimalFindingPayload(Finding $finding): array
     ];
 }
 
+/** @return array<string, mixed> */
+function workspaceSolutionPayload(int $number): array
+{
+    return [
+        'title' => "Soluzione {$number}",
+        'description' => "Descrizione completa della soluzione {$number}.",
+        'comparison_notes' => null,
+        'effort_level_id' => null,
+        'effort_notes' => null,
+        'estimate_type' => 'requires_quote',
+        'amount_min' => null,
+        'amount_max' => null,
+        'currency_code' => null,
+        'billing_frequency' => 'one_off',
+        'custom_billing_frequency' => null,
+        'estimate_notes' => null,
+        'sort_order' => $number,
+        'is_recommended' => $number === 1,
+        'is_implemented' => false,
+    ];
+}
+
 it('purges signed save requests older than twenty four hours through the scheduler', function (): void {
     $assessment = Assessment::factory()->create();
     $request = static fn (Carbon $createdAt): array => [
@@ -191,6 +213,33 @@ it('keeps data and version unchanged after finding validation failure', function
         ->toThrow(ValidationException::class)
         ->and($finding->fresh()->title)->toBe('Originale')
         ->and($assessment->fresh()->lock_version)->toBe(0);
+});
+
+it('rejects a fourth finding solution server side without changing the aggregate', function (): void {
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create(['title' => 'Finding con limite']);
+    $payload = minimalFindingPayload($finding);
+    $payload['solutions'] = array_map(workspaceSolutionPayload(...), range(1, 4));
+
+    expect(fn () => app(SaveFindingDetails::class)($finding, findingSaveRequest($assessment, $payload)))
+        ->toThrow(ValidationException::class)
+        ->and($finding->fresh()->solutions()->count())->toBe(0)
+        ->and($finding->fresh()->title)->toBe('Finding con limite')
+        ->and($assessment->fresh()->lock_version)->toBe(0);
+});
+
+it('persists one recommended and two alternative finding solutions', function (): void {
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create();
+    $payload = minimalFindingPayload($finding);
+    $payload['solutions'] = array_map(workspaceSolutionPayload(...), range(1, 3));
+
+    $saved = app(SaveFindingDetails::class)($finding, findingSaveRequest($assessment, $payload))->finding;
+
+    expect($saved->solutions()->count())->toBe(3)
+        ->and($saved->recommendedSolution)->not->toBeNull()
+        ->and($saved->recommendedSolution?->title)->toBe('Soluzione 1')
+        ->and($saved->implementedSolution)->toBeNull();
 });
 
 it('reorders the complete finding set deterministically and increments version', function (): void {

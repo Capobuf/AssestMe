@@ -15,6 +15,7 @@ use App\Models\Finding;
 use App\Models\FindingTemplate;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
+use Filament\Forms\Components\Repeater;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -123,6 +124,23 @@ it('selects one persisted finding and loads its complete inspector state', funct
         ->assertSet('selectedFindingId', $finding->id)
         ->assertSet('findingData.title', $finding->title)
         ->assertSee(__('assestme.workspace.inspector.description'));
+});
+
+it('limits the finding solution repeater to three items with clear guidance', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $this->actingAs($administrator);
+
+    $component = Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->assertSee(__('assestme.templates.solutions_help'));
+    $repeater = $component->instance()->getSchema('findingEditor')?->getComponent(
+        static fn (mixed $field): bool => $field instanceof Repeater && $field->getName() === 'solutions',
+    );
+
+    expect($repeater)->toBeInstanceOf(Repeater::class)
+        ->and($repeater?->getMaxItems())->toBe(3);
 });
 
 it('persists main editor and contextual property changes through one signed finding save', function (): void {

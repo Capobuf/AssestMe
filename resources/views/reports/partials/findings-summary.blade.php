@@ -3,7 +3,7 @@
 <section class="findings-summary-section">
     <table class="section-heading">
         <colgroup>
-            <col style="width: 20mm">
+            <col style="width: 24mm">
             <col>
         </colgroup>
         <tr>

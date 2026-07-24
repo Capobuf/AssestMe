@@ -149,6 +149,43 @@ it('renders a single recommended solution or ordered alternatives', function (bo
     'multiple solutions' => [true],
 ]);
 
+it('lets an oversized alternative flow across pages without truncation or empty pages', function (): void {
+    [$assessment, $finding] = editorialPdfReportReadyAssessment();
+    $recommended = editorialPdfReportKeepOnlyRecommendedSolution($finding);
+    $alternative = editorialPdfReportAddAlternative($recommended, 'Alternativa estesa multipagina', 2);
+    $alternative->update([
+        'description' => 'INIZIO ALTERNATIVA ESTESA. '
+            .str_repeat('La procedura descrive responsabilità, verifiche, dipendenze e criteri di accettazione operativa. ', 180)
+            .'FINE ALTERNATIVA ESTESA.',
+        'comparison_notes' => 'Il confronto resta completo anche quando il contenuto deve proseguire nella pagina successiva.',
+    ]);
+    editorialPdfReportSettings([
+        'cover' => false,
+        'content_index' => false,
+        'risk_legend' => false,
+        'summary_table' => false,
+        'methodology' => false,
+        'disclaimer' => false,
+        'signature_block' => false,
+        'repeated_header_footer' => true,
+        'alternative_solutions' => true,
+        'new_page_per_finding' => false,
+    ]);
+
+    $result = editorialPdfReportRenderAndGenerate($assessment->fresh());
+
+    expect($result['text'])->toContain(
+        'INIZIO ALTERNATIVA ESTESA.',
+        'FINE ALTERNATIVA ESTESA.',
+        'Il confronto resta completo anche quando il contenuto deve proseguire nella pagina successiva.',
+    )
+        ->and(count($result['pages']))->toBeGreaterThanOrEqual(2);
+
+    foreach ($result['pages'] as $page) {
+        expect(mb_strlen($page))->toBeGreaterThan(80);
+    }
+});
+
 it('keeps page chrome titles risk evaluation and assets in non-overlapping editorial flow', function (): void {
     [$assessment, $finding] = editorialPdfReportReadyAssessment();
     $site = Site::factory()->for($assessment->client)->create(['name' => 'Sede Composizione']);
@@ -175,8 +212,8 @@ it('keeps page chrome titles risk evaluation and assets in non-overlapping edito
         ->toContain(
             '@page { margin: 13mm 17mm 23mm 20mm; }',
             '.section-heading__number, .section-heading__title { vertical-align: top; }',
-            '.section-heading__number { color: #111111; font-size: 44pt; font-weight: bold; line-height: 0.9; width: 20mm;',
-            '.section-heading__title { font-size: 25pt; font-weight: bold; line-height: 1.08; padding-top: 0;',
+            '.section-heading { border-bottom: 0; margin: 0 0 5mm; table-layout: auto; }',
+            'border-left: 0.7mm solid',
             '.finding-title--default { font-size: 26pt; }',
             '.finding-title--medium { font-size: 22pt; }',
             '.finding-title--compact { font-size: 19pt; }',
@@ -184,6 +221,13 @@ it('keeps page chrome titles risk evaluation and assets in non-overlapping edito
             '.finding-evidence { page-break-before: always; padding-top: 12mm; }',
             'class="associated-assets__first"',
         )
+        ->and($html)->toContain(
+            '<col style="width: 24mm">',
+            __('assestme.reports.document.assessment_overview'),
+            'class="finding-meta__token"',
+        )
+        ->and(__('assestme.reports.document.assessment_overview'))->toBe('Panoramica Assessment')
+        ->and($normalizedHtml)->not->toContain('.section-heading__title::after')
         ->and($normalizedHtml)->not->toMatch('/margin:\s*-\d/u')
         ->and($normalizedHtml)->not->toContain('background: #FFFFFF;', '<div class="page-break"></div>')
         ->and($articleMatch)->toHaveKey(1)
@@ -233,8 +277,9 @@ it('uses the detailed priority legend without row rules when descriptions are en
     [$assessment] = editorialPdfReportReadyAssessment();
     editorialPdfReportSettings(['show_priority_descriptions' => true]);
 
-    $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh());
-    $html = view('reports.assessment', ['report' => $snapshot])->render();
+    $result = editorialPdfReportRenderAndGenerate($assessment->fresh());
+    $snapshot = $result['snapshot'];
+    $html = $result['html'];
     $normalizedHtml = editorialPdfReportNormalizeText($html);
 
     expect($html)->toContain('class="priority-legend priority-legend--detailed"')
@@ -298,17 +343,43 @@ it('uses font glyphs instead of CSS squares for priority and status markers', fu
     [$assessment, $finding] = editorialPdfReportReadyAssessment();
     editorialPdfReportSettings(['show_priority_descriptions' => false]);
 
-    $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh());
-    $html = view('reports.assessment', ['report' => $snapshot])->render();
+    $result = editorialPdfReportRenderAndGenerate($assessment->fresh());
+    $snapshot = $result['snapshot'];
+    $html = $result['html'];
     $normalizedHtml = editorialPdfReportNormalizeText($html);
 
     expect($html)->toContain(
         '<span class="priority-glyph" style="color: '.$snapshot->findings[0]->priorityColor.'">●</span>',
-        '<span class="status-glyph">○</span>',
+        '<span class="finding-meta__token">○&nbsp;'.mb_strtoupper($snapshot->findings[0]->statusLabel).'</span>',
     )
         ->and($html)->not->toContain('kpi__marker', 'priority-marker', 'priority-legend__bar')
         ->and($normalizedHtml)->not->toMatch('/\\.(?:kpi__marker|priority-marker)\\s*\\{[^}]*background/u')
+        ->and($result['text'])->toContain('○ '.mb_strtoupper($snapshot->findings[0]->statusLabel))
         ->and($finding->status->value)->toBe('open');
+});
+
+it('uses the report primary color and editorial hierarchy for the management note', function (): void {
+    [$assessment, $finding] = editorialPdfReportReadyAssessment();
+    $finding->update(['entrepreneur_notes' => 'Decisione imprenditoriale da assumere con priorità operativa.']);
+    editorialPdfReportSettings(['primary_color' => '#135E75']);
+
+    $result = editorialPdfReportRenderAndGenerate($assessment->fresh());
+    preg_match('/<section class="management-note">(.*?)<\/section>/s', $result['html'], $noteMatch);
+    $normalizedHtml = editorialPdfReportNormalizeText($result['html']);
+
+    expect($noteMatch)->toHaveKey(1)
+        ->and($noteMatch[1])->toContain(
+            __('assestme.reports.document.entrepreneur_notes'),
+            'Decisione imprenditoriale da assumere con priorità operativa.',
+        )
+        ->and($result['html'])->not->toContain(
+            '<section class="management-note" style=',
+            'border-left-color: '.$result['snapshot']->findings[0]->priorityColor,
+        )
+        ->and($normalizedHtml)->toContain(
+            '.management-note { background: #F3F3EF; border-left: 0.8mm solid #135E75;',
+            '.management-note .pre-line { font-size: 9.75pt; line-height: 1.48; }',
+        );
 });
 
 it('maps every persisted finding status to the approved editorial glyph', function (
@@ -325,7 +396,9 @@ it('maps every persisted finding status to the approved editorial glyph', functi
     $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh());
     $html = view('reports.assessment', ['report' => $snapshot])->render();
 
-    expect(substr_count($html, '<span class="status-glyph">'.$glyph.'</span>'))->toBeGreaterThanOrEqual(2)
+    expect($html)->toContain(
+        '<span class="finding-meta__token">'.$glyph.'&nbsp;'.mb_strtoupper($snapshot->findings[0]->statusLabel).'</span>',
+    )
         ->and($snapshot->findings[0]->status)->toBe($status);
 })->with([
     'open' => ['open', '○'],
@@ -565,6 +638,27 @@ it('renders associated assets only from the report DTO fields', function (bool $
     'with one complete asset' => [true],
 ]);
 
+it('prints an asset name and matching type only once case-insensitively', function (): void {
+    [$assessment, $finding] = editorialPdfReportReadyAssessment();
+    $asset = Asset::factory()->for($assessment->client)->create([
+        'asset_type_id' => AssetType::query()->where('name', 'NAS')->firstOrFail()->getKey(),
+        'name' => 'nas',
+        'manufacturer' => null,
+        'model' => null,
+        'hostname' => null,
+        'ip_address' => null,
+    ]);
+    $finding->assets()->attach($asset);
+
+    $result = editorialPdfReportRenderAndGenerate($assessment->fresh());
+    preg_match('/<section class="asset-details">(.*?)<\/section>/s', $result['html'], $assetMatch);
+
+    expect($assetMatch)->toHaveKey(1)
+        ->and(substr_count(mb_strtolower($assetMatch[1]), '>nas<'))->toBe(1)
+        ->and($assetMatch[1])->not->toContain('asset-details__type')
+        ->and($result['text'])->toContain('nas');
+});
+
 it('honors the technical notes presentation setting', function (bool $enabled): void {
     [$assessment, $finding] = editorialPdfReportReadyAssessment();
     $finding->update(['technical_notes' => 'Nota tecnica editoriale condizionale']);
@@ -718,7 +812,7 @@ function editorialPdfReportKeepOnlyRecommendedSolution(Finding $finding): Findin
     return $recommended->fresh();
 }
 
-function editorialPdfReportAddAlternative(FindingSolution $source, string $title, int $sortOrder): void
+function editorialPdfReportAddAlternative(FindingSolution $source, string $title, int $sortOrder): FindingSolution
 {
     $alternative = $source->replicate();
     $alternative->external_key = 'editorial-alternative-'.$sortOrder;
@@ -727,6 +821,8 @@ function editorialPdfReportAddAlternative(FindingSolution $source, string $title
     $alternative->comparison_notes = 'Confronto '.$title;
     $alternative->sort_order = $sortOrder;
     $alternative->save();
+
+    return $alternative->refresh();
 }
 
 /**

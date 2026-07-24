@@ -139,7 +139,10 @@ final class ReportSettingsPreviewTest extends DuskTestCase
             $browser
                 ->assertSeeIn('[data-dusk="report-preview-internal"]', 'Header interno Dusk')
                 ->assertSeeIn('[data-dusk="report-preview-internal"]', 'Footer interno Dusk')
+                ->assertSeeIn('[data-dusk="report-preview-section-title"]', 'Panoramica Assessment')
                 ->assertSeeIn('[data-dusk="report-preview-priority-legend"]', '● Bassa')
+                ->assertSeeIn('[data-dusk="report-preview-recommended-solution"]', 'SOLUZIONE RACCOMANDATA')
+                ->assertSeeIn('[data-dusk="report-preview-asset"]', 'NAS')
                 ->assertSeeIn('[data-dusk="report-preview-risk-title"]', 'VALUTAZIONE DEL RISCHIO')
                 ->assertSeeIn('[data-dusk="report-preview-risk"]', 'CONSEGUENZA')
                 ->assertSeeIn('[data-dusk="report-preview-risk"]', 'PROBABILITÀ')
@@ -151,14 +154,26 @@ final class ReportSettingsPreviewTest extends DuskTestCase
                 const kpis = document.querySelector('[data-dusk="report-preview-kpis"]');
                 const legend = document.querySelector('[data-dusk="report-preview-priority-legend"]');
                 const risk = document.querySelector('[data-dusk="report-preview-risk"]');
+                const information = document.querySelector('[data-dusk="report-preview-information"]');
+                const note = document.querySelector('.assestme-report-preview__note');
+                const recommended = document.querySelector('[data-dusk="report-preview-recommended-solution"]');
+                const status = document.querySelector('.assestme-report-preview__status');
+                const numberRect = number?.getBoundingClientRect();
+                const titleRect = title?.getBoundingClientRect();
 
                 return {
                     numberVerticalAlign: number === null ? null : window.getComputedStyle(number).verticalAlign,
                     titleVerticalAlign: title === null ? null : window.getComputedStyle(title).verticalAlign,
                     titlePaddingTop: title === null ? null : window.getComputedStyle(title).paddingTop,
+                    titleBorderLeft: title === null ? null : window.getComputedStyle(title).borderLeftWidth,
+                    numberTitleGap: numberRect === undefined || titleRect === undefined ? null : titleRect.left - numberRect.right,
                     kpiBorderTop: kpis === null ? null : window.getComputedStyle(kpis).borderTopWidth,
                     kpiBorderBottom: kpis === null ? null : window.getComputedStyle(kpis).borderBottomWidth,
                     legendBorderBottom: legend === null ? null : window.getComputedStyle(legend).borderBottomWidth,
+                    informationBackground: information === null ? null : window.getComputedStyle(information).backgroundColor,
+                    noteBorderColor: note === null ? null : window.getComputedStyle(note).borderLeftColor,
+                    recommendedBorderLeft: recommended === null ? null : window.getComputedStyle(recommended).borderLeftWidth,
+                    statusWhiteSpace: status === null ? null : window.getComputedStyle(status).whiteSpace,
                     riskColumns: risk?.children.length ?? null,
                 };
                 JS);
@@ -166,9 +181,15 @@ final class ReportSettingsPreviewTest extends DuskTestCase
             Assert::assertSame('top', $editorialGeometry[0]['numberVerticalAlign'] ?? null);
             Assert::assertSame('top', $editorialGeometry[0]['titleVerticalAlign'] ?? null);
             Assert::assertSame('0px', $editorialGeometry[0]['titlePaddingTop'] ?? null);
+            Assert::assertNotSame('0px', $editorialGeometry[0]['titleBorderLeft'] ?? null);
+            Assert::assertEqualsWithDelta(0, $editorialGeometry[0]['numberTitleGap'] ?? null, 1);
             Assert::assertSame('0px', $editorialGeometry[0]['kpiBorderTop'] ?? null);
             Assert::assertSame('0px', $editorialGeometry[0]['kpiBorderBottom'] ?? null);
             Assert::assertSame('0px', $editorialGeometry[0]['legendBorderBottom'] ?? null);
+            Assert::assertSame('rgb(243, 243, 239)', $editorialGeometry[0]['informationBackground'] ?? null);
+            Assert::assertSame('rgb(180, 35, 24)', $editorialGeometry[0]['noteBorderColor'] ?? null);
+            Assert::assertNotSame('0px', $editorialGeometry[0]['recommendedBorderLeft'] ?? null);
+            Assert::assertSame('nowrap', $editorialGeometry[0]['statusWhiteSpace'] ?? null);
             Assert::assertSame(3, $editorialGeometry[0]['riskColumns'] ?? null);
 
             $severeLogs = array_values(array_filter(

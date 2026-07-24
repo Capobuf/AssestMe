@@ -57,7 +57,7 @@
         background: #FFFFFF;
         border: 1px solid #D7D7D2;
         color: #111111;
-        font-family: Arial, sans-serif;
+        font-family: "DejaVu Sans", Arial, sans-serif;
         min-height: 31rem;
         padding: 1rem;
     }
@@ -84,16 +84,18 @@
     .assestme-report-preview__client-brand { border-left: 2px solid var(--preview-accent); font-size: 0.58rem; margin-top: 0.65rem; padding-left: 0.4rem; }
     .assestme-report-preview__brand { font-size: 0.7rem; font-weight: 700; }
     .assestme-report-preview__internal-header { border-bottom: 1px solid #D7D7D2; font-size: 0.54rem; padding-bottom: 0.3rem; }
-    .assestme-report-preview__section { display: table; margin-top: 1.25rem; width: 100%; }
-    .assestme-report-preview__section-number { display: table-cell; font-size: 2.2rem; font-weight: 800; line-height: 1; vertical-align: top; width: 2.6rem; }
-    .assestme-report-preview__section-title { display: table-cell; font-size: 1.2rem; font-weight: 800; line-height: 1.05; padding-top: 0; vertical-align: top; }
-    .assestme-report-preview__section-title::after { border-top: 2px solid var(--preview-accent); content: ""; display: block; margin-top: 0.35rem; width: 1.4rem; }
-    .assestme-report-preview__kpis { border: 0; display: table; margin-top: 0.8rem; width: 100%; }
-    .assestme-report-preview__kpi { border-left: 1px solid #D7D7D2; display: table-cell; padding: 0.45rem; }
+    .assestme-report-preview__section { display: table; margin-top: 1rem; width: 100%; }
+    .assestme-report-preview__section-number { display: table-cell; font-size: 2rem; font-weight: 800; line-height: 1; padding-right: 0.35rem; vertical-align: top; width: 2.2rem; }
+    .assestme-report-preview__section-title { border-left: 2px solid var(--preview-accent); display: table-cell; font-size: 1.15rem; font-weight: 800; line-height: 1.05; padding: 0 0 0 0.55rem; vertical-align: top; }
+    .assestme-report-preview__kpis { border: 0; display: table; margin-top: 0.6rem; width: 100%; }
+    .assestme-report-preview__kpi { border-left: 1px solid #D7D7D2; display: table-cell; padding: 0.35rem 0.45rem; }
     .assestme-report-preview__kpi:first-child { border-left: 0; }
     .assestme-report-preview__kpi strong { display: block; font-size: 1rem; }
     .assestme-report-preview__kpi span { color: #666666; font-size: 0.48rem; text-transform: uppercase; }
-    .assestme-report-preview__legend { display: table; font-size: 0.52rem; margin-top: 0.8rem; width: auto; }
+    .assestme-report-preview__information { background: #F3F3EF; display: table; font-size: 0.55rem; margin-top: 0.55rem; table-layout: fixed; width: 100%; }
+    .assestme-report-preview__information > span { display: table-cell; padding: 0.4rem; width: 50%; }
+    .assestme-report-preview__information strong { color: #666666; display: block; font-size: 0.44rem; letter-spacing: 0.06em; text-transform: uppercase; }
+    .assestme-report-preview__legend { display: table; font-size: 0.52rem; margin-top: 0.55rem; width: auto; }
     .assestme-report-preview__legend > strong,
     .assestme-report-preview__legend > span { border: 0; display: table-cell; padding-right: 0.7rem; white-space: nowrap; }
     .assestme-report-preview__legend > strong { color: #666666; font-size: 0.46rem; letter-spacing: 0.07em; text-transform: uppercase; }
@@ -102,8 +104,12 @@
     .assestme-report-preview__finding-number { border-top: 1px solid #111111; display: table-cell; font-size: 1.1rem; font-weight: 800; padding: 0.45rem; width: 2rem; }
     .assestme-report-preview__finding-copy { border-top: 1px solid #111111; display: table-cell; font-size: 0.58rem; padding: 0.45rem; }
     .assestme-report-preview__finding-copy strong { display: block; font-size: 0.68rem; }
-    .assestme-report-preview__note { background: #F3F3EF; border-left: 3px solid var(--preview-accent); font-size: 0.58rem; margin: 0.9rem 0; padding: 0.6rem; }
-    .assestme-report-preview__note strong { display: block; font-size: 0.48rem; letter-spacing: 0.05em; margin-bottom: 0.25rem; text-transform: uppercase; }
+    .assestme-report-preview__status { display: inline-block; white-space: nowrap; }
+    .assestme-report-preview__note { background: #F3F3EF; border-left: 3px solid var(--preview-accent); font-size: 0.62rem; line-height: 1.45; margin: 0.7rem 0; padding: 0.55rem 0.65rem; }
+    .assestme-report-preview__note strong { color: var(--preview-accent); display: block; font-size: 0.48rem; letter-spacing: 0.05em; margin-bottom: 0.25rem; text-transform: uppercase; }
+    .assestme-report-preview__solution { border-left: 2px solid var(--preview-accent); font-size: 0.55rem; margin-top: 0.65rem; padding-left: 0.5rem; }
+    .assestme-report-preview__solution strong { display: block; font-size: 0.46rem; letter-spacing: 0.06em; text-transform: uppercase; }
+    .assestme-report-preview__solution-title { font-size: 0.68rem; font-weight: 700; margin: 0.2rem 0; }
     .assestme-report-preview__scope { font-size: 0.55rem; margin-top: 0.8rem; }
     .assestme-report-preview__scope strong,
     .assestme-report-preview__risk strong { color: #666666; display: block; font-size: 0.45rem; letter-spacing: 0.06em; text-transform: uppercase; }
@@ -115,6 +121,9 @@
     .assestme-report-preview__metrics { border-bottom: 1px solid #D7D7D2; border-top: 1px solid #D7D7D2; display: table; font-size: 0.55rem; width: 100%; }
     .assestme-report-preview__metrics span { border: 0; display: table-cell; padding: 0.4rem; }
     .assestme-report-preview__metrics span + span { border-left: 1px solid #D7D7D2; }
+    .assestme-report-preview__asset { border-top: 1px solid #D7D7D2; font-size: 0.52rem; margin-top: 0.65rem; padding-top: 0.35rem; }
+    .assestme-report-preview__asset strong { display: block; font-size: 0.6rem; }
+    .assestme-report-preview__asset span { color: #666666; display: block; margin-top: 0.1rem; }
     .assestme-report-preview__footer { border-bottom: 0; border-top: 1px solid #D7D7D2; color: #666666; font-weight: 400; margin-top: 1rem; padding: 0.35rem 0 0; }
     .assestme-report-preview__flags { color: #666666; font-size: 0.48rem; margin-top: 0.8rem; }
     .assestme-report-preview[data-preview-page="cover"] [data-dusk="report-preview-internal"],
@@ -189,6 +198,10 @@
                 <span><span class="assestme-report-preview__glyph" style="color: #B42318">●</span> {{ __('assestme.settings.preview.high_priority') }}</span>
             </div>
         </div>
+        <div class="assestme-report-preview__information" data-dusk="report-preview-information">
+            <span><strong>{{ __('assestme.reports.document.client') }}</strong>{{ $company }}</span>
+            <span><strong>{{ __('assestme.reports.document.assessment_date') }}</strong>{{ __('assestme.settings.preview.date') }}</span>
+        </div>
 
         @if ($get('risk_legend') === true)
             <div class="assestme-report-preview__legend" data-dusk="report-preview-priority-legend">
@@ -207,8 +220,7 @@
                     <span class="assestme-report-preview__glyph" style="color: #B42318">●</span>
                     {{ __('assestme.settings.preview.priority') }}
                     &nbsp;&nbsp;
-                    <span class="assestme-report-preview__glyph">○</span>
-                    {{ __('assestme.settings.preview.status') }}
+                    <span class="assestme-report-preview__status"><span class="assestme-report-preview__glyph">○</span>&nbsp;{{ __('assestme.settings.preview.status') }}</span>
                 </div>
             </div>
         @endif
@@ -216,6 +228,12 @@
         <div class="assestme-report-preview__note">
             <strong>{{ __('assestme.settings.preview.management_note') }}</strong>
             {{ __('assestme.settings.preview.management_note_text') }}
+        </div>
+
+        <div class="assestme-report-preview__solution" data-dusk="report-preview-recommended-solution">
+            <strong>{{ __('assestme.reports.document.recommended_solution') }}</strong>
+            <div class="assestme-report-preview__solution-title">{{ __('assestme.settings.preview.solution_title') }}</div>
+            {{ __('assestme.settings.preview.solution_text') }}
         </div>
 
         <div class="assestme-report-preview__scope">
@@ -244,6 +262,10 @@
             @if ($get('costs') === true)
                 <span>{{ __('assestme.settings.preview.estimate') }}</span>
             @endif
+        </div>
+        <div class="assestme-report-preview__asset" data-dusk="report-preview-asset">
+            <strong>{{ __('assestme.settings.preview.asset_name') }}</strong>
+            <span>{{ __('assestme.settings.preview.asset_metadata') }}</span>
         </div>
 
         <div class="assestme-report-preview__flags">

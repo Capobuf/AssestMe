@@ -23,12 +23,10 @@
         <table class="finding-meta">
             <tr>
                 <td class="finding-meta__priority">
-                    <span class="finding-meta__priority-bar" style="background-color: {{ $finding->priorityColor }}"></span>
-                    {{ mb_strtoupper($finding->priorityLabel) }}
+                    <span class="finding-meta__token"><span class="finding-meta__priority-bar" style="background-color: {{ $finding->priorityColor }}"></span>{{ mb_strtoupper($finding->priorityLabel) }}</span>
                 </td>
                 <td>
-                    <span class="status-glyph">{{ $statusGlyph($finding->status) }}</span>
-                    {{ mb_strtoupper($finding->statusLabel) }}
+                    <span class="finding-meta__token">{{ $statusGlyph($finding->status) }}&nbsp;{{ mb_strtoupper($finding->statusLabel) }}</span>
                 </td>
                 @if (filled($finding->category))
                     <td>{{ mb_strtoupper($finding->category) }}</td>
@@ -38,7 +36,7 @@
     </header>
 
     @if (filled($finding->entrepreneurNotes))
-        <section class="management-note" style="border-left-color: {{ $finding->priorityColor }}">
+        <section class="management-note">
             <div class="management-note__label">{{ __('assestme.reports.document.entrepreneur_notes') }}</div>
             <div class="pre-line">{{ $finding->entrepreneurNotes }}</div>
         </section>
@@ -128,8 +126,12 @@
     @endif
 
     <section class="finding-scope">
-        <div class="label">{{ __('assestme.reports.document.scope') }}</div>
-        <div class="pre-line">{{ $scopeValue }}</div>
+        <table class="finding-scope__row">
+            <tr>
+                <td><span class="label">{{ __('assestme.reports.document.scope') }}</span></td>
+                <td><div class="pre-line">{{ $scopeValue }}</div></td>
+            </tr>
+        </table>
     </section>
 
     <section class="risk-evaluation">

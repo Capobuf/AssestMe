@@ -10,6 +10,7 @@ use App\Models\FindingTemplate;
 use App\Models\FindingTemplateSolution;
 use App\Models\User;
 use Database\Seeders\MilestoneOneSeeder;
+use Filament\Forms\Components\Repeater;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
@@ -67,6 +68,23 @@ it('generates deterministic solution collisions inside one template', function (
         ->toBe(['soluzione-raccomandata', 'soluzione-raccomandata-2']);
 });
 
+it('rejects a fourth template solution server side without persisting partial data', function (): void {
+    $payload = findingTemplateData();
+    foreach (range(2, 4) as $number) {
+        $payload['solutions'][] = [
+            ...$payload['solutions'][0],
+            'title' => "Soluzione alternativa {$number}",
+            'is_recommended' => false,
+            'sort_order' => $number - 1,
+        ];
+    }
+
+    expect(fn () => app(SaveFindingTemplate::class)->handle(null, $payload))
+        ->toThrow(ValidationException::class)
+        ->and(FindingTemplate::query()->count())->toBe(0)
+        ->and(FindingTemplateSolution::query()->count())->toBe(0);
+});
+
 it('rolls back a template when recommendations or estimates are invalid', function (array $changes): void {
     $data = array_replace_recursive(findingTemplateData(), $changes);
 
@@ -91,6 +109,18 @@ it('creates a template through its Filament resource', function (): void {
     $component->assertRedirect(FindingTemplateResource::getUrl('edit', ['record' => $created]));
 
     expect($created->exists)->toBeTrue();
+});
+
+it('limits the template solution repeater to three items with clear guidance', function (): void {
+    $this->actingAs(User::factory()->create());
+    $component = Livewire::test(CreateFindingTemplate::class)
+        ->assertSee(__('assestme.templates.solutions_help'));
+    $repeater = $component->instance()->getSchema('form')?->getComponent(
+        static fn (mixed $field): bool => $field instanceof Repeater && $field->getName() === 'solutions',
+    );
+
+    expect($repeater)->toBeInstanceOf(Repeater::class)
+        ->and($repeater?->getMaxItems())->toBe(3);
 });
 
 it('requires authentication for the template library', function (): void {

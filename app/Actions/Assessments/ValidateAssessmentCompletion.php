@@ -65,6 +65,9 @@ final class ValidateAssessmentCompletion
         if ($finding->solutions->isEmpty()) {
             $messages[] = __('assestme.findings.errors.solution_required');
         }
+        if ($finding->solutions->count() > 3) {
+            $messages[] = __('assestme.findings.errors.solution_limit');
+        }
         if ($finding->recommended_solution_id === null
             || $finding->solutions->where('id', $finding->recommended_solution_id)->isEmpty()) {
             $messages[] = __('assestme.findings.errors.recommended_solution_required');

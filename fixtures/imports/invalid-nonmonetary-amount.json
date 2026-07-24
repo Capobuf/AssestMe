@@ -66,7 +66,24 @@
           "estimate_notes": "Valore di prova per importazione e formattazione.",
           "recommended": false,
           "sort_order": 2
-        },
+        }
+      ]
+    },
+    {
+      "external_id": "fixture.non-monetary.more",
+      "title": "Altre stime non monetarie",
+      "category": "Fixture",
+      "problem": "Problema di prova: Altre stime non monetarie.",
+      "entrepreneur_notes": "Nota non tecnica usata per verificare import ed export.",
+      "technical_notes": "Nota tecnica usata esclusivamente nelle fixture.",
+      "default_scope_type": "organization",
+      "default_scope_description": null,
+      "consequence": "significant",
+      "likelihood": "possible",
+      "priority": "moderate",
+      "priority_rationale": "Motivazione di prova coerente con la matrice configurata.",
+      "active": true,
+      "solutions": [
         {
           "external_id": "variable",
           "title": "Soluzione variabile",
@@ -81,8 +98,8 @@
           "billing_frequency": "one_off",
           "custom_billing_frequency": null,
           "estimate_notes": "Valore di prova per importazione e formattazione.",
-          "recommended": false,
-          "sort_order": 3
+          "recommended": true,
+          "sort_order": 0
         },
         {
           "external_id": "none",
@@ -99,7 +116,7 @@
           "custom_billing_frequency": null,
           "estimate_notes": "Valore di prova per importazione e formattazione.",
           "recommended": false,
-          "sort_order": 4
+          "sort_order": 1
         }
       ]
     }

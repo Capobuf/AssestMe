@@ -54,6 +54,7 @@ it('rejects invalid and duplicate input with zero database changes', function (s
     'invalid recommendation' => 'invalid-multiple-recommended.json',
     'duplicate template identifier' => 'invalid-duplicate-external-id.json',
     'invalid custom billing' => 'invalid-custom-billing.json',
+    'invalid non-monetary amount' => 'invalid-nonmonetary-amount.json',
 ]);
 
 it('rejects the removed tags property under schema version one', function (): void {
@@ -69,4 +70,23 @@ it('rejects the removed tags property under schema version one', function (): vo
         'replace',
     ))->toThrow(ValidationException::class)
         ->and(FindingTemplate::query()->count())->toBe(0);
+});
+
+it('rejects a fourth imported solution atomically', function (): void {
+    $payload = json_decode(
+        (string) file_get_contents(base_path('fixtures/imports/valid-all-branches.json')),
+        true,
+        flags: JSON_THROW_ON_ERROR,
+    );
+    $extra = $payload['templates'][2]['solutions'][1];
+    $extra['external_id'] = 'fourth-solution';
+    $extra['title'] = 'Quarta soluzione importata';
+    $payload['templates'][2]['solutions'][] = $extra;
+
+    expect(fn () => app(ImportFindingTemplates::class)(
+        json_encode($payload, JSON_THROW_ON_ERROR),
+        'replace',
+    ))->toThrow(ValidationException::class)
+        ->and(FindingTemplate::query()->count())->toBe(0)
+        ->and(FindingTemplateSolution::query()->count())->toBe(0);
 });

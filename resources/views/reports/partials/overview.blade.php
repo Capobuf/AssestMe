@@ -31,7 +31,7 @@
 <section class="overview">
     <table class="section-heading">
         <colgroup>
-            <col style="width: 20mm">
+            <col style="width: 24mm">
             <col>
         </colgroup>
         <tr>
@@ -39,10 +39,6 @@
             <td class="section-heading__title">{{ __('assestme.reports.document.assessment_overview') }}</td>
         </tr>
     </table>
-
-    @if (filled($report->introduction))
-        <div class="overview__introduction pre-line">{{ $report->introduction }}</div>
-    @endif
 
     <table class="kpi-row">
         <tr>
@@ -61,6 +57,10 @@
             @endforeach
         </tr>
     </table>
+
+    @if (filled($report->introduction))
+        <div class="overview__introduction pre-line">{{ $report->introduction }}</div>
+    @endif
 
     <table class="information-grid">
         @foreach (array_chunk($assessmentInformation, 2) as $row)
@@ -89,6 +89,11 @@
         </section>
     @endif
 
-    @include('reports.partials.consultant-information')
     @include('reports.partials.estimate-note')
+
+    @if ($report->setting('risk_legend') === true && $report->priorityLegend !== [])
+        @include('reports.partials.priority-legend')
+    @endif
+
+    @include('reports.partials.consultant-information')
 </section>

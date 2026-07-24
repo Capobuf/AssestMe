@@ -137,6 +137,8 @@ final class FindingEditorSchema
                             ->reorderable()
                             ->orderColumn('sort_order')
                             ->defaultItems(0)
+                            ->maxItems(3)
+                            ->helperText(__('assestme.templates.solutions_help'))
                             ->disabled(self::isReadOnly(...))
                             ->columnSpanFull(),
                     ]),
