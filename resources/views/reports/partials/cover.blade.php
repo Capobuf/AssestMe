@@ -21,14 +21,6 @@
 @endphp
 
 <section class="cover" data-report-cover>
-    <table class="cover__masthead">
-        <tr>
-            <td>{{ __('assestme.reports.document.report_mark') }}</td>
-            <td class="cover__masthead-right">01</td>
-        </tr>
-    </table>
-    <div class="cover__accent"></div>
-
     <div class="cover__center">
         <h1 class="cover__title">{{ $report->title }}</h1>
 
@@ -67,5 +59,3 @@
         </tr>
     </table>
 </section>
-
-<div class="page-break"></div>

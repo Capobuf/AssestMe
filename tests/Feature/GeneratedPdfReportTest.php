@@ -26,14 +26,59 @@ use Database\Seeders\MilestoneOneSeeder;
 use Database\Seeders\MilestoneTwoSeeder;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Smalot\PdfParser\Parser;
+use Symfony\Component\Process\Process;
 
 beforeEach(function (): void {
     $this->seed(MilestoneOneSeeder::class);
     $this->seed(MilestoneTwoSeeder::class);
     Storage::fake('local');
+});
+
+it('uses WeasyPrint as the only installed production PDF renderer', function (): void {
+    $composer = json_decode((string) file_get_contents(base_path('composer.json')), true, 512, JSON_THROW_ON_ERROR);
+    $lockedPackages = json_decode((string) file_get_contents(base_path('composer.lock')), true, 512, JSON_THROW_ON_ERROR);
+    $packageNames = array_column($lockedPackages['packages'], 'name');
+
+    expect(config('laravel-pdf.driver'))->toBe('weasyprint')
+        ->and($composer['require'])->toHaveKey('pontedilana/php-weasyprint')
+        ->and($composer['require-dev'])->not->toHaveKey('pontedilana/php-weasyprint')
+        ->and($packageNames)->toContain('pontedilana/php-weasyprint')
+        ->and($packageNames)->not->toContain('dompdf/dompdf', 'chrome-php/chrome');
+});
+
+it('produces searchable mixed-orientation pages through the real production action', function (): void {
+    [$assessment, $finding] = createPdfReadyAssessment();
+    $settings = app(ReportSettings::class);
+    $settings->content_index = false;
+    $settings->methodology = false;
+    $settings->disclaimer = false;
+    $settings->signature_block = false;
+    $settings->save();
+
+    $report = app(GenerateAssessmentPdf::class)($assessment);
+    $path = Storage::disk('local')->path($report->file_path);
+    $parsed = (new Parser)->parseFile($path);
+
+    expect($parsed->getPages())->toHaveCount(4);
+    foreach ([1 => 'portrait', 2 => 'portrait', 3 => 'landscape', 4 => 'portrait'] as $page => $orientation) {
+        $process = new Process(['pdfinfo', '-f', (string) $page, '-l', (string) $page, $path]);
+        $process->mustRun();
+        preg_match('/Page\\s+\\d+\\s+size:\\s+([0-9.]+)\\s+x\\s+([0-9.]+)/u', $process->getOutput(), $size);
+        expect($size)->toHaveKeys([1, 2]);
+        $isLandscape = (float) $size[1] > (float) $size[2];
+        expect($isLandscape)->toBe($orientation === 'landscape');
+    }
+
+    $textProcess = new Process(['pdftotext', '-layout', $path, '-']);
+    $textProcess->mustRun();
+    $searchableText = Str::squish($textProcess->getOutput());
+    expect($searchableText)
+        ->toContain($finding->title, 'Quadro generale', 'Riepilogo dei finding')
+        ->and($searchableText)->not->toContain('Pagina 1 di');
 });
 
 it('persists immutable versioned PDF snapshots and downloads the authoritative file', function (): void {
@@ -58,7 +103,7 @@ it('persists immutable versioned PDF snapshots and downloads the authoritative f
         ->and($first->settings_snapshot['primary_color'])->toBe('#2563EB')
         ->and($first->settings_snapshot)->not->toHaveKey('confidentiality_label')
         ->and(file_get_contents($firstPath, false, null, 0, 5))->toBe('%PDF-')
-        ->and($normalizedText)->toContain($finding->title, 'Pagina 1 di')
+        ->and($normalizedText)->toContain($finding->title)
         ->and(substr_count($text, $fixedNote))->toBe(1);
 
     $finding->update(['problem' => 'Problema modificato dopo il primo snapshot.']);
@@ -78,6 +123,8 @@ it('persists immutable versioned PDF snapshots and downloads the authoritative f
         ->assertHeader('x-content-type-options', 'nosniff');
 
     Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->getKey())
+        ->assertSee((180 - mb_strlen($finding->title)).' caratteri rimanenti')
         ->call('setWorkspaceTab', 'generated-files')
         ->assertSee($first->file_name)
         ->assertSee($second->file_name);
@@ -355,7 +402,7 @@ it('renders verified evidence, links, alternatives, branding, scope, and resolut
     $alternative->save();
 
     $finding->update([
-        'problem' => str_repeat('Testo lungo verificabile per il report definitivo. ', 120),
+        'problem' => str_repeat('Testo lungo verificabile per il report definitivo. ', 20),
         'technical_notes' => 'Nota tecnica interna inclusa.',
         'status' => FindingStatus::Resolved,
         'implemented_solution_id' => $recommended->getKey(),
@@ -437,6 +484,79 @@ it('rejects invalid and oversized report logos before creating a report', functi
     'larger than five megabytes' => [str_repeat('x', 5 * 1024 * 1024 + 1), 'Il logo configurato supera il limite di 5 MB.'],
 ]);
 
+it('plans a three-solution resolved finding onto exactly two logical pages with an implemented primary solution', function (): void {
+    [$assessment, $finding] = createPdfReadyAssessment();
+    $recommended = $finding->solutions()->firstOrFail();
+    $implemented = $recommended->replicate();
+    $implemented->external_key = 'implemented-primary';
+    $implemented->title = 'Soluzione implementata primaria';
+    $implemented->description = 'Configurazione già applicata e verificata in produzione.';
+    $implemented->sort_order = 2;
+    $implemented->save();
+    $alternative = $recommended->replicate();
+    $alternative->external_key = 'remaining-alternative';
+    $alternative->title = 'Soluzione alternativa residua';
+    $alternative->description = 'Percorso alternativo mantenuto come opzione successiva.';
+    $alternative->sort_order = 3;
+    $alternative->save();
+    $finding->update([
+        'status' => FindingStatus::Resolved,
+        'implemented_solution_id' => $implemented->getKey(),
+        'resolution_notes' => 'Risoluzione collaudata e chiusa.',
+        'resolved_at' => now(),
+    ]);
+
+    $settings = app(ReportSettings::class);
+    $settings->cover = false;
+    $settings->executive_summary = false;
+    $settings->summary_table = false;
+    $settings->content_index = false;
+    $settings->methodology = false;
+    $settings->disclaimer = false;
+    $settings->signature_block = false;
+    $settings->save();
+
+    $report = app(GenerateAssessmentPdf::class)($assessment->fresh());
+    $path = Storage::disk('local')->path($report->file_path);
+    $pages = (new Parser)->parseFile($path)->getPages();
+    $plan = $report->payload_snapshot['findings'][0]['page_plan'];
+
+    expect($plan['has_second_page'])->toBeTrue()
+        ->and($plan['first_page_solution_ids'])->toBe([$implemented->getKey()])
+        ->and($plan['second_page_solution_ids'])->toBe([$recommended->getKey(), $alternative->getKey()])
+        ->and($pages)->toHaveCount(2)
+        ->and($pages[0]->getText())->toContain('Soluzione implementata primaria')
+        ->and($pages[0]->getText())->not->toContain($recommended->title, $alternative->title)
+        ->and($pages[1]->getText())->toContain(
+            $finding->title,
+            'continua',
+            $recommended->title,
+            $alternative->title,
+            'Risoluzione collaudata e chiusa.',
+        );
+});
+
+it('keeps resolution data immutable while honoring the report visibility setting', function (): void {
+    [$assessment, $finding] = createPdfReadyAssessment();
+    $finding->update([
+        'status' => FindingStatus::Resolved,
+        'implemented_solution_id' => $finding->recommended_solution_id,
+        'resolution_notes' => 'Risoluzione privata da non mostrare.',
+        'resolved_at' => now(),
+    ]);
+    $settings = app(ReportSettings::class);
+    $settings->show_resolution = false;
+    $settings->save();
+
+    $report = app(GenerateAssessmentPdf::class)($assessment->fresh());
+    $path = Storage::disk('local')->path($report->file_path);
+    $text = (new Parser)->parseFile($path)->getText();
+
+    expect($report->settings_snapshot['show_resolution'])->toBeFalse()
+        ->and($report->payload_snapshot['findings'][0]['resolution_notes'])->toBe('Risoluzione privata da non mostrare.')
+        ->and($text)->not->toContain('Risoluzione privata da non mostrare.');
+});
+
 it('generates a parsable definitive PDF with fifty findings inside the operational limits', function (): void {
     $assessment = Assessment::factory()->create([
         'title' => 'Assessment definitivo con cinquanta finding',
@@ -458,11 +578,8 @@ it('generates a parsable definitive PDF with fifty findings inside the operation
     $path = Storage::disk('local')->path($report->file_path);
     $parsed = (new Parser)->parseFile($path);
     $text = $parsed->getText();
-    $contentPageCount = count($parsed->getPages()) - 1;
-
     expect($report->payload_snapshot['findings'])->toHaveCount(50)
         ->and($text)->toContain('Finding definitivo 01', 'Finding definitivo 50')
-        ->and($text)->toContain("Pagina 1 di {$contentPageCount}", "Pagina {$contentPageCount} di {$contentPageCount}")
         ->and(count($parsed->getPages()))->toBeGreaterThanOrEqual(50)
         ->and(filesize($path))->toBeLessThanOrEqual(50 * 1024 * 1024)
         ->and($elapsedSeconds)->toBeLessThanOrEqual(30);

@@ -3,22 +3,14 @@
 @php
     $metadata = array_values(array_filter([
         $asset->site,
-        trim(($asset->manufacturer ?? '').' '.($asset->model ?? '')),
-        $asset->hostname,
+        $asset->manufacturer,
         $asset->ipAddress,
     ], static fn (?string $value): bool => filled($value)));
     $primaryName = $asset->name ?: $asset->type;
-    $showType = filled($asset->type)
-        && filled($asset->name)
-        && strcasecmp(trim((string) $asset->name), trim((string) $asset->type)) !== 0;
 @endphp
 
 <section class="asset-details">
     <div class="asset-details__name">{{ $primaryName }}</div>
-
-    @if ($showType)
-        <div class="asset-details__type">{{ $asset->type }}</div>
-    @endif
 
     @if ($metadata !== [])
         <div class="asset-details__metadata">

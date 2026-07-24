@@ -12,6 +12,7 @@ use App\Models\ConsequenceLevel;
 use App\Models\EffortLevel;
 use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
+use App\Services\Reporting\EditorialLimits;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -27,12 +28,16 @@ final class FindingTemplateForm
     {
         return $schema->columns(1)->components([
             Section::make(__('assestme.templates.sections.finding'))->schema([
-                TextInput::make('title')->label(__('assestme.templates.fields.title'))->required()->maxLength(255),
+                TextInput::make('title')->label(__('assestme.templates.fields.title'))->required()->maxLength(EditorialLimits::FINDING_TITLE)
+                    ->helperText(fn (?string $state): string => self::remaining($state, EditorialLimits::FINDING_TITLE)),
                 Select::make('category_id')->label(__('assestme.templates.fields.category'))->options(fn (): array => Category::query()->where('is_enabled', true)->orderBy('name')->pluck('name', 'id')->all())->searchable()->required(),
                 Toggle::make('is_enabled')->label(__('assestme.common.enabled'))->required()->default(true),
-                Textarea::make('problem')->label(__('assestme.findings.fields.problem'))->required()->rows(5)->maxLength(20000)->columnSpanFull(),
-                Textarea::make('entrepreneur_notes')->label(__('assestme.findings.fields.entrepreneur_notes'))->rows(4)->maxLength(20000)->columnSpanFull(),
-                Textarea::make('technical_notes')->label(__('assestme.templates.fields.technical_notes'))->rows(4)->maxLength(20000)->columnSpanFull(),
+                Textarea::make('problem')->label(__('assestme.findings.fields.problem'))->required()->rows(5)->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('solutions')))['problem'])
+                    ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('solutions')))['problem']))->columnSpanFull(),
+                Textarea::make('entrepreneur_notes')->label(__('assestme.findings.fields.entrepreneur_notes'))->rows(4)->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('solutions')))['entrepreneur_notes'])
+                    ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('solutions')))['entrepreneur_notes']))->columnSpanFull(),
+                Textarea::make('technical_notes')->label(__('assestme.templates.fields.technical_notes'))->rows(4)->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('solutions')))['technical_notes'])
+                    ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('solutions')))['technical_notes']))->columnSpanFull(),
             ])->columns(['default' => 1, 'md' => 2])->columnSpanFull(),
             Section::make(__('assestme.templates.sections.defaults'))->schema([
                 Select::make('default_scope_type')->label(__('assestme.templates.fields.scope'))->options(self::scopeOptions())->required(),
@@ -46,12 +51,16 @@ final class FindingTemplateForm
                 Repeater::make('solutions')
                     ->label(__('assestme.templates.sections.solutions'))
                     ->schema([
-                        TextInput::make('title')->label(__('assestme.templates.fields.title'))->required()->maxLength(255),
+                        TextInput::make('title')->label(__('assestme.templates.fields.title'))->required()->maxLength(EditorialLimits::SOLUTION_TITLE)
+                            ->helperText(fn (?string $state): string => self::remaining($state, EditorialLimits::SOLUTION_TITLE)),
                         Toggle::make('is_recommended')->label(__('assestme.templates.fields.recommended'))->required(),
-                        Textarea::make('description')->label(__('assestme.common.description'))->required()->rows(4)->maxLength(20000)->columnSpanFull(),
+                        Textarea::make('description')->label(__('assestme.common.description'))->required()->rows(4)->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['solution_description'])
+                            ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['solution_description']))->columnSpanFull(),
                         Select::make('effort_level_id')->label(__('assestme.findings.fields.effort'))->options(fn (): array => EffortLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())->searchable(),
-                        Textarea::make('effort_notes')->label(__('assestme.templates.fields.effort_notes'))->rows(3)->maxLength(20000),
-                        Textarea::make('comparison_notes')->label(__('assestme.templates.fields.comparison_notes'))->rows(3)->maxLength(20000),
+                        Textarea::make('effort_notes')->label(__('assestme.templates.fields.effort_notes'))->rows(3)->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['effort_notes'])
+                            ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['effort_notes'])),
+                        Textarea::make('comparison_notes')->label(__('assestme.templates.fields.comparison_notes'))->rows(3)->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['comparison_notes'])
+                            ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['comparison_notes'])),
                         Select::make('estimate_type')->label(__('assestme.findings.fields.estimate_type'))->options(EstimateType::options())->required()->live(),
                         Select::make('billing_frequency')->label(__('assestme.templates.fields.billing_frequency'))->options(self::billingOptions())->required()->default(BillingFrequency::OneOff->value)->live(),
                         TextInput::make('amount_min')->label(__('assestme.templates.fields.amount_min'))->numeric()->minValue(0)
@@ -62,7 +71,8 @@ final class FindingTemplateForm
                             ->visible(fn (Get $get): bool => self::isMonetary($get('estimate_type'))),
                         TextInput::make('custom_billing_frequency')->label(__('assestme.templates.fields.custom_billing'))->maxLength(120)
                             ->visible(fn (Get $get): bool => $get('billing_frequency') === BillingFrequency::Custom->value),
-                        Textarea::make('estimate_notes')->label(__('assestme.findings.fields.estimate_notes'))->rows(3)->maxLength(20000)->columnSpanFull(),
+                        Textarea::make('estimate_notes')->label(__('assestme.findings.fields.estimate_notes'))->rows(3)->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['estimate_notes'])
+                            ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['estimate_notes']))->columnSpanFull(),
                         TextInput::make('sort_order')->label(__('assestme.common.sort_order'))->numeric()->minValue(0)->required()->default(0),
                         TextInput::make('external_id')->label(__('assestme.templates.fields.external_id'))->disabled()->dehydrated()->maxLength(160),
                     ])
@@ -101,5 +111,12 @@ final class FindingTemplateForm
     private static function isMonetary(mixed $estimateType): bool
     {
         return in_array($estimateType, [EstimateType::Exact->value, EstimateType::Range->value], true);
+    }
+
+    private static function remaining(?string $state, int $limit): string
+    {
+        return __('assestme.common.characters_remaining', [
+            'count' => max(0, $limit - mb_strlen((string) $state)),
+        ]);
     }
 }

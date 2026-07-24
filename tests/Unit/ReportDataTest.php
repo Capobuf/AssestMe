@@ -3,15 +3,24 @@
 declare(strict_types=1);
 
 use App\Data\Reports\AssessmentReportData;
+use App\Data\Reports\FindingPagePlanData;
 use App\Data\Reports\ReportEvidenceData;
 use App\Data\Reports\ReportFindingData;
 use App\Data\Reports\ReportPriorityData;
+use App\Data\Reports\ReportSolutionData;
+use App\Services\Reporting\EditorialLimits;
 
 /**
  * @param  list<ReportEvidenceData>  $evidences
+ * @param  list<ReportSolutionData>  $solutions
  */
-function makeReportFindingData(int $id, string $priorityLabel, array $evidences = []): ReportFindingData
-{
+function makeReportFindingData(
+    int $id,
+    string $priorityLabel,
+    array $evidences = [],
+    array $solutions = [],
+    string $problem = 'Problema',
+): ReportFindingData {
     return new ReportFindingData(
         id: $id,
         number: $id,
@@ -31,16 +40,18 @@ function makeReportFindingData(int $id, string $priorityLabel, array $evidences 
         priorityColor: '#111111',
         priorityOverridden: false,
         priorityRationale: null,
-        problem: 'Problema',
+        problem: $problem,
         entrepreneurNotes: null,
         technicalNotes: null,
         status: 'open',
         statusLabel: 'Aperto',
-        solutions: [],
+        solutions: $solutions,
         evidences: $evidences,
         resolutionNotes: null,
         resolvedAt: null,
         resolvedAtLabel: null,
+        pagePlan: new FindingPagePlanData([], [], false),
+        riskMatrix: null,
     );
 }
 
@@ -141,4 +152,63 @@ it('returns included evidence in the original mixed-type order', function (): vo
         ->and($includedEvidence[1]->isImage())->toBeFalse()
         ->and($includedEvidence[2]->isImage())->toBeFalse()
         ->and($includedEvidence[3]->isImage())->toBeTrue();
+});
+
+it('creates deterministic sentence-aware summary excerpts without changing full snapshot text', function (): void {
+    $problem = str_repeat('Contesto operativo completo senza tagli. ', 9)
+        .'Questa frase deve restare fuori dall’estratto ma dentro la scheda.';
+    $solutionDescription = str_repeat('Intervento verificabile e ripetibile. ', 9)
+        .'Dettaglio conclusivo conservato nel payload.';
+    $solution = new ReportSolutionData(
+        10,
+        'Soluzione completa',
+        $solutionDescription,
+        null,
+        'Medio',
+        null,
+        'requires_quote',
+        null,
+        null,
+        null,
+        'one_off',
+        null,
+        null,
+        'Richiede preventivo',
+        true,
+        false,
+        1,
+    );
+    $finding = makeReportFindingData(1, 'Alta', solutions: [$solution], problem: $problem);
+
+    expect($finding->problemExcerpt())->toEndWith('.')
+        ->and(mb_strlen($finding->problemExcerpt()))->toBeLessThanOrEqual(320)
+        ->and($finding->primarySolutionExcerpt())->toEndWith('.')
+        ->and(mb_strlen($finding->primarySolutionExcerpt()))->toBeLessThanOrEqual(280)
+        ->and($finding->toArray()['problem'])->toBe($problem)
+        ->and($finding->toArray()['solutions'][0]['description'])->toBe($solutionDescription);
+});
+
+it('reduces editorial budgets proportionally as solutions increase', function (): void {
+    $one = EditorialLimits::forSolutionCount(1);
+    $two = EditorialLimits::forSolutionCount(2);
+    $three = EditorialLimits::forSolutionCount(3);
+
+    foreach ([
+        'entrepreneur_notes',
+        'problem',
+        'solution_description',
+        'comparison_notes',
+        'effort_notes',
+        'estimate_notes',
+        'technical_notes',
+        'resolution_notes',
+    ] as $field) {
+        expect($one[$field])->toBeGreaterThan($two[$field])
+            ->and($two[$field])->toBeGreaterThan($three[$field]);
+    }
+
+    expect(EditorialLimits::violationsForValues(
+        ['title' => str_repeat('x', EditorialLimits::FINDING_TITLE + 1)],
+        [['title' => 'Soluzione', 'description' => 'Descrizione']],
+    ))->toContain(['field' => 'title', 'limit' => EditorialLimits::FINDING_TITLE]);
 });

@@ -51,7 +51,8 @@ assestme_begin_isolated_environment() {
     export DB_SYNCHRONOUS=NORMAL
     export DB_TRANSACTION_MODE=IMMEDIATE
     export FILESYSTEM_DISK=local
-    export LARAVEL_PDF_DRIVER=dompdf
+    export LARAVEL_PDF_DRIVER=weasyprint
+    export LARAVEL_PDF_WEASYPRINT_BINARY=/usr/bin/weasyprint
     export LARAVEL_STORAGE_PATH="$ASSESTME_TEST_ROOT/storage"
     export LOG_CHANNEL=single
     export QUEUE_CONNECTION=sync

@@ -10,6 +10,7 @@ use App\Models\EffortLevel;
 use App\Models\FindingTemplate;
 use App\Models\FindingTemplateSolution;
 use App\Models\RiskProfile;
+use App\Services\Reporting\EditorialLimits;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use JsonException;
@@ -173,6 +174,21 @@ final class ImportFindingTemplates
         }
 
         foreach ($document['templates'] as $index => $template) {
+            $violations = EditorialLimits::violationsForValues(
+                fields: [
+                    'title' => $template['title'],
+                    'problem' => $template['problem'],
+                    'entrepreneur_notes' => $template['entrepreneur_notes'],
+                    'technical_notes' => $template['technical_notes'],
+                ],
+                solutions: $template['solutions'],
+            );
+            if ($violations !== []) {
+                throw ValidationException::withMessages([
+                    "templates.{$index}.{$violations[0]['field']}" => __('assestme.findings.errors.editorial_limit', $violations[0]),
+                ]);
+            }
+
             $solutionIds = array_column($template['solutions'], 'external_id');
             if (count($solutionIds) !== count(array_unique($solutionIds))) {
                 throw ValidationException::withMessages(["templates.{$index}.solutions" => __('assestme.templates.errors.duplicate_solution')]);

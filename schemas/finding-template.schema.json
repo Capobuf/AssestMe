@@ -60,7 +60,7 @@
         "title": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 255
+          "maxLength": 180
         },
         "category": {
           "type": "string",
@@ -70,7 +70,7 @@
         "problem": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 20000
+          "maxLength": 1400
         },
         "entrepreneur_notes": {
           "$ref": "#/$defs/nullableLongText"
@@ -185,12 +185,12 @@
         "title": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 255
+          "maxLength": 140
         },
         "description": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 20000
+          "maxLength": 1000
         },
         "comparison_notes": {
           "$ref": "#/$defs/nullableLongText"

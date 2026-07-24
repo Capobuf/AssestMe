@@ -1,7 +1,7 @@
 {{-- 
     AssestMe base report template.
 
-    This template intentionally uses DOMPDF-compatible layout primitives.
+    This historical scaffold is not the production report view.
     `$report` must be an immutable App\Data\Reports\AssessmentReportData instance.
     Every string rendered from persisted content is escaped.
 --}}

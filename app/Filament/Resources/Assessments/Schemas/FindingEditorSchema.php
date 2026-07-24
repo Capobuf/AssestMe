@@ -17,6 +17,7 @@ use App\Models\Finding;
 use App\Models\FindingSolution;
 use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
+use App\Services\Reporting\EditorialLimits;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -45,18 +46,21 @@ final class FindingEditorSchema
                     ->schema([
                         TextInput::make('title')
                             ->label(__('assestme.findings.fields.title'))
-                            ->maxLength(255)
+                            ->maxLength(EditorialLimits::FINDING_TITLE)
+                            ->helperText(fn (?string $state): string => self::remaining($state, EditorialLimits::FINDING_TITLE))
                             ->disabled(self::isReadOnly(...))
                             ->extraInputAttributes(['data-dusk' => 'finding-editor-title']),
                         Textarea::make('problem')
                             ->label(__('assestme.findings.fields.problem'))
                             ->rows(4)
-                            ->maxLength(20000)
+                            ->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('solutions')))['problem'])
+                            ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('solutions')))['problem']))
                             ->disabled(self::isReadOnly(...)),
                         Textarea::make('entrepreneur_notes')
                             ->label(__('assestme.findings.fields.entrepreneur_notes'))
                             ->rows(3)
-                            ->maxLength(20000)
+                            ->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('solutions')))['entrepreneur_notes'])
+                            ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('solutions')))['entrepreneur_notes']))
                             ->disabled(self::isReadOnly(...)),
                     ]),
                 Section::make(__('assestme.templates.sections.solutions'))
@@ -73,17 +77,20 @@ final class FindingEditorSchema
                                 TextInput::make('title')
                                     ->label(__('assestme.findings.fields.solution_title'))
                                     ->required()
-                                    ->maxLength(255),
+                                    ->maxLength(EditorialLimits::SOLUTION_TITLE)
+                                    ->helperText(fn (?string $state): string => self::remaining($state, EditorialLimits::SOLUTION_TITLE)),
                                 Textarea::make('description')
                                     ->label(__('assestme.common.description'))
                                     ->required()
                                     ->rows(5)
-                                    ->maxLength(20000)
+                                    ->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['solution_description'])
+                                    ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['solution_description']))
                                     ->columnSpanFull(),
                                 Textarea::make('comparison_notes')
                                     ->label(__('assestme.templates.fields.comparison_notes'))
                                     ->rows(3)
-                                    ->maxLength(20000)
+                                    ->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['comparison_notes'])
+                                    ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['comparison_notes']))
                                     ->columnSpanFull(),
                                 Select::make('effort_level_id')
                                     ->label(__('assestme.findings.fields.effort'))
@@ -124,11 +131,13 @@ final class FindingEditorSchema
                                 Textarea::make('effort_notes')
                                     ->label(__('assestme.templates.fields.effort_notes'))
                                     ->rows(3)
-                                    ->maxLength(20000),
+                                    ->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['effort_notes'])
+                                    ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['effort_notes'])),
                                 Textarea::make('estimate_notes')
                                     ->label(__('assestme.findings.fields.estimate_notes'))
                                     ->rows(3)
-                                    ->maxLength(20000),
+                                    ->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['estimate_notes'])
+                                    ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['estimate_notes'])),
                                 Toggle::make('is_recommended')->label(__('assestme.templates.fields.recommended')),
                                 Toggle::make('is_implemented')->label(__('assestme.findings.fields.implemented')),
                                 Hidden::make('sort_order')->default(1),
@@ -197,7 +206,8 @@ final class FindingEditorSchema
                         Textarea::make('technical_notes')
                             ->label(__('assestme.templates.fields.technical_notes'))
                             ->rows(4)
-                            ->maxLength(20000)
+                            ->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('solutions')))['technical_notes'])
+                            ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('solutions')))['technical_notes']))
                             ->disabled(self::isReadOnly(...)),
                     ]),
             ]);
@@ -322,7 +332,8 @@ final class FindingEditorSchema
                         Textarea::make('resolution_notes')
                             ->label(__('assestme.findings.fields.resolution_notes'))
                             ->rows(4)
-                            ->maxLength(20000)
+                            ->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('solutions')))['resolution_notes'])
+                            ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('solutions')))['resolution_notes']))
                             ->disabled(self::isReadOnly(...)),
                     ]),
             ]);
@@ -372,5 +383,12 @@ final class FindingEditorSchema
     private static function isReadOnly(WorkspaceAssessment $livewire): bool
     {
         return $livewire->isWorkspaceReadOnly() || $livewire->saveStatus === WorkspaceAssessment::STATUS_CONFLICT;
+    }
+
+    private static function remaining(?string $state, int $limit): string
+    {
+        return __('assestme.common.characters_remaining', [
+            'count' => max(0, $limit - mb_strlen((string) $state)),
+        ]);
     }
 }

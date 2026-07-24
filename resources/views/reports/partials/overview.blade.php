@@ -2,8 +2,8 @@
 
 @php
     $priorityCounts = $report->priorityCounts();
-    $kpiColumnCount = count($priorityCounts) + 1;
-    $kpiWidth = 100 / $kpiColumnCount;
+    $openCount = count(array_filter($report->findings, static fn ($finding): bool => ! in_array($finding->status, ['resolved', 'accepted', 'not_applicable'], true)));
+    $resolvedCount = count(array_filter($report->findings, static fn ($finding): bool => $finding->status === 'resolved'));
     $assessmentInformation = [
         ['label' => __('assestme.reports.document.client'), 'value' => $report->clientName, 'url' => false],
         ['label' => __('assestme.reports.document.assessment_date'), 'value' => $report->assessmentDateLabel, 'url' => false],
@@ -28,35 +28,25 @@
     }
 @endphp
 
-<section class="overview">
-    <table class="section-heading">
-        <colgroup>
-            <col style="width: 24mm">
-            <col>
-        </colgroup>
-        <tr>
-            <td class="section-heading__number">01</td>
-            <td class="section-heading__title">{{ __('assestme.reports.document.assessment_overview') }}</td>
-        </tr>
-    </table>
+<section class="sheet report-sheet overview">
+    <h1 class="page-title">{{ __('assestme.reports.document.assessment_overview') }}</h1>
 
     <table class="kpi-row">
         <tr>
-            <td style="width: {{ $kpiWidth }}%">
+            <td>
                 <div class="kpi__value">{{ count($report->findings) }}</div>
                 <div class="label">{{ __('assestme.reports.document.total_findings') }}</div>
             </td>
-            @foreach ($priorityCounts as $priorityCount)
-                <td style="width: {{ $kpiWidth }}%">
-                    <div class="kpi__value">{{ $priorityCount['count'] }}</div>
-                    <div class="label">
-                        <span class="priority-glyph" style="color: {{ $priorityCount['color'] }}">●</span>
-                        {{ $priorityCount['label'] }}
-                    </div>
-                </td>
-            @endforeach
+            <td><div class="kpi__value">{{ $openCount }}</div><div class="label">{{ __('assestme.reports.document.open_findings') }}</div></td>
+            <td><div class="kpi__value">{{ $resolvedCount }}</div><div class="label">{{ __('assestme.reports.document.resolved_findings') }}</div></td>
         </tr>
     </table>
+
+    <div class="priority-distribution">
+        @foreach ($priorityCounts as $priorityCount)
+            <span><b style="border-color: {{ $priorityCount['color'] }}">{{ $priorityCount['count'] }}</b> {{ $priorityCount['label'] }}</span>
+        @endforeach
+    </div>
 
     @if (filled($report->introduction))
         <div class="overview__introduction pre-line">{{ $report->introduction }}</div>
@@ -82,7 +72,7 @@
         @endforeach
     </table>
 
-    @if ($report->setting('executive_summary') === true && filled($report->executiveSummary))
+    @if (filled($report->executiveSummary))
         <section class="executive-summary avoid-break">
             <h2 class="executive-summary__title">{{ __('assestme.reports.document.executive_summary') }}</h2>
             <div class="pre-line">{{ $report->executiveSummary }}</div>

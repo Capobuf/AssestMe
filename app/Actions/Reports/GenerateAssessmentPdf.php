@@ -9,13 +9,11 @@ use App\Enums\AssessmentStatus;
 use App\Enums\GeneratedReportFormat;
 use App\Models\Assessment;
 use App\Models\GeneratedReport;
-use App\Services\Reporting\DomPdfCanvasDriver;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
-use Spatie\LaravelPdf\Enums\Format;
 use Spatie\LaravelPdf\Facades\Pdf;
 use Throwable;
 
@@ -129,35 +127,8 @@ final class GenerateAssessmentPdf
         }
 
         try {
-            $headerText = trim((string) $snapshot->setting('header_text'));
-            $footerText = trim((string) $snapshot->setting('footer_text'));
-            $businessName = trim((string) $snapshot->setting('business_name'));
-            $consultantName = trim((string) $snapshot->setting('consultant_name'));
-            $applicationName = trim((string) $snapshot->setting('application_name'));
-
-            $driver = new DomPdfCanvasDriver([
-                'is_remote_enabled' => false,
-                'chroot' => storage_path('app/private'),
-                'page_chrome' => [
-                    'header' => $headerText !== '' ? $headerText : __('assestme.reports.document.header_fallback', [
-                        'client' => $snapshot->clientName,
-                    ]),
-                    'footer' => match (true) {
-                        $footerText !== '' => $footerText,
-                        $businessName !== '' => $businessName,
-                        $consultantName !== '' => $consultantName,
-                        default => $applicationName,
-                    },
-                    'show_cover' => $snapshot->setting('cover') === true,
-                    'show_header_footer' => $snapshot->setting('repeated_header_footer') === true,
-                    'show_page_numbers' => $snapshot->setting('page_numbers') === true,
-                ],
-            ]);
-
             Pdf::view('reports.assessment', ['report' => $snapshot])
-                ->setDriver($driver)
-                ->format(Format::A4)
-                ->margins(top: 13, right: 17, bottom: 23, left: 20)
+                ->driver('weasyprint')
                 ->save($temporaryPath);
 
             $contents = file_get_contents($temporaryPath);

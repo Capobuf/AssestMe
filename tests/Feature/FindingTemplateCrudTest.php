@@ -114,7 +114,9 @@ it('creates a template through its Filament resource', function (): void {
 it('limits the template solution repeater to three items with clear guidance', function (): void {
     $this->actingAs(User::factory()->create());
     $component = Livewire::test(CreateFindingTemplate::class)
-        ->assertSee(__('assestme.templates.solutions_help'));
+        ->assertSee(__('assestme.templates.solutions_help'))
+        ->assertSee('180 caratteri rimanenti')
+        ->assertSee('1400 caratteri rimanenti');
     $repeater = $component->instance()->getSchema('form')?->getComponent(
         static fn (mixed $field): bool => $field instanceof Repeater && $field->getName() === 'solutions',
     );

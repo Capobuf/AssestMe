@@ -104,7 +104,6 @@ it('preserves mixed evidence order image proportions captions and the immutable 
     $settings->methodology = false;
     $settings->disclaimer = false;
     $settings->signature_block = false;
-    $settings->repeated_header_footer = false;
     $settings->page_numbers = false;
     $settings->evidence = true;
     $settings->evidence_captions = true;
@@ -119,7 +118,7 @@ it('preserves mixed evidence order image proportions captions and the immutable 
         ->and($imageTags[0])->toHaveCount(2)
         ->and($imageTags[0][0])->not->toMatch('/\s(?:width|height)\s*=/iu')
         ->and($imageTags[0][1])->not->toMatch('/\s(?:width|height)\s*=/iu')
-        ->and($normalizedHtml)->toMatch('/\.evidence-image\s*\{[^}]*height:\s*auto;[^}]*max-height:\s*145mm;[^}]*max-width:\s*100%;[^}]*width:\s*auto;[^}]*\}/u')
+        ->and($normalizedHtml)->toMatch('/\.evidence-image\s*\{[^}]*height:\s*auto;[^}]*max-height:\s*150mm;[^}]*max-width:\s*100%;[^}]*width:\s*auto;[^}]*\}/u')
         ->and($normalizedHtml)->not->toContain('object-fit: cover');
 
     $withCaptions = app(GenerateAssessmentPdf::class)($assessment->fresh());

@@ -19,6 +19,7 @@ use App\Models\FindingSolution;
 use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
 use App\Models\WorkspaceSaveRequest;
+use App\Services\Reporting\EditorialLimits;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -112,13 +113,16 @@ final class SaveFindingDetails
      */
     private function validatePayload(array $data): array
     {
+        $solutionCount = count(is_array($data['solutions'] ?? null) ? $data['solutions'] : []);
+        $limits = EditorialLimits::forSolutionCount($solutionCount);
+
         /** @var array<string, mixed> $validated */
         $validated = Validator::make($data, [
-            'title' => ['nullable', 'string', 'max:255'],
-            'problem' => ['nullable', 'string', 'max:20000'],
-            'entrepreneur_notes' => ['nullable', 'string', 'max:20000'],
+            'title' => ['nullable', 'string', 'max:'.EditorialLimits::FINDING_TITLE],
+            'problem' => ['nullable', 'string', 'max:'.$limits['problem']],
+            'entrepreneur_notes' => ['nullable', 'string', 'max:'.$limits['entrepreneur_notes']],
             'category_id' => ['nullable', 'integer', Rule::exists('categories', 'id')->whereNull('deleted_at')],
-            'technical_notes' => ['nullable', 'string', 'max:20000'],
+            'technical_notes' => ['nullable', 'string', 'max:'.$limits['technical_notes']],
             'scope_type' => ['required', Rule::enum(ScopeType::class)],
             'scope_description' => ['nullable', 'string', 'max:20000'],
             'site_ids' => ['array'],
@@ -132,22 +136,22 @@ final class SaveFindingDetails
             'priority_rationale' => ['nullable', 'string', 'max:20000'],
             'status' => ['required', Rule::enum(FindingStatus::class)],
             'include_in_report' => ['required', 'boolean'],
-            'resolution_notes' => ['nullable', 'string', 'max:20000'],
+            'resolution_notes' => ['nullable', 'string', 'max:'.$limits['resolution_notes']],
             'solutions' => ['array', 'max:3'],
             'solutions.*.id' => ['nullable', 'integer', 'distinct'],
             'solutions.*.external_key' => ['nullable', 'string', 'max:160'],
-            'solutions.*.title' => ['required', 'string', 'max:255'],
-            'solutions.*.description' => ['required', 'string', 'max:20000'],
-            'solutions.*.comparison_notes' => ['nullable', 'string', 'max:20000'],
+            'solutions.*.title' => ['required', 'string', 'max:'.EditorialLimits::SOLUTION_TITLE],
+            'solutions.*.description' => ['required', 'string', 'max:'.$limits['solution_description']],
+            'solutions.*.comparison_notes' => ['nullable', 'string', 'max:'.$limits['comparison_notes']],
             'solutions.*.effort_level_id' => ['nullable', 'integer', 'exists:effort_levels,id'],
-            'solutions.*.effort_notes' => ['nullable', 'string', 'max:20000'],
+            'solutions.*.effort_notes' => ['nullable', 'string', 'max:'.$limits['effort_notes']],
             'solutions.*.estimate_type' => ['required', Rule::enum(EstimateType::class)],
             'solutions.*.amount_min' => ['nullable', 'numeric', 'between:0,999999999.99'],
             'solutions.*.amount_max' => ['nullable', 'numeric', 'between:0,999999999.99'],
             'solutions.*.currency_code' => ['nullable', 'string', 'regex:/^[A-Z]{3}$/'],
             'solutions.*.billing_frequency' => ['required', Rule::enum(BillingFrequency::class)],
             'solutions.*.custom_billing_frequency' => ['nullable', 'string', 'max:120'],
-            'solutions.*.estimate_notes' => ['nullable', 'string', 'max:20000'],
+            'solutions.*.estimate_notes' => ['nullable', 'string', 'max:'.$limits['estimate_notes']],
             'solutions.*.sort_order' => ['required', 'integer', 'min:0'],
             'solutions.*.is_recommended' => ['required', 'boolean'],
             'solutions.*.is_implemented' => ['required', 'boolean'],

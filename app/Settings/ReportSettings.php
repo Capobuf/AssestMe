@@ -57,9 +57,9 @@ final class ReportSettings extends Settings
 
     public bool $methodology;
 
-    public bool $repeated_header_footer;
-
     public bool $page_numbers;
+
+    public bool $show_resolution;
 
     public bool $signature_block;
 
@@ -75,17 +75,11 @@ final class ReportSettings extends Settings
 
     public bool $evidence_captions;
 
-    public bool $new_page_per_finding;
-
     public bool $freeze_after_generation;
 
     public ?string $methodology_text;
 
     public ?string $disclaimer_text;
-
-    public ?string $header_text;
-
-    public ?string $footer_text;
 
     public ?string $signature_text;
 

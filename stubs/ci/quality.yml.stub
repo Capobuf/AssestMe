@@ -21,7 +21,7 @@ jobs:
       CACHE_STORE: file
       SESSION_DRIVER: file
       QUEUE_CONNECTION: sync
-      LARAVEL_PDF_DRIVER: dompdf
+      LARAVEL_PDF_DRIVER: weasyprint
 
     steps:
       - name: Check out repository

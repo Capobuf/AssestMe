@@ -16,28 +16,13 @@ use App\Models\GeneratedReport;
 use App\Models\RiskProfile;
 use App\Models\Site;
 use App\Policies\SingletonAdministratorPolicy;
-use App\Services\Reporting\DomPdfCanvasDriver;
 use App\Support\CanaryClusterRequester;
 use Baspa\FilamentCanary\Sweep\Requester;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
-use Spatie\LaravelPdf\Drivers\PdfDriver;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
-    public function register(): void
-    {
-        $this->app->singleton(DomPdfCanvasDriver::class, fn (): DomPdfCanvasDriver => new DomPdfCanvasDriver(
-            config('laravel-pdf.dompdf', []),
-        ));
-
-        $this->app->singleton('laravel-pdf.driver.dompdf', fn (): DomPdfCanvasDriver => app(DomPdfCanvasDriver::class));
-        $this->app->singleton(PdfDriver::class, fn (): DomPdfCanvasDriver => app(DomPdfCanvasDriver::class));
-    }
-
     /**
      * Bootstrap any application services.
      */

@@ -4,7 +4,7 @@ Primary files:
 - plan.md: authoritative executable product, architecture, deployment, data, UI, failure, test, and acceptance specification.
 - AGENTS.md: mandatory repository-level instructions for coding agents.
 - .gitignore: Laravel, SQLite, private-storage, browser-test, and local-agent exclusions.
-- .env.example: local SQLite, DOMPDF, security, administrator-bootstrap, and deployment variables.
+- .env.example: local SQLite, WeasyPrint, security, administrator-bootstrap, and deployment variables.
 
 Contracts and initial data:
 - schemas/finding-template.schema.json: JSON Schema Draft 2020-12 contract.
@@ -14,10 +14,9 @@ Contracts and initial data:
 - fixtures/evidence/: valid and corrupt file fixtures.
 
 Implementation stubs:
-- stubs/reports/assessment.blade.php.stub: complete DOMPDF-compatible report structure.
-- stubs/reports/dompdf-page-numbers.php.stub: repeated header/footer and content-page numbering.
+- resources/views/reports/assessment.blade.php: shared WeasyPrint and browser-preview report structure.
 - stubs/config/database.php.fragment: deterministic SQLite connection settings.
-- stubs/config/laravel-pdf.php.fragment: verified Spatie DOMPDF settings.
+- stubs/config/laravel-pdf.php.fragment: verified Spatie WeasyPrint settings.
 - stubs/nginx/assestme.conf: production Nginx virtual host.
 - stubs/php/assestme.ini: production PHP limits and security defaults.
 - stubs/cron/assestme: scheduler cron entry.
@@ -29,4 +28,4 @@ Executable shell scripts:
 - scripts/verify.sh: runs audit, formatting, static analysis, tests, Canary, and optional Dusk.
 - scripts/deploy-production.sh: release-based production deployment using shared SQLite/storage and pre-migration backup.
 
-Copy the package contents into the root of a new AssestMe repository. Read AGENTS.md and plan.md completely before implementation. Milestone 0 must prove the native Filament 5 table Repeater and DOMPDF integration before domain development continues. No third-party assessment-grid package is used in the first implementation.
+Copy the package contents into the root of a new AssestMe repository. Read AGENTS.md and plan.md completely before implementation. The native Filament 5 workspace and production WeasyPrint report pipeline are authoritative. No third-party assessment-grid package is used in the first implementation.

@@ -41,6 +41,8 @@ final readonly class ReportFindingData
         public ?string $resolutionNotes,
         public ?string $resolvedAt,
         public ?string $resolvedAtLabel,
+        public FindingPagePlanData $pagePlan,
+        public ?ReportRiskMatrixData $riskMatrix,
     ) {}
 
     public function recommendedSolution(): ReportSolutionData
@@ -84,6 +86,64 @@ final readonly class ReportFindingData
         return null;
     }
 
+    public function primarySolution(): ReportSolutionData
+    {
+        return $this->implementedSolution() ?? $this->recommendedSolution();
+    }
+
+    public function problemExcerpt(): string
+    {
+        return $this->excerpt($this->problem, 320);
+    }
+
+    public function primarySolutionExcerpt(): string
+    {
+        return $this->excerpt($this->primarySolution()->description, 280);
+    }
+
+    /**
+     * @param  list<int>  $ids
+     * @return list<ReportSolutionData>
+     */
+    public function solutionsByIds(array $ids): array
+    {
+        $positions = array_flip($ids);
+        $solutions = array_values(array_filter(
+            $this->solutions,
+            static fn (ReportSolutionData $solution): bool => isset($positions[$solution->id]),
+        ));
+
+        usort(
+            $solutions,
+            static fn (ReportSolutionData $left, ReportSolutionData $right): int => $positions[$left->id] <=> $positions[$right->id],
+        );
+
+        return $solutions;
+    }
+
+    private function excerpt(string $text, int $limit): string
+    {
+        $normalized = trim((string) preg_replace('/\s+/u', ' ', $text));
+        if (mb_strlen($normalized) <= $limit) {
+            return $normalized;
+        }
+
+        $candidate = mb_substr($normalized, 0, $limit + 1);
+        $sentenceEnd = max(
+            mb_strrpos(mb_substr($candidate, 0, $limit), '.') ?: 0,
+            mb_strrpos(mb_substr($candidate, 0, $limit), '!') ?: 0,
+            mb_strrpos(mb_substr($candidate, 0, $limit), '?') ?: 0,
+        );
+        if ($sentenceEnd >= (int) floor($limit * 0.6)) {
+            return rtrim(mb_substr($candidate, 0, $sentenceEnd + 1));
+        }
+
+        $wordEnd = mb_strrpos(mb_substr($candidate, 0, $limit), ' ');
+        $cut = $wordEnd === false ? $limit : $wordEnd;
+
+        return rtrim(mb_substr($candidate, 0, $cut)).'…';
+    }
+
     /** @return list<ReportEvidenceData> */
     public function includedEvidence(): array
     {
@@ -120,7 +180,7 @@ final readonly class ReportFindingData
         ));
     }
 
-    /** @return array<string, bool|int|string|null|list<string>|list<array<string, bool|int|string|null>>> */
+    /** @return array<string, mixed> */
     public function toArray(): array
     {
         return [
@@ -152,6 +212,8 @@ final readonly class ReportFindingData
             'resolution_notes' => $this->resolutionNotes,
             'resolved_at' => $this->resolvedAt,
             'resolved_at_label' => $this->resolvedAtLabel,
+            'page_plan' => $this->pagePlan->toArray(),
+            'risk_matrix' => $this->riskMatrix?->toArray(),
         ];
     }
 }

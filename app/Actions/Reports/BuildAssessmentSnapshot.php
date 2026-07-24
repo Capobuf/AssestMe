@@ -11,16 +11,21 @@ use App\Data\Reports\ReportEvidenceData;
 use App\Data\Reports\ReportFindingData;
 use App\Data\Reports\ReportLogoData;
 use App\Data\Reports\ReportPriorityData;
+use App\Data\Reports\ReportRiskMatrixData;
 use App\Data\Reports\ReportSolutionData;
 use App\Enums\CoverTitleMode;
 use App\Enums\EvidenceType;
 use App\Enums\ScopeType;
 use App\Models\Assessment;
 use App\Models\Asset;
+use App\Models\ConsequenceLevel;
 use App\Models\Evidence;
 use App\Models\Finding;
 use App\Models\FindingSolution;
+use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
+use App\Models\RiskMatrixEntry;
+use App\Services\Reporting\FindingPagePlanner;
 use App\Settings\GeneralSettings;
 use App\Settings\ReportSettings;
 use Illuminate\Database\Eloquent\Collection;
@@ -38,6 +43,7 @@ final class BuildAssessmentSnapshot
         private readonly FormatEstimate $formatEstimate,
         private readonly GeneralSettings $generalSettings,
         private readonly ReportSettings $reportSettings,
+        private readonly FindingPagePlanner $pagePlanner,
     ) {}
 
     public function __invoke(
@@ -118,6 +124,9 @@ final class BuildAssessmentSnapshot
             },
             'findings.category' => $withArchived,
             'findings.consequenceLevel',
+            'findings.consequenceLevel.riskProfile.consequenceLevels',
+            'findings.consequenceLevel.riskProfile.likelihoodLevels',
+            'findings.consequenceLevel.riskProfile.matrixEntries.priorityLevel',
             'findings.likelihoodLevel',
             'findings.priorityLevel',
             'findings.solutions.effortLevel',
@@ -177,6 +186,44 @@ final class BuildAssessmentSnapshot
             resolutionNotes: $finding->resolution_notes,
             resolvedAt: $finding->resolved_at?->utc()->toIso8601String(),
             resolvedAtLabel: $finding->resolved_at?->timezone($this->generalSettings->timezone)->format('d/m/Y H:i'),
+            pagePlan: $this->pagePlanner->plan($finding, $this->reportSettings->alternative_solutions),
+            riskMatrix: $this->riskMatrix($finding),
+        );
+    }
+
+    private function riskMatrix(Finding $finding): ?ReportRiskMatrixData
+    {
+        $profile = $finding->consequenceLevel?->riskProfile;
+        if ($profile === null) {
+            return null;
+        }
+
+        $currentConsequenceId = $finding->consequence_level_id;
+        $currentLikelihoodId = $finding->likelihood_level_id;
+
+        return new ReportRiskMatrixData(
+            consequences: $profile->consequenceLevels->map(static fn (ConsequenceLevel $level): array => [
+                'id' => (int) $level->getKey(),
+                'label' => $level->label,
+                'color' => $level->color,
+            ])->values()->all(),
+            likelihoods: $profile->likelihoodLevels->map(static fn (LikelihoodLevel $level): array => [
+                'id' => (int) $level->getKey(),
+                'label' => $level->label,
+                'color' => $level->color,
+            ])->values()->all(),
+            cells: $profile->matrixEntries->map(static fn (RiskMatrixEntry $entry): array => [
+                'consequence_id' => (int) $entry->consequence_level_id,
+                'likelihood_id' => (int) $entry->likelihood_level_id,
+                'priority_label' => $entry->priorityLevel->label,
+                'priority_color' => $entry->priorityLevel->color,
+                'current' => $entry->consequence_level_id === $currentConsequenceId
+                    && $entry->likelihood_level_id === $currentLikelihoodId,
+            ])->values()->all(),
+            currentConsequenceId: $currentConsequenceId,
+            currentLikelihoodId: $currentLikelihoodId,
+            resultingPriorityLabel: $finding->priorityLevel->label,
+            resultingPriorityColor: $finding->priorityLevel->color,
         );
     }
 
@@ -444,8 +491,8 @@ final class BuildAssessmentSnapshot
             'risk_legend' => $this->reportSettings->risk_legend,
             'summary_table' => $this->reportSettings->summary_table,
             'methodology' => $this->reportSettings->methodology,
-            'repeated_header_footer' => $this->reportSettings->repeated_header_footer,
             'page_numbers' => $this->reportSettings->page_numbers,
+            'show_resolution' => $this->reportSettings->show_resolution,
             'signature_block' => $this->reportSettings->signature_block,
             'disclaimer' => $this->reportSettings->disclaimer,
             'technical_notes' => $this->reportSettings->technical_notes,
@@ -453,12 +500,9 @@ final class BuildAssessmentSnapshot
             'costs' => $this->reportSettings->costs,
             'evidence' => $this->reportSettings->evidence,
             'evidence_captions' => $this->reportSettings->evidence_captions,
-            'new_page_per_finding' => $this->reportSettings->new_page_per_finding,
             'freeze_after_generation' => $this->reportSettings->freeze_after_generation,
             'methodology_text' => $this->reportSettings->methodology_text,
             'disclaimer_text' => $this->reportSettings->disclaimer_text,
-            'header_text' => $this->reportSettings->header_text,
-            'footer_text' => $this->reportSettings->footer_text,
             'signature_text' => $this->reportSettings->signature_text,
         ];
     }

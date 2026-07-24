@@ -1,9 +1,13 @@
 <?php declare(strict_types=1); ?>
 @php
     $statusGlyph = static fn (string $status): string => match ($status) {
-        'open', 'planned' => '○',
+        'open' => '○',
+        'planned' => '▦',
+        'in_progress' => '⌛',
         'resolved' => '✓',
-        default => '–',
+        'accepted' => '●',
+        'not_applicable' => '●',
+        default => '○',
     };
 @endphp
 <!DOCTYPE html>
@@ -18,7 +22,9 @@
         @include('reports.partials.cover')
     @endif
 
-    @include('reports.partials.overview')
+    @if ($report->setting('executive_summary') === true)
+        @include('reports.partials.overview')
+    @endif
 
     @if ($report->setting('content_index') === true)
         @include('reports.partials.content-index')

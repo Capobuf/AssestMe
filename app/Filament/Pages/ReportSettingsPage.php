@@ -21,6 +21,8 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 final class ReportSettingsPage extends SettingsPage
 {
@@ -113,18 +115,6 @@ final class ReportSettingsPage extends SettingsPage
                                     ->live(),
                                 Toggle::make('show_priority_descriptions')
                                     ->label(__('assestme.settings.fields.show_priority_descriptions')),
-                                TextInput::make('header_text')
-                                    ->label(__('assestme.settings.fields.header_text'))
-                                    ->helperText(__('assestme.settings.help.header_text'))
-                                    ->live(debounce: 500)
-                                    ->extraInputAttributes(['data-dusk' => 'report-preview-header-input'])
-                                    ->maxLength(120),
-                                TextInput::make('footer_text')
-                                    ->label(__('assestme.settings.fields.footer_text'))
-                                    ->helperText(__('assestme.settings.help.footer_text'))
-                                    ->live(debounce: 500)
-                                    ->extraInputAttributes(['data-dusk' => 'report-preview-footer-input'])
-                                    ->maxLength(120),
                                 ...self::toggleFields(),
                             ])
                             ->columns(2),
@@ -146,6 +136,43 @@ final class ReportSettingsPage extends SettingsPage
                 ])
                 ->columnSpanFull(),
         ]);
+    }
+
+    public function reportPreviewUrl(): string
+    {
+        $allowed = [
+            'default_title_pattern', 'consultant_name', 'business_name', 'consultant_role', 'primary_color',
+            'branding', 'cover_title_mode', 'show_priority_descriptions', 'cover', 'content_index',
+            'executive_summary', 'risk_legend', 'summary_table', 'methodology', 'page_numbers',
+            'show_resolution', 'signature_block', 'disclaimer', 'technical_notes', 'alternative_solutions',
+            'costs', 'evidence', 'evidence_captions',
+        ];
+        $raw = $this->form->getRawState();
+        $settings = [];
+        foreach ($allowed as $key) {
+            $value = $raw[$key] ?? null;
+            if (is_bool($value) || is_int($value) || is_string($value) || $value === null) {
+                $settings[$key] = $value;
+            }
+        }
+        $color = (string) ($settings['primary_color'] ?? '');
+        $settings['primary_color'] = preg_match('/^#[0-9A-Fa-f]{6}$/', $color) === 1 ? mb_strtoupper($color) : '#65A30D';
+
+        $token = Str::random(40);
+        $sessionBinding = session()->get('report_preview_binding');
+        if (! is_string($sessionBinding) || $sessionBinding === '') {
+            $sessionBinding = Str::random(40);
+            session()->put('report_preview_binding', $sessionBinding);
+        }
+        $key = sprintf(
+            'report-preview:%d:%s:%s',
+            (int) auth()->id(),
+            hash('sha256', $sessionBinding),
+            $token,
+        );
+        Cache::put($key, $settings, now()->addMinutes(5));
+
+        return route('report-settings.preview', ['token' => $token]);
     }
 
     /** @param array<string, mixed> $data @return array<string, mixed> */
@@ -176,23 +203,20 @@ final class ReportSettingsPage extends SettingsPage
     {
         $fields = [
             'cover', 'content_index', 'executive_summary', 'risk_legend', 'summary_table', 'methodology',
-            'repeated_header_footer', 'page_numbers', 'signature_block', 'disclaimer', 'technical_notes',
-            'alternative_solutions', 'costs', 'evidence', 'evidence_captions', 'new_page_per_finding',
+            'page_numbers', 'show_resolution', 'signature_block', 'disclaimer', 'technical_notes',
+            'alternative_solutions', 'costs', 'evidence', 'evidence_captions',
             'freeze_after_generation',
         ];
 
-        $liveFields = ['cover', 'summary_table', 'alternative_solutions', 'costs', 'evidence'];
         $helpFields = [
             'cover', 'executive_summary', 'risk_legend', 'summary_table', 'technical_notes',
-            'alternative_solutions', 'costs', 'evidence', 'evidence_captions', 'new_page_per_finding',
+            'alternative_solutions', 'costs', 'evidence', 'evidence_captions',
         ];
 
-        return array_map(static function (string $field) use ($liveFields, $helpFields): Toggle {
-            $toggle = Toggle::make($field)->label(__("assestme.settings.fields.{$field}"));
-
-            if (in_array($field, $liveFields, true)) {
-                $toggle->live();
-            }
+        return array_map(static function (string $field) use ($helpFields): Toggle {
+            $toggle = Toggle::make($field)
+                ->label(__("assestme.settings.fields.{$field}"))
+                ->live();
             if (in_array($field, $helpFields, true)) {
                 $toggle->helperText(__("assestme.settings.help.{$field}"));
             }

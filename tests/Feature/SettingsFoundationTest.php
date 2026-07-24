@@ -20,24 +20,30 @@ it('resolves report settings from the real migrated settings state', function ()
         ->and(DB::table('migrations')
             ->where('migration', '2026_07_22_000020_remove_report_confidentiality_label')
             ->exists())->toBeTrue()
+        ->and(DB::table('migrations')
+            ->where('migration', '2026_07_24_000021_promote_weasyprint_report_settings')
+            ->exists())->toBeTrue()
         ->and(DB::table('settings')
             ->where('group', 'report')
             ->where('name', 'confidentiality_label')
+            ->exists())->toBeFalse()
+        ->and(DB::table('settings')
+            ->where('group', 'report')
+            ->whereIn('name', ['repeated_header_footer', 'header_text', 'footer_text', 'new_page_per_finding'])
             ->exists())->toBeFalse();
 
     $settings = app(ReportSettings::class);
 
     expect($settings->cover_title_mode)->toBe(CoverTitleMode::Separate)
         ->and($settings->show_priority_descriptions)->toBeTrue()
+        ->and($settings->show_resolution)->toBeTrue()
         ->and($settings->toArray())->not->toHaveKey('confidentiality_label');
 
     $settings->business_name = 'Consulenza Migrazione S.r.l.';
-    $settings->header_text = 'Header persistente';
     $settings->primary_color = '#1A2B3C';
     $settings->save()->refresh();
 
     expect($settings->business_name)->toBe('Consulenza Migrazione S.r.l.')
-        ->and($settings->header_text)->toBe('Header persistente')
         ->and($settings->primary_color)->toBe('#1A2B3C')
         ->and($settings->cover_title_mode)->toBe(CoverTitleMode::Separate)
         ->and($settings->show_priority_descriptions)->toBeTrue()
@@ -52,6 +58,7 @@ it('mounts the report settings Filament page from migrated values', function ():
         ->assertFormSet([
             'cover_title_mode' => CoverTitleMode::Separate->value,
             'show_priority_descriptions' => true,
+            'show_resolution' => true,
         ]);
 });
 

@@ -90,3 +90,26 @@ it('rejects a fourth imported solution atomically', function (): void {
         ->and(FindingTemplate::query()->count())->toBe(0)
         ->and(FindingTemplateSolution::query()->count())->toBe(0);
 });
+
+it('applies the three-solution editorial budget after JSON schema validation', function (): void {
+    $payload = json_decode(
+        (string) file_get_contents(base_path('fixtures/imports/valid-all-branches.json')),
+        true,
+        flags: JSON_THROW_ON_ERROR,
+    );
+    $payload['templates'] = [$payload['templates'][0]];
+    $payload['templates'][0]['problem'] = str_repeat('x', 851);
+    $source = $payload['templates'][0]['solutions'][0];
+    $source['recommended'] = false;
+    $source['external_id'] = 'second-editorial-option';
+    $payload['templates'][0]['solutions'][] = $source;
+    $source['external_id'] = 'third-editorial-option';
+    $payload['templates'][0]['solutions'][] = $source;
+
+    expect(fn () => app(ImportFindingTemplates::class)(
+        json_encode($payload, JSON_THROW_ON_ERROR),
+        'replace',
+    ))->toThrow(ValidationException::class)
+        ->and(FindingTemplate::query()->count())->toBe(0)
+        ->and(FindingTemplateSolution::query()->count())->toBe(0);
+});

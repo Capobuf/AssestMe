@@ -12,6 +12,7 @@ use App\Models\FindingTemplate;
 use App\Models\FindingTemplateSolution;
 use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
+use App\Services\Reporting\EditorialLimits;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -24,15 +25,17 @@ final class SaveFindingTemplate
     public function handle(?FindingTemplate $template, array $data): FindingTemplate
     {
         $data = $this->withStableExternalIds($template, $data);
+        $solutionCount = count(is_array($data['solutions'] ?? null) ? $data['solutions'] : []);
+        $limits = EditorialLimits::forSolutionCount($solutionCount);
 
         /** @var array<string, mixed> $validated */
         $validated = Validator::make($data, [
             'external_id' => ['required', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/', Rule::unique('finding_templates', 'external_id')->ignore($template?->getKey())],
-            'title' => ['required', 'string', 'max:255'],
+            'title' => ['required', 'string', 'max:'.EditorialLimits::FINDING_TITLE],
             'category_id' => ['required', 'integer', Rule::exists('categories', 'id')->whereNull('deleted_at')],
-            'problem' => ['required', 'string', 'max:20000'],
-            'entrepreneur_notes' => ['nullable', 'string', 'max:20000'],
-            'technical_notes' => ['nullable', 'string', 'max:20000'],
+            'problem' => ['required', 'string', 'max:'.$limits['problem']],
+            'entrepreneur_notes' => ['nullable', 'string', 'max:'.$limits['entrepreneur_notes']],
+            'technical_notes' => ['nullable', 'string', 'max:'.$limits['technical_notes']],
             'default_scope_type' => ['required', Rule::enum(ScopeType::class)],
             'default_scope_description' => ['nullable', 'string', 'max:20000'],
             'default_consequence_level_id' => ['nullable', 'integer', 'exists:consequence_levels,id'],
@@ -43,18 +46,18 @@ final class SaveFindingTemplate
             'solutions' => ['required', 'array', 'min:1', 'max:3'],
             'solutions.*.id' => ['nullable', 'integer'],
             'solutions.*.external_id' => ['required', 'string', 'max:160', 'regex:/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/', 'distinct'],
-            'solutions.*.title' => ['required', 'string', 'max:255'],
-            'solutions.*.description' => ['required', 'string', 'max:20000'],
-            'solutions.*.comparison_notes' => ['nullable', 'string', 'max:20000'],
+            'solutions.*.title' => ['required', 'string', 'max:'.EditorialLimits::SOLUTION_TITLE],
+            'solutions.*.description' => ['required', 'string', 'max:'.$limits['solution_description']],
+            'solutions.*.comparison_notes' => ['nullable', 'string', 'max:'.$limits['comparison_notes']],
             'solutions.*.effort_level_id' => ['nullable', 'integer', 'exists:effort_levels,id'],
-            'solutions.*.effort_notes' => ['nullable', 'string', 'max:20000'],
+            'solutions.*.effort_notes' => ['nullable', 'string', 'max:'.$limits['effort_notes']],
             'solutions.*.estimate_type' => ['required', Rule::enum(EstimateType::class)],
             'solutions.*.amount_min' => ['nullable', 'numeric', 'between:0,999999999.99'],
             'solutions.*.amount_max' => ['nullable', 'numeric', 'between:0,999999999.99'],
             'solutions.*.currency_code' => ['nullable', 'string', 'regex:/^[A-Z]{3}$/'],
             'solutions.*.billing_frequency' => ['required', Rule::enum(BillingFrequency::class)],
             'solutions.*.custom_billing_frequency' => ['nullable', 'string', 'max:120'],
-            'solutions.*.estimate_notes' => ['nullable', 'string', 'max:20000'],
+            'solutions.*.estimate_notes' => ['nullable', 'string', 'max:'.$limits['estimate_notes']],
             'solutions.*.is_recommended' => ['required', 'boolean'],
             'solutions.*.sort_order' => ['required', 'integer', 'between:0,100000'],
         ])->validate();

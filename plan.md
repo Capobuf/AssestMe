@@ -1,6 +1,6 @@
 # AssestMe — Deterministic Executable Development Plan
 
-Specification version: **2.3**
+Specification version: **2.4**
 Status: **approved for implementation**  
 Application name: **AssestMe**  
 Reference runtime: **PHP 8.3 capability contract; no normative host distribution**
@@ -73,7 +73,7 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-008 (v2) | SUPERSEDED | The assessment workspace used only the native Filament 5 table Repeater; superseded by D-008 on 2026-07-18 |
 | D-008 | APPROVED | The Finding workspace uses a Filament Table structured list with a single-record lateral inspector; native Repeaters remain permitted for bounded child collections such as Finding solutions |
 | D-009 (v1) | SUPERSEDED | Spatie Laravel PDF with DOMPDF as the only renderer and no renderer validation path; superseded by D-009 on 2026-07-24 |
-| D-009 | APPROVED | Keep DOMPDF in production while a bounded Chrome-driver spike validates one future renderer; retain Spatie Laravel PDF, use WeasyPrint only for a functional Chrome blocker, and consider Gotenberg only for local-Chromium operations |
+| D-009 | APPROVED | Use WeasyPrint through Spatie Laravel PDF as the sole production renderer; the completed Chrome-first D-059 validation accepted WeasyPrint, with no automatic fallback or parallel renderer |
 | D-010 | APPROVED | One configurable professional report layout |
 | D-011 | APPROVED | Italian v1 UI/report, translation keys from the first commit |
 | D-012 | APPROVED | JSON Schema v1 is the canonical template interchange contract |
@@ -234,7 +234,7 @@ No Redis, Horizon, queue worker, or asynchronous report generation.
 
 ### D-007 — Frontend build and authoritative development environment
 
-The application does not require Node.js and has no frontend build. Docker Compose is the official and authoritative development environment. A development host requires only Docker, Docker Compose, and the AssestMe repository. PHP, Composer, PHP extensions, Chrome, and ChromeDriver are supplied by containers and must not be installed directly on the development host as part of the supported installation profile.
+The application does not require Node.js and has no frontend build. Docker Compose is the official and authoritative development environment. A development host requires only Docker, Docker Compose, and the AssestMe repository. PHP, Composer, PHP extensions, and WeasyPrint are supplied by the application container and must not be installed directly on the development host as part of the supported installation profile.
 
 Allowed:
 
@@ -326,13 +326,11 @@ DOMPDF is the only renderer. CSS must stay within tested DOMPDF capabilities.
 
 This decision records the renderer contract implemented and accepted on 2026-07-13. Its permanent DOMPDF exclusivity and absence of a validation path are **SUPERSEDED by D-009**; the implementation history and evidence remain valid.
 
-### D-009 — PDF renderer validation
+### D-009 — PDF renderer
 
-**Status: APPROVED — Accepted pending technical validation.**
+**Status: APPROVED — Validation completed and production migration accepted.**
 
-DOMPDF remains the only production renderer and `LARAVEL_PDF_DRIVER=dompdf` remains the current environment value until the bounded D-059 spike is accepted. `spatie/laravel-pdf` remains the application abstraction if technically possible. The spike evaluates its Chrome driver first; WeasyPrint is evaluated only if Chrome fails a blocking requirement, and Gotenberg only if local Chromium is functionally acceptable but operationally unmanageable. Html2Media is not a report renderer. The project will not implement two complete renderers: after validation, one production renderer is selected. `DomPdfCanvasDriver` and DOMPDF-specific layout workarounds are removed only after the replacement renderer has passed the blocking acceptance criteria.
-
-No renderer, dependency, binary, environment value, Docker image, CloudPanel procedure, Blade view, test, generated report, or application path changes as a consequence of this decision update alone.
+WeasyPrint is the sole production renderer through `spatie/laravel-pdf`, with `LARAVEL_PDF_DRIVER=weasyprint` and a configurable local binary path. The completed D-059 spike evaluated the official Chrome driver first: it failed the blocking mixed-A4 MediaBox requirement, while WeasyPrint passed mixed orientation, named pages, page counters, selectable text, images, indivisible blocks, and continuation requirements. DOMPDF, `DomPdfCanvasDriver`, Chrome, and their application runtime configuration are removed. No automatic fallback, custom replacement driver, parallel renderer, SaaS renderer, or external rendering service is permitted. CSS Paged Media owns page size, orientation, margins, header, and footer.
 
 ### D-010 — Report model
 
@@ -527,7 +525,7 @@ docker compose -f docker/compose.dev.yml up --build
 
 No Compose file exists at the repository root. The topology contains only the required `app` service and the optional `selenium` service under the `browser` profile. Normal `up` starts only `app`; `app` has no mandatory dependency on Selenium. No custom network, reverse proxy, database service, cache, mail service, administration service, worker, or other infrastructure service is permitted.
 
-The project-owned development image uses the official Debian-based PHP `8.3.32-cli-bookworm` image, Composer `2.10.2` copied from the official Composer image, and Xdebug `3.5.3`. It supplies Bash, Git, Curl, Unzip, Zip, the utilities used by maintained scripts, and every D-004 extension. PHP extensions are built and enabled with the official PHP image helpers; Xdebug is installed through PECL without a third-party extension installer. The current image contains no Nginx, PHP-FPM, Node.js, Redis, external database, Supervisor, systemd, Horizon, queue worker, Chrome, or ChromeDriver. The repository is not copied into the image. D-059 authorizes a later bounded Chromium spike and, only after renderer acceptance, a deliberate image/runtime amendment; this current-state inventory is not an absolute Chromium prohibition.
+The project-owned development image uses the official Debian-based PHP `8.3.32-cli-bookworm` image, Composer `2.10.2` copied from the official Composer image, Xdebug `3.5.3`, and WeasyPrint `57.2`. It supplies Bash, Git, Curl, Unzip, Zip, the utilities used by maintained scripts, the native/font libraries required by WeasyPrint, development-only Poppler utilities, and every D-004 extension. PHP extensions are built and enabled with the official PHP image helpers; Xdebug is installed through PECL without a third-party extension installer. The application image contains no Nginx, PHP-FPM, Node.js, Redis, external database, Supervisor, systemd, Horizon, queue worker, Chrome, or ChromeDriver. The optional Selenium service remains isolated browser-test infrastructure and is not a report renderer. The repository is not copied into the image.
 
 The `app` service:
 
@@ -543,7 +541,7 @@ The entire repository bind mount is the persistence boundary. PHP, Blade, Livewi
 
 `docker/dev/php.ini` is development-only and defines the approved 512 MB memory limit, 25 MB upload limit, 30 MB post limit, 20 upload-file limit, 120-second execution limit, full visible/logged errors, and timestamp-validating OPcache. Xdebug is loaded but its default mode is `off`; its client is `host.docker.internal:9003`, and users enable it only by explicitly setting `XDEBUG_MODE`. Tests, quality, benchmark, Dusk, and verification do not enable it automatically. Production PHP stubs contain no Docker or Xdebug configuration.
 
-`.env.example` remains environment-neutral. Compose supplies process overrides for `DB_DATABASE=/workspace/database/database.sqlite`, `LARAVEL_PDF_DOMPDF_CHROOT=/workspace`, `ASSESTME_BACKUP_ROOT=/workspace/backups`, and `APP_URL=http://127.0.0.1:8000`. No Docker-specific Laravel environment file or versioned secret exists.
+`.env.example` remains environment-neutral. Compose supplies process overrides for `DB_DATABASE=/workspace/database/database.sqlite`, `LARAVEL_PDF_DRIVER=weasyprint`, `LARAVEL_PDF_WEASYPRINT_BINARY=/usr/bin/weasyprint`, `ASSESTME_BACKUP_ROOT=/workspace/backups`, and `APP_URL=http://127.0.0.1:8000`. No Docker-specific Laravel environment file or versioned secret exists.
 
 `docker/dev/entrypoint.sh` uses `set -Eeuo pipefail`, validates the bind mount, prepares writable per-UID temporary Composer state, invokes the single environment-neutral `scripts/bootstrap-local.sh`, and executes the received command. The shared idempotent bootstrap creates only missing `.env`, directories, and SQLite state; installs Composer dependencies only when `composer.lock` differs or `vendor` is absent; generates only a missing application key; applies pending migrations and domain seeds; publishes Filament assets; preserves an existing singleton administrator and creates one only when absent; clears obsolete Laravel caches; runs preflight and diagnostics; and fails on incomplete initialization. It never runs `migrate:fresh`, deletes normal database/storage/backups, replaces an application key, changes existing administrator credentials, creates a second user, or hides an error.
 
@@ -713,7 +711,11 @@ Repeated page chrome remains implemented only by `DomPdfCanvasDriver`. After an 
 
 ### D-059 — Editorial report architecture and renderer spike
 
-**Status: APPROVED — Accepted pending technical validation.**
+**Status: APPROVED — Validation completed and production layout implemented.**
+
+#### Implementation result
+
+The completed Chrome-first proof rejected the official Chrome driver on the blocking A4 MediaBox criterion and accepted WeasyPrint `57.2` through `pontedilana/php-weasyprint` `2.7.0` and Spatie Laravel PDF `2.12.0`. Production now renders the immutable `AssessmentReportData` graph through one `reports.assessment` Blade/CSS implementation shared with the authenticated settings preview. Named CSS pages provide a portrait cover and internal pages, a landscape Finding summary, margin-box header/footer, cover-excluded page numbering, and deterministic one/two-page Finding plans. DOMPDF, Canvas chrome, Chrome, the temporary proof pipeline, and the duplicated preview are removed without changing generated-report persistence, versioning, hashes, history, storage, or download.
 
 #### Verified problem
 
@@ -764,21 +766,21 @@ Those pagination rules require hard text limits. D-059 does not invent character
 
 Risk uses a real dynamic mini-matrix derived from the configured risk profile and shows consequence, likelihood, and resulting priority with textual labels. A compact `Sistemi interessati` block follows where useful. Each asset preferably occupies one compact row containing name, site, manufacturer, and IP. The free-form scope description remains data but is not mandatory PDF content.
 
-A future typed `Mostra risoluzione` report setting defaults to enabled and is captured through the existing settings snapshot shape; it creates no empty `Risoluzione` block. Evidence initially remains on dedicated pages. Automatic placement of small images in residual page space is deferred until renderer feasibility is measured and is not promised by this decision.
+The typed `Mostra risoluzione` report setting defaults to enabled and is captured through the existing settings snapshot shape; it creates no empty `Risoluzione` block. Evidence remains on dedicated pages. Automatic placement of small images in residual page space is deferred and is not promised by this decision.
 
 The cover removes section-number-like elements and repeated application naming. Internal headers are minimal; the footer contains only the page number, and the cover is excluded from numbering.
 
 #### Alternatives
 
-- **DOMPDF — current production renderer.** It is pure PHP, integrated, and operationally simple. Its documented CSS 2.1/partial CSS 3 limits, non-repeating native HTML header/footer behavior, current Canvas dependency, fragile pagination, duplicated preview, and unproven mixed orientation make it unsuitable as the permanent target for this document ([Spatie DOMPDF driver](https://spatie.be/docs/laravel-pdf/v2/drivers/using-the-dompdf-driver)).
-- **Spatie Chrome driver — primary spike candidate.** It drives local Chrome/Chromium directly from PHP through `chrome-php/chrome`, without Node.js, npm, Puppeteer, or a permanent service ([Spatie Chrome driver](https://spatie.be/docs/laravel-pdf/v2/drivers/using-the-chrome-driver), [chrome-php/chrome](https://github.com/chrome-php/chrome)). The spike must prove compatibility with locked Spatie Laravel PDF `2.12.0`, a compatible `chrome-php/chrome`, an explicitly provisioned Chromium binary, mixed CSS page orientation, header/footer behavior, `break-inside`, selectable text, same-view preview/print, and Docker/CloudPanel installation. Chromium's protocol can prefer CSS-defined page sizes, but the locked Spatie driver does not by itself prove the required mixed-page result ([Chrome DevTools `printToPDF`](https://chromedevtools.github.io/devtools-protocol/tot/Page/#method-printToPDF)).
-- **WeasyPrint — technical fallback.** It is a free BSD Python pagination engine with CSS Paged Media, named pages, page size/orientation, margin boxes, running elements, and page-break control ([WeasyPrint](https://doc.courtbouillon.org/weasyprint/stable/), [Spatie WeasyPrint driver](https://spatie.be/docs/laravel-pdf/v2/drivers/using-the-weasyprint-driver)). It requires a Python binary and native/font libraries and is not a browser engine, so screen preview and WeasyPrint output can differ.
+- **DOMPDF — rejected former production renderer.** It is pure PHP, integrated, and operationally simple. Its documented CSS 2.1/partial CSS 3 limits, non-repeating native HTML header/footer behavior, Canvas dependency, fragile pagination, duplicated preview, and unproven mixed orientation made it unsuitable as the permanent target ([Spatie DOMPDF driver](https://spatie.be/docs/laravel-pdf/v2/drivers/using-the-dompdf-driver)).
+- **Spatie Chrome driver — rejected primary spike candidate.** It drives local Chrome/Chromium directly from PHP through `chrome-php/chrome`, without Node.js, npm, Puppeteer, or a permanent service ([Spatie Chrome driver](https://spatie.be/docs/laravel-pdf/v2/drivers/using-the-chrome-driver), [chrome-php/chrome](https://github.com/chrome-php/chrome)). The official integration failed the blocking mixed-A4 MediaBox criterion because it did not request CSS-preferred page sizes ([Chrome DevTools `printToPDF`](https://chromedevtools.github.io/devtools-protocol/tot/Page/#method-printToPDF)).
+- **WeasyPrint — selected production renderer.** It is a free BSD Python pagination engine with CSS Paged Media, named pages, page size/orientation, margin boxes, running elements, and page-break control ([WeasyPrint](https://doc.courtbouillon.org/weasyprint/stable/), [Spatie WeasyPrint driver](https://spatie.be/docs/laravel-pdf/v2/drivers/using-the-weasyprint-driver)). The installed binary and native/font libraries passed the bounded and definitive report acceptance.
 - **Gotenberg — operational fallback only.** It is an open-source Docker API backed by headless Chromium, considered only if local Chromium passes document requirements but is unstable or unmanageable. It adds a permanent service to development and deployment ([Gotenberg](https://gotenberg.dev/docs/getting-started/introduction), [Spatie Gotenberg driver](https://spatie.be/docs/laravel-pdf/v2/drivers/using-the-gotenberg-driver)).
 - **Html2Media — not selected.** Upstream code runs in the browser, renders DOM with `html2canvas`, slices canvases, and inserts PNG images into jsPDF under one global orientation; the resulting report is principally rasterized and is incompatible with searchable professional text and immutable server-side generation ([Html2Media source](https://github.com/torgodly/Html2Media/blob/main/resources/js/html2media-main.js)). Its preview/print/download interaction may inform UX only.
 
 Browsershot is excluded because it adds Node.js, Puppeteer, and Chromium when direct PHP-to-Chromium may suffice ([Browsershot requirements](https://github.com/spatie/browsershot/blob/main/docs/requirements.md)). Paged.js and Vivliostyle add a more complex JavaScript/Node editorial pipeline than required ([Paged.js](https://pagedjs.org/en/documentation/), [Vivliostyle CLI](https://docs.vivliostyle.org/en/cli/getting-started/)). Typst would rewrite the template outside Blade ([Typst](https://typst.app/docs/)). wkhtmltopdf is not suitable as a new dependency because its upstream repository is archived ([wkhtmltopdf](https://github.com/wkhtmltopdf/wkhtmltopdf)). SaaS renderers are excluded by privacy and external-dependency constraints.
 
-#### Bounded future spike
+#### Completed bounded spike
 
 The spike is small, reversible, and does not redesign the complete production report. It uses one deterministic snapshot inspired by the VIP Estintori report and the existing immutable DTO graph. It contains a portrait cover, portrait `Quadro generale`, landscape summary, four portrait Findings, one Finding with three solutions, an implemented solution different from the recommended solution, an indivisible solution, a continued-page Finding heading, a dynamic risk mini-matrix, assets, one image evidence item, a page-number-only footer, and a preview of the same view.
 
@@ -793,13 +795,13 @@ Chrome passes only if one PDF proves all of the following:
 
 Failure of any item is blocking for Chrome. Only then may the same bounded proof be attempted with WeasyPrint. Gotenberg is considered only for a proven operational problem with local Chromium. The spike selects one production renderer; it does not build parallel production implementations.
 
-#### Future preview
+#### Implemented preview
 
-After renderer acceptance, the duplicated illustrative thumbnail is removed. An authenticated preview route renders the same Blade view and CSS as the PDF in an iframe; `@media screen` represents paged sheets and `@media print` controls PDF output. Unsaved report settings refresh the preview with debounce. An optional action may generate an overwritable/deletable temporary PDF preview, but it creates no `GeneratedReport`, immutable file, version, history entry, or snapshot. No user-editable HTML, Blade, or CSS is introduced.
+The duplicated illustrative thumbnail is removed. An authenticated preview route renders the same Blade view and CSS as the PDF in an iframe; `@media screen` represents paged sheets and `@media print` controls PDF output. Unsaved report settings refresh the preview with debounce through a short-lived token bound to the authenticated user and session. The preview creates no `GeneratedReport`, immutable file, version, history entry, report-directory write, or persisted setting. No user-editable HTML, Blade, or CSS is introduced.
 
 #### Supersession scope
 
-D-059 supersedes D-052 and D-059 (v1) for future composition and supersedes the portrait-only, fixed-summary, unlimited-Finding-pagination, Canvas-finality, and duplicated-preview clauses in §§8, 13, 20, and review items B-02/B-12. D-009 supersedes permanent DOMPDF exclusivity. D-007 and D-042 continue to describe the current runtime, but their absence-of-Chromium clauses do not prohibit the bounded spike or a later explicitly accepted renderer runtime. No current Docker or CloudPanel configuration is changed now, and all historical implementation/test evidence remains factual.
+D-059 supersedes D-052 and D-059 (v1) for current composition and supersedes the portrait-only, fixed-summary, unlimited-Finding-pagination, Canvas-finality, and duplicated-preview clauses in §§8, 13, 20, and review items B-02/B-12. D-009 supersedes permanent DOMPDF exclusivity. D-007 and D-042 describe the current WeasyPrint runtime without application Chromium. Historical implementation and test evidence remains factual.
 
 ### D-028 — Authentication and MFA
 
@@ -1113,21 +1115,23 @@ SESSION_ENCRYPT=false
 QUEUE_CONNECTION=sync
 
 FILESYSTEM_DISK=local
-LARAVEL_PDF_DRIVER=dompdf
+LARAVEL_PDF_DRIVER=weasyprint
+LARAVEL_PDF_WEASYPRINT_BINARY=/usr/bin/weasyprint
 
 DEV_ADMIN_NAME=Administrator
 DEV_ADMIN_EMAIL=admin@assestme.local
 DEV_ADMIN_PASSWORD=
 ```
 
-`LARAVEL_PDF_DRIVER=dompdf` records the current production/development renderer pending D-059 validation; it is not a permanent driver lock.
+`LARAVEL_PDF_DRIVER=weasyprint` records the selected production/development renderer. The binary path stays configurable for equivalent supported environments.
 
 Compose overrides the environment at process level without writing Docker-only paths into `.env`:
 
 ```dotenv
 APP_URL=http://127.0.0.1:8000
 DB_DATABASE=/workspace/database/database.sqlite
-LARAVEL_PDF_DOMPDF_CHROOT=/workspace
+LARAVEL_PDF_DRIVER=weasyprint
+LARAVEL_PDF_WEASYPRINT_BINARY=/usr/bin/weasyprint
 ASSESTME_BACKUP_ROOT=/workspace/backups
 ```
 
@@ -1982,9 +1986,9 @@ VAT treatment is not an application setting. No VAT status, display mode, rate, 
 - risk legend;
 - summary table;
 - methodology;
-- repeated text header/footer after the cover, currently implemented by the application-owned DOMPDF Canvas page script until D-059 renderer acceptance;
+- minimal internal header after the cover;
 - page numbers;
-- future `Mostra risoluzione`, enabled by default when D-059 is implemented without restructuring the settings snapshot;
+- `Mostra risoluzione`, enabled by default and captured in new snapshots without changing historical snapshots;
 - signature block;
 - disclaimer;
 - technical notes;
@@ -2003,8 +2007,8 @@ Defaults:
 - summary on;
 - risk legend on;
 - methodology on;
-- header/footer on after cover;
-- `Pagina X di Y`;
+- header and page-number-only footer on after cover;
+- cover excluded from numbering and first internal page numbered `1`;
 - alternatives on;
 - evidence on;
 - signature off;
@@ -2569,7 +2573,7 @@ Application-level file encryption is outside v1. Production must use restrictive
 
 ## 13. PDF report contract
 
-Until the D-059 spike is accepted, the production DOMPDF output remains A4 portrait. The approved target is one PDF with A4 portrait cover/general/Finding/evidence pages and an A4 landscape Finding summary. §§13.1–13.8 otherwise record the current production implementation; D-059 is authoritative wherever its future composition, pagination, chrome, or preview differs.
+Production uses WeasyPrint as its sole renderer. One immutable PDF contains an A4 portrait cover, optional portrait `Quadro generale`, A4 landscape Finding summary, portrait Finding pages, and portrait evidence/final sections. Page geometry and chrome are owned by named CSS pages and margin boxes.
 
 ### 13.1 Title and branding
 
@@ -2587,85 +2591,55 @@ Primary color is passed to the view only after strict `#RRGGBB` normalization.
 
 ### 13.2 Sections
 
-The current DOMPDF section order is:
+The production section order is:
 
-1. optional cover;
-2. client/assessment information;
-3. scope;
-4. optional executive summary;
-5. optional content index without page numbers;
-6. priority legend;
-7. summary table;
-8. detailed findings;
-9. optional methodology;
-10. optional disclaimer;
-11. optional signature block;
-12. attachment list.
+1. optional simplified portrait cover;
+2. optional portrait `Quadro generale`, controlled by the existing `executive_summary` section setting and optionally containing `Riepilogo Assessment`;
+3. landscape Finding summary;
+4. portrait detailed Findings, each with one or two logical pages;
+5. dedicated portrait evidence pages;
+6. any enabled methodology, disclaimer, signature, and attachment sections.
 
 ### 13.3 Header/footer/page numbering
 
-In the current DOMPDF implementation, header and footer appear after the cover and are drawn by the application-owned DOMPDF Canvas page script. Spatie `headerHtml()` or `footerHtml()` cannot provide that repetition because the DOMPDF driver only prepends/appends those fragments.
+WeasyPrint CSS margin boxes provide repeated chrome:
 
-Until another renderer is accepted, repeated header/footer and DOMPDF page numbering use the supplied application-owned Canvas `page_script` after rendering:
+- the cover has no header, footer, or number;
+- the minimal internal header contains assessment and company only;
+- the footer contains the page number only;
+- the first internal page displays `1`;
+- there is no `Pagina X di Y`, application-name repetition, left footer text, Canvas driver, or renderer fallback.
 
-- cover has no header, footer, or number;
-- the page script receives `showCover`, header/footer text, and page-number visibility explicitly;
-- first content page displays `Pagina 1 di Y`;
-- total excludes cover;
-- no parallel implementation before the D-059 spike selects one renderer.
+### 13.4 Finding summary
 
-Current tests extract the first and last page labels. After renderer acceptance, D-059 replaces Canvas with a minimal internal header and page-number-only footer while continuing to exclude the cover from numbering.
+The repeating-header landscape table contains:
 
-### 13.4 Finding summary blocks
-
-The following two-row portrait summary records the current DOMPDF implementation accepted under D-052 and is **SUPERSEDED for the future report by D-059**. D-059 requires the landscape summary and its reduced, editorially excerpted field set.
-
-First row:
-
-- number;
-- finding title;
-- category;
+- number and full title;
+- deterministic server-side problem excerpt;
+- implemented solution when present, otherwise recommended solution, with its role identified;
 - priority;
-- status.
-
-Second row:
-
-- scope;
-- recommended solution;
 - effort;
 - estimate.
 
-The current block has no total or fixed row height and omits no historically required value. This does not override D-059's approved landscape target and deliberate removal of scope, category, and normally status.
+Scope, category, and status are intentionally absent. Excerpts end without splitting a word, prefer a sentence boundary, and never replace full Finding-sheet content.
 
-### 13.5 Finding detail
+### 13.5 Finding detail and pagination
 
-The following hierarchy records the current DOMPDF implementation and is **SUPERSEDED for future presentation and pagination by D-059** without authorizing loss from the immutable snapshot:
+The immutable Finding content order is:
 
-1. number, title, priority, and status;
-2. prominent `Perché è importante per l’Azienda` entrepreneur notes, only when non-empty;
-3. problem found;
-4. recommended solution;
-5. effort and estimate, including their notes;
-6. alternatives and comparison notes when enabled;
-7. scope, selected sites/assets, category, consequence/likelihood, and rationale;
-8. image evidence, non-image attachment references, and clickable URL evidence;
-9. technical notes when enabled;
-10. resolution details when applicable.
+1. numbered title and textual priority/status/category badges;
+2. optional `Spiegazione del problema`;
+3. problem;
+4. implemented or recommended primary solution;
+5. other enabled solutions in stable order;
+6. real configured risk mini-matrix;
+7. compact `Sistemi interessati` and assets;
+8. optional technical notes;
+9. optional resolution when `show_resolution` is enabled.
 
-When entrepreneur notes are empty, problem is the first main content section and no empty entrepreneur block appears.
+A typed deterministic planner builds one or two logical pages per Finding, excluding evidence. Every solution block is indivisible, and a second page begins `NN / Titolo finding — continua`. Pagination depends only on validated text quantities and semantic content, never DOM measurements, iterative rendering, coordinates, font reduction, or truncation.
 
-Currently each Finding begins on a new page and may span any number of pages. D-059 instead limits a Finding to two pages excluding evidence, keeps every solution indivisible, and requires a compact continuation heading; calibrated UI and server-side text budgets are prerequisites for enforcing that target.
-
-Asset display:
-
-- name;
-- type;
-- site;
-- manufacturer/model;
-- hostname;
-- IP;
-- omit empty values;
-- serial number is not displayed in v1 report.
+Selected assets show a compact row with non-duplicated name/type, site, manufacturer, and IP. Without assets, only useful synthetic scope is shown; extended free-form scope text is not printed automatically.
 
 ### 13.6 Estimates
 
@@ -3398,7 +3372,7 @@ This section records how the external blueprint review dated 2026-07-13 was reso
 | Review ID | Resolution in specification 2.0 |
 |---|---|
 | B-01 | SUPERSEDED by specification 2.3: PHP 8.3 remains exact, while runtime provisioning and preflight are capability-based with no normative host distribution or package source |
-| B-02 | SUPERSEDED by D-009 on 2026-07-24: `LARAVEL_PDF_DRIVER=dompdf` remains current only until the bounded renderer spike selects one production driver |
+| B-02 | RESOLVED by D-009 on 2026-07-24: `LARAVEL_PDF_DRIVER=weasyprint` selects the sole accepted production renderer |
 | B-03 | Nginx/PHP-FPM, paths, ownership, permissions, TLS, release deploy, rollback, cron, and PHP limits defined |
 | B-04 | `lock_version`, request UUID, payload hash, one in-flight request, coalescing, stale-tab conflict protocol |
 | B-05 | Complete assessment and finding state machines with transition effects |
@@ -3408,7 +3382,7 @@ This section records how the external blueprint review dated 2026-07-13 was reso
 | B-09 | Strengthened Draft 2020-12 schema plus mandatory application semantic validation and fixtures |
 | B-10 | Full-replace import by stable template and solution external IDs, with deterministic preview and conflict modes |
 | B-11 | Complete report stub covering summary, findings, assets, rationale, alternatives, evidence, technical notes, signature, and disclaimer |
-| B-12 | SUPERSEDED by D-059 on 2026-07-24 for the future renderer: Canvas remains current production code and is removed only after replacement acceptance |
+| B-12 | RESOLVED by D-059 on 2026-07-24: CSS margin boxes replace Canvas after WeasyPrint acceptance |
 | B-13 | Direct `phpoffice/phpspreadsheet` runtime dependency and three-sheet workbook contract |
 | B-14 | Laravel Dusk for browser automation plus blocking manual Edge/Firefox/iOS/Android checklist |
 | B-15 | SUPERSEDED on 2026-07-13: the unavailable community grid plugin was removed; Milestone 0 now proves the native Filament 5 table Repeater with real relationships and 10/25/50 findings |
@@ -3421,6 +3395,10 @@ No OPEN product decision remains. D-009/D-059 are accepted pending the explicitl
 ## 22. Progress
 
 The implementation agent must maintain this section.
+
+The definitive D-009/D-059 WeasyPrint production migration started on 2026-07-24 at commit `bf2c58e54986f44fc65925d7080abc15724c76e0` on the clean `develop` branch. The preflight confirmed the requested exact HEAD and no later commits requiring review. Before application changes, `AGENTS.md`, this complete plan through Final outcome, the spike commit and its complete changed-file set, Composer manifests and locked renderer packages, PDF/environment/Docker configuration, the real snapshot and PDF actions, all report DTOs and Blade partials, the DOMPDF Canvas driver, the complete spike action/command/controller/factory/view/route/tests, typed report settings and their Filament page/current duplicated preview/settings migrations, and the relevant immutable PDF/snapshot/download/settings/preview tests were inspected. The accepted technical baseline is Spatie Laravel PDF `2.12.0`, `pontedilana/php-weasyprint` `2.7.0`, and container WeasyPrint `57.2`; the rejected candidates still present before this slice are DOMPDF `3.1.5`, `chrome-php/chrome` `1.16.1`, and Debian Chromium `150.0.7871.181`. This slice promotes only WeasyPrint, retains the immutable `AssessmentReportData`/`GeneratedReport` persistence contract, implements the approved real report and same-view authenticated preview, calibrates and enforces deterministic editorial budgets and one/two-page Finding plans, removes every spike/DOMPDF/Chrome runtime path, performs focused and visual acceptance, then invokes `scripts/verify.sh` exactly once.
+
+The definitive D-009/D-059 production migration completed on 2026-07-24. WeasyPrint is the sole installed application renderer; DOMPDF, Chrome PHP, application-image Chromium, Canvas chrome, spike actions/routes/factory/views/translations/tests/fixture, and obsolete configuration are removed. The real immutable report now uses named portrait/landscape pages, deterministic one/two-page Finding plans, indivisible solutions, real risk data, compact assets, dedicated evidence, `show_resolution`, and one Blade/CSS implementation shared with the authenticated unsaved-settings iframe preview. Focused Docker verification passed Pint on `313` files, PHPStan on `246` files, the final rerun of every test class affected by the unsupported-host aggregate errors with `79` tests and `914` assertions except exactly the two known baselines, the focused preview Dusk test with `1` test and `10` assertions, locked Composer audit with no advisories, Canary strict `33/33`, diagnostics, storage audit, and the 50-Finding benchmark (`0.2090` seconds first render, `5.5014` seconds PDF, `0.2496` seconds XLSX). The single `scripts/verify.sh` invocation exited `2`: it was mistakenly started on the host while `.env` intentionally names Docker-only `/workspace` and `/usr/bin/weasyprint` paths, producing `41` cascading environment failures plus the two known baselines before the aggregate could continue. It was not repeated. Running only the failed classes through the authoritative Compose app container eliminated all environment failures and reproduced solely the absent `.github/workflows/quality.yml` and stale Finding-column-N XLSX expectation. No new application regression remained.
 
 The bounded D-009/D-059 Chrome-first renderer spike started on 2026-07-24 at commit `c94047388bdfff6768ba72e9e1a65fc1112b9144` on the clean `develop` branch. The preflight confirmed that HEAD exactly matches the requested starting commit, so no later commit required review. Before implementation, `AGENTS.md`, this complete plan through Final outcome, all locked Composer packages, PDF/Docker/environment configuration, the production PDF and snapshot actions, `DomPdfCanvasDriver`, every report DTO and Blade partial, the report-settings preview/page, relevant PDF/snapshot/persistence/download/browser tests, and the installed Spatie Chrome driver were read through EOF. The authoritative runtime is PHP `8.3.32`, Spatie Laravel PDF `2.12.0`, and DOMPDF `3.1.5`; Chromium and `chrome-php/chrome` are absent before the spike. Source inspection confirms that the locked official Chrome driver sends global paper dimensions when the builder selects a format and does not send CDP `preferCSSPageSize`; this is an identified risk, not yet a declared blocker, and will be tested with the real provisioned Chromium before any approved fallback is considered. The configured database baseline is SHA-256 `ef7c1c2e445459993fea8ad86f8678f2f8fb98c1bb724d237e161f8d86d75888`; the relative path, size, and timestamp inventory of existing immutable report files hashes to `f62a748f5645de731927ba450e3627a279ae05a600a40564ce6712bacc68a5ae`. The slice is limited to a deterministic DTO-backed proof view, isolated local/testing generation and authenticated preview, focused executable evidence, development-only renderer tooling, and factual plan evidence. The global `dompdf` default, production generation action, Canvas driver, immutable report records/files/snapshots, versioning, hashing, history, storage, and downloads remain unchanged.
 
@@ -3617,9 +3595,10 @@ Milestone 3 completed with the complete assessment/finding schema, native Filame
 
 ## 23. Discoveries and deviations
 
-- 2026-07-24: D-059 selected WeasyPrint for the later production migration after the official Chrome candidate failed only the blocking A4 MediaBox requirement. With no builder paper format supplied, Spatie `2.12.0` passes `printBackground` to `Page.printToPDF` but omits `preferCSSPageSize`, so Chromium `150.0.7871.181` honors named-page orientation while normalizing CSS A4 to its default US Letter size. A single raw installed-API diagnosis with `preferCSSPageSize=true` produced correct mixed A4 and establishes the integration gap reproducibly; extending the driver would violate the bounded spike. The Chrome dependency/runtime is retained only as executable failure evidence, not as the selected renderer or a production default. `no_sandbox` is enabled only by `docker/compose.dev.yml` because the supported bind-mounted development container runs the application process as root and Chromium refuses its Linux sandbox in that condition; the neutral `.env.example` default remains `false`.
-- 2026-07-24: Debian WeasyPrint `57.2` and `pontedilana/php-weasyprint` `2.7.0` require `timeout => null` in Spatie’s WeasyPrint config because the wrapper otherwise emits `--timeout`, introduced only in WeasyPrint 60. The selected proof uses table/flex-compatible CSS because this Debian version does not implement the Grid layout used in the initial shared view; named pages, mixed A4 sizes, margin boxes, page-counter reset, break controls, and the single-image contract all pass. The fixture proves a two-page, three-solution Finding at 55 title characters, 418 problem characters, and solution title/description pairs of 31/131, 30/99, and 26/115 characters. Candidate calibration ceilings for the later UI/server implementation are title `70`, problem `900/700/500`, and each solution description `500/350/250` characters for one/two/three solutions respectively; these are proposed conservative starting budgets for validation, not domain constraints implemented by this spike.
-- 2026-07-24: The final locked Composer audit now reports six advisories published on 2026-07-22 against the unchanged production Dompdf `3.1.5` (CVE-2026-59943, CVE-2026-59942, CVE-2026-59941, CVE-2026-56722, CVE-2026-55555, and CVE-2026-55554), all fixed in `3.1.6`. Updating the incumbent production renderer is separate maintenance and was intentionally not hidden inside the D-009/D-059 candidate-selection slice.
+- 2026-07-24: Definitive real-path QA created four Findings through application factories and actions, including all principal priorities, three solutions with distinct recommended/implemented roles, a deterministic two-page Finding, configured risk matrix, asset, near-limit text, and image evidence. `GenerateAssessmentPdf` produced `storage/app/qa-artifacts/production-weasyprint-report.pdf`: WeasyPrint `57.2`, `12` pages, `51,478` bytes, SHA-256 `33026cb2c88f13c57b9f636660751f67105e7c3ca14a33cb01ae4ece4ddaabb0`. Poppler proved page 1 portrait and unnumbered, page 2 portrait numbered `1`, page 3 landscape numbered `2`, pages 4–12 portrait, and selectable text. Every page rasterized at 150 DPI was inspected: cover, overview, summary, continuations, risk, assets, evidence, footer, whitespace, and complete indivisible solutions are legible without crop, overlap, or truncation.
+- 2026-07-24: D-059 selected WeasyPrint after the official Chrome candidate failed the blocking A4 MediaBox requirement. With no builder paper format supplied, Spatie `2.12.0` passes `printBackground` to `Page.printToPDF` but omits `preferCSSPageSize`, so Chromium `150.0.7871.181` honors named-page orientation while normalizing CSS A4 to US Letter. A raw installed-API diagnosis with `preferCSSPageSize=true` proved the integration gap; no custom driver was created. The definitive production migration removed `chrome-php/chrome`, application-image Chromium, Chrome configuration, and spike-only failure evidence. Selenium Chromium remains optional browser-test infrastructure only.
+- 2026-07-24: Debian WeasyPrint `57.2` and `pontedilana/php-weasyprint` `2.7.0` require `timeout => null` in Spatie’s WeasyPrint config because the wrapper otherwise emits `--timeout`, introduced only in WeasyPrint 60. Named pages, mixed A4 sizes, margin boxes, page-counter reset, break controls, selectable text, and images pass. Real one/two/three-solution QA established authoritative limits in `ReportEditorialLimits`: Finding title `180`, solution title `140`; one-solution narrative/problem/solution-description budgets `900/1400/1000`, two-solution `750/1100/800`, and three-solution `600/850/350`, with proportionally reduced comparison/effort/estimate/technical/resolution notes. These limits are shared by UI counters, signed saves, templates, import, copying, completion, and generation; legacy data is rejected with field-specific errors and never truncated.
+- 2026-07-24: Removing `dompdf/dompdf` eliminated the six Dompdf advisories published on 2026-07-22. The locked production renderer set is now Spatie Laravel PDF `2.12.0`, `pontedilana/php-weasyprint` `2.7.0`, and container WeasyPrint `57.2`; Composer contains neither DOMPDF nor Chrome renderer packages.
 - 2026-07-24: The locked `spatie/laravel-pdf` `2.12.0` includes a `ChromeDriver` that delegates directly to `chrome-php/chrome`, but `chrome-php/chrome` is not present in `composer.lock`. Source inspection shows that the driver sends global paper dimensions/orientation and does not set Chromium's `preferCSSPageSize` option. Chromium and `chrome-php/chrome` expose CSS-preferred page sizing, but mixed portrait/landscape pages are therefore unproven in the exact locked integration and remain a blocking D-059 spike criterion. No package was installed, no renderer was run, and no PDF was generated during this architecture review.
 - 2026-07-22: DOMPDF 3.1.5 applies the root `html` box to the shared base `@page` style; the former `html, body { margin: 0; }` rule therefore zeroed the configured page margins and allowed Blade content into Canvas bands. Keeping the zero margin on `body` only preserves the 13/17/23/20 mm page geometry. Empty page-break elements also made reflow evidence harder to reason about, so `page-break-before: always` remains directly on the existing Finding/evidence page roots. A random optional IP from `AssetFactory` can add an asset row and legitimately create a ninth page; the composition regression now fixes the exact requested NAS payload rather than relying on random optional fields.
 

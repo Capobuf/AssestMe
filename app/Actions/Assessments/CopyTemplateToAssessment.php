@@ -10,6 +10,7 @@ use App\Models\Assessment;
 use App\Models\Finding;
 use App\Models\FindingSolution;
 use App\Models\FindingTemplate;
+use App\Services\Reporting\EditorialLimits;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -32,6 +33,26 @@ final class CopyTemplateToAssessment
         $activeSolutions = $template->solutions->whereNull('deleted_at')->values();
         if ($activeSolutions->isEmpty() || $activeSolutions->where('is_recommended', true)->count() !== 1) {
             throw ValidationException::withMessages(['template' => __('assestme.templates.errors.recommended_count')]);
+        }
+        $violations = EditorialLimits::violationsForValues(
+            fields: [
+                'title' => $template->title,
+                'problem' => $template->problem,
+                'entrepreneur_notes' => $template->entrepreneur_notes,
+                'technical_notes' => $template->technical_notes,
+            ],
+            solutions: $activeSolutions->map(static fn ($solution): array => [
+                'title' => $solution->title,
+                'description' => $solution->description,
+                'comparison_notes' => $solution->comparison_notes,
+                'effort_notes' => $solution->effort_notes,
+                'estimate_notes' => $solution->estimate_notes,
+            ])->all(),
+        );
+        if ($violations !== []) {
+            throw ValidationException::withMessages([
+                'template' => __('assestme.findings.errors.editorial_limit', $violations[0]),
+            ]);
         }
 
         $expectedVersion = (int) $assessment->lock_version;

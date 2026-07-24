@@ -7,6 +7,7 @@ namespace App\Actions\Assessments;
 use App\Enums\FindingStatus;
 use App\Models\Assessment;
 use App\Models\Finding;
+use App\Services\Reporting\EditorialLimits;
 use Illuminate\Validation\ValidationException;
 
 final class ValidateAssessmentCompletion
@@ -82,6 +83,9 @@ final class ValidateAssessmentCompletion
             && $finding->implemented_solution_id === null
             && blank($finding->resolution_notes)) {
             $messages[] = __('assestme.findings.errors.resolution_required');
+        }
+        foreach (EditorialLimits::violations($finding) as $violation) {
+            $messages[] = __('assestme.findings.errors.editorial_limit', $violation);
         }
 
         return $messages;
