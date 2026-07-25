@@ -220,11 +220,17 @@ it('uses print-safe table structures and a symbol-only compact risk matrix', fun
     [$assessment] = editorialPdfReportReadyAssessment();
     $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh());
     $html = view('reports.assessment', ['report' => $snapshot])->render();
+    $riskMatrix = $snapshot->findings[0]->riskMatrix;
 
     preg_match('/\.solution-metrics\s*\{([^}]*)\}/u', $html, $metricsRule);
     preg_match('/\.finding-meta\s*\{([^}]*)\}/u', $html, $metaRule);
     preg_match('/\.summary-table th\s*\{([^}]*)\}/u', $html, $summaryHeaderRule);
     preg_match('/<table\s+class="risk-mini-matrix".*?<\/table>/su', $html, $matrixMatch);
+    preg_match('/<table class="risk-mini-layout".*?<\/table>\s*<\/td>/su', $html, $matrixLayoutMatch);
+
+    if ($riskMatrix === null) {
+        throw new RuntimeException('The report fixture must contain a risk matrix.');
+    }
 
     expect($metricsRule)->toHaveKey(1)
         ->and($metricsRule[1])->not->toContain('display: grid', 'grid-template-columns')
@@ -239,14 +245,67 @@ it('uses print-safe table structures and a symbol-only compact risk matrix', fun
             'class="solution-metrics__effort"',
             'class="solution-metrics__estimate"',
         )
-        ->and($matrixMatch)->toHaveKey(0);
+        ->and($matrixMatch)->toHaveKey(0)
+        ->and($matrixLayoutMatch)->toHaveKey(0)
+        ->and($riskMatrix)->not->toBeNull();
 
     $matrix = $matrixMatch[0];
+    $matrixLayout = $matrixLayoutMatch[0];
+    preg_match_all('/<tr data-consequence-id="(\d+)">(.*?)<\/tr>/su', $matrix, $matrixRows);
+    $expectedConsequenceIds = array_map(
+        static fn (array $consequence): string => (string) $consequence['id'],
+        array_reverse($riskMatrix->consequences),
+    );
+    $expectedLikelihoodIds = array_map(
+        static fn (array $likelihood): string => (string) $likelihood['id'],
+        $riskMatrix->likelihoods,
+    );
 
     expect(preg_match_all('/class="risk-dot(?:\s|")/u', $matrix))->toBe(16)
         ->and(substr_count($matrix, 'risk-dot--current'))->toBe(1)
         ->and(substr_count($matrix, 'risk-dot__current-mark'))->toBe(1)
-        ->and(trim((string) preg_replace('/\s+/u', '', strip_tags($matrix))))->toBe('');
+        ->and(trim((string) preg_replace('/\s+/u', '', strip_tags($matrix))))->toBe('')
+        ->and($matrixRows[1])->toBe($expectedConsequenceIds)
+        ->and($matrixLayout)->toContain(
+            __('assestme.reports.document.consequence'),
+            __('assestme.reports.document.likelihood'),
+        )
+        ->and($matrixLayout)->not->toContain('↓', '→');
+
+    foreach ($matrixRows[2] as $row) {
+        preg_match_all('/data-likelihood-id="(\d+)"/u', $row, $likelihoodMatches);
+        expect($likelihoodMatches[1])->toBe($expectedLikelihoodIds);
+    }
+
+    $topRight = $riskMatrix->cell(
+        (int) $expectedConsequenceIds[0],
+        (int) $expectedLikelihoodIds[3],
+    );
+    $bottomLeft = $riskMatrix->cell(
+        (int) $expectedConsequenceIds[3],
+        (int) $expectedLikelihoodIds[0],
+    );
+
+    if ($topRight === null || $bottomLeft === null) {
+        throw new RuntimeException('The report fixture must contain both diagonal matrix corners.');
+    }
+
+    if ($snapshot->priorityLegend === []) {
+        throw new RuntimeException('The report fixture must contain the priority legend.');
+    }
+
+    $lowestPriority = $snapshot->priorityLegend[0];
+    $highestPriority = $snapshot->priorityLegend[count($snapshot->priorityLegend) - 1];
+
+    expect($matrixRows[2][0])->toContain('title="'.$topRight['priority_label'].'"')
+        ->and($matrixRows[2][3])->toContain('title="'.$bottomLeft['priority_label'].'"')
+        ->and($topRight['priority_label'])->toBe($highestPriority->label)
+        ->and($bottomLeft['priority_label'])->toBe($lowestPriority->label)
+        ->and(editorialPdfReportNormalizeText($html))->toContain(
+            '.risk-dot__current-mark { background: #FFFFFF;',
+            'left: 50%; margin: 0; position: absolute; top: 50%;',
+            'transform: translate(-50%, -50%);',
+        );
 });
 
 it('uses the compact priority legend when descriptions are disabled', function (): void {
@@ -355,28 +414,67 @@ it('uses text labels with priority and status markers', function (): void {
         ->and($finding->status->value)->toBe('open');
 });
 
-it('uses the report primary color and open editorial treatment for the problem explanation', function (): void {
+it('uses a visible semantic heading hierarchy without indenting the problem explanation', function (): void {
     [$assessment, $finding] = editorialPdfReportReadyAssessment();
     $finding->update(['entrepreneur_notes' => 'Decisione imprenditoriale da assumere con priorità operativa.']);
     editorialPdfReportSettings(['primary_color' => '#135E75']);
 
     $result = editorialPdfReportRenderAndGenerate($assessment->fresh());
     preg_match('/<section class="problem-explanation">(.*?)<\/section>/s', $result['html'], $noteMatch);
+    preg_match('/<section class="finding-section problem-section">(.*?)<\/section>/s', $result['html'], $problemMatch);
+    preg_match('/<section class="solution-block.*?<\/section>/s', $result['html'], $solutionMatch);
     $normalizedHtml = editorialPdfReportNormalizeText($result['html']);
 
     expect($noteMatch)->toHaveKey(1)
         ->and($noteMatch[1])->toContain(
+            '<h2 class="finding-section__label finding-section__label--prominent">',
             __('assestme.reports.document.entrepreneur_notes'),
             'Decisione imprenditoriale da assumere con priorità operativa.',
         )
+        ->and($problemMatch)->toHaveKey(1)
+        ->and($problemMatch[1])->toContain(
+            '<h2 class="finding-section__label finding-section__label--prominent">',
+            __('assestme.reports.document.problem'),
+        )
+        ->and($solutionMatch)->toHaveKey(0)
+        ->and($solutionMatch[0])->toContain(
+            '<h2 class="finding-section__label">',
+            '<h3>',
+        )
+        ->and($result['html'])->toContain('<h1 class="finding-title finding-title--')
         ->and($result['html'])->not->toContain(
             '<section class="problem-explanation" style=',
             'border-left-color: '.$result['snapshot']->findings[0]->priorityColor,
         )
         ->and($normalizedHtml)->toContain(
             '--accent: #135E75;',
-            '.problem-explanation { border-left: .8mm solid var(--accent);',
+            '.problem-explanation { margin: 0 0 4mm; padding: 0; }',
+            '.finding-section__label--prominent { color: var(--ink); font-size: 11pt;',
             '.problem-explanation .pre-line { font-size: 9.4pt; line-height: 1.45; }',
+        )
+        ->and($normalizedHtml)->not->toContain('.problem-explanation { border-left:');
+});
+
+it('omits an absent problem explanation without suppressing the visible problem heading', function (): void {
+    [$assessment, $finding] = editorialPdfReportReadyAssessment();
+    $finding->update(['entrepreneur_notes' => null]);
+
+    $result = editorialPdfReportRenderAndGenerate($assessment->fresh());
+    preg_match('/<section class="finding-section problem-section">(.*?)<\/section>/s', $result['html'], $problemMatch);
+
+    expect($result['html'])->not->toContain(
+        'class="problem-explanation"',
+        __('assestme.reports.document.entrepreneur_notes'),
+    )
+        ->and($problemMatch)->toHaveKey(1)
+        ->and($problemMatch[1])->toContain(
+            '<h2 class="finding-section__label finding-section__label--prominent">',
+            __('assestme.reports.document.problem'),
+            $result['snapshot']->findings[0]->problem,
+        )
+        ->and($result['text'])->toContain(
+            __('assestme.reports.document.problem'),
+            $result['snapshot']->findings[0]->problem,
         );
 });
 

@@ -17,13 +17,17 @@
     <div class="finding-body">
         @if (filled($finding->entrepreneurNotes))
             <section class="problem-explanation">
-                <div class="finding-section__label">{{ __('assestme.reports.document.entrepreneur_notes') }}</div>
+                <h2 class="finding-section__label finding-section__label--prominent">
+                    {{ __('assestme.reports.document.entrepreneur_notes') }}
+                </h2>
                 <div class="pre-line">{{ $finding->entrepreneurNotes }}</div>
             </section>
         @endif
 
-        <section class="finding-section">
-            <div class="finding-section__label">{{ __('assestme.reports.document.problem') }}</div>
+        <section class="finding-section problem-section">
+            <h2 class="finding-section__label finding-section__label--prominent">
+                {{ __('assestme.reports.document.problem') }}
+            </h2>
             <div class="pre-line">{{ $finding->problem }}</div>
         </section>
 

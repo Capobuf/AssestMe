@@ -11,8 +11,8 @@
 @endphp
 
 <section class="solution-block {{ $primary ? 'solution-block--primary' : '' }}" data-solution-id="{{ $solution->id }}">
-    <div class="finding-section__label">{{ $role }}</div>
-    <h2>{{ $solution->title }}</h2>
+    <h2 class="finding-section__label">{{ $role }}</h2>
+    <h3>{{ $solution->title }}</h3>
     <div class="pre-line">{{ $solution->description }}</div>
     @if (filled($solution->comparisonNotes))
         <div class="solution-comparison pre-line">{{ $solution->comparisonNotes }}</div>

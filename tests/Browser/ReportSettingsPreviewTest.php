@@ -41,6 +41,17 @@ final class ReportSettingsPreviewTest extends DuskTestCase
                         overview: overview?.textContent?.includes('Quadro generale') ?? false,
                         summary: summary?.textContent?.includes('Riepilogo dei finding') ?? false,
                         finding: document.querySelector('[data-finding-page="1"]') !== null,
+                        findingHierarchy: Boolean(
+                            document.querySelector('[data-finding-page="1"] h1.finding-title')
+                            && document.querySelector('[data-finding-page="1"] h2.finding-section__label--prominent')
+                            && document.querySelector('[data-finding-page="1"] .solution-block h3')
+                        ),
+                        riskAxes: Array.from(document.querySelectorAll('.risk-axis'))
+                            .map((axis) => axis.textContent?.trim())
+                            .includes('Conseguenza')
+                            && Array.from(document.querySelectorAll('.risk-axis'))
+                                .map((axis) => axis.textContent?.trim())
+                                .includes('Probabilità'),
                         sharedCss: document.querySelector('style')?.textContent.includes('@page summary') ?? false,
                         portraitWidth: overview?.getBoundingClientRect().width ?? 0,
                         landscapeWidth: summary?.getBoundingClientRect().width ?? 0,
@@ -51,6 +62,8 @@ final class ReportSettingsPreviewTest extends DuskTestCase
             Assert::assertTrue($initial[0]['overview'] ?? false);
             Assert::assertTrue($initial[0]['summary'] ?? false);
             Assert::assertTrue($initial[0]['finding'] ?? false);
+            Assert::assertTrue($initial[0]['findingHierarchy'] ?? false);
+            Assert::assertTrue($initial[0]['riskAxes'] ?? false);
             Assert::assertTrue($initial[0]['sharedCss'] ?? false);
             Assert::assertGreaterThan(
                 $initial[0]['portraitWidth'] ?? 0,

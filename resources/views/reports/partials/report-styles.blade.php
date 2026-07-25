@@ -99,14 +99,17 @@
     .finding-body > :first-child { margin-top: 0; }
     .status-accepted { color: #15803D; }
     .status-not_applicable { color: #777777; }
-    .problem-explanation { border-left: .8mm solid var(--accent); margin: 0 0 4mm; padding: 1mm 0 1mm 3.5mm; }
-    .problem-explanation .finding-section__label { margin-bottom: 1mm; }
+    .problem-explanation { margin: 0 0 4mm; padding: 0; }
     .problem-explanation .pre-line { font-size: 9.4pt; line-height: 1.45; }
     .finding-section { margin-top: 4mm; }
     .finding-section__label { margin-bottom: 1mm; }
+    .finding-section__label--prominent {
+        color: var(--ink); font-size: 11pt; letter-spacing: 0; line-height: 1.2;
+        margin: 0 0 1.5mm; text-transform: none;
+    }
     .solution-block { border: .25mm solid var(--line); break-inside: avoid; margin-top: 4mm; padding: 3.5mm; }
     .solution-block--primary { background: #F0F0EC; border-left: 1mm solid var(--accent); }
-    .solution-block h2 { font-size: 11.5pt; line-height: 1.2; margin-bottom: 1.5mm; }
+    .solution-block h3 { font-size: 11.5pt; line-height: 1.2; margin-bottom: 1.5mm; }
     .finding-detail--continuation .solution-block { margin-top: 3mm; padding: 3mm; }
     .solution-comparison { border-left: .5mm solid var(--line); color: var(--muted); margin-top: 2mm; padding-left: 2.5mm; }
     .solution-metrics { border-collapse: collapse; border-top: .25mm solid var(--line); margin-top: 3mm; table-layout: fixed; width: 100%; }
@@ -129,14 +132,22 @@
     .risk-compact-layout__result { width: 48mm; }
     .risk-mini-layout { border-collapse: collapse; width: auto; }
     .risk-mini-layout td { padding: 0; vertical-align: middle; }
-    .risk-axis { color: var(--muted); font-size: 9pt; font-weight: 700; line-height: 1; }
-    .risk-axis--vertical { padding-right: 1.5mm !important; vertical-align: middle !important; }
-    .risk-axis--horizontal { margin-top: .5mm; text-align: center; }
+    .risk-axis { color: var(--muted); font-size: 6pt; font-weight: 700; letter-spacing: .04em; line-height: 1; text-transform: uppercase; }
+    .risk-axis-cell { height: 25mm; position: relative; width: 5mm; }
+    .risk-axis--vertical {
+        left: 50%; position: absolute; top: 50%;
+        transform: translate(-50%, -50%) rotate(-90deg); white-space: nowrap;
+    }
+    .risk-axis--horizontal { margin-top: 1mm; text-align: center; }
     .risk-mini-matrix { border-collapse: separate; border-spacing: 1mm; table-layout: fixed; width: auto; }
     .risk-mini-matrix td { border: 0; height: 5mm; padding: 0; text-align: center; vertical-align: middle; width: 5mm; }
     .risk-dot { border: .25mm solid rgba(0, 0, 0, .18); border-radius: 50%; display: inline-block; height: 3.8mm; position: relative; vertical-align: middle; width: 3.8mm; }
     .risk-dot--current { border: .75mm solid var(--ink); height: 5mm; width: 5mm; }
-    .risk-dot__current-mark { background: #FFFFFF; border: .2mm solid var(--ink); border-radius: 50%; display: block; height: 1.3mm; margin: 1.1mm auto 0; width: 1.3mm; }
+    .risk-dot__current-mark {
+        background: #FFFFFF; border: .2mm solid var(--ink); border-radius: 50%; display: block;
+        height: 1.3mm; left: 50%; margin: 0; position: absolute; top: 50%;
+        transform: translate(-50%, -50%); width: 1.3mm;
+    }
     .risk-result-compact strong { display: block; font-size: 12pt; line-height: 1.15; }
     .risk-result-compact .priority-marker { float: left; height: 6mm; margin-right: 2mm; }
     .risk-result-compact__factors { color: var(--muted); display: block; font-size: 8pt; margin-top: 1mm; }
