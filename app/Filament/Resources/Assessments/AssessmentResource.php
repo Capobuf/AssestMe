@@ -25,6 +25,8 @@ class AssessmentResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
 
+    protected static ?int $navigationSort = 1;
+
     public static function getNavigationLabel(): string
     {
         return __('assestme.assessments.navigation');
@@ -38,11 +40,6 @@ class AssessmentResource extends Resource
     public static function getPluralModelLabel(): string
     {
         return __('assestme.assessments.plural');
-    }
-
-    public static function getNavigationGroup(): ?string
-    {
-        return __('assestme.assessments.group');
     }
 
     public static function form(Schema $schema): Schema

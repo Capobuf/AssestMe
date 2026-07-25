@@ -49,7 +49,7 @@ final class FilamentNavigationTest extends DuskTestCase
                 ->visit('/admin')
                 ->waitFor('.fi-sidebar');
 
-            Assert::assertEqualsCanonicalizing(
+            Assert::assertSame(
                 ['Dashboard', 'Assessment', 'Aziende', 'Impostazioni'],
                 self::topLevelSidebarLabels($browser),
             );
@@ -88,7 +88,7 @@ final class FilamentNavigationTest extends DuskTestCase
                 'Matrice priorità',
                 'Livelli di impegno',
             ], self::subNavigationLabels($browser));
-            Assert::assertEqualsCanonicalizing(
+            Assert::assertSame(
                 ['Dashboard', 'Assessment', 'Aziende', 'Impostazioni'],
                 self::topLevelSidebarLabels($browser),
             );

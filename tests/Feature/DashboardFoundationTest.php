@@ -20,6 +20,8 @@ use App\Models\User;
 use App\Services\Backups\LatestBackupStatus;
 use Carbon\CarbonImmutable;
 use Database\Seeders\MilestoneOneSeeder;
+use Filament\Facades\Filament;
+use Filament\Widgets\AccountWidget;
 use Illuminate\Support\Facades\File;
 use Livewire\Livewire;
 
@@ -80,7 +82,26 @@ it('shows actionable dashboard counts and only the latest five assessments', fun
     Livewire::test(ApplicationStatus::class)
         ->assertSee(__('assestme.dashboard.application_status'))
         ->assertSee(__('assestme.dashboard.cleanup_failures'))
-        ->assertSee(__('assestme.dashboard.cleanup_pending_count', ['count' => 1]));
+        ->assertSee(__('assestme.dashboard.cleanup_pending_count', ['count' => 1]))
+        ->assertSee(__('assestme.dashboard.check'))
+        ->assertSee(__('assestme.dashboard.condition'))
+        ->assertSee(__('assestme.dashboard.last_event'))
+        ->assertSee(__('assestme.dashboard.details'))
+        ->assertSeeHtml('class="assestme-application-status__table"')
+        ->assertSeeHtml('class="assestme-application-status__condition-content"');
+});
+
+it('does not register the account welcome widget on the dashboard', function (): void {
+    $widgets = array_values(Filament::getPanel('admin')->getWidgets());
+
+    expect($widgets)
+        ->toContain(
+            AssessmentStatsOverview::class,
+            LatestAssessments::class,
+            UrgentFindings::class,
+            ApplicationStatus::class,
+        )
+        ->not->toContain(AccountWidget::class);
 });
 
 it('reports the newest managed backup without treating unrelated archives as successful', function (): void {

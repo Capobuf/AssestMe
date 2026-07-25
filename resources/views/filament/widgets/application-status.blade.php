@@ -2,28 +2,62 @@
     <x-filament::section>
         <x-slot name="heading">{{ __('assestme.dashboard.application_status') }}</x-slot>
 
-        <div class="overflow-x-auto" data-dusk="application-status">
-            <table class="w-full text-left text-sm" style="min-width: 48rem">
-                <tbody class="divide-y divide-gray-200 dark:divide-white/10">
+        <div class="assestme-application-status" data-dusk="application-status">
+            <table
+                class="assestme-application-status__table"
+                aria-label="{{ __('assestme.dashboard.application_status') }}"
+            >
+                <thead>
+                    <tr>
+                        <th scope="col">{{ __('assestme.dashboard.check') }}</th>
+                        <th scope="col">{{ __('assestme.dashboard.condition') }}</th>
+                        <th scope="col">{{ __('assestme.dashboard.last_event') }}</th>
+                        <th scope="col">{{ __('assestme.dashboard.details') }}</th>
+                    </tr>
+                </thead>
+
+                <tbody>
                 @foreach ($rows as $row)
-                <tr>
-                    <th scope="row" class="py-3 pr-4 font-medium">{{ $row['label'] }}</th>
-                    <td class="py-3 pr-4">
-                        <div class="flex items-center gap-2">
+                <tr class="assestme-application-status__row assestme-application-status__row--{{ $row['status'] }}">
+                    <th
+                        scope="row"
+                        data-label="{{ __('assestme.dashboard.check') }}"
+                    >
+                        {{ $row['label'] }}
+                    </th>
+
+                    <td
+                        class="assestme-application-status__condition"
+                        data-label="{{ __('assestme.dashboard.condition') }}"
+                    >
+                        <div class="assestme-application-status__condition-content">
                         @if ($row['status'] === 'ok')
-                            <x-filament::icon icon="heroicon-m-check-circle" class="h-5 w-5 text-success-600" />
+                            <x-filament::icon icon="heroicon-m-check-circle" class="assestme-application-status__icon" />
                         @elseif ($row['status'] === 'failed')
-                            <x-filament::icon icon="heroicon-m-x-circle" class="h-5 w-5 text-danger-600" />
+                            <x-filament::icon icon="heroicon-m-x-circle" class="assestme-application-status__icon" />
                         @elseif ($row['status'] === 'warning')
-                            <x-filament::icon icon="heroicon-m-exclamation-triangle" class="h-5 w-5 text-warning-600" />
+                            <x-filament::icon icon="heroicon-m-exclamation-triangle" class="assestme-application-status__icon" />
                         @else
-                            <x-filament::icon icon="heroicon-m-question-mark-circle" class="h-5 w-5 text-gray-500" />
+                            <x-filament::icon icon="heroicon-m-question-mark-circle" class="assestme-application-status__icon" />
                         @endif
-                        <span>{{ $row['status_label'] }}</span>
+
+                            <span>{{ $row['status_label'] }}</span>
                         </div>
                     </td>
-                    <td class="py-3 pr-4 whitespace-nowrap text-gray-500">{{ $row['event'] }}</td>
-                    <td class="py-3 text-gray-600 dark:text-gray-300">{{ $row['message'] }}</td>
+
+                    <td
+                        class="assestme-application-status__event"
+                        data-label="{{ __('assestme.dashboard.last_event') }}"
+                    >
+                        {{ $row['event'] }}
+                    </td>
+
+                    <td
+                        class="assestme-application-status__message"
+                        data-label="{{ __('assestme.dashboard.details') }}"
+                    >
+                        {{ $row['message'] }}
+                    </td>
                 </tr>
                 @endforeach
                 </tbody>
