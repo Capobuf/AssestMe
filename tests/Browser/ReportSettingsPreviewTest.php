@@ -29,46 +29,128 @@ final class ReportSettingsPreviewTest extends DuskTestCase
 
         $this->browse(function (Browser $browser) use ($administrator, $artifactRoot): void {
             $browser->loginAs($administrator)
-                ->resize(1440, 900)
+                ->resize(1920, 1080)
                 ->visit(ReportSettingsPage::getUrl())
                 ->waitForText('Impostazioni report')
                 ->waitFor('[data-dusk="report-preview-iframe"]')
-                ->assertSee('Valori e output')
+                ->assertSourceHas('Valori e output')
                 ->assertSee('Anteprima')
                 ->assertSee('Espandi anteprima')
-                ->assertDontSee('Soluzioni nel riepilogo')
-                ->assertDontSee('Note tecniche nel report')
-                ->assertDontSee('Stime economiche nel report')
-                ->assertDontSee('Inizia ogni Finding su una nuova pagina')
-                ->assertSee('Dopo una generazione PDF riuscita, completa l’Assessment se è ancora in bozza; non modifica l’anteprima.')
-                ->assertSee('Imposta il valore predefinito dell’opzione che include nel solo XLSX i Finding esclusi dal report; non modifica PDF o anteprima.');
+                ->assertSourceMissing('Soluzioni nel riepilogo')
+                ->assertSourceMissing('Note tecniche nel report')
+                ->assertSourceMissing('Stime economiche nel report')
+                ->assertSourceMissing('Inizia ogni Finding su una nuova pagina')
+                ->assertSourceHas('Dopo una generazione PDF riuscita, completa l’Assessment se è ancora in bozza; non modifica l’anteprima.')
+                ->assertSourceHas('Imposta il valore predefinito dell’opzione che include nel solo XLSX i Finding esclusi dal report; non modifica PDF o anteprima.');
 
             $initialSource = $browser->attribute('[data-dusk="report-preview-iframe"]', 'src');
             Assert::assertIsString($initialSource);
             $this->probePdf($browser);
 
             $normalGeometry = $browser->script(<<<'JS'
+                const main = document.querySelector('.fi-main');
+                const page = document.querySelector('.assestme-report-settings-page');
+                const layout = document.querySelector('[data-dusk="report-settings-layout"]');
+                const options = document.querySelector('[data-dusk="report-settings-options"]');
                 const preview = document.querySelector('[data-dusk="report-style-preview"]');
+                const pageContent = document.querySelector('.fi-page-content');
                 const iframe = document.querySelector('[data-dusk="report-preview-iframe"]');
+                const save = Array.from(document.querySelectorAll('button'))
+                    .find((button) => button.textContent?.trim() === 'Salva');
+                const mainRect = main?.getBoundingClientRect();
+                const layoutRect = layout?.getBoundingClientRect();
+                const optionsRect = options?.getBoundingClientRect();
                 const previewRect = preview?.getBoundingClientRect();
+                const pageContentRect = pageContent?.getBoundingClientRect();
                 const iframeRect = iframe?.getBoundingClientRect();
-
+                const saveRect = save?.getBoundingClientRect();
                 return {
+                    mainIsFull: main?.classList.contains('fi-width-full') ?? false,
+                    pageIsFullHeight: page?.classList.contains('fi-height-full') ?? false,
+                    mainRightGap: document.documentElement.clientWidth - (mainRect?.right ?? 0),
+                    documentOverflow: document.documentElement.scrollHeight - document.documentElement.clientHeight,
+                    layoutWidth: layoutRect?.width ?? 0,
+                    optionsLeft: optionsRect?.left ?? 0,
+                    optionsWidth: optionsRect?.width ?? 0,
+                    optionsHeight: optionsRect?.height ?? 0,
+                    optionsClientHeight: options?.clientHeight ?? 0,
+                    optionsScrollHeight: options?.scrollHeight ?? 0,
+                    optionsOverflowY: options ? getComputedStyle(options).overflowY : null,
+                    previewLeft: previewRect?.left ?? 0,
+                    previewBottom: previewRect?.bottom ?? 0,
                     position: preview ? getComputedStyle(preview).position : null,
                     previewWidth: previewRect?.width ?? 0,
                     previewHeight: previewRect?.height ?? 0,
                     iframeWidth: iframeRect?.width ?? 0,
                     iframeHeight: iframeRect?.height ?? 0,
+                    pageContentBottom: pageContentRect?.bottom ?? 0,
+                    saveTop: saveRect?.top ?? 0,
+                    saveBottom: saveRect?.bottom ?? 0,
+                    saveHeight: saveRect?.height ?? 0,
+                    saveHitTarget: save && saveRect
+                        ? save.contains(document.elementFromPoint(
+                            saveRect.left + (saveRect.width / 2),
+                            saveRect.top + (saveRect.height / 2),
+                        ))
+                        : false,
+                    viewportHeight: document.documentElement.clientHeight,
                 };
                 JS)[0];
+            $browser->driver->takeScreenshot("{$artifactRoot}/report-settings-viewport-workbench-1920x1080.png");
+            Assert::assertTrue($normalGeometry['mainIsFull'] ?? false);
+            Assert::assertTrue($normalGeometry['pageIsFullHeight'] ?? false);
+            Assert::assertLessThanOrEqual(40, $normalGeometry['mainRightGap'] ?? 999);
+            Assert::assertLessThanOrEqual(1, $normalGeometry['documentOverflow'] ?? 999);
+            Assert::assertGreaterThan(1_300, $normalGeometry['layoutWidth'] ?? 0);
+            Assert::assertLessThan($normalGeometry['previewLeft'] ?? 0, $normalGeometry['optionsLeft'] ?? 0);
+            Assert::assertGreaterThan($normalGeometry['optionsWidth'] ?? 0, $normalGeometry['previewWidth'] ?? 0);
             Assert::assertSame('static', $normalGeometry['position'] ?? null);
-            Assert::assertGreaterThan(380, $normalGeometry['iframeWidth'] ?? 0);
-            Assert::assertEqualsWithDelta(
-                210 / 297,
-                ($normalGeometry['iframeWidth'] ?? 0) / ($normalGeometry['iframeHeight'] ?? 1),
-                0.002,
+            Assert::assertGreaterThan(800, $normalGeometry['iframeWidth'] ?? 0);
+            Assert::assertSame('auto', $normalGeometry['optionsOverflowY'] ?? null);
+            Assert::assertGreaterThan(
+                $normalGeometry['optionsClientHeight'] ?? 0,
+                $normalGeometry['optionsScrollHeight'] ?? 0,
             );
+            Assert::assertEqualsWithDelta(
+                $normalGeometry['optionsHeight'] ?? 0,
+                $normalGeometry['previewHeight'] ?? 0,
+                1,
+            );
+            Assert::assertLessThanOrEqual(
+                $normalGeometry['viewportHeight'] ?? 0,
+                $normalGeometry['previewBottom'] ?? 999,
+            );
+            Assert::assertLessThanOrEqual(
+                $normalGeometry['pageContentBottom'] ?? 0,
+                $normalGeometry['saveBottom'] ?? 999,
+            );
+            Assert::assertGreaterThanOrEqual(32, $normalGeometry['saveHeight'] ?? 0);
+            Assert::assertTrue($normalGeometry['saveHitTarget'] ?? false);
 
+            $stationaryPreview = $browser->script(<<<'JS'
+                const options = document.querySelector('[data-dusk="report-settings-options"]');
+                const preview = document.querySelector('[data-dusk="report-style-preview"]');
+                const initialWindowScroll = window.scrollY;
+                const initialPreviewTop = preview?.getBoundingClientRect().top ?? 0;
+                if (options) {
+                    options.scrollTop = Math.min(500, options.scrollHeight - options.clientHeight);
+                }
+
+                return {
+                    optionsScrollTop: options?.scrollTop ?? 0,
+                    windowScroll: window.scrollY,
+                    initialWindowScroll,
+                    previewTop: preview?.getBoundingClientRect().top ?? 0,
+                    initialPreviewTop,
+                };
+                JS)[0];
+            Assert::assertGreaterThan(0, $stationaryPreview['optionsScrollTop'] ?? 0);
+            Assert::assertSame($stationaryPreview['initialWindowScroll'] ?? null, $stationaryPreview['windowScroll'] ?? null);
+            Assert::assertEqualsWithDelta(
+                $stationaryPreview['initialPreviewTop'] ?? 0,
+                $stationaryPreview['previewTop'] ?? 0,
+                0.5,
+            );
             $browser->type('[data-dusk="report-preview-title-input"]', 'Assessment IT Dusk')
                 ->pause(700)
                 ->waitUntil(
@@ -117,8 +199,11 @@ final class ReportSettingsPreviewTest extends DuskTestCase
                 $expandedGeometry['height'] ?? 0,
                 1,
             );
-            Assert::assertGreaterThan($normalGeometry['iframeHeight'] ?? 0, $expandedGeometry['iframeHeight'] ?? 0);
-            $browser->driver->takeScreenshot("{$artifactRoot}/report-settings-weasyprint-preview-fullscreen-1440x900.png");
+            Assert::assertGreaterThan(
+                ($expandedGeometry['viewportHeight'] ?? 0) - 100,
+                $expandedGeometry['iframeHeight'] ?? 0,
+            );
+            $browser->driver->takeScreenshot("{$artifactRoot}/report-settings-viewport-workbench-fullscreen-1920x1080.png");
 
             $browser->keys('[data-dusk="report-preview-expand"]', [WebDriverKeys::ESCAPE])
                 ->waitForText('Espandi anteprima');
@@ -146,10 +231,12 @@ final class ReportSettingsPreviewTest extends DuskTestCase
                 return {
                     width: rect?.width ?? 0,
                     height: rect?.height ?? 0,
+                    optionsOverflowY: getComputedStyle(document.querySelector('[data-dusk="report-settings-options"]')).overflowY,
                     documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
                 };
                 JS)[0];
             Assert::assertEqualsWithDelta(210 / 297, ($narrow['width'] ?? 0) / ($narrow['height'] ?? 1), 0.002);
+            Assert::assertSame('visible', $narrow['optionsOverflowY'] ?? null);
             Assert::assertLessThanOrEqual(1, $narrow['documentOverflow'] ?? 0);
             $this->probePdf($browser);
 

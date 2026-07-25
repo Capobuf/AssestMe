@@ -16,11 +16,11 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Pages\SettingsPage;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -88,6 +88,10 @@ final class ReportSettingsPage extends SettingsPage
 
     protected static ?int $navigationSort = 2;
 
+    protected string $view = 'filament.pages.report-settings-page';
+
+    protected Width|string|null $maxContentWidth = Width::Full;
+
     /** @var array<string, bool|int|string> */
     private array $pendingGeneralReportSettings = [];
 
@@ -103,139 +107,152 @@ final class ReportSettingsPage extends SettingsPage
 
     public function form(Schema $schema): Schema
     {
-        return $schema->components([
-            Grid::make([
+        return $schema
+            ->columns([
                 'default' => 1,
                 'xl' => 5,
             ])
-                ->schema([
-                    Group::make([
-                        Section::make(__('assestme.settings.report.identity'))
-                            ->schema([
-                                TextInput::make('consultant_name')
-                                    ->label(__('assestme.settings.fields.consultant_name'))
-                                    ->helperText(__('assestme.settings.help.consultant_name'))
-                                    ->live(debounce: 500)
-                                    ->maxLength(255),
-                                TextInput::make('business_name')
-                                    ->label(__('assestme.settings.fields.business_name'))
-                                    ->helperText(__('assestme.settings.help.business_name'))
-                                    ->live(debounce: 500)
-                                    ->maxLength(255),
-                                TextInput::make('consultant_role')->label(__('assestme.settings.fields.consultant_role'))->helperText(__('assestme.settings.help.consultant_role'))->live(debounce: 500)->maxLength(255),
-                                TextInput::make('consultant_email')->label(__('assestme.settings.fields.consultant_email'))->helperText(__('assestme.settings.help.consultant_email'))->live(debounce: 500)->email()->maxLength(254),
-                                TextInput::make('consultant_phone')->label(__('assestme.settings.fields.consultant_phone'))->helperText(__('assestme.settings.help.consultant_phone'))->live(debounce: 500)->maxLength(40),
-                                TextInput::make('consultant_website')->label(__('assestme.settings.fields.consultant_website'))->helperText(__('assestme.settings.help.consultant_website'))->live(debounce: 500)->url()->regex('/^https?:\/\//i')->maxLength(2048),
-                                Textarea::make('consultant_address')->label(__('assestme.settings.fields.consultant_address'))->helperText(__('assestme.settings.help.consultant_address'))->live(debounce: 500)->rows(3)->maxLength(20000),
-                                TextInput::make('consultant_vat_number')->label(__('assestme.settings.fields.consultant_vat_number'))->helperText(__('assestme.settings.help.consultant_vat_number'))->live(debounce: 500)->maxLength(32),
-                                TextInput::make('consultant_pec')->label(__('assestme.settings.fields.consultant_pec'))->helperText(__('assestme.settings.help.consultant_pec'))->live(debounce: 500)->email()->maxLength(254),
-                                TextInput::make('consultant_tax_code')->label(__('assestme.settings.fields.consultant_tax_code'))->helperText(__('assestme.settings.help.consultant_tax_code'))->live(debounce: 500)->maxLength(32),
-                                FileUpload::make('consultant_logo_path')
-                                    ->label(__('assestme.settings.fields.consultant_logo'))
-                                    ->helperText(__('assestme.settings.help.consultant_logo'))
-                                    ->live()
-                                    ->disk('local')
-                                    ->directory('branding')
-                                    ->visibility('private')
-                                    ->acceptedFileTypes(['image/png', 'image/jpeg'])
-                                    ->maxSize(5120)
-                                    ->preventFilePathTampering(),
-                                TextInput::make('signature_name')->label(__('assestme.settings.fields.signature_name'))->helperText(__('assestme.settings.help.signature_name'))->live(debounce: 500)->maxLength(255),
-                                TextInput::make('signature_role')->label(__('assestme.settings.fields.signature_role'))->helperText(__('assestme.settings.help.signature_role'))->live(debounce: 500)->maxLength(255),
-                            ])
-                            ->columns(2),
-                        Section::make(__('assestme.settings.report.layout'))
-                            ->schema([
-                                TextInput::make('default_title_pattern')
-                                    ->label(__('assestme.settings.fields.default_title_pattern'))
-                                    ->helperText(__('assestme.settings.help.default_title_pattern'))
-                                    ->required()
-                                    ->live(debounce: 500)
-                                    ->extraInputAttributes(['data-dusk' => 'report-preview-title-input'])
-                                    ->maxLength(255),
-                                ColorPicker::make('primary_color')
-                                    ->label(__('assestme.settings.fields.primary_color'))
-                                    ->helperText(__('assestme.settings.help.primary_color'))
-                                    ->required()
-                                    ->live(debounce: 300)
-                                    ->extraInputAttributes(['data-dusk' => 'report-preview-color-input'])
-                                    ->regex('/^#[0-9A-Fa-f]{6}$/'),
-                                Select::make('branding')
-                                    ->label(__('assestme.settings.fields.branding'))
-                                    ->helperText(__('assestme.settings.help.branding'))
-                                    ->options([
-                                        'consultant' => __('assestme.settings.values.consultant'),
-                                        'client' => __('assestme.settings.values.client'),
-                                        'both' => __('assestme.settings.values.both'),
-                                    ])
-                                    ->required()
-                                    ->live(),
-                                Select::make('cover_title_mode')
-                                    ->label(__('assestme.settings.fields.cover_title_mode'))
-                                    ->helperText(__('assestme.settings.help.cover_title_mode'))
-                                    ->options(CoverTitleMode::options())
-                                    ->required()
-                                    ->live(),
-                                Toggle::make('show_priority_descriptions')
-                                    ->label(__('assestme.settings.fields.show_priority_descriptions'))
-                                    ->helperText(__('assestme.settings.help.show_priority_descriptions'))
-                                    ->live(),
-                                ...self::toggleFields(),
-                            ])
-                            ->columns(2),
-                        Section::make(__('assestme.settings.report.output'))
-                            ->schema([
-                                TextInput::make('currency')
-                                    ->label(__('assestme.settings.fields.currency'))
-                                    ->helperText(__('assestme.settings.help.currency'))
-                                    ->required()
-                                    ->live(debounce: 500)
-                                    ->length(3)
-                                    ->regex('/^[A-Z]{3}$/'),
-                                TextInput::make('currency_symbol')
-                                    ->label(__('assestme.settings.fields.currency_symbol'))
-                                    ->helperText(__('assestme.settings.help.currency_symbol'))
-                                    ->required()
-                                    ->live(debounce: 500)
-                                    ->maxLength(8),
-                                Select::make('currency_symbol_position')
-                                    ->label(__('assestme.settings.fields.currency_symbol_position'))
-                                    ->helperText(__('assestme.settings.help.currency_symbol_position'))
-                                    ->options([
-                                        'before' => __('assestme.settings.values.before'),
-                                        'after' => __('assestme.settings.values.after'),
-                                    ])
-                                    ->required()
-                                    ->live(),
-                                Select::make('currency_decimals')
-                                    ->label(__('assestme.settings.fields.currency_decimals'))
-                                    ->helperText(__('assestme.settings.help.currency_decimals'))
-                                    ->options([0 => '0', 2 => '2'])
-                                    ->required()
-                                    ->live(),
-                                Toggle::make('report_excluded_findings_in_xlsx')
-                                    ->label(__('assestme.settings.fields.report_excluded_findings_in_xlsx'))
-                                    ->helperText(__('assestme.settings.help.report_excluded_findings_in_xlsx')),
-                            ])
-                            ->columns(2),
-                        Section::make(__('assestme.settings.report.texts'))
-                            ->schema([
-                                Textarea::make('methodology_text')->label(__('assestme.settings.fields.methodology_text'))->helperText(__('assestme.settings.help.methodology_text'))->live(debounce: 500)->rows(5)->maxLength(20000),
-                                Textarea::make('disclaimer_text')->label(__('assestme.settings.fields.disclaimer_text'))->helperText(__('assestme.settings.help.disclaimer_text'))->live(debounce: 500)->rows(5)->maxLength(20000),
-                                Textarea::make('signature_text')->label(__('assestme.settings.fields.signature_text'))->helperText(__('assestme.settings.help.signature_text'))->live(debounce: 500)->rows(3)->maxLength(20000),
-                            ]),
-                    ])->columnSpan([
+            ->extraAttributes([
+                'class' => 'assestme-report-settings-layout',
+                'data-dusk' => 'report-settings-layout',
+            ])
+            ->components([
+                Group::make([
+                    Section::make(__('assestme.settings.report.identity'))
+                        ->schema([
+                            TextInput::make('consultant_name')
+                                ->label(__('assestme.settings.fields.consultant_name'))
+                                ->helperText(__('assestme.settings.help.consultant_name'))
+                                ->live(debounce: 500)
+                                ->maxLength(255),
+                            TextInput::make('business_name')
+                                ->label(__('assestme.settings.fields.business_name'))
+                                ->helperText(__('assestme.settings.help.business_name'))
+                                ->live(debounce: 500)
+                                ->maxLength(255),
+                            TextInput::make('consultant_role')->label(__('assestme.settings.fields.consultant_role'))->helperText(__('assestme.settings.help.consultant_role'))->live(debounce: 500)->maxLength(255),
+                            TextInput::make('consultant_email')->label(__('assestme.settings.fields.consultant_email'))->helperText(__('assestme.settings.help.consultant_email'))->live(debounce: 500)->email()->maxLength(254),
+                            TextInput::make('consultant_phone')->label(__('assestme.settings.fields.consultant_phone'))->helperText(__('assestme.settings.help.consultant_phone'))->live(debounce: 500)->maxLength(40),
+                            TextInput::make('consultant_website')->label(__('assestme.settings.fields.consultant_website'))->helperText(__('assestme.settings.help.consultant_website'))->live(debounce: 500)->url()->regex('/^https?:\/\//i')->maxLength(2048),
+                            Textarea::make('consultant_address')->label(__('assestme.settings.fields.consultant_address'))->helperText(__('assestme.settings.help.consultant_address'))->live(debounce: 500)->rows(3)->maxLength(20000),
+                            TextInput::make('consultant_vat_number')->label(__('assestme.settings.fields.consultant_vat_number'))->helperText(__('assestme.settings.help.consultant_vat_number'))->live(debounce: 500)->maxLength(32),
+                            TextInput::make('consultant_pec')->label(__('assestme.settings.fields.consultant_pec'))->helperText(__('assestme.settings.help.consultant_pec'))->live(debounce: 500)->email()->maxLength(254),
+                            TextInput::make('consultant_tax_code')->label(__('assestme.settings.fields.consultant_tax_code'))->helperText(__('assestme.settings.help.consultant_tax_code'))->live(debounce: 500)->maxLength(32),
+                            FileUpload::make('consultant_logo_path')
+                                ->label(__('assestme.settings.fields.consultant_logo'))
+                                ->helperText(__('assestme.settings.help.consultant_logo'))
+                                ->live()
+                                ->disk('local')
+                                ->directory('branding')
+                                ->visibility('private')
+                                ->acceptedFileTypes(['image/png', 'image/jpeg'])
+                                ->maxSize(5120)
+                                ->preventFilePathTampering(),
+                            TextInput::make('signature_name')->label(__('assestme.settings.fields.signature_name'))->helperText(__('assestme.settings.help.signature_name'))->live(debounce: 500)->maxLength(255),
+                            TextInput::make('signature_role')->label(__('assestme.settings.fields.signature_role'))->helperText(__('assestme.settings.help.signature_role'))->live(debounce: 500)->maxLength(255),
+                        ])
+                        ->columns(2),
+                    Section::make(__('assestme.settings.report.layout'))
+                        ->schema([
+                            TextInput::make('default_title_pattern')
+                                ->label(__('assestme.settings.fields.default_title_pattern'))
+                                ->helperText(__('assestme.settings.help.default_title_pattern'))
+                                ->required()
+                                ->live(debounce: 500)
+                                ->extraInputAttributes(['data-dusk' => 'report-preview-title-input'])
+                                ->maxLength(255),
+                            ColorPicker::make('primary_color')
+                                ->label(__('assestme.settings.fields.primary_color'))
+                                ->helperText(__('assestme.settings.help.primary_color'))
+                                ->required()
+                                ->live(debounce: 300)
+                                ->extraInputAttributes(['data-dusk' => 'report-preview-color-input'])
+                                ->regex('/^#[0-9A-Fa-f]{6}$/'),
+                            Select::make('branding')
+                                ->label(__('assestme.settings.fields.branding'))
+                                ->helperText(__('assestme.settings.help.branding'))
+                                ->options([
+                                    'consultant' => __('assestme.settings.values.consultant'),
+                                    'client' => __('assestme.settings.values.client'),
+                                    'both' => __('assestme.settings.values.both'),
+                                ])
+                                ->required()
+                                ->live(),
+                            Select::make('cover_title_mode')
+                                ->label(__('assestme.settings.fields.cover_title_mode'))
+                                ->helperText(__('assestme.settings.help.cover_title_mode'))
+                                ->options(CoverTitleMode::options())
+                                ->required()
+                                ->live(),
+                            Toggle::make('show_priority_descriptions')
+                                ->label(__('assestme.settings.fields.show_priority_descriptions'))
+                                ->helperText(__('assestme.settings.help.show_priority_descriptions'))
+                                ->live(),
+                            ...self::toggleFields(),
+                        ])
+                        ->columns(2),
+                    Section::make(__('assestme.settings.report.output'))
+                        ->schema([
+                            TextInput::make('currency')
+                                ->label(__('assestme.settings.fields.currency'))
+                                ->helperText(__('assestme.settings.help.currency'))
+                                ->required()
+                                ->live(debounce: 500)
+                                ->length(3)
+                                ->regex('/^[A-Z]{3}$/'),
+                            TextInput::make('currency_symbol')
+                                ->label(__('assestme.settings.fields.currency_symbol'))
+                                ->helperText(__('assestme.settings.help.currency_symbol'))
+                                ->required()
+                                ->live(debounce: 500)
+                                ->maxLength(8),
+                            Select::make('currency_symbol_position')
+                                ->label(__('assestme.settings.fields.currency_symbol_position'))
+                                ->helperText(__('assestme.settings.help.currency_symbol_position'))
+                                ->options([
+                                    'before' => __('assestme.settings.values.before'),
+                                    'after' => __('assestme.settings.values.after'),
+                                ])
+                                ->required()
+                                ->live(),
+                            Select::make('currency_decimals')
+                                ->label(__('assestme.settings.fields.currency_decimals'))
+                                ->helperText(__('assestme.settings.help.currency_decimals'))
+                                ->options([0 => '0', 2 => '2'])
+                                ->required()
+                                ->live(),
+                            Toggle::make('report_excluded_findings_in_xlsx')
+                                ->label(__('assestme.settings.fields.report_excluded_findings_in_xlsx'))
+                                ->helperText(__('assestme.settings.help.report_excluded_findings_in_xlsx')),
+                        ])
+                        ->columns(2),
+                    Section::make(__('assestme.settings.report.texts'))
+                        ->schema([
+                            Textarea::make('methodology_text')->label(__('assestme.settings.fields.methodology_text'))->helperText(__('assestme.settings.help.methodology_text'))->live(debounce: 500)->rows(5)->maxLength(20000),
+                            Textarea::make('disclaimer_text')->label(__('assestme.settings.fields.disclaimer_text'))->helperText(__('assestme.settings.help.disclaimer_text'))->live(debounce: 500)->rows(5)->maxLength(20000),
+                            Textarea::make('signature_text')->label(__('assestme.settings.fields.signature_text'))->helperText(__('assestme.settings.help.signature_text'))->live(debounce: 500)->rows(3)->maxLength(20000),
+                        ]),
+                ])
+                    ->extraAttributes([
+                        'class' => 'assestme-report-settings-options',
+                        'data-dusk' => 'report-settings-options',
+                    ])
+                    ->columnSpan([
+                        'default' => 1,
+                        'xl' => 2,
+                    ]),
+                View::make('filament.pages.report-settings-preview')
+                    ->columnSpan([
                         'default' => 1,
                         'xl' => 3,
                     ]),
-                    View::make('filament.pages.report-settings-preview')
-                        ->columnSpan([
-                            'default' => 1,
-                            'xl' => 2,
-                        ]),
-                ])
-                ->columnSpanFull(),
-        ]);
+            ]);
+    }
+
+    /** @return array<string> */
+    public function getPageClasses(): array
+    {
+        return ['assestme-report-settings-page'];
     }
 
     public function reportPreviewUrl(): string

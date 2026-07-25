@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Settings\GeneralSettings;
 use App\Settings\ReportSettings;
 use Database\Seeders\MilestoneOneSeeder;
+use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -53,7 +54,7 @@ it('resolves report settings from the real migrated settings state', function ()
 it('mounts the report settings Filament page from migrated values', function (): void {
     $this->actingAs(User::factory()->create());
 
-    Livewire::test(ReportSettingsPage::class)
+    $page = Livewire::test(ReportSettingsPage::class)
         ->assertSuccessful()
         ->assertSee(__('assestme.settings.report.output'))
         ->assertDontSee(__('assestme.settings.fields.summary_solutions'))
@@ -67,6 +68,8 @@ it('mounts the report settings Filament page from migrated values', function ():
             'show_resolution' => true,
             'currency' => 'EUR',
         ]);
+
+    expect($page->instance()->getMaxContentWidth())->toBe(Width::Full);
 });
 
 it('describes every visible report option and hides obsolete duplicate controls', function (): void {

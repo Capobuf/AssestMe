@@ -1374,6 +1374,87 @@
     border-color: var(--gray-700);
 }
 
+@media (min-width: 80rem) {
+    .assestme-report-settings-page.fi-height-full {
+        height: calc(100dvh - 4rem);
+        overflow: hidden;
+    }
+
+    .assestme-report-settings-page.fi-height-full .fi-page-header-main-ctn,
+    .assestme-report-settings-page.fi-height-full .fi-page-main,
+    .assestme-report-settings-page.fi-height-full .fi-page-content,
+    .assestme-report-settings-page.fi-height-full .fi-page-content > .fi-sc,
+    .assestme-report-settings-page.fi-height-full .fi-page-content > .fi-sc > .fi-grid-col,
+    .assestme-report-settings-page.fi-height-full .fi-page-content > .fi-sc > .fi-grid-col > .fi-sc-component,
+    .assestme-report-settings-page.fi-height-full .fi-sc-form,
+    .assestme-report-settings-page.fi-height-full .fi-sc-form > .fi-sc:first-child,
+    .assestme-report-settings-page.fi-height-full .fi-sc-form > .fi-sc:first-child > .fi-grid-col,
+    .assestme-report-settings-page.fi-height-full .fi-sc-form > .fi-sc:first-child > .fi-grid-col > .fi-sc-component,
+    .assestme-report-settings-layout,
+    .assestme-report-settings-layout > div,
+    .assestme-report-settings-layout > div > .fi-sc-component,
+    .assestme-report-settings-options {
+        min-height: 0;
+    }
+
+    .assestme-report-settings-page.fi-height-full .fi-page-main {
+        flex: 1 1 auto;
+        height: auto;
+    }
+
+    .assestme-report-settings-page.fi-height-full .fi-page-content {
+        height: auto;
+        overflow: hidden;
+        row-gap: 0;
+    }
+
+    .assestme-report-settings-page.fi-height-full .fi-page-content > .fi-sc,
+    .assestme-report-settings-page.fi-height-full .fi-page-content > .fi-sc > div,
+    .assestme-report-settings-page.fi-height-full .fi-page-content > .fi-sc > div > .fi-sc-component,
+    .assestme-report-settings-page.fi-height-full .fi-sc-form,
+    .assestme-report-settings-page.fi-height-full .fi-sc-form > .fi-sc:first-child > .fi-grid-col,
+    .assestme-report-settings-page.fi-height-full .fi-sc-form > .fi-sc:first-child > .fi-grid-col > .fi-sc-component,
+    .assestme-report-settings-layout > div > .fi-sc-component,
+    .assestme-report-settings-options {
+        height: 100%;
+    }
+
+    .assestme-report-settings-page.fi-height-full .fi-sc-form > .fi-sc:first-child {
+        flex: 1 1 auto;
+        overflow: hidden;
+    }
+
+    .assestme-report-settings-page.fi-height-full .fi-sc-form > .fi-sc:last-child {
+        flex: 0 0 auto;
+    }
+
+    .assestme-report-settings-layout {
+        flex: 1 1 auto;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .assestme-report-settings-options {
+        overflow-y: auto;
+        padding-inline-end: 0.5rem;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+    }
+
+    .assestme-report-preview:not(.is-expanded) {
+        display: flex;
+        height: 100%;
+        min-height: 0;
+        flex-direction: column;
+    }
+
+    .assestme-report-preview:not(.is-expanded) .assestme-report-preview__frame {
+        aspect-ratio: auto;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+}
+
 .assestme-report-preview.is-expanded {
     background: var(--gray-100);
     display: flex;
