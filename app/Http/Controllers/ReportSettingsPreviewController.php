@@ -25,6 +25,9 @@ final class ReportSettingsPreviewController extends Controller
         $settings = Cache::get($key);
         abort_unless(is_array($settings), 404);
 
-        return view('reports.assessment', ['report' => $factory->make($settings)]);
+        return view('reports.assessment', [
+            'report' => $factory->make($settings),
+            'isSettingsPreview' => true,
+        ]);
     }
 }

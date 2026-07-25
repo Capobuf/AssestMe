@@ -6,6 +6,7 @@ namespace App\Filament\Pages;
 
 use App\Enums\CoverTitleMode;
 use App\Filament\Clusters\SettingsCluster;
+use App\Settings\GeneralSettings;
 use App\Settings\ReportSettings;
 use BackedEnum;
 use Filament\Forms\Components\ColorPicker;
@@ -26,6 +27,21 @@ use Illuminate\Support\Str;
 
 final class ReportSettingsPage extends SettingsPage
 {
+    /** @var list<string> */
+    private const GENERAL_REPORT_FIELDS = [
+        'currency',
+        'currency_symbol',
+        'currency_symbol_position',
+        'currency_decimals',
+        'evidence_included_by_default',
+        'captions_visible_by_default',
+        'summary_solutions',
+        'technical_notes_in_report',
+        'costs_in_report',
+        'new_page_per_finding',
+        'report_excluded_findings_in_xlsx',
+    ];
+
     protected static ?string $cluster = SettingsCluster::class;
 
     protected static string $settings = ReportSettings::class;
@@ -33,6 +49,9 @@ final class ReportSettingsPage extends SettingsPage
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentText;
 
     protected static ?int $navigationSort = 2;
+
+    /** @var array<string, bool|int|string> */
+    private array $pendingGeneralReportSettings = [];
 
     public static function getNavigationLabel(): string
     {
@@ -49,7 +68,7 @@ final class ReportSettingsPage extends SettingsPage
         return $schema->components([
             Grid::make([
                 'default' => 1,
-                'xl' => 3,
+                'xl' => 5,
             ])
                 ->schema([
                     Group::make([
@@ -118,6 +137,49 @@ final class ReportSettingsPage extends SettingsPage
                                 ...self::toggleFields(),
                             ])
                             ->columns(2),
+                        Section::make(__('assestme.settings.report.output'))
+                            ->schema([
+                                TextInput::make('currency')
+                                    ->label(__('assestme.settings.fields.currency'))
+                                    ->required()
+                                    ->length(3)
+                                    ->regex('/^[A-Z]{3}$/'),
+                                TextInput::make('currency_symbol')
+                                    ->label(__('assestme.settings.fields.currency_symbol'))
+                                    ->required()
+                                    ->maxLength(8),
+                                Select::make('currency_symbol_position')
+                                    ->label(__('assestme.settings.fields.currency_symbol_position'))
+                                    ->options([
+                                        'before' => __('assestme.settings.values.before'),
+                                        'after' => __('assestme.settings.values.after'),
+                                    ])
+                                    ->required(),
+                                Select::make('currency_decimals')
+                                    ->label(__('assestme.settings.fields.currency_decimals'))
+                                    ->options([0 => '0', 2 => '2'])
+                                    ->required(),
+                                Select::make('summary_solutions')
+                                    ->label(__('assestme.settings.fields.summary_solutions'))
+                                    ->options([
+                                        'recommended_only' => __('assestme.settings.values.recommended_only'),
+                                        'all' => __('assestme.settings.values.all'),
+                                    ])
+                                    ->required(),
+                                Toggle::make('evidence_included_by_default')
+                                    ->label(__('assestme.settings.fields.evidence_included_by_default')),
+                                Toggle::make('captions_visible_by_default')
+                                    ->label(__('assestme.settings.fields.captions_visible_by_default')),
+                                Toggle::make('technical_notes_in_report')
+                                    ->label(__('assestme.settings.fields.technical_notes_in_report')),
+                                Toggle::make('costs_in_report')
+                                    ->label(__('assestme.settings.fields.costs_in_report')),
+                                Toggle::make('new_page_per_finding')
+                                    ->label(__('assestme.settings.fields.new_page_per_finding')),
+                                Toggle::make('report_excluded_findings_in_xlsx')
+                                    ->label(__('assestme.settings.fields.report_excluded_findings_in_xlsx')),
+                            ])
+                            ->columns(2),
                         Section::make(__('assestme.settings.report.texts'))
                             ->schema([
                                 Textarea::make('methodology_text')->label(__('assestme.settings.fields.methodology_text'))->rows(5)->maxLength(20000),
@@ -126,12 +188,12 @@ final class ReportSettingsPage extends SettingsPage
                             ]),
                     ])->columnSpan([
                         'default' => 1,
-                        'xl' => 2,
+                        'xl' => 3,
                     ]),
                     View::make('filament.pages.report-settings-preview')
                         ->columnSpan([
                             'default' => 1,
-                            'xl' => 1,
+                            'xl' => 2,
                         ]),
                 ])
                 ->columnSpanFull(),
@@ -178,6 +240,11 @@ final class ReportSettingsPage extends SettingsPage
     /** @param array<string, mixed> $data @return array<string, mixed> */
     protected function mutateFormDataBeforeFill(array $data): array
     {
+        $generalSettings = app(GeneralSettings::class)->toArray();
+        foreach (self::GENERAL_REPORT_FIELDS as $field) {
+            $data[$field] = $generalSettings[$field];
+        }
+
         $mode = $data['cover_title_mode'] ?? CoverTitleMode::Separate;
         $data['cover_title_mode'] = $mode instanceof CoverTitleMode ? $mode->value : (string) $mode;
 
@@ -187,6 +254,18 @@ final class ReportSettingsPage extends SettingsPage
     /** @param array<string, mixed> $data @return array<string, mixed> */
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        $this->pendingGeneralReportSettings = [];
+        foreach (self::GENERAL_REPORT_FIELDS as $field) {
+            $value = $data[$field];
+            if (is_bool($value) || is_int($value) || is_string($value)) {
+                $this->pendingGeneralReportSettings[$field] = $value;
+            }
+            unset($data[$field]);
+        }
+        $this->pendingGeneralReportSettings['currency'] = mb_strtoupper(
+            (string) $this->pendingGeneralReportSettings['currency'],
+        );
+
         foreach (['consultant_vat_number', 'consultant_tax_code'] as $field) {
             $value = $data[$field] ?? null;
             $data[$field] = is_string($value) && $value !== '' ? mb_strtoupper(str_replace(' ', '', $value)) : null;
@@ -196,6 +275,13 @@ final class ReportSettingsPage extends SettingsPage
         $data['cover_title_mode'] = CoverTitleMode::from((string) $data['cover_title_mode']);
 
         return $data;
+    }
+
+    protected function afterSave(): void
+    {
+        $settings = app(GeneralSettings::class);
+        $settings->fill($this->pendingGeneralReportSettings);
+        $settings->save();
     }
 
     /** @return list<Toggle> */

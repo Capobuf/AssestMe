@@ -268,6 +268,7 @@ return [
             'title' => 'Impostazioni report',
             'identity' => 'Identità del consulente',
             'layout' => 'Layout e sezioni',
+            'output' => 'Valori e output',
             'texts' => 'Testi configurabili',
         ],
         'fields' => [
@@ -290,6 +291,7 @@ return [
             'default_assessment_status' => 'Stato iniziale assessment',
             'technical_notes_in_report' => 'Note tecniche nel report',
             'costs_in_report' => 'Stime economiche nel report',
+            'new_page_per_finding' => 'Inizia ogni Finding su una nuova pagina',
             'report_excluded_findings_in_xlsx' => 'Includi Finding esclusi nel file XLSX',
             'consultant_name' => 'Nome consulente',
             'business_name' => 'Ragione sociale',
@@ -343,8 +345,7 @@ return [
             'evidence_captions' => 'Mostra le didascalie valorizzate sotto le immagini incluse.',
         ],
         'preview' => [
-            'heading' => 'Anteprima stile',
-            'description' => 'Anteprima del report reale con lo stesso layout usato dal PDF.',
+            'heading' => 'Anteprima',
         ],
         'values' => [
             'archive' => 'Archivia',

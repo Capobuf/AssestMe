@@ -55,10 +55,16 @@ it('mounts the report settings Filament page from migrated values', function ():
 
     Livewire::test(ReportSettingsPage::class)
         ->assertSuccessful()
+        ->assertSee(__('assestme.settings.report.output'))
+        ->assertSee(__('assestme.settings.fields.new_page_per_finding'))
+        ->assertDontSee('assestme.settings.fields.new_page_per_finding')
         ->assertFormSet([
             'cover_title_mode' => CoverTitleMode::Separate->value,
             'show_priority_descriptions' => true,
             'show_resolution' => true,
+            'currency' => 'EUR',
+            'evidence_included_by_default' => true,
+            'new_page_per_finding' => true,
         ]);
 });
 
@@ -73,10 +79,11 @@ it('persists validated general settings with the seeded active risk profile', fu
             'active_risk_profile_id' => $profile->getKey(),
             'max_evidence_file_mb' => 20,
             'max_assessment_evidence_mb' => 300,
-            'currency' => 'EUR',
         ])
         ->call('save')
-        ->assertHasNoFormErrors();
+        ->assertHasNoFormErrors()
+        ->assertDontSee(__('assestme.settings.report.output'))
+        ->assertDontSee(__('assestme.settings.fields.new_page_per_finding'));
 
     $settings = app(GeneralSettings::class);
     expect($settings->application_name)->toBe('AssestMe Test')
@@ -108,16 +115,40 @@ it('normalizes report identity values without introducing VAT calculations', fun
             'primary_color' => '#a1b2c3',
             'cover_title_mode' => CoverTitleMode::Combined->value,
             'show_priority_descriptions' => false,
+            'currency' => 'USD',
+            'currency_symbol' => '$',
+            'currency_symbol_position' => 'before',
+            'currency_decimals' => 0,
+            'evidence_included_by_default' => false,
+            'captions_visible_by_default' => false,
+            'summary_solutions' => 'all',
+            'technical_notes_in_report' => true,
+            'costs_in_report' => false,
+            'new_page_per_finding' => false,
+            'report_excluded_findings_in_xlsx' => true,
         ])
-        ->call('save');
+        ->call('save')
+        ->assertHasNoFormErrors();
 
     $settings = app(ReportSettings::class);
+    $generalSettings = app(GeneralSettings::class);
     expect($settings->consultant_vat_number)->toBe('IT01234567890')
         ->and($settings->consultant_tax_code)->toBe('RSSMRA80A01H501U')
         ->and($settings->primary_color)->toBe('#A1B2C3')
         ->and($settings->cover_title_mode)->toBe(CoverTitleMode::Combined)
         ->and($settings->show_priority_descriptions)->toBeFalse()
-        ->and($settings->toArray())->not->toHaveKeys(['vat_rate', 'taxable_amount', 'tax_amount']);
+        ->and($settings->toArray())->not->toHaveKeys(['vat_rate', 'taxable_amount', 'tax_amount'])
+        ->and($generalSettings->currency)->toBe('USD')
+        ->and($generalSettings->currency_symbol)->toBe('$')
+        ->and($generalSettings->currency_symbol_position)->toBe('before')
+        ->and($generalSettings->currency_decimals)->toBe(0)
+        ->and($generalSettings->evidence_included_by_default)->toBeFalse()
+        ->and($generalSettings->captions_visible_by_default)->toBeFalse()
+        ->and($generalSettings->summary_solutions)->toBe('all')
+        ->and($generalSettings->technical_notes_in_report)->toBeTrue()
+        ->and($generalSettings->costs_in_report)->toBeFalse()
+        ->and($generalSettings->new_page_per_finding)->toBeFalse()
+        ->and($generalSettings->report_excluded_findings_in_xlsx)->toBeTrue();
 
     Livewire::test(ReportSettingsPage::class)
         ->fillForm([
