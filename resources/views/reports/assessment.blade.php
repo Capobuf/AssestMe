@@ -17,7 +17,7 @@
     <title>{{ $report->title }}</title>
     @include('reports.partials.report-styles')
 </head>
-<body @if ($isSettingsPreview ?? false) class="assestme-report-preview-document" @endif>
+<body>
     @if ($report->setting('cover') === true)
         @include('reports.partials.cover')
     @endif
@@ -44,47 +44,5 @@
 
     @include('reports.partials.final-sections')
 
-    @if ($isSettingsPreview ?? false)
-        <script>
-            (() => {
-                const body = document.body;
-                const sheets = Array.from(body.querySelectorAll(':scope > section, :scope > article'));
-
-                if (sheets.length === 0) {
-                    return;
-                }
-
-                for (const sheet of sheets) {
-                    const slot = document.createElement('div');
-                    slot.className = 'assestme-report-preview-sheet-slot';
-                    sheet.before(slot);
-                    sheet.classList.add('assestme-report-preview-sheet');
-                    slot.append(sheet);
-                }
-
-                const fitSheets = () => {
-                    const availableWidth = document.documentElement.clientWidth;
-
-                    for (const slot of body.querySelectorAll('.assestme-report-preview-sheet-slot')) {
-                        const sheet = slot.firstElementChild;
-                        sheet.style.transform = 'none';
-
-                        const scale = availableWidth / sheet.offsetWidth;
-                        slot.style.height = `${sheet.offsetHeight * scale}px`;
-                        sheet.style.transform = `scale(${scale})`;
-                    }
-
-                    body.dataset.reportPreviewFitted = 'true';
-                    body.dataset.reportPreviewPageCount = String(sheets.length);
-                };
-
-                requestAnimationFrame(() => {
-                    fitSheets();
-                    requestAnimationFrame(fitSheets);
-                });
-                window.addEventListener('resize', fitSheets);
-            })();
-        </script>
-    @endif
 </body>
 </html>

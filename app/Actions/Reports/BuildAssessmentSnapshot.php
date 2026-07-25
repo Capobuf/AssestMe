@@ -9,11 +9,9 @@ use App\Data\Reports\AssessmentReportData;
 use App\Data\Reports\ReportAssetData;
 use App\Data\Reports\ReportEvidenceData;
 use App\Data\Reports\ReportFindingData;
-use App\Data\Reports\ReportLogoData;
 use App\Data\Reports\ReportPriorityData;
 use App\Data\Reports\ReportRiskMatrixData;
 use App\Data\Reports\ReportSolutionData;
-use App\Enums\CoverTitleMode;
 use App\Enums\EvidenceType;
 use App\Enums\ScopeType;
 use App\Models\Assessment;
@@ -25,7 +23,9 @@ use App\Models\FindingSolution;
 use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
 use App\Models\RiskMatrixEntry;
+use App\Services\Reporting\BuildReportLogos;
 use App\Services\Reporting\FindingPagePlanner;
+use App\Services\Reporting\ResolveReportTitle;
 use App\Settings\GeneralSettings;
 use App\Settings\ReportSettings;
 use Illuminate\Database\Eloquent\Collection;
@@ -44,6 +44,8 @@ final class BuildAssessmentSnapshot
         private readonly GeneralSettings $generalSettings,
         private readonly ReportSettings $reportSettings,
         private readonly FindingPagePlanner $pagePlanner,
+        private readonly BuildReportLogos $buildReportLogos,
+        private readonly ResolveReportTitle $resolveReportTitle,
     ) {}
 
     public function __invoke(
@@ -77,7 +79,12 @@ final class BuildAssessmentSnapshot
             generatedAt: $generatedAt->utc()->toIso8601String(),
             applicationVersion: (string) config('assestme.version'),
             locale: $assessment->locale,
-            title: $this->reportTitle($assessment, $clientName),
+            title: ($this->resolveReportTitle)(
+                $assessment->report_title_override,
+                $this->reportSettings->default_title_pattern,
+                $clientName,
+                $this->reportSettings->cover_title_mode,
+            ),
             assessmentId: (int) $assessment->getKey(),
             assessmentTitle: $assessment->title,
             assessmentDate: $assessment->assessment_date->format('Y-m-d'),
@@ -99,7 +106,11 @@ final class BuildAssessmentSnapshot
             clientPhone: $client->phone,
             clientWebsite: $client->website,
             clientAddress: $clientAddress,
-            logos: $this->logos($client->logo_path),
+            logos: ($this->buildReportLogos)(
+                $this->reportSettings->branding,
+                $this->reportSettings->consultant_logo_path,
+                $client->logo_path,
+            ),
             priorityLegend: $this->priorityLegend(),
             findings: $findings,
             settingsSnapshot: $this->settingsSnapshot(),
@@ -329,57 +340,6 @@ final class BuildAssessmentSnapshot
         ]);
     }
 
-    /** @return list<ReportLogoData> */
-    private function logos(?string $clientLogoPath): array
-    {
-        $paths = match ($this->reportSettings->branding) {
-            'consultant' => ['consultant' => $this->reportSettings->consultant_logo_path],
-            'client' => ['client' => $clientLogoPath],
-            'both' => [
-                'consultant' => $this->reportSettings->consultant_logo_path,
-                'client' => $clientLogoPath,
-            ],
-            default => throw new \LogicException('The configured report branding mode is invalid.'),
-        };
-
-        $logos = [];
-        foreach ($paths as $owner => $path) {
-            if ($path === null) {
-                continue;
-            }
-
-            $disk = Storage::disk('local');
-            if (! $disk->exists($path)) {
-                throw ValidationException::withMessages(['report' => __('assestme.reports.errors.logo_missing')]);
-            }
-
-            $contents = $disk->get($path);
-            if (strlen($contents) > 5 * 1024 * 1024) {
-                throw ValidationException::withMessages(['report' => __('assestme.reports.errors.logo_too_large')]);
-            }
-
-            $mimeType = $disk->mimeType($path);
-            if (! is_string($mimeType) || ! in_array($mimeType, ['image/png', 'image/jpeg'], true)) {
-                throw ValidationException::withMessages(['report' => __('assestme.reports.errors.logo_invalid')]);
-            }
-
-            $imageInfo = getimagesizefromstring($contents);
-            if ($imageInfo === false || $imageInfo['mime'] !== $mimeType) {
-                throw ValidationException::withMessages(['report' => __('assestme.reports.errors.logo_invalid')]);
-            }
-
-            $logos[] = new ReportLogoData(
-                owner: $owner,
-                path: $path,
-                mimeType: $mimeType,
-                sha256: hash('sha256', $contents),
-                dataUri: 'data:'.$mimeType.';base64,'.base64_encode($contents),
-            );
-        }
-
-        return $logos;
-    }
-
     /** @return list<ReportPriorityData> */
     private function priorityLegend(): array
     {
@@ -419,27 +379,6 @@ final class BuildAssessmentSnapshot
         $address = implode(', ', $populated);
 
         return $address === '' ? null : $address;
-    }
-
-    private function reportTitle(Assessment $assessment, string $clientName): string
-    {
-        $hasOverride = filled($assessment->report_title_override);
-        $configured = trim($hasOverride
-            ? (string) $assessment->report_title_override
-            : $this->reportSettings->default_title_pattern);
-        $baseTitle = $hasOverride ? $configured : str_replace('{client}', '', $configured);
-        $baseTitle = trim((string) preg_replace('/(?:\s*[—-]\s*)+$/u', '', $baseTitle));
-        $baseTitle = $baseTitle === '' ? __('assestme.reports.document.default_title') : $baseTitle;
-
-        if ($this->reportSettings->cover_title_mode === CoverTitleMode::Separate) {
-            return $baseTitle;
-        }
-
-        if (str_contains(mb_strtolower($baseTitle), mb_strtolower($clientName))) {
-            return $baseTitle;
-        }
-
-        return $baseTitle.' — '.$clientName;
     }
 
     /** @return array<string, bool|int|string|null> */

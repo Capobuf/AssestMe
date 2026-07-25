@@ -33,13 +33,51 @@ final class ReportSettingsPage extends SettingsPage
         'currency_symbol',
         'currency_symbol_position',
         'currency_decimals',
-        'evidence_included_by_default',
-        'captions_visible_by_default',
-        'summary_solutions',
-        'technical_notes_in_report',
-        'costs_in_report',
-        'new_page_per_finding',
         'report_excluded_findings_in_xlsx',
+    ];
+
+    /** @var list<string> */
+    private const PREVIEW_FIELDS = [
+        'default_title_pattern',
+        'consultant_name',
+        'business_name',
+        'consultant_role',
+        'consultant_email',
+        'consultant_phone',
+        'consultant_website',
+        'consultant_address',
+        'consultant_vat_number',
+        'consultant_pec',
+        'consultant_tax_code',
+        'consultant_logo_path',
+        'signature_name',
+        'signature_role',
+        'primary_color',
+        'branding',
+        'cover_title_mode',
+        'show_priority_descriptions',
+        'cover',
+        'content_index',
+        'executive_summary',
+        'risk_legend',
+        'summary_table',
+        'methodology',
+        'page_numbers',
+        'show_resolution',
+        'signature_block',
+        'disclaimer',
+        'technical_notes',
+        'alternative_solutions',
+        'costs',
+        'evidence',
+        'evidence_captions',
+        'methodology_text',
+        'disclaimer_text',
+        'signature_text',
+        'currency',
+        'currency_symbol',
+        'currency_symbol_position',
+        'currency_decimals',
     ];
 
     protected static ?string $cluster = SettingsCluster::class;
@@ -76,36 +114,41 @@ final class ReportSettingsPage extends SettingsPage
                             ->schema([
                                 TextInput::make('consultant_name')
                                     ->label(__('assestme.settings.fields.consultant_name'))
+                                    ->helperText(__('assestme.settings.help.consultant_name'))
                                     ->live(debounce: 500)
                                     ->maxLength(255),
                                 TextInput::make('business_name')
                                     ->label(__('assestme.settings.fields.business_name'))
+                                    ->helperText(__('assestme.settings.help.business_name'))
                                     ->live(debounce: 500)
                                     ->maxLength(255),
-                                TextInput::make('consultant_role')->label(__('assestme.settings.fields.consultant_role'))->maxLength(255),
-                                TextInput::make('consultant_email')->label(__('assestme.settings.fields.consultant_email'))->email()->maxLength(254),
-                                TextInput::make('consultant_phone')->label(__('assestme.settings.fields.consultant_phone'))->maxLength(40),
-                                TextInput::make('consultant_website')->label(__('assestme.settings.fields.consultant_website'))->url()->regex('/^https?:\/\//i')->maxLength(2048),
-                                Textarea::make('consultant_address')->label(__('assestme.settings.fields.consultant_address'))->rows(3)->maxLength(20000),
-                                TextInput::make('consultant_vat_number')->label(__('assestme.settings.fields.consultant_vat_number'))->maxLength(32),
-                                TextInput::make('consultant_pec')->label(__('assestme.settings.fields.consultant_pec'))->email()->maxLength(254),
-                                TextInput::make('consultant_tax_code')->label(__('assestme.settings.fields.consultant_tax_code'))->maxLength(32),
+                                TextInput::make('consultant_role')->label(__('assestme.settings.fields.consultant_role'))->helperText(__('assestme.settings.help.consultant_role'))->live(debounce: 500)->maxLength(255),
+                                TextInput::make('consultant_email')->label(__('assestme.settings.fields.consultant_email'))->helperText(__('assestme.settings.help.consultant_email'))->live(debounce: 500)->email()->maxLength(254),
+                                TextInput::make('consultant_phone')->label(__('assestme.settings.fields.consultant_phone'))->helperText(__('assestme.settings.help.consultant_phone'))->live(debounce: 500)->maxLength(40),
+                                TextInput::make('consultant_website')->label(__('assestme.settings.fields.consultant_website'))->helperText(__('assestme.settings.help.consultant_website'))->live(debounce: 500)->url()->regex('/^https?:\/\//i')->maxLength(2048),
+                                Textarea::make('consultant_address')->label(__('assestme.settings.fields.consultant_address'))->helperText(__('assestme.settings.help.consultant_address'))->live(debounce: 500)->rows(3)->maxLength(20000),
+                                TextInput::make('consultant_vat_number')->label(__('assestme.settings.fields.consultant_vat_number'))->helperText(__('assestme.settings.help.consultant_vat_number'))->live(debounce: 500)->maxLength(32),
+                                TextInput::make('consultant_pec')->label(__('assestme.settings.fields.consultant_pec'))->helperText(__('assestme.settings.help.consultant_pec'))->live(debounce: 500)->email()->maxLength(254),
+                                TextInput::make('consultant_tax_code')->label(__('assestme.settings.fields.consultant_tax_code'))->helperText(__('assestme.settings.help.consultant_tax_code'))->live(debounce: 500)->maxLength(32),
                                 FileUpload::make('consultant_logo_path')
                                     ->label(__('assestme.settings.fields.consultant_logo'))
+                                    ->helperText(__('assestme.settings.help.consultant_logo'))
+                                    ->live()
                                     ->disk('local')
                                     ->directory('branding')
                                     ->visibility('private')
                                     ->acceptedFileTypes(['image/png', 'image/jpeg'])
                                     ->maxSize(5120)
                                     ->preventFilePathTampering(),
-                                TextInput::make('signature_name')->label(__('assestme.settings.fields.signature_name'))->maxLength(255),
-                                TextInput::make('signature_role')->label(__('assestme.settings.fields.signature_role'))->maxLength(255),
+                                TextInput::make('signature_name')->label(__('assestme.settings.fields.signature_name'))->helperText(__('assestme.settings.help.signature_name'))->live(debounce: 500)->maxLength(255),
+                                TextInput::make('signature_role')->label(__('assestme.settings.fields.signature_role'))->helperText(__('assestme.settings.help.signature_role'))->live(debounce: 500)->maxLength(255),
                             ])
                             ->columns(2),
                         Section::make(__('assestme.settings.report.layout'))
                             ->schema([
                                 TextInput::make('default_title_pattern')
                                     ->label(__('assestme.settings.fields.default_title_pattern'))
+                                    ->helperText(__('assestme.settings.help.default_title_pattern'))
                                     ->required()
                                     ->live(debounce: 500)
                                     ->extraInputAttributes(['data-dusk' => 'report-preview-title-input'])
@@ -129,11 +172,14 @@ final class ReportSettingsPage extends SettingsPage
                                     ->live(),
                                 Select::make('cover_title_mode')
                                     ->label(__('assestme.settings.fields.cover_title_mode'))
+                                    ->helperText(__('assestme.settings.help.cover_title_mode'))
                                     ->options(CoverTitleMode::options())
                                     ->required()
                                     ->live(),
                                 Toggle::make('show_priority_descriptions')
-                                    ->label(__('assestme.settings.fields.show_priority_descriptions')),
+                                    ->label(__('assestme.settings.fields.show_priority_descriptions'))
+                                    ->helperText(__('assestme.settings.help.show_priority_descriptions'))
+                                    ->live(),
                                 ...self::toggleFields(),
                             ])
                             ->columns(2),
@@ -141,50 +187,42 @@ final class ReportSettingsPage extends SettingsPage
                             ->schema([
                                 TextInput::make('currency')
                                     ->label(__('assestme.settings.fields.currency'))
+                                    ->helperText(__('assestme.settings.help.currency'))
                                     ->required()
+                                    ->live(debounce: 500)
                                     ->length(3)
                                     ->regex('/^[A-Z]{3}$/'),
                                 TextInput::make('currency_symbol')
                                     ->label(__('assestme.settings.fields.currency_symbol'))
+                                    ->helperText(__('assestme.settings.help.currency_symbol'))
                                     ->required()
+                                    ->live(debounce: 500)
                                     ->maxLength(8),
                                 Select::make('currency_symbol_position')
                                     ->label(__('assestme.settings.fields.currency_symbol_position'))
+                                    ->helperText(__('assestme.settings.help.currency_symbol_position'))
                                     ->options([
                                         'before' => __('assestme.settings.values.before'),
                                         'after' => __('assestme.settings.values.after'),
                                     ])
-                                    ->required(),
+                                    ->required()
+                                    ->live(),
                                 Select::make('currency_decimals')
                                     ->label(__('assestme.settings.fields.currency_decimals'))
+                                    ->helperText(__('assestme.settings.help.currency_decimals'))
                                     ->options([0 => '0', 2 => '2'])
-                                    ->required(),
-                                Select::make('summary_solutions')
-                                    ->label(__('assestme.settings.fields.summary_solutions'))
-                                    ->options([
-                                        'recommended_only' => __('assestme.settings.values.recommended_only'),
-                                        'all' => __('assestme.settings.values.all'),
-                                    ])
-                                    ->required(),
-                                Toggle::make('evidence_included_by_default')
-                                    ->label(__('assestme.settings.fields.evidence_included_by_default')),
-                                Toggle::make('captions_visible_by_default')
-                                    ->label(__('assestme.settings.fields.captions_visible_by_default')),
-                                Toggle::make('technical_notes_in_report')
-                                    ->label(__('assestme.settings.fields.technical_notes_in_report')),
-                                Toggle::make('costs_in_report')
-                                    ->label(__('assestme.settings.fields.costs_in_report')),
-                                Toggle::make('new_page_per_finding')
-                                    ->label(__('assestme.settings.fields.new_page_per_finding')),
+                                    ->required()
+                                    ->live(),
                                 Toggle::make('report_excluded_findings_in_xlsx')
-                                    ->label(__('assestme.settings.fields.report_excluded_findings_in_xlsx')),
+                                    ->label(__('assestme.settings.fields.report_excluded_findings_in_xlsx'))
+                                    ->helperText(__('assestme.settings.help.report_excluded_findings_in_xlsx')),
                             ])
                             ->columns(2),
                         Section::make(__('assestme.settings.report.texts'))
                             ->schema([
-                                Textarea::make('methodology_text')->label(__('assestme.settings.fields.methodology_text'))->rows(5)->maxLength(20000),
-                                Textarea::make('disclaimer_text')->label(__('assestme.settings.fields.disclaimer_text'))->rows(5)->maxLength(20000),
-                                Textarea::make('signature_text')->label(__('assestme.settings.fields.signature_text'))->rows(3)->maxLength(20000),
+                                Textarea::make('methodology_text')->label(__('assestme.settings.fields.methodology_text'))->helperText(__('assestme.settings.help.methodology_text'))->live(debounce: 500)->rows(5)->maxLength(20000),
+                                Textarea::make('disclaimer_text')->label(__('assestme.settings.fields.disclaimer_text'))->helperText(__('assestme.settings.help.disclaimer_text'))->live(debounce: 500)->rows(5)->maxLength(20000),
+                                Textarea::make('signature_text')->label(__('assestme.settings.fields.signature_text'))->helperText(__('assestme.settings.help.signature_text'))->live(debounce: 500)->rows(3)->maxLength(20000),
                             ]),
                     ])->columnSpan([
                         'default' => 1,
@@ -202,17 +240,14 @@ final class ReportSettingsPage extends SettingsPage
 
     public function reportPreviewUrl(): string
     {
-        $allowed = [
-            'default_title_pattern', 'consultant_name', 'business_name', 'consultant_role', 'primary_color',
-            'branding', 'cover_title_mode', 'show_priority_descriptions', 'cover', 'content_index',
-            'executive_summary', 'risk_legend', 'summary_table', 'methodology', 'page_numbers',
-            'show_resolution', 'signature_block', 'disclaimer', 'technical_notes', 'alternative_solutions',
-            'costs', 'evidence', 'evidence_captions',
-        ];
         $raw = $this->form->getRawState();
         $settings = [];
-        foreach ($allowed as $key) {
+        foreach (self::PREVIEW_FIELDS as $key) {
             $value = $raw[$key] ?? null;
+            if ($key === 'consultant_logo_path' && is_array($value)) {
+                $paths = array_values(array_filter($value, is_string(...)));
+                $value = $paths[0] ?? null;
+            }
             if (is_bool($value) || is_int($value) || is_string($value) || $value === null) {
                 $settings[$key] = $value;
             }
@@ -294,20 +329,12 @@ final class ReportSettingsPage extends SettingsPage
             'freeze_after_generation',
         ];
 
-        $helpFields = [
-            'cover', 'executive_summary', 'risk_legend', 'summary_table', 'technical_notes',
-            'alternative_solutions', 'costs', 'evidence', 'evidence_captions',
-        ];
-
-        return array_map(static function (string $field) use ($helpFields): Toggle {
+        return array_map(static function (string $field): Toggle {
             $toggle = Toggle::make($field)
                 ->label(__("assestme.settings.fields.{$field}"))
-                ->live();
-            if (in_array($field, $helpFields, true)) {
-                $toggle->helperText(__("assestme.settings.help.{$field}"));
-            }
+                ->helperText(__("assestme.settings.help.{$field}"));
 
-            return $toggle;
+            return $field === 'freeze_after_generation' ? $toggle : $toggle->live();
         }, $fields);
     }
 }

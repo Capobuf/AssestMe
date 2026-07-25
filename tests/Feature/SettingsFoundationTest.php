@@ -56,16 +56,78 @@ it('mounts the report settings Filament page from migrated values', function ():
     Livewire::test(ReportSettingsPage::class)
         ->assertSuccessful()
         ->assertSee(__('assestme.settings.report.output'))
-        ->assertSee(__('assestme.settings.fields.new_page_per_finding'))
+        ->assertDontSee(__('assestme.settings.fields.summary_solutions'))
+        ->assertDontSee(__('assestme.settings.fields.technical_notes_in_report'))
+        ->assertDontSee(__('assestme.settings.fields.costs_in_report'))
+        ->assertDontSee(__('assestme.settings.fields.new_page_per_finding'))
         ->assertDontSee('assestme.settings.fields.new_page_per_finding')
         ->assertFormSet([
             'cover_title_mode' => CoverTitleMode::Separate->value,
             'show_priority_descriptions' => true,
             'show_resolution' => true,
             'currency' => 'EUR',
-            'evidence_included_by_default' => true,
-            'new_page_per_finding' => true,
         ]);
+});
+
+it('describes every visible report option and hides obsolete duplicate controls', function (): void {
+    $this->actingAs(User::factory()->create());
+    $page = Livewire::test(ReportSettingsPage::class)->assertSuccessful();
+
+    $describedFields = [
+        'consultant_name',
+        'business_name',
+        'consultant_role',
+        'consultant_email',
+        'consultant_phone',
+        'consultant_website',
+        'consultant_address',
+        'consultant_vat_number',
+        'consultant_pec',
+        'consultant_tax_code',
+        'consultant_logo',
+        'signature_name',
+        'signature_role',
+        'default_title_pattern',
+        'primary_color',
+        'branding',
+        'cover_title_mode',
+        'show_priority_descriptions',
+        'cover',
+        'content_index',
+        'executive_summary',
+        'risk_legend',
+        'summary_table',
+        'methodology',
+        'page_numbers',
+        'show_resolution',
+        'signature_block',
+        'disclaimer',
+        'technical_notes',
+        'alternative_solutions',
+        'costs',
+        'evidence',
+        'evidence_captions',
+        'freeze_after_generation',
+        'currency',
+        'currency_symbol',
+        'currency_symbol_position',
+        'currency_decimals',
+        'report_excluded_findings_in_xlsx',
+        'methodology_text',
+        'disclaimer_text',
+        'signature_text',
+    ];
+    foreach ($describedFields as $field) {
+        $page->assertSee(__("assestme.settings.help.{$field}"));
+    }
+
+    $page
+        ->assertDontSee(__('assestme.settings.fields.evidence_included_by_default'))
+        ->assertDontSee(__('assestme.settings.fields.captions_visible_by_default'))
+        ->assertDontSee(__('assestme.settings.fields.summary_solutions'))
+        ->assertDontSee(__('assestme.settings.fields.technical_notes_in_report'))
+        ->assertDontSee(__('assestme.settings.fields.costs_in_report'))
+        ->assertDontSee(__('assestme.settings.fields.new_page_per_finding'));
 });
 
 it('persists validated general settings with the seeded active risk profile', function (): void {
@@ -119,12 +181,6 @@ it('normalizes report identity values without introducing VAT calculations', fun
             'currency_symbol' => '$',
             'currency_symbol_position' => 'before',
             'currency_decimals' => 0,
-            'evidence_included_by_default' => false,
-            'captions_visible_by_default' => false,
-            'summary_solutions' => 'all',
-            'technical_notes_in_report' => true,
-            'costs_in_report' => false,
-            'new_page_per_finding' => false,
             'report_excluded_findings_in_xlsx' => true,
         ])
         ->call('save')
@@ -142,12 +198,6 @@ it('normalizes report identity values without introducing VAT calculations', fun
         ->and($generalSettings->currency_symbol)->toBe('$')
         ->and($generalSettings->currency_symbol_position)->toBe('before')
         ->and($generalSettings->currency_decimals)->toBe(0)
-        ->and($generalSettings->evidence_included_by_default)->toBeFalse()
-        ->and($generalSettings->captions_visible_by_default)->toBeFalse()
-        ->and($generalSettings->summary_solutions)->toBe('all')
-        ->and($generalSettings->technical_notes_in_report)->toBeTrue()
-        ->and($generalSettings->costs_in_report)->toBeFalse()
-        ->and($generalSettings->new_page_per_finding)->toBeFalse()
         ->and($generalSettings->report_excluded_findings_in_xlsx)->toBeTrue();
 
     Livewire::test(ReportSettingsPage::class)

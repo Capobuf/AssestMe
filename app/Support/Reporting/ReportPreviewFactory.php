@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Reporting;
 
+use App\Actions\Reports\FormatEstimate;
 use App\Data\Reports\AssessmentReportData;
 use App\Data\Reports\FindingPagePlanData;
 use App\Data\Reports\ReportAssetData;
@@ -12,9 +13,20 @@ use App\Data\Reports\ReportFindingData;
 use App\Data\Reports\ReportPriorityData;
 use App\Data\Reports\ReportRiskMatrixData;
 use App\Data\Reports\ReportSolutionData;
+use App\Enums\BillingFrequency;
+use App\Enums\CoverTitleMode;
+use App\Enums\EstimateType;
+use App\Services\Reporting\BuildReportLogos;
+use App\Services\Reporting\ResolveReportTitle;
 
 final class ReportPreviewFactory
 {
+    public function __construct(
+        private readonly FormatEstimate $formatEstimate,
+        private readonly BuildReportLogos $buildReportLogos,
+        private readonly ResolveReportTitle $resolveReportTitle,
+    ) {}
+
     /** @param array<string, bool|int|string|null> $settings */
     public function make(array $settings): AssessmentReportData
     {
@@ -39,6 +51,10 @@ final class ReportPreviewFactory
             'signature_block' => false,
             'disclaimer' => false,
             'application_name' => 'AssestMe',
+            'currency' => 'EUR',
+            'currency_symbol' => '€',
+            'currency_symbol_position' => 'after',
+            'currency_decimals' => 2,
         ];
 
         $priorities = [
@@ -50,13 +66,24 @@ final class ReportPreviewFactory
 
         // These DTOs mirror the base template library without querying or mutating persisted templates.
         $findings = [
-            $this->backupFinding($this->riskMatrix()),
-            $this->remoteAccessFinding(),
-            $this->nasNotificationFinding(),
+            $this->backupFinding($this->riskMatrix(), $settings),
+            $this->remoteAccessFinding($settings),
+            $this->nasNotificationFinding($settings),
         ];
 
-        $titlePattern = trim((string) ($settings['default_title_pattern'] ?? 'Assessment IT — {client}'));
-        $title = trim(str_replace('{client}', '', $titlePattern), " \t\n\r\0\x0B—-");
+        $coverTitleMode = CoverTitleMode::tryFrom((string) $settings['cover_title_mode'])
+            ?? CoverTitleMode::Separate;
+        $clientName = 'Azienda Demo S.r.l.';
+        $title = ($this->resolveReportTitle)(
+            null,
+            (string) ($settings['default_title_pattern'] ?? 'Assessment IT — {client}'),
+            $clientName,
+            $coverTitleMode,
+        );
+        $consultantLogoPath = $settings['consultant_logo_path'] ?? null;
+        $consultantLogoPath = is_string($consultantLogoPath) && $consultantLogoPath !== ''
+            ? $consultantLogoPath
+            : null;
 
         return new AssessmentReportData(
             generatedAt: '2026-07-24T10:00:00+00:00',
@@ -76,7 +103,7 @@ final class ReportPreviewFactory
             executiveSummary: 'Le priorità riguardano il ripristino dei backup, la protezione dell’accesso remoto e il monitoraggio tempestivo degli apparati.',
             methodologyNotes: null,
             clientId: 1,
-            clientName: 'Azienda Demo S.r.l.',
+            clientName: $clientName,
             clientLegalName: 'Azienda Demo S.r.l.',
             clientVatNumber: 'IT01234567890',
             clientTaxCode: null,
@@ -84,7 +111,11 @@ final class ReportPreviewFactory
             clientPhone: null,
             clientWebsite: null,
             clientAddress: 'Via Esempio 10, Treviso',
-            logos: [],
+            logos: ($this->buildReportLogos)(
+                (string) $settings['branding'],
+                $consultantLogoPath,
+                null,
+            ),
             priorityLegend: $priorities,
             findings: $findings,
             settingsSnapshot: $settings,
@@ -131,7 +162,8 @@ final class ReportPreviewFactory
         );
     }
 
-    private function backupFinding(ReportRiskMatrixData $matrix): ReportFindingData
+    /** @param array<string, bool|int|string|null> $settings */
+    private function backupFinding(ReportRiskMatrixData $matrix, array $settings): ReportFindingData
     {
         return new ReportFindingData(
             id: 1,
@@ -172,7 +204,14 @@ final class ReportPreviewFactory
                     billingFrequency: 'one_off',
                     customBillingFrequency: null,
                     estimateNotes: 'Intervallo comprensivo di preparazione, esecuzione e verbale.',
-                    estimateLabel: 'Da 1.800 a 2.600 € una tantum',
+                    estimateLabel: $this->estimateLabel(
+                        $settings,
+                        EstimateType::Range,
+                        '1800',
+                        '2600',
+                        'EUR',
+                        BillingFrequency::OneOff,
+                    ),
                     recommended: true,
                     implemented: false,
                     sortOrder: 1,
@@ -191,7 +230,14 @@ final class ReportPreviewFactory
                     billingFrequency: 'yearly',
                     customBillingFrequency: null,
                     estimateNotes: 'Canone per un test pianificato ogni anno.',
-                    estimateLabel: '390 € all’anno',
+                    estimateLabel: $this->estimateLabel(
+                        $settings,
+                        EstimateType::Exact,
+                        '390',
+                        null,
+                        'EUR',
+                        BillingFrequency::Yearly,
+                    ),
                     recommended: false,
                     implemented: true,
                     sortOrder: 2,
@@ -210,7 +256,14 @@ final class ReportPreviewFactory
                     billingFrequency: 'one_off',
                     customBillingFrequency: null,
                     estimateNotes: 'Sono necessari analisi tecnica e preventivo infrastrutturale.',
-                    estimateLabel: 'Richiede preventivo',
+                    estimateLabel: $this->estimateLabel(
+                        $settings,
+                        EstimateType::RequiresQuote,
+                        null,
+                        null,
+                        null,
+                        BillingFrequency::OneOff,
+                    ),
                     recommended: false,
                     implemented: false,
                     sortOrder: 3,
@@ -220,12 +273,15 @@ final class ReportPreviewFactory
             resolutionNotes: null,
             resolvedAt: null,
             resolvedAtLabel: null,
-            pagePlan: new FindingPagePlanData([1, 2], [3], true),
+            pagePlan: $settings['alternative_solutions'] === true
+                ? new FindingPagePlanData([1, 2], [3], true)
+                : new FindingPagePlanData([2], [1], true),
             riskMatrix: $matrix,
         );
     }
 
-    private function remoteAccessFinding(): ReportFindingData
+    /** @param array<string, bool|int|string|null> $settings */
+    private function remoteAccessFinding(array $settings): ReportFindingData
     {
         return new ReportFindingData(
             id: 2,
@@ -269,7 +325,14 @@ final class ReportPreviewFactory
                     billingFrequency: 'one_off',
                     customBillingFrequency: null,
                     estimateNotes: 'La stima dipende dal firewall e dal numero di utenti.',
-                    estimateLabel: 'Richiede analisi',
+                    estimateLabel: $this->estimateLabel(
+                        $settings,
+                        EstimateType::RequiresAnalysis,
+                        null,
+                        null,
+                        null,
+                        BillingFrequency::OneOff,
+                    ),
                     recommended: true,
                     implemented: false,
                     sortOrder: 1,
@@ -288,7 +351,15 @@ final class ReportPreviewFactory
                     billingFrequency: 'monthly',
                     customBillingFrequency: null,
                     estimateNotes: 'Canone indicativo per ciascun utente abilitato.',
-                    estimateLabel: '29 € al mese per utente',
+                    estimateLabel: $this->estimateLabel(
+                        $settings,
+                        EstimateType::Exact,
+                        '29',
+                        null,
+                        'EUR',
+                        BillingFrequency::Custom,
+                        'al mese per utente',
+                    ),
                     recommended: false,
                     implemented: false,
                     sortOrder: 2,
@@ -298,12 +369,15 @@ final class ReportPreviewFactory
             resolutionNotes: null,
             resolvedAt: null,
             resolvedAtLabel: null,
-            pagePlan: new FindingPagePlanData([4, 5], [], false),
+            pagePlan: $settings['alternative_solutions'] === true
+                ? new FindingPagePlanData([4, 5], [], false)
+                : new FindingPagePlanData([4], [], false),
             riskMatrix: null,
         );
     }
 
-    private function nasNotificationFinding(): ReportFindingData
+    /** @param array<string, bool|int|string|null> $settings */
+    private function nasNotificationFinding(array $settings): ReportFindingData
     {
         return new ReportFindingData(
             id: 3,
@@ -346,7 +420,14 @@ final class ReportPreviewFactory
                     billingFrequency: 'one_off',
                     customBillingFrequency: null,
                     estimateNotes: 'Compresa nelle attività periodiche di configurazione.',
-                    estimateLabel: 'Compreso in altra attività',
+                    estimateLabel: $this->estimateLabel(
+                        $settings,
+                        EstimateType::Bundled,
+                        null,
+                        null,
+                        null,
+                        BillingFrequency::OneOff,
+                    ),
                     recommended: true,
                     implemented: true,
                     sortOrder: 1,
@@ -365,7 +446,14 @@ final class ReportPreviewFactory
                     billingFrequency: 'monthly',
                     customBillingFrequency: null,
                     estimateNotes: 'Canone mensile indicativo per dispositivo.',
-                    estimateLabel: '18 € al mese',
+                    estimateLabel: $this->estimateLabel(
+                        $settings,
+                        EstimateType::Exact,
+                        '18',
+                        null,
+                        'EUR',
+                        BillingFrequency::Monthly,
+                    ),
                     recommended: false,
                     implemented: false,
                     sortOrder: 2,
@@ -374,6 +462,23 @@ final class ReportPreviewFactory
             evidences: [
                 new ReportEvidenceData(
                     id: 1,
+                    type: 'file',
+                    title: 'Schermata di verifica notifiche',
+                    filePath: null,
+                    url: null,
+                    originalFilename: 'valid-small.png',
+                    caption: 'Esempio di didascalia configurabile per una evidenza inclusa.',
+                    mimeType: 'image/png',
+                    sizeBytes: 68,
+                    sha256: hash_file('sha256', base_path('fixtures/evidence/valid-small.png')) ?: null,
+                    included: true,
+                    sortOrder: 1,
+                    imageDataUri: 'data:image/png;base64,'.base64_encode(
+                        (string) file_get_contents(base_path('fixtures/evidence/valid-small.png')),
+                    ),
+                ),
+                new ReportEvidenceData(
+                    id: 2,
                     type: 'url',
                     title: 'Verbale della prova notifiche',
                     filePath: null,
@@ -384,15 +489,43 @@ final class ReportPreviewFactory
                     sizeBytes: null,
                     sha256: null,
                     included: true,
-                    sortOrder: 1,
+                    sortOrder: 2,
                     imageDataUri: null,
                 ),
             ],
             resolutionNotes: 'Canale SMTP configurato e prova di consegna completata con esito positivo.',
             resolvedAt: '2026-07-23T14:30:00+00:00',
             resolvedAtLabel: '23/07/2026 16:30',
-            pagePlan: new FindingPagePlanData([6, 7], [], false),
+            pagePlan: $settings['alternative_solutions'] === true
+                ? new FindingPagePlanData([6, 7], [], false)
+                : new FindingPagePlanData([6], [], false),
             riskMatrix: null,
+        );
+    }
+
+    /**
+     * @param  array<string, bool|int|string|null>  $settings
+     */
+    private function estimateLabel(
+        array $settings,
+        EstimateType $estimateType,
+        ?string $amountMin,
+        ?string $amountMax,
+        ?string $currencyCode,
+        BillingFrequency $billingFrequency,
+        ?string $customBillingFrequency = null,
+    ): string {
+        return $this->formatEstimate->format(
+            estimateType: $estimateType,
+            amountMin: $amountMin,
+            amountMax: $amountMax,
+            currencyCode: $currencyCode,
+            billingFrequency: $billingFrequency,
+            customBillingFrequency: $customBillingFrequency,
+            displayCurrency: (string) $settings['currency'],
+            currencySymbol: (string) $settings['currency_symbol'],
+            currencySymbolPosition: (string) $settings['currency_symbol_position'],
+            currencyDecimals: (int) $settings['currency_decimals'],
         );
     }
 }

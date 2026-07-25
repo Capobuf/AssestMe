@@ -222,40 +222,5 @@
         }
         .cover { height: 297mm; padding: 22mm 20mm; }
         .summary { min-height: 210mm; padding: 15mm 16mm 16mm; width: 297mm; }
-        html:has(body.assestme-report-preview-document) {
-            background: #E7EAEF;
-            height: 100%;
-            overflow-x: hidden;
-            overflow-y: auto;
-        }
-        body.assestme-report-preview-document {
-            background: #E7EAEF;
-            height: auto;
-            min-height: 100%;
-            overflow: visible;
-            padding: 0;
-            width: 100%;
-        }
-        .assestme-report-preview-sheet-slot {
-            margin-bottom: 3mm;
-            overflow: hidden;
-            position: relative;
-            width: 100%;
-        }
-        .assestme-report-preview-sheet-slot:last-of-type { margin-bottom: 0; }
-        .assestme-report-preview-sheet {
-            background: #FFFFFF;
-            box-shadow: none;
-            margin: 0;
-            position: absolute;
-            transform-origin: top left;
-        }
-        .assestme-report-preview-sheet.cover { width: 210mm; }
-        .assestme-report-preview-sheet:not(.cover):not(.sheet):not(.finding-evidence) {
-            background: #FFFFFF;
-            min-height: 297mm;
-            padding: 17mm 16mm 18mm;
-            width: 210mm;
-        }
     }
 </style>

@@ -9,12 +9,12 @@ use App\Enums\AssessmentStatus;
 use App\Enums\GeneratedReportFormat;
 use App\Models\Assessment;
 use App\Models\GeneratedReport;
+use App\Services\Reporting\WeasyPrintReportRenderer;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
-use Spatie\LaravelPdf\Facades\Pdf;
 use Throwable;
 
 final class GenerateAssessmentPdf
@@ -23,7 +23,10 @@ final class GenerateAssessmentPdf
 
     private const MAX_SECONDS = 30.0;
 
-    public function __construct(private readonly BuildAssessmentSnapshot $buildSnapshot) {}
+    public function __construct(
+        private readonly BuildAssessmentSnapshot $buildSnapshot,
+        private readonly WeasyPrintReportRenderer $renderer,
+    ) {}
 
     public function __invoke(Assessment $assessment): GeneratedReport
     {
@@ -32,7 +35,7 @@ final class GenerateAssessmentPdf
             $snapshot = ($this->buildSnapshot)($assessment->fresh());
             $version = $this->nextVersion($assessment);
             $fileName = $this->fileName($snapshot, $version);
-            $contents = $this->render($snapshot);
+            $contents = $this->renderer->render($snapshot);
             $elapsedSeconds = (hrtime(true) - $startedAt) / 1_000_000_000;
 
             if ($elapsedSeconds > self::MAX_SECONDS) {
@@ -117,30 +120,5 @@ final class GenerateAssessmentPdf
         $client = $client === '' ? 'azienda' : $client;
 
         return sprintf('AssestMe_%s_%s_v%02d.pdf', $client, $snapshot->assessmentDate, $version);
-    }
-
-    private function render(AssessmentReportData $snapshot): string
-    {
-        $temporaryPath = tempnam(storage_path('framework'), 'assestme-pdf-');
-        if ($temporaryPath === false) {
-            throw new RuntimeException(__('assestme.reports.errors.temporary_file'));
-        }
-
-        try {
-            Pdf::view('reports.assessment', ['report' => $snapshot])
-                ->driver('weasyprint')
-                ->save($temporaryPath);
-
-            $contents = file_get_contents($temporaryPath);
-            if ($contents === false) {
-                throw new RuntimeException(__('assestme.reports.errors.temporary_file'));
-            }
-
-            return $contents;
-        } finally {
-            if (is_file($temporaryPath)) {
-                unlink($temporaryPath);
-            }
-        }
     }
 }

@@ -1306,6 +1306,13 @@
     color: var(--gray-300);
 }
 
+.assestme-report-preview__toolbar {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+}
+
 .assestme-report-preview__heading {
     color: var(--gray-950);
     font-size: 1rem;
@@ -1314,6 +1321,42 @@
 }
 
 .dark .assestme-report-preview__heading {
+    color: var(--gray-50);
+}
+
+.assestme-report-preview__expand {
+    align-items: center;
+    background: transparent;
+    border: 1px solid var(--gray-300);
+    border-radius: 0.5rem;
+    color: var(--gray-700);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.75rem;
+    font-weight: 600;
+    justify-content: center;
+    line-height: 1.25rem;
+    min-height: 2rem;
+    padding: 0.35rem 0.65rem;
+}
+
+.assestme-report-preview__expand:hover {
+    background: var(--gray-50);
+    color: var(--gray-950);
+}
+
+.assestme-report-preview__expand:focus-visible {
+    outline: 2px solid #E1FB15;
+    outline-offset: 2px;
+}
+
+.dark .assestme-report-preview__expand {
+    border-color: var(--gray-700);
+    color: var(--gray-200);
+}
+
+.dark .assestme-report-preview__expand:hover {
+    background: var(--gray-800);
     color: var(--gray-50);
 }
 
@@ -1329,6 +1372,26 @@
 
 .dark .assestme-report-preview__frame {
     border-color: var(--gray-700);
+}
+
+.assestme-report-preview.is-expanded {
+    background: var(--gray-100);
+    display: flex;
+    flex-direction: column;
+    inset: 0;
+    padding: 1rem;
+    position: fixed;
+    z-index: 100;
+}
+
+.dark .assestme-report-preview.is-expanded {
+    background: var(--gray-950);
+}
+
+.assestme-report-preview.is-expanded .assestme-report-preview__frame {
+    aspect-ratio: auto;
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 .assestme-application-status {

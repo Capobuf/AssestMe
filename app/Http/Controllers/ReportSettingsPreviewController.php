@@ -4,15 +4,20 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Services\Reporting\WeasyPrintReportRenderer;
 use App\Support\Reporting\ReportPreviewFactory;
-use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Cache;
 
 final class ReportSettingsPreviewController extends Controller
 {
-    public function __invoke(Request $request, string $token, ReportPreviewFactory $factory): View
-    {
+    public function __invoke(
+        Request $request,
+        string $token,
+        ReportPreviewFactory $factory,
+        WeasyPrintReportRenderer $renderer,
+    ): Response {
         $sessionBinding = $request->session()->get('report_preview_binding');
         abort_unless(is_string($sessionBinding) && $sessionBinding !== '', 404);
 
@@ -25,9 +30,12 @@ final class ReportSettingsPreviewController extends Controller
         $settings = Cache::get($key);
         abort_unless(is_array($settings), 404);
 
-        return view('reports.assessment', [
-            'report' => $factory->make($settings),
-            'isSettingsPreview' => true,
+        return response($renderer->render($factory->make($settings)), 200, [
+            'Cache-Control' => 'no-store, private',
+            'Content-Disposition' => 'inline; filename="AssestMe_anteprima.pdf"',
+            'Content-Security-Policy' => "default-src 'none'; frame-ancestors 'self'",
+            'Content-Type' => 'application/pdf',
+            'X-Content-Type-Options' => 'nosniff',
         ]);
     }
 }
