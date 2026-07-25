@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Filament\Clusters\AssetCluster;
 use App\Filament\Clusters\SettingsCluster;
+use App\Filament\Pages\BackupSettingsPage;
 use App\Filament\Pages\GeneralSettingsPage;
 use App\Filament\Pages\ReportSettingsPage;
 use App\Filament\Resources\Assets\AssetResource;
@@ -30,6 +31,7 @@ it('discovers native clusters and assigns each clustered component exactly once'
         ->and($panel->getClusteredComponents(SettingsCluster::class))->toEqualCanonicalizing([
             GeneralSettingsPage::class,
             ReportSettingsPage::class,
+            BackupSettingsPage::class,
             FindingTemplateResource::class,
             CategoryResource::class,
             RiskProfileResource::class,
@@ -38,7 +40,8 @@ it('discovers native clusters and assigns each clustered component exactly once'
         ->and(AssetResource::getCluster())->toBe(AssetCluster::class)
         ->and(AssetTypeResource::getCluster())->toBe(AssetCluster::class)
         ->and(GeneralSettingsPage::getCluster())->toBe(SettingsCluster::class)
-        ->and(ReportSettingsPage::getCluster())->toBe(SettingsCluster::class);
+        ->and(ReportSettingsPage::getCluster())->toBe(SettingsCluster::class)
+        ->and(BackupSettingsPage::getCluster())->toBe(SettingsCluster::class);
 });
 
 it('builds the approved hierarchy with native Filament navigation items', function (): void {
@@ -78,6 +81,7 @@ it('uses clustered URLs route names and ordered native subnavigation', function 
         ->and(SettingsCluster::getUrl())->toEndWith('/admin/settings')
         ->and(GeneralSettingsPage::getUrl())->toEndWith('/admin/settings/general-settings-page')
         ->and(ReportSettingsPage::getUrl())->toEndWith('/admin/settings/report-settings-page')
+        ->and(BackupSettingsPage::getUrl())->toEndWith('/admin/settings/backup-settings-page')
         ->and(FindingTemplateResource::getUrl('index'))->toEndWith('/admin/settings/finding-templates')
         ->and(CategoryResource::getUrl('index'))->toEndWith('/admin/settings/categories')
         ->and(RiskProfileResource::getUrl('index'))->toEndWith('/admin/settings/risk-profiles')
@@ -92,6 +96,7 @@ it('uses clustered URLs route names and ordered native subnavigation', function 
         ->and(navigationLabels($settingsSubNavigation))->toBe([
             'Generale',
             'Report',
+            'Backup',
             'Template',
             'Categorie',
             'Matrice priorità',
@@ -113,6 +118,7 @@ it('requires authentication for every relocated navigation destination', functio
     'asset types' => fn (): string => AssetTypeResource::getUrl('index'),
     'general settings' => fn (): string => GeneralSettingsPage::getUrl(),
     'report settings' => fn (): string => ReportSettingsPage::getUrl(),
+    'backup settings' => fn (): string => BackupSettingsPage::getUrl(),
     'templates' => fn (): string => FindingTemplateResource::getUrl('index'),
     'categories' => fn (): string => CategoryResource::getUrl('index'),
     'risk matrix' => fn (): string => RiskProfileResource::getUrl('index'),

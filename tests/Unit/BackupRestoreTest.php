@@ -104,6 +104,24 @@ it('returns a failure when an archived file no longer matches the manifest', fun
     expect(Artisan::call('assestme:backup:verify', ['archive' => $archive]))->toBe(1);
 });
 
+it('rejects archives with a missing manifest extra file or missing manifested file', function (string $mutation): void {
+    User::factory()->create();
+    $archive = $this->backupRoot.DIRECTORY_SEPARATOR."{$mutation}.tar.gz";
+    expect(Artisan::call('assestme:backup', ['--output' => $archive]))->toBe(0);
+
+    $phar = new PharData($archive);
+
+    match ($mutation) {
+        'missing-manifest' => $phar->delete('manifest.json'),
+        'extra-file' => $phar['unexpected.txt'] = 'unexpected',
+        'missing-file' => $phar->delete('metadata.json'),
+    };
+
+    unset($phar);
+
+    expect(Artisan::call('assestme:backup:verify', ['archive' => $archive]))->toBe(1);
+})->with(['missing-manifest', 'extra-file', 'missing-file']);
+
 it('persists a failed backup attempt without reporting success', function (): void {
     User::factory()->create();
     $archive = $this->backupRoot.DIRECTORY_SEPARATOR.'already-exists.tar.gz';

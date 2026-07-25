@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Browser;
 
 use App\Actions\Assessments\CopyTemplateToAssessment;
+use App\Actions\Backups\CreateBackup;
 use App\Filament\Clusters\AssetCluster;
 use App\Filament\Clusters\SettingsCluster;
+use App\Filament\Pages\BackupSettingsPage;
 use App\Filament\Pages\GeneralSettingsPage;
 use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Resources\Assets\AssetResource;
@@ -42,8 +44,9 @@ final class FilamentNavigationTest extends DuskTestCase
             $assessment,
             FindingTemplate::query()->where('default_scope_type', 'organization')->firstOrFail(),
         );
+        $archivePath = app(CreateBackup::class)(null);
 
-        $this->browse(function (Browser $browser) use ($administrator, $assessment, $finding): void {
+        $this->browse(function (Browser $browser) use ($administrator, $archivePath, $assessment, $finding): void {
             $browser->loginAs($administrator)
                 ->resize(1440, 900)
                 ->visit('/admin')
@@ -83,6 +86,7 @@ final class FilamentNavigationTest extends DuskTestCase
             Assert::assertSame([
                 'Generale',
                 'Report',
+                'Backup',
                 'Template',
                 'Categorie',
                 'Matrice priorità',
@@ -92,6 +96,23 @@ final class FilamentNavigationTest extends DuskTestCase
                 ['Dashboard', 'Assessment', 'Aziende', 'Impostazioni'],
                 self::topLevelSidebarLabels($browser),
             );
+
+            $browser->click(sprintf('.fi-page-sub-navigation-tabs a[href="%s"]', BackupSettingsPage::getUrl()))
+                ->waitForText('Archivi locali gestiti')
+                ->assertPathIs(self::path(BackupSettingsPage::getUrl()))
+                ->assertSee('Pianificazione applicativa')
+                ->assertSee('Ripristino');
+            $browser->press('Istruzioni ripristino')
+                ->waitForText('Archivio selezionato')
+                ->assertSee(basename($archivePath))
+                ->assertSee('Comandi')
+                ->assertSee('Garanzie del ripristino')
+                ->press('Chiudi');
+            $browser->resize(390, 844)->pause(250);
+            Assert::assertLessThanOrEqual(1, (int) $browser->script(
+                'return document.documentElement.scrollWidth - document.documentElement.clientWidth;',
+            )[0], 'The backup page overflows horizontally on a narrow viewport.');
+            $browser->resize(1440, 900);
 
             $workspaceUrl = AssessmentResource::getUrl('workspace', [
                 'record' => $assessment,

@@ -56,7 +56,15 @@
                         class="assestme-application-status__message"
                         data-label="{{ __('assestme.dashboard.details') }}"
                     >
-                        {{ $row['message'] }}
+                        <span>{{ $row['message'] }}</span>
+                        @if ($row['action_url'] !== null)
+                            <a
+                                href="{{ $row['action_url'] }}"
+                                class="ms-2 font-medium text-primary-600 hover:underline dark:text-primary-400"
+                            >
+                                {{ $row['action_label'] }}
+                            </a>
+                        @endif
                     </td>
                 </tr>
                 @endforeach

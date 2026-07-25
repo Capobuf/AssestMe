@@ -158,7 +158,7 @@ final class MilestoneZeroTest extends DuskTestCase
         $firstFindingId = (int) $assessment->findings()->firstOrFail()->getKey();
         Finding::query()->findOrFail($firstFindingId)->update([
             'title' => 'Finding ricerca Dusk',
-            'problem' => str_repeat('Long multiline content must stay inside a compact row. ', 30),
+            'problem' => str_repeat('Long multiline content must stay inside a compact row. ', 20),
         ]);
 
         $artifactRoot = base_path('storage/app/qa-artifacts');

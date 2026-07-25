@@ -245,7 +245,7 @@ it('exports every estimate type and billing frequency as native workbook values'
     $solutionSheet = $workbook->getSheetByName('Soluzioni');
 
     foreach ($cases as $index => $case) {
-        expect($findingSheet?->getCell('N'.($index + 3))->getValue())->toBe($case[6]);
+        expect($findingSheet?->getCell('M'.($index + 3))->getValue())->toBe($case[6]);
     }
 
     expect($solutionSheet?->getCell('J2')->getDataType())->toBe(DataType::TYPE_NUMERIC)

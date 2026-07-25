@@ -128,6 +128,7 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-059 (v1) | SUPERSEDED | The portrait-only DOMPDF editorial layout and manually duplicated indicative HTML preview are retained as implementation history; superseded by D-059 on 2026-07-24 |
 | D-059 | APPROVED | Accepted pending technical validation: one Blade/CSS editorial report must support mixed A4 orientation and a same-view preview without changing immutable report persistence |
 | D-060 | APPROVED | The report-settings preview renders a transient PDF through the same application-owned WeasyPrint renderer service and `reports.assessment` Blade/CSS used for production, exposes only operative settings with explicit scope descriptions, and supports a temporary dependency-free fullscreen view without creating immutable report state |
+| D-061 | APPROVED | Backup management is a native Settings-cluster Filament page over application-managed local archives; creation, verification, authenticated verified download, and confirmed deletion reuse the authoritative backup contracts, while restore remains CLI-only |
 
 ### D-001 — Framework
 
@@ -811,6 +812,14 @@ The authenticated report-settings preview uses the same application-owned render
 Every visible PDF setting must either affect both the transient preview PDF and the production PDF through their shared DTO/view or be removed from the Report page. A visible operational or XLSX-only control may remain only when its Italian helper text states that exact non-preview scope. Persisted legacy General setting keys are not deleted or reinterpreted merely because obsolete, duplicated, or DOMPDF-era controls are removed from this page.
 
 The preview may expand temporarily over the application viewport through one application-owned control with an explicit visible exit and Escape-key support. The expansion adds no browser-rendering library, frontend build, dependency, second report view, or persistence path.
+
+### D-061 — Native backup management and CLI-only restore
+
+Backup management is exposed as a native Filament page inside `SettingsCluster`. The page lists only application-managed local archives contained directly in the configured backup root and supports manual creation, explicit verification, authenticated download, and confirmed deletion.
+
+Backup restore remains CLI-only because it requires maintenance mode and replaces the SQLite database and private storage used by the active web application. The web interface provides accurate restore instructions but does not upload, queue, schedule, or execute a restore.
+
+No database table, new dependency, remote replication service, background worker, scheduler container, or second backup implementation is introduced. The existing `CreateBackup`, `VerifyBackup`, `RestoreBackup`, retention, manifest, hash, rollback, and operational-check contracts remain authoritative.
 
 ### D-028 — Authentication and MFA
 
@@ -2050,6 +2059,7 @@ Defaults:
 4. Impostazioni
    - Generale
    - Report
+   - Backup
    - Template
    - Categorie
    - Matrice priorità
@@ -3404,6 +3414,12 @@ No OPEN product decision remains. D-009/D-059 are accepted pending the explicitl
 ## 22. Progress
 
 The implementation agent must maintain this section.
+
+The native backup-management frontend slice started on 2026-07-25 at commit `9e3b11f502a572e16a8b6ebeed80ba6fed324b9e` on the clean `develop` branch. Complete read-only inspection confirmed Laravel `13.19.0`, Filament `5.6.8`, Livewire `4.3.3`, the existing checkpointed `VACUUM INTO` SQLite snapshot, complete private-storage staging, metadata/manifest SHA-256 verification, restrictive archive permissions, managed retention, maintenance-mode restore, safety backup, target compensation, and post-restore diagnostics. Installed Filament source confirms native custom-data tables through `records()`, array-record keys, table header/record actions, disabled pagination, and `resetTable()`. D-061 records the approved native Settings-cluster page and CLI-only restore boundary. This slice adds no dependency, migration, backup implementation, scheduler service, restore web action, upload, worker, or database record.
+
+The native backup-management frontend slice completed on 2026-07-25. `BackupSettingsPage` now uses native Filament Schema, Infolist, Callout, Section, Table Builder, and Action components to present a responsive operational summary, configured-but-not-proven scheduler notice, managed ordinary/safety archive catalog, real synchronous creation, explicit verification, authenticated server-reverified download, confirmed deletion, and read-only CLI restore instructions. The catalog accepts only a validated basename matching the two managed patterns, requires an absolute configured root, enumerates direct regular files only, rejects NUL, separators, dot paths, unknown names, missing targets, symlinks, and any real path outside the resolved root, and never places an absolute path in a browser record key. `LatestBackupStatus` reuses the catalog while retaining ordinary-backup-only semantics. The dashboard’s compact backup row links through `BackupSettingsPage::getUrl()`. Visual Docker/Selenium inspection at 1440×900 and 390×844 covered the native overview grid, directory badges, schedule callout, CLI-only restore callout, command modal, and narrow layout; the final focused browser test passed with `1` test and `28` assertions, including deterministic Settings order, a real isolated backup, the server-resolved restore modal, no horizontal overflow, and no severe console error.
+
+Focused accepted evidence is `40` Backup-filtered tests with `202` assertions, the final page class with `8` tests and `86` assertions, the download class with `4` tests and `23` assertions, Pint clean over `324` files, scoped PHPStan over `12` backup/UI/controller files with zero errors, isolated Canary strict `34/34` with zero needs-auth and zero skips, and the download route exposing `web` plus `Illuminate\Auth\Middleware\Authenticate`. The first aggregate `scripts/verify.sh` invocation stopped after `356` passing application tests and the two previously recorded baseline failures: absent `.github/workflows/quality.yml` and the stale Finding-column-N XLSX estimate expectation. The workflow was recovered from repository history and aligned with the authoritative WeasyPrint runtime rather than restoring obsolete DOMPDF configuration; the XLSX assertion was aligned with the unchanged builder’s estimate column M. Both failed test classes then passed in isolation. The second aggregate invocation passed the complete quality/application/Canary/diagnostic/benchmark/storage/route stages but its Dusk stage exposed two unrelated over-limit test fixtures; their `problem` and `technical_notes` values were reduced within the already-authoritative editorial limits and the failed browser classes passed with `6` tests and `222` assertions. After the requested visual refinement, the definitive third invocation passed Composer validation, Pint over `324` files, PHPStan over `254` files, `358` application tests with `3,189` assertions, Canary strict, locked audit, diagnostics, the 50-Finding benchmark, storage audit, route/application inspection, and all `15` Dusk tests with `590` assertions. No dependency, lock-file change, migration, custom JavaScript, scheduler container, restore web execution, or production backup implementation was added. Manual Edge, Firefox, iOS Safari, and Android Chrome checks were not executed and are not claimed.
 
 The report-settings viewport-height workbench refinement started on 2026-07-25 as a continuation of the uncommitted lateral-space slice at commit `dffc8b1d44d4b50333eeea30971d1a759797fb21`. The authoritative Docker application and Selenium services remain healthy. Inspection of the locked Filament page and settings-form implementation confirmed that the save action is a native form footer outside the settings schema, while Filament's page component exposes an existing `full-height` mode. The accepted desktop behavior is now explicit: the report workbench must consume only the viewport height remaining below the application header, page heading, and settings tabs; the native save footer remains visible; the left option group is the sole vertically scrolling region; and the right real-PDF preview remains fixed, fills its available height, and retains fullscreen expansion. Below the existing `xl` split breakpoint the page must return to its deliberate sequential document flow without internal workbench scrolling. This refinement changes no setting, renderer, report content, persistence, route, dependency, or unrelated page.
 

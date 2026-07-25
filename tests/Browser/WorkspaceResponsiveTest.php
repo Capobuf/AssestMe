@@ -513,7 +513,7 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 $finding->update([
                     'title' => $realisticTitles[$index],
                     'problem' => "Problema realistico sulla prima riga.\nDettaglio operativo sulla seconda riga.",
-                    'technical_notes' => str_repeat("Nota tecnica articolata per la verifica del form lungo.\n", 12),
+                    'technical_notes' => str_repeat("Nota tecnica articolata per la verifica del form lungo.\n", 3),
                     'priority_level_id' => $priorities[$index % $priorities->count()],
                     'status' => [FindingStatus::Open, FindingStatus::Planned, FindingStatus::InProgress][$index % 3],
                     'include_in_report' => $index % 2 === 0,

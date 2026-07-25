@@ -8,6 +8,7 @@ use App\Enums\DeletionOperationStatus;
 use App\Enums\FindingStatus;
 use App\Enums\OperationalCheckStatus;
 use App\Enums\OperationalCheckType;
+use App\Filament\Pages\BackupSettingsPage;
 use App\Filament\Widgets\ApplicationStatus;
 use App\Filament\Widgets\AssessmentStatsOverview;
 use App\Filament\Widgets\LatestAssessments;
@@ -88,7 +89,9 @@ it('shows actionable dashboard counts and only the latest five assessments', fun
         ->assertSee(__('assestme.dashboard.last_event'))
         ->assertSee(__('assestme.dashboard.details'))
         ->assertSeeHtml('class="assestme-application-status__table"')
-        ->assertSeeHtml('class="assestme-application-status__condition-content"');
+        ->assertSeeHtml('class="assestme-application-status__condition-content"')
+        ->assertSee(__('assestme.backups.actions.manage'))
+        ->assertSeeHtml('href="'.BackupSettingsPage::getUrl().'"');
 });
 
 it('does not register the account welcome widget on the dashboard', function (): void {
