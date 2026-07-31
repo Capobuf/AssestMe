@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Browser;
 
+use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Resources\Clients\ClientResource;
 use App\Models\Assessment;
 use App\Models\Client;
@@ -19,6 +20,77 @@ use Tests\DuskTestCase;
 final class MilestoneZeroTest extends DuskTestCase
 {
     use DatabaseTruncation;
+
+    public function test_assessment_company_names_render_after_reload_in_the_list_dashboard_and_workspace(): void
+    {
+        $administrator = User::factory()->create();
+        $legalClient = Client::factory()->create([
+            'legal_name' => 'Azienda Test S.r.l.',
+            'trade_name' => null,
+        ]);
+        $tradeClient = Client::factory()->create([
+            'legal_name' => 'Seconda Ragione Sociale S.r.l.',
+            'trade_name' => 'Azienda Test',
+        ]);
+        $legalAssessment = Assessment::factory()->for($legalClient)->create([
+            'title' => 'Assessment browser con sola ragione sociale',
+        ]);
+        Assessment::factory()->for($tradeClient)->create([
+            'title' => 'Assessment browser con nome commerciale',
+        ]);
+        $artifactRoot = base_path('storage/app/qa-artifacts');
+        File::ensureDirectoryExists($artifactRoot);
+
+        $this->browse(function (Browser $browser) use ($administrator, $artifactRoot, $legalAssessment): void {
+            $browser->resize(1440, 900)
+                ->loginAs($administrator)
+                ->visit(AssessmentResource::getUrl('index'))
+                ->waitForText('Assessment browser con sola ragione sociale')
+                ->assertSee('Azienda Test S.r.l.')
+                ->assertSee('Azienda Test')
+                ->assertDontSee('Seconda Ragione Sociale S.r.l.')
+                ->refresh()
+                ->waitForText('Assessment browser con sola ragione sociale')
+                ->assertSee('Azienda Test S.r.l.')
+                ->assertSee('Azienda Test')
+                ->assertDontSee('Seconda Ragione Sociale S.r.l.');
+            $browser->driver->takeScreenshot("{$artifactRoot}/assessment-company-name-list.png");
+            $browser
+                ->visit('/admin')
+                ->waitForText('Assessment in bozza');
+            $browser->script('window.scrollTo(0, document.documentElement.scrollHeight)');
+            $browser->waitForText('Ultimi assessment')
+                ->waitForText('Azienda Test S.r.l.')
+                ->assertSee('Azienda Test')
+                ->assertDontSee('Seconda Ragione Sociale S.r.l.');
+
+            $browser->refresh()
+                ->waitForText('Assessment in bozza');
+            $browser->script('window.scrollTo(0, document.documentElement.scrollHeight)');
+            $browser->waitForText('Ultimi assessment')
+                ->waitForText('Azienda Test S.r.l.')
+                ->assertSee('Azienda Test')
+                ->assertDontSee('Seconda Ragione Sociale S.r.l.');
+            $browser->driver->takeScreenshot("{$artifactRoot}/assessment-company-name-dashboard.png");
+            $browser
+                ->visit(AssessmentResource::getUrl('workspace', ['record' => $legalAssessment]))
+                ->waitForText('Dettagli assessment')
+                ->press('Dettagli assessment')
+                ->waitUntil(<<<'JS'
+                    return Array.from(document.querySelectorAll('input'))
+                        .some((input) => input.value === 'Assessment browser con sola ragione sociale');
+                    JS);
+
+            $severeLogs = array_values(array_filter(
+                $browser->driver->manage()->getLog('browser'),
+                static fn (array $entry): bool => ($entry['level'] ?? '') === 'SEVERE',
+            ));
+            Assert::assertSame([], $severeLogs, 'The company-name browser regression contains severe console errors.');
+        });
+
+        self::assertSame($legalClient->id, $legalAssessment->fresh()->client_id);
+        self::assertTrue($legalAssessment->fresh()->client->is($legalClient));
+    }
 
     public function test_unsaved_warning_is_scoped_to_the_workspace_and_clears_after_save(): void
     {

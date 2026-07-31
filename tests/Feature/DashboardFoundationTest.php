@@ -14,6 +14,7 @@ use App\Filament\Widgets\AssessmentStatsOverview;
 use App\Filament\Widgets\LatestAssessments;
 use App\Filament\Widgets\UrgentFindings;
 use App\Models\Assessment;
+use App\Models\Client;
 use App\Models\DeletionOperation;
 use App\Models\Finding;
 use App\Models\PriorityLevel;
@@ -92,6 +93,52 @@ it('shows actionable dashboard counts and only the latest five assessments', fun
         ->assertSeeHtml('class="assestme-application-status__condition-content"')
         ->assertSee(__('assestme.backups.actions.manage'))
         ->assertSeeHtml('href="'.BackupSettingsPage::getUrl().'"');
+});
+
+it('shows the legal company name in dashboard assessment tables when the trade name is absent', function (): void {
+    $this->seed(MilestoneOneSeeder::class);
+    $administrator = User::factory()->create();
+    $client = Client::factory()->create([
+        'legal_name' => 'Azienda Test S.r.l.',
+        'trade_name' => null,
+    ]);
+    $assessment = Assessment::factory()->for($client)->create([
+        'title' => 'Assessment dashboard senza nome commerciale',
+    ]);
+    Finding::factory()->for($assessment)->create([
+        'status' => FindingStatus::Open,
+        'priority_level_id' => PriorityLevel::query()->where('code', 'critical')->value('id'),
+        'include_in_report' => true,
+    ]);
+    $this->actingAs($administrator);
+
+    expect($assessment->client_id)->toBe($client->id)
+        ->and($assessment->client->is($client))->toBeTrue()
+        ->and($assessment->client->displayName())->toBe('Azienda Test S.r.l.');
+
+    Livewire::test(LatestAssessments::class)
+        ->assertCanSeeTableRecords([$assessment])
+        ->assertSee('Azienda Test S.r.l.');
+
+    Livewire::test(UrgentFindings::class)
+        ->assertSee('Azienda Test S.r.l.');
+});
+
+it('shows the trade company name in the latest assessments widget when available', function (): void {
+    $administrator = User::factory()->create();
+    $client = Client::factory()->create([
+        'legal_name' => 'Azienda Test S.r.l.',
+        'trade_name' => 'Azienda Test',
+    ]);
+    $assessment = Assessment::factory()->for($client)->create([
+        'title' => 'Assessment dashboard con nome commerciale',
+    ]);
+    $this->actingAs($administrator);
+
+    Livewire::test(LatestAssessments::class)
+        ->assertCanSeeTableRecords([$assessment])
+        ->assertSee('Azienda Test')
+        ->assertDontSee('Azienda Test S.r.l.');
 });
 
 it('does not register the account welcome widget on the dashboard', function (): void {

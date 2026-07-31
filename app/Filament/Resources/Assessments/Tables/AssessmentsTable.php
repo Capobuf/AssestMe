@@ -27,7 +27,7 @@ class AssessmentsTable
         $table = $table
             ->recordUrl(fn (Assessment $record): string => AssessmentResource::getUrl('workspace', ['record' => $record]))
             ->columns([
-                TextColumn::make('client.trade_name')
+                TextColumn::make('client.legal_name')
                     ->label(__('assestme.assessments.fields.client'))
                     ->formatStateUsing(fn (mixed $state, Assessment $record): string => $record->client->displayName())
                     ->searchable(['legal_name', 'trade_name'])

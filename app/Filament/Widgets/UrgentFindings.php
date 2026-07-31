@@ -32,7 +32,7 @@ final class UrgentFindings extends TableWidget
                 ->limit(5))
             ->columns([
                 TextColumn::make('title')->label(__('assestme.findings.fields.title')),
-                TextColumn::make('assessment.client.trade_name')
+                TextColumn::make('assessment.client.legal_name')
                     ->label(__('assestme.dashboard.company'))
                     ->formatStateUsing(fn (mixed $state, Finding $record): string => $record->assessment->client->displayName()),
                 TextColumn::make('priorityLevel.label')

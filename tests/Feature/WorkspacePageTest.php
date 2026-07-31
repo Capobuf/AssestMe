@@ -62,6 +62,68 @@ it('uses the Workspace as the primary assessment list destination', function ():
         ->assertSeeHtml(AssessmentResource::getUrl('workspace', ['record' => $assessment]));
 });
 
+it('shows the legal name in the assessment list when the trade name is absent', function (): void {
+    $administrator = User::factory()->create();
+    $client = Client::factory()->create([
+        'legal_name' => 'Azienda Test S.r.l.',
+        'trade_name' => null,
+    ]);
+    $assessment = Assessment::factory()->for($client)->create([
+        'title' => 'Assessment con sola ragione sociale',
+    ]);
+    $this->actingAs($administrator);
+
+    expect($assessment->client_id)->toBe($client->id)
+        ->and($assessment->client->is($client))->toBeTrue()
+        ->and($assessment->client->displayName())->toBe('Azienda Test S.r.l.');
+
+    Livewire::test(ListAssessments::class)
+        ->assertCanSeeTableRecords([$assessment])
+        ->assertSee('Azienda Test S.r.l.');
+});
+
+it('shows the trade name in the assessment list when it is available', function (): void {
+    $administrator = User::factory()->create();
+    $client = Client::factory()->create([
+        'legal_name' => 'Azienda Test S.r.l.',
+        'trade_name' => 'Azienda Test',
+    ]);
+    $assessment = Assessment::factory()->for($client)->create([
+        'title' => 'Assessment con nome commerciale',
+    ]);
+    $this->actingAs($administrator);
+
+    Livewire::test(ListAssessments::class)
+        ->assertCanSeeTableRecords([$assessment])
+        ->assertSee('Azienda Test')
+        ->assertDontSee('Azienda Test S.r.l.');
+});
+
+it('searches the assessment list by legal and trade company names', function (): void {
+    $administrator = User::factory()->create();
+    $legalClient = Client::factory()->create([
+        'legal_name' => 'Legalneedle S.r.l.',
+        'trade_name' => null,
+    ]);
+    $tradeClient = Client::factory()->create([
+        'legal_name' => 'Seconda Ragione Sociale S.r.l.',
+        'trade_name' => 'Tradeneedle',
+    ]);
+    $legalAssessment = Assessment::factory()->for($legalClient)->create();
+    $tradeAssessment = Assessment::factory()->for($tradeClient)->create();
+    $this->actingAs($administrator);
+
+    Livewire::test(ListAssessments::class)
+        ->searchTable('Legalneedle')
+        ->assertCanSeeTableRecords([$legalAssessment])
+        ->assertCountTableRecords(1);
+
+    Livewire::test(ListAssessments::class)
+        ->searchTable('Tradeneedle')
+        ->assertCanSeeTableRecords([$tradeAssessment])
+        ->assertCountTableRecords(1);
+});
+
 it('mounts the structured findings table workspace with fifty related findings', function (): void {
     $administrator = User::factory()->create();
     $assessment = Assessment::factory()->create();

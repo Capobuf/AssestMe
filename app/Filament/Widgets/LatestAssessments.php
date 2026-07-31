@@ -34,7 +34,7 @@ final class LatestAssessments extends TableWidget
                 ->latest('id')
                 ->limit(5))
             ->columns([
-                TextColumn::make('client.trade_name')
+                TextColumn::make('client.legal_name')
                     ->label(__('assestme.dashboard.company'))
                     ->formatStateUsing(fn (mixed $state, Assessment $record): string => $record->client->displayName()),
                 TextColumn::make('scope_type')
