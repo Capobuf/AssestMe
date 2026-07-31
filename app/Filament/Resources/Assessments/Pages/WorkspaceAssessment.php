@@ -85,6 +85,10 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
 
     public ?string $saveError = null;
 
+    public ?string $pendingFindingRequestId = null;
+
+    public ?string $pendingAssessmentRequestId = null;
+
     public ?int $totalFindingsCount = null;
 
     public ?int $reportFindingsCount = null;
@@ -219,7 +223,8 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
         ]);
 
         try {
-            $result = $this->persistFindingPayload($finding, $payload);
+            $requestId = $this->resolveClientRequestId($this->pendingFindingRequestId);
+            $result = $this->persistFindingPayload($finding, $payload, $requestId);
             $finding = $result->finding;
 
             foreach ($uploads as $key => $upload) {
@@ -260,6 +265,16 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
             if ($moveNext) {
                 $this->selectAdjacentFinding(1);
             }
+
+            $this->pendingFindingRequestId = null;
+            $this->dispatch(
+                'assestme-server-save-confirmed',
+                kind: 'finding',
+                assessmentId: (int) $this->assessmentRecord()->getKey(),
+                findingId: (int) $finding->getKey(),
+                requestId: $requestId,
+                appliedVersion: $result->appliedVersion,
+            );
         } catch (AssessmentVersionConflict) {
             $this->saveStatus = self::STATUS_CONFLICT;
             $this->saveError = __('assestme.workspace.errors.conflict');
@@ -391,8 +406,9 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
         ]];
 
         try {
+            $requestId = $this->resolveClientRequestId($this->pendingAssessmentRequestId);
             $request = new WorkspaceSaveData(
-                requestId: (string) Str::uuid(),
+                requestId: $requestId,
                 expectedVersion: $this->expectedVersion,
                 tabId: $this->tabId,
                 payload: $payload,
@@ -403,6 +419,15 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
             $this->assessmentRecord()->setAttribute('lock_version', $result->appliedVersion);
             $this->saveStatus = self::STATUS_SAVED;
             Notification::make()->success()->title(__('assestme.workspace.saved_notification'))->send();
+            $this->pendingAssessmentRequestId = null;
+            $this->dispatch(
+                'assestme-server-save-confirmed',
+                kind: 'assessment',
+                assessmentId: (int) $this->assessmentRecord()->getKey(),
+                findingId: null,
+                requestId: $requestId,
+                appliedVersion: $result->appliedVersion,
+            );
         } catch (AssessmentVersionConflict) {
             $this->saveStatus = self::STATUS_CONFLICT;
             $this->saveError = __('assestme.workspace.errors.conflict');
@@ -601,10 +626,15 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
      * @throws IdempotencyKeyMismatch
      * @throws LockTimeoutException
      */
-    private function persistFindingPayload(Finding $finding, array $payload): FindingSaveResult
-    {
+    private function persistFindingPayload(
+        Finding $finding,
+        array $payload,
+        ?string $requestId = null,
+    ): FindingSaveResult {
+        $resolvedRequestId = $this->resolveClientRequestId($requestId);
+
         $request = new FindingSaveData(
-            requestId: (string) Str::uuid(),
+            requestId: $resolvedRequestId,
             expectedVersion: $this->expectedVersion,
             tabId: $this->tabId,
             payload: $payload,
@@ -615,6 +645,21 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
         $this->assessmentRecord()->setAttribute('lock_version', $result->appliedVersion);
 
         return $result;
+    }
+
+    private function resolveClientRequestId(?string $requestId): string
+    {
+        if ($requestId === null) {
+            return (string) Str::uuid();
+        }
+
+        if (! Str::isUuid($requestId)) {
+            throw ValidationException::withMessages([
+                'request_id' => __('assestme.workspace.errors.invalid_request'),
+            ]);
+        }
+
+        return $requestId;
     }
 
     /** @param array<string, mixed> $payload */

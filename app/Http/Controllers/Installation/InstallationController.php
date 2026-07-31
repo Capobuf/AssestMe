@@ -1,0 +1,356 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Installation;
+
+use App\Actions\Installation\FinalizeInstallation;
+use App\Data\Installation\DatabaseConfigurationData;
+use App\Data\Installation\InstallationDatabaseStatus;
+use App\Data\Installation\InstallationProgressData;
+use App\Enums\SupportedDatabaseDriver;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Installation\AdministratorRequest;
+use App\Http\Requests\Installation\ApplicationConfigurationRequest;
+use App\Http\Requests\Installation\DatabaseConfigurationRequest;
+use App\Services\Installation\DatabaseCapabilityProbe;
+use App\Services\Installation\DatabaseCapabilityProbeException;
+use App\Services\Installation\DatabaseClientBinaryInspector;
+use App\Services\Installation\InstallationDatabaseClassificationException;
+use App\Services\Installation\InstallationDatabaseClassifier;
+use App\Services\Installation\InstallationRuntimeInspector;
+use App\Services\Installation\InstallationState;
+use App\Services\Installation\SchedulerHeartbeat;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+use RuntimeException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Throwable;
+
+final class InstallationController extends Controller
+{
+    public function __construct(
+        private readonly InstallationState $installationState,
+        private readonly InstallationRuntimeInspector $runtimeInspector,
+        private readonly DatabaseClientBinaryInspector $databaseClientBinaryInspector,
+        private readonly DatabaseCapabilityProbe $databaseCapabilityProbe,
+        private readonly InstallationDatabaseClassifier $databaseClassifier,
+        private readonly SchedulerHeartbeat $schedulerHeartbeat,
+    ) {}
+
+    public function welcome(Request $request): View|RedirectResponse
+    {
+        $progress = $this->installationState->progress();
+
+        if ($progress->step !== 'welcome') {
+            return redirect()->route($this->routeForStep($progress->step));
+        }
+
+        return view('installation.welcome', [
+            'domain' => $request->getHost(),
+            'detectedUrl' => $this->detectedUrl($request),
+        ]);
+    }
+
+    public function continueFromWelcome(): RedirectResponse
+    {
+        $progress = $this->installationState->progress();
+        $this->installationState->save(new InstallationProgressData(
+            installationId: $progress->installationId,
+            step: 'runtime',
+            application: $progress->application,
+            database: $progress->database,
+        ));
+
+        return redirect()->route('installation.runtime');
+    }
+
+    public function runtime(): View
+    {
+        $progress = $this->installationState->progress();
+        $inspection = $this->runtimeInspector->inspect(
+            base_path(),
+            $progress->application?->phpBinary,
+            $progress->application?->weasyPrintBinary,
+        );
+
+        return view('installation.runtime', compact('inspection'));
+    }
+
+    public function continueFromRuntime(Request $request): RedirectResponse
+    {
+        $progress = $this->installationState->progress();
+        $inspection = $this->runtimeInspector->inspect(
+            base_path(),
+            $progress->application?->phpBinary,
+            $progress->application?->weasyPrintBinary,
+        );
+
+        if ($request->boolean('refresh')) {
+            return redirect()->route('installation.runtime');
+        }
+
+        if (! $inspection->passed()) {
+            return back()->with('installation_error', 'I requisiti runtime non sono ancora soddisfatti.');
+        }
+
+        $this->installationState->save(new InstallationProgressData(
+            installationId: $progress->installationId,
+            step: 'configuration',
+            application: $progress->application,
+            database: $progress->database,
+        ));
+
+        return redirect()->route('installation.configuration');
+    }
+
+    public function configuration(Request $request): View
+    {
+        $progress = $this->installationState->progress();
+        $inspection = $this->runtimeInspector->inspect(
+            base_path(),
+            $progress->application?->phpBinary,
+            $progress->application?->weasyPrintBinary,
+        );
+
+        return view('installation.configuration', [
+            'application' => $progress->application,
+            'database' => $progress->database,
+            'inspection' => $inspection,
+            'detectedUrl' => $this->detectedUrl($request),
+        ]);
+    }
+
+    public function storeConfiguration(ApplicationConfigurationRequest $request): RedirectResponse
+    {
+        $progress = $this->installationState->progress();
+        $application = $request->toData();
+        $inspection = $this->runtimeInspector->inspect(
+            base_path(),
+            $application->phpBinary,
+            $application->weasyPrintBinary,
+        );
+
+        if (! $inspection->passed()) {
+            return back()->withInput()->with('installation_error', 'PHP CLI, WeasyPrint o filesystem non superano il controllo reale.');
+        }
+
+        try {
+            $this->assertBackupRoot($application->backupRoot);
+        } catch (RuntimeException $exception) {
+            return back()->withInput()->with('installation_error', $exception->getMessage());
+        }
+
+        $driver = SupportedDatabaseDriver::from((string) $request->validated('database_driver'));
+        $database = $progress->database?->driver === $driver
+            ? $progress->database
+            : $this->defaultDatabaseConfiguration($driver);
+
+        $this->installationState->save(new InstallationProgressData(
+            installationId: $progress->installationId,
+            step: 'database',
+            application: $application,
+            database: $database,
+        ));
+
+        return redirect()->route('installation.database');
+    }
+
+    public function database(): View|RedirectResponse
+    {
+        $progress = $this->installationState->progress();
+
+        if ($progress->application === null || $progress->database === null) {
+            return redirect()->route('installation.configuration');
+        }
+
+        return view('installation.database', ['database' => $progress->database]);
+    }
+
+    public function storeDatabase(DatabaseConfigurationRequest $request): RedirectResponse
+    {
+        $progress = $this->installationState->progress();
+        $database = $request->toData();
+
+        if ($database->password === ''
+            && $progress->database?->driver === $database->driver
+            && $progress->database->database === $database->database
+            && $progress->database->host === $database->host
+            && $progress->database->username === $database->username) {
+            $database = new DatabaseConfigurationData(
+                driver: $database->driver,
+                database: $database->database,
+                host: $database->host,
+                port: $database->port,
+                username: $database->username,
+                password: $progress->database->password,
+                socket: $database->socket,
+                charset: $database->charset,
+                collation: $database->collation,
+                dumpBinary: $database->dumpBinary,
+                restoreBinary: $database->restoreBinary,
+            );
+        }
+
+        try {
+            $this->databaseClientBinaryInspector->inspect($database);
+            $probe = $this->databaseCapabilityProbe->probe($database);
+            $classification = $this->databaseClassifier->classify($database, $progress->installationId);
+
+            if ($classification->status === InstallationDatabaseStatus::Foreign) {
+                throw new InstallationDatabaseClassificationException(
+                    'Il database contiene tabelle applicative estranee: '.implode(', ', $classification->tables).'.',
+                );
+            }
+        } catch (DatabaseCapabilityProbeException|InstallationDatabaseClassificationException|RuntimeException $exception) {
+            return back()
+                ->withInput($request->except('database_password'))
+                ->with('installation_error', $exception->getMessage());
+        } catch (Throwable) {
+            return back()
+                ->withInput($request->except('database_password'))
+                ->with('installation_error', 'La verifica reale del database non è stata superata.');
+        }
+
+        $this->installationState->save(new InstallationProgressData(
+            installationId: $progress->installationId,
+            step: 'administrator',
+            application: $progress->application,
+            database: $database,
+        ));
+
+        return redirect()->route('installation.administrator')
+            ->with('installation_success', "{$probe->product} {$probe->serverVersion} verificato.");
+    }
+
+    public function administrator(): View|RedirectResponse
+    {
+        $progress = $this->installationState->progress();
+
+        if ($progress->application === null || $progress->database === null) {
+            return redirect()->route('installation.configuration');
+        }
+
+        return view('installation.administrator');
+    }
+
+    public function finalize(
+        AdministratorRequest $request,
+        FinalizeInstallation $finalizeInstallation,
+    ): View|RedirectResponse {
+        try {
+            $progress = $this->installationState->progress();
+            $result = $finalizeInstallation($request->toData());
+
+            if ($progress->application === null) {
+                throw new RuntimeException('The final installation configuration is incomplete.');
+            }
+
+            $scheduler = $this->schedulerHeartbeat->status();
+            $cronCommand = $this->shellArgument($progress->application->phpBinary)
+                .' '.$this->shellArgument(base_path('artisan')).' schedule:run';
+
+            return view('installation.complete', [
+                'checks' => $result->checks,
+                'scheduler' => $scheduler,
+                'cronCommand' => $cronCommand,
+            ]);
+        } catch (DatabaseCapabilityProbeException|InstallationDatabaseClassificationException|RuntimeException $exception) {
+            return back()
+                ->withInput($request->except(['password', 'password_confirmation']))
+                ->with('installation_error', $exception->getMessage());
+        } catch (Throwable) {
+            return back()
+                ->withInput($request->except(['password', 'password_confirmation']))
+                ->with('installation_error', 'La finalizzazione non è riuscita. Puoi riprenderla in sicurezza senza cancellare il database.');
+        }
+    }
+
+    public function documentation(): BinaryFileResponse
+    {
+        $path = base_path('docs/cloudpanel-installation.md');
+        abort_unless(is_file($path), 404);
+
+        return response()->file($path, ['Content-Type' => 'text/markdown; charset=UTF-8']);
+    }
+
+    private function detectedUrl(Request $request): string
+    {
+        return $request->getScheme().'://'.$request->getHttpHost();
+    }
+
+    private function routeForStep(string $step): string
+    {
+        return match ($step) {
+            'runtime' => 'installation.runtime',
+            'configuration' => 'installation.configuration',
+            'database' => 'installation.database',
+            'administrator' => 'installation.administrator',
+            default => 'installation.welcome',
+        };
+    }
+
+    private function defaultDatabaseConfiguration(SupportedDatabaseDriver $driver): DatabaseConfigurationData
+    {
+        if ($driver === SupportedDatabaseDriver::Sqlite) {
+            return new DatabaseConfigurationData(
+                driver: $driver,
+                database: storage_path('app/database/database.sqlite'),
+            );
+        }
+
+        $dumpCandidates = $driver === SupportedDatabaseDriver::MariaDb
+            ? ['/usr/bin/mariadb-dump', '/usr/local/bin/mariadb-dump']
+            : ['/usr/bin/mysqldump', '/usr/local/bin/mysqldump'];
+        $restoreCandidates = $driver === SupportedDatabaseDriver::MariaDb
+            ? ['/usr/bin/mariadb', '/usr/local/bin/mariadb']
+            : ['/usr/bin/mysql', '/usr/local/bin/mysql'];
+
+        return new DatabaseConfigurationData(
+            driver: $driver,
+            database: 'assestme',
+            dumpBinary: $this->firstExecutable($dumpCandidates),
+            restoreBinary: $this->firstExecutable($restoreCandidates),
+        );
+    }
+
+    /** @param list<string> $candidates */
+    private function firstExecutable(array $candidates): string
+    {
+        foreach ($candidates as $candidate) {
+            if (is_file($candidate) && ! is_link($candidate) && is_executable($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return $candidates[0];
+    }
+
+    private function assertBackupRoot(string $path): void
+    {
+        if (is_link($path) || is_link(dirname($path))) {
+            throw new RuntimeException('La directory backup non può essere un collegamento simbolico.');
+        }
+
+        if (! is_dir($path) && ! @mkdir($path, 0750, true) && ! is_dir($path)) {
+            throw new RuntimeException('La directory backup non può essere creata.');
+        }
+
+        $realPath = realpath($path);
+        $publicPath = realpath(public_path());
+
+        if (! is_string($realPath)
+            || ! is_writable($realPath)
+            || (is_string($publicPath) && ($realPath === $publicPath || str_starts_with($realPath, $publicPath.DIRECTORY_SEPARATOR)))) {
+            throw new RuntimeException('La directory backup deve essere scrivibile e fuori da public.');
+        }
+    }
+
+    private function shellArgument(string $argument): string
+    {
+        return preg_match('/^[A-Za-z0-9_\/.:-]+$/', $argument) === 1
+            ? $argument
+            : "'".str_replace("'", "'\\''", $argument)."'";
+    }
+}

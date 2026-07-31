@@ -18,7 +18,10 @@ use App\Models\Site;
 use App\Policies\SingletonAdministratorPolicy;
 use App\Support\CanaryClusterRequester;
 use Baspa\FilamentCanary\Sweep\Requester;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -31,6 +34,9 @@ class AppServiceProvider extends ServiceProvider
         if ($this->app->environment('testing') && interface_exists(Requester::class)) {
             $this->app->bind(Requester::class, CanaryClusterRequester::class);
         }
+
+        RateLimiter::for('installation', static fn (Request $request): Limit => Limit::perMinute(20)
+            ->by($request->ip()));
 
         Gate::policy(Assessment::class, SingletonAdministratorPolicy::class);
         Gate::policy(Asset::class, SingletonAdministratorPolicy::class);

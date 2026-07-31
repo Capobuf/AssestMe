@@ -1,4 +1,17 @@
 <x-filament-panels::page>
+    <div
+        class="assestme-workspace-context"
+        data-assestme-workspace-context
+        data-user-id="{{ auth()->id() }}"
+        data-assessment-id="{{ $this->assessmentRecord()->getKey() }}"
+        data-finding-id="{{ $selectedFindingId ?? '' }}"
+        data-tab-id="{{ $tabId }}"
+        data-expected-version="{{ $expectedVersion }}"
+        data-read-only="{{ $this->isWorkspaceReadOnly() ? 'true' : 'false' }}"
+        data-active-tab="{{ $activeWorkspaceTab }}"
+        data-active-form="{{ $activeWorkspaceTab === 'findings' && $selectedFindingId ? 'finding' : ($activeWorkspaceTab === 'assessment-details' ? 'assessment' : '') }}"
+        data-active-state-path="{{ $activeWorkspaceTab === 'findings' && $selectedFindingId ? 'findingData' : ($activeWorkspaceTab === 'assessment-details' ? 'data' : '') }}"
+    >
     <x-filament::tabs label="{{ __('assestme.workspace.title') }}">
         @foreach ([
             'findings' => __('assestme.workspace.tabs.findings'),
@@ -16,6 +29,89 @@
             </x-filament::tabs.item>
         @endforeach
     </x-filament::tabs>
+
+    <section
+        class="assestme-local-draft"
+        data-assestme-local-draft
+        data-dusk="local-draft-banner"
+        data-draft-status="current"
+        data-available-title-label="{{ __('assestme.workspace.drafts.available') }}"
+        data-storage-error-title-label="{{ __('assestme.workspace.status.storage_error') }}"
+        data-read-only-title-label="{{ __('assestme.workspace.drafts.read_only_title') }}"
+        data-current-version-label="{{ __('assestme.workspace.drafts.version_current') }}"
+        data-stale-version-label="{{ __('assestme.workspace.drafts.version_stale') }}"
+        data-count-one-label="{{ __('assestme.workspace.drafts.count_one') }}"
+        data-count-many-label="{{ __('assestme.workspace.drafts.count_many') }}"
+        data-updated-at-label="{{ __('assestme.workspace.drafts.updated_at') }}"
+        data-read-only-label="{{ __('assestme.workspace.drafts.read_only') }}"
+        data-storage-unavailable-label="{{ __('assestme.workspace.drafts.storage_unavailable') }}"
+        data-schema-incompatible-label="{{ __('assestme.workspace.drafts.schema_incompatible') }}"
+        data-solution-structure-mismatch-label="{{ __('assestme.workspace.drafts.solution_structure_mismatch') }}"
+        aria-labelledby="assestme-local-draft-title"
+        aria-live="polite"
+        hidden
+    >
+        <div class="assestme-local-draft__icon" aria-hidden="true">
+            <x-filament::icon icon="heroicon-o-circle-stack" />
+        </div>
+
+        <div class="assestme-local-draft__content">
+            <h2 id="assestme-local-draft-title" data-assestme-local-draft-title>
+                {{ __('assestme.workspace.drafts.available') }}
+            </h2>
+            <div class="assestme-local-draft__metadata">
+                <p>
+                    <strong>{{ __('assestme.workspace.drafts.updated_at') }}:</strong>
+                    <time data-assestme-local-draft-updated-at>—</time>
+                </p>
+                <p data-assestme-local-draft-version>{{ __('assestme.workspace.drafts.version_current') }}</p>
+                <p data-assestme-local-draft-count>{{ __('assestme.workspace.drafts.count_one', ['count' => 1]) }}</p>
+            </div>
+            <p class="assestme-local-draft__secondary">{{ __('assestme.workspace.drafts.device_only') }}</p>
+            <p class="assestme-local-draft__secondary" data-assestme-draft-evidence-warning>
+                {{ __('assestme.workspace.drafts.evidence_excluded') }}
+            </p>
+            <p class="assestme-local-draft__secondary">
+                {{ __('assestme.workspace.drafts.solution_structure_limited') }}
+            </p>
+            <p
+                class="assestme-local-draft__secondary"
+                data-assestme-storage-persistence-note
+                hidden
+            >
+                {{ __('assestme.workspace.drafts.storage_not_guaranteed') }}
+            </p>
+            <p class="assestme-local-draft__error" data-assestme-local-draft-error hidden>
+                {{ __('assestme.workspace.drafts.storage_unavailable') }}
+            </p>
+            <p class="assestme-local-draft__pending">{{ __('assestme.workspace.drafts.server_unconfirmed') }}</p>
+            @if ($this->isWorkspaceReadOnly())
+                <p class="assestme-local-draft__read-only" data-assestme-local-draft-read-only>
+                    {{ __('assestme.workspace.drafts.read_only') }}
+                </p>
+            @endif
+        </div>
+
+        <div class="assestme-local-draft__actions" data-assestme-local-draft-actions>
+            <x-filament::button
+                type="button"
+                size="sm"
+                data-dusk="restore-local-draft"
+                :disabled="$this->isWorkspaceReadOnly()"
+            >
+                {{ __('assestme.workspace.drafts.restore') }}
+            </x-filament::button>
+            <x-filament::button
+                type="button"
+                size="sm"
+                color="gray"
+                outlined
+                data-dusk="discard-local-draft"
+            >
+                {{ __('assestme.workspace.drafts.discard') }}
+            </x-filament::button>
+        </div>
+    </section>
 
     @if ($activeWorkspaceTab === 'findings')
         <div class="assestme-findings-container" data-assestme-findings-container>
@@ -47,6 +143,8 @@
                         class="assestme-workbench-form"
                         aria-label="{{ __('assestme.workspace.editor.label') }}"
                         data-assestme-finding-inspector
+                        data-assestme-draft-form="finding"
+                        data-assestme-draft-state-path="findingData"
                     >
                         <header class="assestme-workbench-editor__header">
                             <div class="assestme-workbench-editor__heading">
@@ -125,6 +223,9 @@
                                 @if ($saveError)
                                     <p class="assestme-workbench-footer__error">{{ $saveError }}</p>
                                 @endif
+                                <p class="assestme-workbench-footer__draft-note" data-assestme-evidence-draft-notice>
+                                    {{ __('assestme.workspace.drafts.evidence_excluded') }}
+                                </p>
                             </div>
                             @if (! $this->isWorkspaceReadOnly())
                                 <div class="assestme-workbench-footer__actions">
@@ -148,15 +249,23 @@
             </div>
         </div>
     @elseif ($activeWorkspaceTab === 'assessment-details')
-        <form wire:submit="saveAssessmentDetails">
+        <form
+            wire:submit="saveAssessmentDetails"
+            data-assestme-draft-form="assessment"
+            data-assestme-draft-state-path="data"
+        >
             {{ $this->form }}
-            @if (! $this->isWorkspaceReadOnly())
-                <div class="assestme-assessment-save">
+            <div class="assestme-assessment-save">
+                @include('filament.workspace-save-status', [
+                    'status' => $saveStatus,
+                    'label' => $this->getSaveStatusLabel(),
+                ])
+                @if (! $this->isWorkspaceReadOnly())
                     <x-filament::button type="submit" data-dusk="save-assessment">
                         {{ __('assestme.workspace.explicit_save') }}
                     </x-filament::button>
-                </div>
-            @endif
+                @endif
+            </div>
         </form>
     @else
         <x-filament::section
@@ -171,6 +280,7 @@
             ])
         </x-filament::section>
     @endif
+    </div>
 
     <x-filament-actions::modals />
 </x-filament-panels::page>

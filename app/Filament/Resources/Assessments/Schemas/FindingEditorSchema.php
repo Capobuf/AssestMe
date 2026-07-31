@@ -18,6 +18,7 @@ use App\Models\FindingSolution;
 use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
 use App\Services\Reporting\EditorialLimits;
+use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -70,6 +71,12 @@ final class FindingEditorSchema
                     ->schema([
                         Repeater::make('solutions')
                             ->hiddenLabel()
+                            ->extraAttributes(['data-assestme-draft-collection' => 'solutions'])
+                            ->addAction(self::draftStructuralAction(...))
+                            ->deleteAction(self::draftStructuralAction(...))
+                            ->moveDownAction(self::draftStructuralAction(...))
+                            ->moveUpAction(self::draftStructuralAction(...))
+                            ->reorderAction(self::draftStructuralAction(...))
                             ->itemLabel(fn (array $state): string => (string) ($state['title'] ?? __('assestme.workspace.inspector.new_solution')))
                             ->schema([
                                 Hidden::make('id'),
@@ -78,11 +85,13 @@ final class FindingEditorSchema
                                     ->label(__('assestme.findings.fields.solution_title'))
                                     ->required()
                                     ->maxLength(EditorialLimits::SOLUTION_TITLE)
+                                    ->extraInputAttributes(['data-dusk' => 'finding-solution-title'])
                                     ->helperText(fn (?string $state): string => self::remaining($state, EditorialLimits::SOLUTION_TITLE)),
                                 Textarea::make('description')
                                     ->label(__('assestme.common.description'))
                                     ->required()
                                     ->rows(5)
+                                    ->extraInputAttributes(['data-dusk' => 'finding-solution-description'])
                                     ->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['solution_description'])
                                     ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['solution_description']))
                                     ->columnSpanFull(),
@@ -211,6 +220,14 @@ final class FindingEditorSchema
                             ->disabled(self::isReadOnly(...)),
                     ]),
             ]);
+    }
+
+    private static function draftStructuralAction(Action $action): Action
+    {
+        return $action->extraAttributes([
+            'data-assestme-draft-structural-action' => 'solutions',
+            'data-dusk' => 'finding-solution-'.$action->getName(),
+        ]);
     }
 
     public static function properties(Schema $schema): Schema

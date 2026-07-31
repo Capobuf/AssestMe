@@ -2,13 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Models\User;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Yaml\Yaml;
 
-it('includes SQLite integrity verification in application diagnostics', function (): void {
-    $this->artisan('assestme:diagnose')
-        ->expectsOutputToContain('"sqlite_integrity_check": true')
+it('includes driver-aware database integrity verification in application diagnostics', function (): void {
+    User::factory()->create();
+
+    $this->artisan('assestme:diagnose', ['--json' => true])
+        ->expectsOutputToContain('"database_integrity": {')
         ->assertSuccessful();
 });
 
@@ -59,11 +62,13 @@ it('defines the authoritative minimal Docker development topology semantically',
 
     /** @var array{services: array<string, array<string, mixed>>, volumes?: mixed} $compose */
     $compose = Yaml::parseFile($composePath);
-    expect(array_keys($compose['services']))->toBe(['app', 'selenium'])
+    expect(array_keys($compose['services']))->toBe(['app', 'selenium', 'mysql-test', 'mariadb-test'])
         ->and($compose)->not->toHaveKey('volumes');
 
     $app = $compose['services']['app'];
     $selenium = $compose['services']['selenium'];
+    $mysql = $compose['services']['mysql-test'];
+    $mariaDb = $compose['services']['mariadb-test'];
 
     expect($app['build'])->toBe([
         'context' => 'dev',
@@ -96,10 +101,15 @@ it('defines the authoritative minimal Docker development topology semantically',
         ->and($selenium)->not->toHaveKey('ports')
         ->and($selenium)->not->toHaveKeys(['container_name', 'privileged', 'cap_add']);
 
+    expect($mysql['profiles'])->toBe(['database'])
+        ->and($mysql['image'])->toBe('${ASSESTME_MYSQL_TEST_IMAGE:-mysql:8.4.11}')
+        ->and($mariaDb['profiles'])->toBe(['database'])
+        ->and($mariaDb['image'])->toBe('${ASSESTME_MARIADB_TEST_IMAGE:-mariadb:12.3.2}');
+
     $serializedCompose = strtolower((string) file_get_contents($composePath));
     expect($serializedCompose)
         ->not->toContain('/var/run/docker.sock')
-        ->not->toMatch('/\b(?:nginx|php-fpm|node(?:js)?|npm|pnpm|yarn|vite|redis|mysql|postgres(?:ql)?|mariadb|supervisor|systemd|horizon|queue worker)\b/');
+        ->not->toMatch('/\b(?:nginx|php-fpm|node(?:js)?|npm|pnpm|yarn|vite|redis|postgres(?:ql)?|supervisor|systemd|horizon|queue worker)\b/');
 
     $dockerfile = strtolower((string) file_get_contents($dockerfilePath));
     expect($dockerfile)
@@ -112,8 +122,10 @@ it('defines the authoritative minimal Docker development topology semantically',
         ->toContain('poppler-utils')
         ->toContain('weasyprint')
         ->toContain('sockets')
+        ->toContain('pdo_mysql')
+        ->toContain('default-mysql-client')
         ->not->toContain('copy . /workspace')
-        ->not->toMatch('/\b(?:alpine|nginx|php-fpm|node(?:js)?|npm|pnpm|yarn|vite|redis|mysql|postgres(?:ql)?|mariadb|supervisor|systemd|horizon|chromedriver|chromium)\b/');
+        ->not->toMatch('/\b(?:alpine|nginx|php-fpm|node(?:js)?|npm|pnpm|yarn|vite|redis|postgres(?:ql)?|supervisor|systemd|horizon|chromedriver|chromium)\b/');
 });
 
 it('configures the Docker PHP runtime and idempotent bootstrap contract', function (): void {
@@ -178,12 +190,18 @@ it('records the superseded installation history and approved Docker and CloudPan
         ->toContain('| D-007 (v2) | SUPERSEDED |')
         ->toContain('| D-007 | APPROVED | The application requires no Node.js frontend build; Docker Compose is the maintained and authoritative local development environment |')
         ->toContain('| D-019 (v1) | SUPERSEDED |')
-        ->toContain('| D-019 | APPROVED | The only supported installation profiles are Docker Compose for development and CloudPanel for production |')
+        ->toContain('| D-019 | SUPERSEDED | Docker Compose development and a future, not-yet-implemented CloudPanel production profile were approved; superseded by D-064 on 2026-07-31 |')
         ->toContain('| D-042 (v1) | SUPERSEDED | The Docker development profile published the development HTTP port only on host loopback; superseded by D-042 on 2026-07-18 |')
-        ->toContain('| D-042 | APPROVED | The Docker development profile is defined by `docker/compose.dev.yml`, a project-owned PHP 8.3 development image, bind-mounted source code, persistent SQLite state, optional isolated Selenium browser testing, and HTTP publication on all host IPv4 interfaces |')
+        ->toContain('| D-042 | APPROVED | The Docker development profile is defined by `docker/compose.dev.yml`, a project-owned PHP 8.3 development image, bind-mounted source code, persistent default SQLite state, optional isolated Selenium browser testing, optional real MySQL/MariaDB compatibility-test services, and HTTP publication on all host IPv4 interfaces |')
         ->toContain('### D-042 — Docker development profile')
-        ->toContain('CloudPanel production configuration is not implemented by this decision')
-        ->toContain('legacy/deprecated generic-host production artifacts')
+        ->toContain('| D-063 | APPROVED |')
+        ->toContain('| D-064 | APPROVED |')
+        ->toContain('| D-065 | APPROVED |')
+        ->toContain('| D-066 | APPROVED |')
+        ->toContain('| D-067 | APPROVED |')
+        ->toContain('| D-068 | APPROVED |')
+        ->toContain('| D-069 | APPROVED |')
+        ->toContain('CloudPanel is the sole approved production destination')
         ->toContain('docker/compose.dev.yml');
 
     $markdownFiles = collect(File::allFiles(base_path()))
@@ -194,7 +212,12 @@ it('records the superseded installation history and approved Docker and CloudPan
         ->values()
         ->all();
 
-    expect($markdownFiles)->toBe(['AGENTS.md', 'plan.md']);
+    expect($markdownFiles)->toBe([
+        'AGENTS.md',
+        'docs/cloudpanel-acceptance-checklist.md',
+        'docs/cloudpanel-installation.md',
+        'plan.md',
+    ]);
     expect(base_path('scripts/cloudpanel'))->not->toBeDirectory();
 });
 

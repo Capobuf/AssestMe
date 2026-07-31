@@ -33,7 +33,7 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
-          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_sqlite, sockets, sqlite3, xml, zip
+          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sockets, sqlite3, xml, zip
           ini-values: memory_limit=512M
           tools: composer:v2
 
@@ -66,6 +66,203 @@ jobs:
             tests/Browser/console
           if-no-files-found: ignore
 
+  database-compatibility:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: mysql-8.0.46
+            driver: mysql
+            image: mysql:8.0.46
+            full_suite: false
+          - name: mysql-8.4.11
+            driver: mysql
+            image: mysql:8.4.11
+            full_suite: true
+          - name: mariadb-11.8.6
+            driver: mariadb
+            image: mariadb:11.8.6
+            full_suite: false
+          - name: mariadb-12.3.2
+            driver: mariadb
+            image: mariadb:12.3.2
+            full_suite: true
+    name: Database / ${{ matrix.name }}
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      ASSESTME_TEST_DB_DATABASE: assestme_test
+      ASSESTME_TEST_DB_DRIVER: ${{ matrix.driver }}
+      ASSESTME_TEST_DB_HOST: 127.0.0.1
+      ASSESTME_TEST_DB_PASSWORD: assestme-ci-database
+      ASSESTME_TEST_DB_PORT: 3306
+      ASSESTME_TEST_DB_USERNAME: root
+      LARAVEL_PDF_DRIVER: weasyprint
+      LARAVEL_PDF_WEASYPRINT_BINARY: /usr/bin/weasyprint
+    services:
+      database:
+        image: ${{ matrix.image }}
+        env:
+          MYSQL_DATABASE: assestme_test
+          MYSQL_ROOT_PASSWORD: assestme-ci-database
+          MARIADB_DATABASE: assestme_test
+          MARIADB_ROOT_PASSWORD: assestme-ci-database
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --host=127.0.0.1 --password=assestme-ci-database"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sockets, sqlite3, xml, zip
+          ini-values: memory_limit=512M
+          tools: composer:v2
+
+      - name: Install database clients and WeasyPrint
+        run: sudo apt-get update && sudo apt-get install --yes default-mysql-client mariadb-client weasyprint
+
+      - name: Install locked dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run migrations, seeders, and real capability probe
+        run: php artisan test tests/Feature/SeedDataTest.php tests/Feature/ServerDatabaseCapabilityTest.php
+
+      - name: Run common functional database suite on recent servers
+        if: matrix.full_suite
+        run: >-
+          php artisan test
+          tests/Feature/CompanyManagementTest.php
+          tests/Feature/SiteManagementTest.php
+          tests/Feature/AssetManagementTest.php
+          tests/Feature/RiskConfigurationTest.php
+          tests/Feature/TemplateManagementTest.php
+          tests/Feature/AssessmentManagementTest.php
+          tests/Feature/EvidenceManagementTest.php
+          tests/Feature/WorkspacePageTest.php
+          tests/Feature/FindingTemplateImportExportTest.php
+
+      - name: Run driver-aware integrity and diagnostics
+        run: php artisan test tests/Unit/DatabaseIntegrityCheckTest.php tests/Feature/DiagnoseCommandTest.php
+
+      - name: Select product-authentic dump and restore clients
+        run: |
+          if [[ "${{ matrix.driver }}" = "mysql" ]]; then
+            client_root="${RUNNER_TEMP}/mysql-client"
+            mkdir -p "$client_root"
+            container_id="$(docker ps --filter "ancestor=${{ matrix.image }}" --format '{{.ID}}' | head -n 1)"
+            test -n "$container_id"
+            docker cp "${container_id}:/usr/bin/mysqldump" "$client_root/mysqldump"
+            docker cp "${container_id}:/usr/bin/mysql" "$client_root/mysql"
+            chmod 0700 "$client_root/mysqldump" "$client_root/mysql"
+            "$client_root/mysqldump" --version
+            "$client_root/mysql" --version
+            echo "ASSESTME_DB_DUMP_BINARY=$client_root/mysqldump" >> "$GITHUB_ENV"
+            echo "ASSESTME_DB_RESTORE_BINARY=$client_root/mysql" >> "$GITHUB_ENV"
+          else
+            /usr/bin/mariadb-dump --version
+            /usr/bin/mariadb --version
+            echo 'ASSESTME_DB_DUMP_BINARY=/usr/bin/mariadb-dump' >> "$GITHUB_ENV"
+            echo 'ASSESTME_DB_RESTORE_BINARY=/usr/bin/mariadb' >> "$GITHUB_ENV"
+          fi
+
+      - name: Run real dump restore private-storage and safety-backup round trip
+        run: php artisan test tests/Unit/ServerDatabaseBackupRestoreTest.php
+
+  cloudpanel-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sockets, sqlite3, xml, zip
+          ini-values: memory_limit=512M
+          tools: composer:v2
+
+      - name: Install release build and runtime tools
+        run: sudo apt-get update && sudo apt-get install --yes rsync unzip weasyprint
+
+      - name: Install locked development dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Build CloudPanel archive
+        run: scripts/build-cloudpanel-release.sh ci "${RUNNER_TEMP}/release"
+
+      - name: Validate archive contents
+        run: |
+          cd "${RUNNER_TEMP}/release"
+          sha256sum --check assestme-ci-cloudpanel.zip.sha256
+          mkdir "${RUNNER_TEMP}/extracted"
+          unzip -q assestme-ci-cloudpanel.zip -d "${RUNNER_TEMP}/extracted"
+          test ! -e "${RUNNER_TEMP}/extracted/assestme/.env"
+          test -f "${RUNNER_TEMP}/extracted/assestme/vendor/autoload.php"
+          test -f "${RUNNER_TEMP}/extracted/assestme/RELEASE-MANIFEST.sha256"
+          cd "${RUNNER_TEMP}/extracted/assestme"
+          sha256sum --check RELEASE-MANIFEST.sha256
+
+      - name: Install matching ChromeDriver
+        run: php artisan dusk:chrome-driver --detect
+
+      - name: Complete the extracted-release SQLite installer in a browser
+        run: |
+          release_path="${RUNNER_TEMP}/extracted/assestme"
+          test_root="$(mktemp -d "${RUNNER_TEMP}/assestme-release-dusk.XXXXXXXX")"
+          touch "${test_root}/.assestme-test-root"
+          mkdir -p "${test_root}/storage/logs"
+          administrator_password="CI!$(php -r 'echo bin2hex(random_bytes(14));')aA1"
+          (
+            cd "$release_path"
+            APP_ENV=testing APP_URL=http://127.0.0.1:8123 php artisan serve --host=127.0.0.1 --port=8123
+          ) >"${test_root}/storage/logs/release-server.log" 2>&1 &
+          server_pid="$!"
+          trap 'kill "$server_pid" >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent http://127.0.0.1:8123/install >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          APP_URL=http://127.0.0.1:8123 \
+          ASSESTME_DUSK_ADMIN_PASSWORD="$administrator_password" \
+          ASSESTME_DUSK_INSTALLER=1 \
+          ASSESTME_RELEASE_PATH="$release_path" \
+          ASSESTME_TEST_ISOLATED=1 \
+          ASSESTME_TEST_ROOT="$test_root" \
+          php artisan dusk --without-tty tests/Browser/CloudPanelInstallationTest.php
+          test -f "$release_path/.env"
+          test -f "$release_path/storage/app/private/installed.lock"
+          cd "$release_path"
+          php artisan schedule:run
+          php artisan assestme:diagnose --json
+
+      - name: Upload installable CloudPanel release
+        uses: actions/upload-artifact@v4
+        with:
+          name: assestme-ci-cloudpanel
+          path: |
+            ${{ runner.temp }}/release/assestme-ci-cloudpanel.zip
+            ${{ runner.temp }}/release/assestme-ci-cloudpanel.zip.sha256
+          if-no-files-found: error
+
   clean-checkout-bootstrap:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -86,7 +283,7 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
-          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_sqlite, sockets, sqlite3, xml, zip
+          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sockets, sqlite3, xml, zip
           ini-values: memory_limit=512M
           tools: composer:v2
 

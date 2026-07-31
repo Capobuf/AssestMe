@@ -9,6 +9,7 @@ RUN apt-get update \
         bash \
         ca-certificates \
         curl \
+        default-mysql-client \
         file \
         git \
         libcurl4-openssl-dev \
@@ -32,6 +33,7 @@ RUN apt-get update \
         bcmath \
         gd \
         intl \
+        pdo_mysql \
         sockets \
         zip \
     && pecl install "xdebug-${XDEBUG_VERSION}" \

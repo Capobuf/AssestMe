@@ -14,9 +14,11 @@ use App\Models\Client;
 use App\Models\Finding;
 use App\Models\FindingTemplate;
 use App\Models\User;
+use App\Models\WorkspaceSaveRequest;
 use Database\Seeders\DatabaseSeeder;
 use Filament\Forms\Components\Repeater;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 it('creates an assessment through the Filament resource', function (): void {
@@ -226,6 +228,60 @@ it('persists main editor and contextual property changes through one signed find
         ->and($saved->status->value)->toBe('planned')
         ->and($saved->include_in_report)->toBeFalse()
         ->and($assessment->fresh()->lock_version)->toBe(1);
+});
+
+it('uses the browser supplied finding request UUID for the signed save', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $requestId = (string) Str::uuid();
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->set('pendingFindingRequestId', $requestId)
+        ->set('findingData.title', 'Bozza con UUID browser')
+        ->call('saveFinding')
+        ->assertHasNoErrors()
+        ->assertSet('pendingFindingRequestId', null)
+        ->assertSet('saveStatus', WorkspaceAssessment::STATUS_SAVED)
+        ->assertDispatched(
+            'assestme-server-save-confirmed',
+            kind: 'finding',
+            assessmentId: (int) $assessment->getKey(),
+            findingId: (int) $finding->getKey(),
+            requestId: $requestId,
+            appliedVersion: 1,
+        );
+
+    expect(WorkspaceSaveRequest::query()->find($requestId))
+        ->not->toBeNull()
+        ->and($assessment->fresh()->lock_version)->toBe(1)
+        ->and($finding->fresh()->title)->toBe('Bozza con UUID browser');
+});
+
+it('rejects an invalid browser supplied finding request UUID without saving or confirming', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create([
+        'title' => 'Finding invariato',
+        'sort_order' => 1,
+    ]);
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->set('pendingFindingRequestId', 'not-a-uuid')
+        ->set('findingData.title', 'Modifica da non salvare')
+        ->call('saveFinding')
+        ->assertSet('pendingFindingRequestId', 'not-a-uuid')
+        ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
+        ->assertHasErrors(['findingData.request_id'])
+        ->assertNotDispatched('assestme-server-save-confirmed');
+
+    expect(WorkspaceSaveRequest::query()->count())->toBe(0)
+        ->and($assessment->fresh()->lock_version)->toBe(0)
+        ->and($finding->fresh()->title)->toBe('Finding invariato');
 });
 
 it('keeps an invalid contextual scope visible without persisting partial workbench changes', function (): void {

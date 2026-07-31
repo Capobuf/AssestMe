@@ -2,10 +2,20 @@
 
 declare(strict_types=1);
 
+use App\Actions\Backups\CreateBackup;
+use App\Actions\Backups\RestoreBackup;
+use App\Actions\Backups\VerifyBackup;
 use App\Enums\OperationalCheckStatus;
 use App\Enums\OperationalCheckType;
 use App\Models\User;
+use App\Services\Database\DatabaseServerIdentityResolver;
+use App\Services\Database\Restore\DatabaseRestorer;
+use App\Services\Database\Restore\DatabaseRestorerResolver;
+use App\Services\Database\Restore\DatabaseRestoreVerifier;
+use App\Services\Database\Restore\SqliteRestorer;
 use App\Services\Operations\OperationalCheckStore;
+use Illuminate\Database\Connection;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -14,6 +24,33 @@ use Illuminate\Support\Str;
 use Tests\TestCase;
 
 uses(TestCase::class);
+
+function assestMeRemoveAdministratorFromBackup(string $archive, string $workspace): void
+{
+    $database = $workspace.DIRECTORY_SEPARATOR.'adminless.sqlite';
+    $phar = new PharData($archive);
+    File::put($database, $phar['database/database.sqlite']->getContent());
+    $pdo = new PDO('sqlite:'.$database);
+    $pdo->exec('DELETE FROM users');
+    $pdo = null;
+    $contents = File::get($database);
+    $phar['database/database.sqlite'] = $contents;
+    $manifest = json_decode($phar['manifest.json']->getContent(), true, flags: JSON_THROW_ON_ERROR);
+
+    foreach ($manifest['files'] as &$file) {
+        if (($file['path'] ?? null) === 'database/database.sqlite') {
+            $file['size'] = strlen($contents);
+            $file['sha256'] = hash('sha256', $contents);
+        }
+    }
+
+    unset($file);
+    $phar['manifest.json'] = json_encode(
+        $manifest,
+        JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR,
+    ).PHP_EOL;
+    unset($phar);
+}
 
 beforeEach(function (): void {
     Artisan::call('up');
@@ -64,6 +101,9 @@ it('backs up, verifies, and restores the SQLite database and private storage tog
     expect(Artisan::call('assestme:backup', ['--output' => $archive]))->toBe(0)
         ->and(is_file($archive))->toBeTrue()
         ->and(Artisan::call('assestme:backup:verify', ['archive' => $archive]))->toBe(0)
+        ->and(app(VerifyBackup::class)->handle($archive)->schemaVersion)->toBe(2)
+        ->and(app(VerifyBackup::class)->handle($archive)->database->driver)->toBe('sqlite')
+        ->and(app(VerifyBackup::class)->handle($archive)->database->path)->toBe('database/database.sqlite')
         ->and(app(OperationalCheckStore::class)->find(OperationalCheckType::Backup)?->status)
         ->toBe(OperationalCheckStatus::Succeeded);
 
@@ -156,6 +196,95 @@ it('restores an empty private storage directory', function (): void {
     expect($restoreExit)->toBe(0)
         ->and(File::isDirectory($this->privateStoragePath))->toBeTrue()
         ->and(File::files($this->privateStoragePath))->toBeEmpty();
+});
+
+it('imports the safety backup when a restored database fails the final checks', function (): void {
+    $administrator = User::factory()->create(['name' => 'Source administrator']);
+    $archive = $this->backupRoot.DIRECTORY_SEPARATOR.'adminless-source.tar.gz';
+    File::put($this->privateStoragePath.DIRECTORY_SEPARATOR.'state.txt', 'source storage');
+    expect(Artisan::call('assestme:backup', ['--output' => $archive]))->toBe(0);
+    assestMeRemoveAdministratorFromBackup($archive, $this->backupWorkspace);
+    $administrator->update(['name' => 'Safety administrator']);
+    File::put($this->privateStoragePath.DIRECTORY_SEPARATOR.'state.txt', 'safety storage');
+    Artisan::call('down');
+
+    try {
+        $exit = Artisan::call('assestme:restore-backup', ['archive' => $archive]);
+        $stillDown = app()->isDownForMaintenance();
+        $output = Artisan::output();
+    } finally {
+        Artisan::call('up');
+    }
+
+    expect($exit)->toBe(1)
+        ->and($stillDown)->toBeTrue()
+        ->and($output)->toContain('safety backup was reinstated')
+        ->and(User::query()->sole()->name)->toBe('Safety administrator')
+        ->and(File::get($this->privateStoragePath.DIRECTORY_SEPARATOR.'state.txt'))->toBe('safety storage')
+        ->and(File::glob($this->backupRoot.DIRECTORY_SEPARATOR.'assestme-safety-*.tar.gz'))->toHaveCount(1);
+});
+
+it('preserves recovery artifacts and reports both archives when safety compensation fails', function (): void {
+    User::factory()->create();
+    $archive = $this->backupRoot.DIRECTORY_SEPARATOR.'failed-compensation-source.tar.gz';
+    expect(Artisan::call('assestme:backup', ['--output' => $archive]))->toBe(0);
+    assestMeRemoveAdministratorFromBackup($archive, $this->backupWorkspace);
+    $actualRestorer = app(SqliteRestorer::class);
+    $failingRestorer = new class($actualRestorer) implements DatabaseRestorer
+    {
+        private int $calls = 0;
+
+        public function __construct(private readonly SqliteRestorer $actual) {}
+
+        public function restore(Connection $connection, string $source): void
+        {
+            $this->calls++;
+
+            if ($this->calls === 2) {
+                throw new RuntimeException('Deliberate compensation failure.');
+            }
+
+            $this->actual->restore($connection, $source);
+        }
+    };
+    $resolver = Mockery::mock(DatabaseRestorerResolver::class);
+    $resolver->shouldReceive('resolve')->once()->andReturn($failingRestorer);
+    $restore = new RestoreBackup(
+        new Filesystem,
+        app(CreateBackup::class),
+        app(VerifyBackup::class),
+        $resolver,
+        app(DatabaseRestoreVerifier::class),
+        app(DatabaseServerIdentityResolver::class),
+    );
+    $restoreRoot = storage_path('framework/assestme-restore');
+    $before = File::isDirectory($restoreRoot) ? File::directories($restoreRoot) : [];
+    Artisan::call('down');
+    $exception = null;
+
+    try {
+        $restore($archive);
+    } catch (RuntimeException $caught) {
+        $exception = $caught;
+    }
+
+    $remaining = File::isDirectory($restoreRoot)
+        ? array_values(array_diff(File::directories($restoreRoot), $before))
+        : [];
+
+    expect(app()->isDownForMaintenance())->toBeTrue()
+        ->and($exception?->getMessage())->toContain('Source: '.$archive)
+        ->and($exception?->getMessage())->toContain('safety: '.$this->backupRoot)
+        ->and($exception?->getMessage())->toContain('recovery files: ')
+        ->and($remaining)->not->toBeEmpty()
+        ->and(File::glob($this->backupRoot.DIRECTORY_SEPARATOR.'assestme-safety-*.tar.gz'))->toHaveCount(1);
+
+    Artisan::call('up');
+    DB::purge('backup_restore');
+
+    foreach ($remaining as $directory) {
+        File::deleteDirectory($directory);
+    }
 });
 
 it('keeps safety archives while pruning managed daily weekly and monthly generations', function (): void {

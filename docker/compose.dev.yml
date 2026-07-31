@@ -65,3 +65,40 @@ services:
       timeout: 5s
       retries: 20
       start_period: 10s
+
+  mysql-test:
+    image: "${ASSESTME_MYSQL_TEST_IMAGE:-mysql:8.4.11}"
+    profiles:
+      - database
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: assestme_test
+    healthcheck:
+      test:
+        - CMD
+        - mysqladmin
+        - ping
+        - --host=127.0.0.1
+        - --user=root
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  mariadb-test:
+    image: "${ASSESTME_MARIADB_TEST_IMAGE:-mariadb:12.3.2}"
+    profiles:
+      - database
+    environment:
+      MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
+      MARIADB_DATABASE: assestme_test
+    healthcheck:
+      test:
+        - CMD
+        - healthcheck.sh
+        - --connect
+        - --innodb_initialized
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s

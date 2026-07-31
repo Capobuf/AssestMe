@@ -20,6 +20,7 @@
         "opis/json-schema": "^2.6",
         "phpoffice/phpspreadsheet": "^5.0",
         "pontedilana/php-weasyprint": "^2.7",
+        "spatie/db-dumper": "^4.1",
         "spatie/laravel-pdf": "^2.0"
     },
     "require-dev": {

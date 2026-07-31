@@ -88,6 +88,7 @@ final class FilamentNavigationTest extends DuskTestCase
                 'Report',
                 'Backup',
                 'Template',
+                'Diagnostica',
                 'Categorie',
                 'Matrice priorità',
                 'Livelli di impegno',

@@ -31,6 +31,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 php artisan migrate:fresh --seed --force
+php artisan assestme:installation:lock --force --no-interaction
 
 if [[ -z "${DUSK_PORT:-}" ]]; then
     DUSK_PORT="$(php -r '

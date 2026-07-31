@@ -1,6 +1,6 @@
 # AssestMe — Deterministic Executable Development Plan
 
-Specification version: **2.4**
+Specification version: **2.6**
 Status: **approved for implementation**  
 Application name: **AssestMe**  
 Reference runtime: **PHP 8.3 capability contract; no normative host distribution**
@@ -64,7 +64,7 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-003 | APPROVED | No host operating-system distribution is normative; runtime and bootstrap are capability-based |
 | D-004 (v1) | SUPERSEDED | PHP 8.3 was required from the official Ubuntu 24.04 repositories; superseded by D-004 on 2026-07-17 |
 | D-004 | APPROVED | PHP 8.3 is required without prescribing an operating-system package source |
-| D-005 | APPROVED | SQLite with foreign keys, WAL, and 5-second busy timeout |
+| D-005 | SUPERSEDED | SQLite was the sole database with foreign keys, WAL, and a 5-second busy timeout; superseded by D-063 on 2026-07-31 |
 | D-006 | APPROVED | File cache/session and synchronous queue; no Redis or worker |
 | D-007 (v1) | SUPERSEDED | Docker was prohibited together with frontend build dependencies; superseded by D-007 on 2026-07-17 |
 | D-007 (v2) | SUPERSEDED | No Node.js/npm/pnpm/Vite build or external runtime service; Docker was permitted for future packaging but was not required; superseded by D-007 on 2026-07-18 |
@@ -84,7 +84,7 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-017 | APPROVED | Archive/permanent-delete behavior follows one global setting |
 | D-018 | APPROVED | Fail loudly; no silent fallback, omission, or placeholder success |
 | D-019 (v1) | SUPERSEDED | Nginx + PHP-FPM was the production profile and direct Artisan startup was the local development profile; superseded by D-019 on 2026-07-18 |
-| D-019 | APPROVED | The only supported installation profiles are Docker Compose for development and CloudPanel for production |
+| D-019 | SUPERSEDED | Docker Compose development and a future, not-yet-implemented CloudPanel production profile were approved; superseded by D-064 on 2026-07-31 |
 | D-020 | APPROVED | Optimistic locking and idempotent workspace-save requests |
 | D-021 | APPROVED | Completed assessments are read-only until explicitly reopened |
 | D-022 | APPROVED | Every generated report stores a complete normalized immutable payload snapshot |
@@ -94,7 +94,7 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-026 | APPROVED | PhpSpreadsheet is the direct XLSX implementation dependency |
 | D-027 | APPROVED | Laravel Dusk is used for browser behavior tests without Node.js |
 | D-028 | APPROVED | TOTP MFA is optional, with recovery codes and CLI reset |
-| D-029 | APPROVED | Local backups are implemented and tested; off-host replication is operationally external |
+| D-029 | SUPERSEDED | The SQLite-only local backup contract was implemented and tested; superseded by the multi-driver D-066 contract on 2026-07-31 |
 | D-030 | APPROVED | Composer lock is the authoritative exact dependency set |
 | D-031 | APPROVED | Vendor code is never edited; a fork requires explicit approval |
 | D-032 | APPROVED | UTC storage and Europe/Rome presentation |
@@ -108,7 +108,7 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-040 | APPROVED | Optional consultant identity/contact/logo and text-only signature fields are explicitly defined for reports |
 | D-041 | APPROVED | Development verification is autonomous and isolated; manual cross-browser/device QA is deferred until a reference installation and devices exist |
 | D-042 (v1) | SUPERSEDED | The Docker development profile published the development HTTP port only on host loopback; superseded by D-042 on 2026-07-18 |
-| D-042 | APPROVED | The Docker development profile is defined by `docker/compose.dev.yml`, a project-owned PHP 8.3 development image, bind-mounted source code, persistent SQLite state, optional isolated Selenium browser testing, and HTTP publication on all host IPv4 interfaces |
+| D-042 | APPROVED | The Docker development profile is defined by `docker/compose.dev.yml`, a project-owned PHP 8.3 development image, bind-mounted source code, persistent default SQLite state, optional isolated Selenium browser testing, optional real MySQL/MariaDB compatibility-test services, and HTTP publication on all host IPv4 interfaces |
 | D-043 | APPROVED | Italian user-facing terminology uses Azienda/Aziende and Intera azienda; internal `Client`, `clients`, `client_id`, relations, and persistence contracts remain unchanged |
 | D-044 | APPROVED | Assessment creation proposes a reusable automatically generated but user-editable title, exposes only organization/site/custom assessment scopes, filters one or more sites by company, and makes the Workspace the primary post-create and list-row destination |
 | D-045 | APPROVED | Finding asset association remains optional for every scope except `selected_assets`, which requires at least one same-company asset; conditional site/asset UI and completion/report validation use the same domain rule |
@@ -128,7 +128,15 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-059 (v1) | SUPERSEDED | The portrait-only DOMPDF editorial layout and manually duplicated indicative HTML preview are retained as implementation history; superseded by D-059 on 2026-07-24 |
 | D-059 | APPROVED | Accepted pending technical validation: one Blade/CSS editorial report must support mixed A4 orientation and a same-view preview without changing immutable report persistence |
 | D-060 | APPROVED | The report-settings preview renders a transient PDF through the same application-owned WeasyPrint renderer service and `reports.assessment` Blade/CSS used for production, exposes only operative settings with explicit scope descriptions, and supports a temporary dependency-free fullscreen view without creating immutable report state |
-| D-061 | APPROVED | Backup management is a native Settings-cluster Filament page over application-managed local archives; creation, verification, authenticated verified download, and confirmed deletion reuse the authoritative backup contracts, while restore remains CLI-only |
+| D-061 | SUPERSEDED | The native Settings-cluster backup page and CLI-only restore boundary remain, but its SQLite-only archive contract is superseded by D-066 on 2026-07-31 |
+| D-062 | APPROVED | Existing assessment and Finding forms use an application-owned IndexedDB draft store for durable local recovery; server persistence remains authoritative, signed, explicit, optimistic-locked, and idempotent |
+| D-063 | APPROVED | Fresh AssestMe installations support SQLite, MySQL, and MariaDB through portable Laravel migrations; no data conversion or migration between database drivers is provided |
+| D-064 | APPROVED | CloudPanel production uses a prebuilt release ZIP with production vendors and local assets, document root `public`, and an application-specific web installer; Composer and Node.js are not required on the production server |
+| D-065 | APPROVED | The installer uses a stable bootstrap application key, encrypted resumable non-administrator state, an atomic allowlisted `.env` writer, filesystem finalization locking, real capability checks, and an irreversible private installed lock; installed or anomalous instances never reopen the web installer |
+| D-066 | APPROVED | Backups use a driver-aware schema-v2 manifest and SQLite snapshots or MySQL/MariaDB SQL dumps; schema-v1 SQLite archives remain readable, verification is mandatory, and restore remains maintenance-mode CLI-only with a safety backup and best-effort compensation |
+| D-067 | APPROVED | CI proves common behavior against real SQLite, MySQL, and MariaDB databases at explicitly pinned tested versions; no unexecuted server version or real CloudPanel environment is described as compatible or certified |
+| D-068 | APPROVED | CloudPanel scheduler setup remains an operator GUI action; AssestMe emits an atomic every-minute heartbeat, reports its freshness, and shows the exact detected PHP CLI plus Artisan command without attempting to configure CloudPanel |
+| D-069 | APPROVED | `eii/laravel-installer` is excluded as an authoritative runtime dependency; AssestMe implements only its bounded installation flow with Laravel routes, controllers, form requests, Blade, file sessions, application services, local static CSS, and Symfony Process |
 
 ### D-001 — Framework
 
@@ -155,7 +163,7 @@ Enforce the single-user rule with a unique `singleton_key` column fixed to `1`, 
 
 No host operating-system distribution or CPU architecture is normative for the application.
 
-The project-owned development image and the future CloudPanel production site provide the required runtime capabilities. Application scripts:
+The project-owned development image and the CloudPanel production site provide the required runtime capabilities. The installable release and web installer verify the production site rather than assuming capabilities from its operating-system label. Application scripts:
 
 - verify capabilities they actually use;
 - do not install operating-system packages;
@@ -166,7 +174,7 @@ The current GitHub Actions workflow may use a hosted Ubuntu runner as CI infrast
 
 ### D-004 — PHP
 
-Use PHP 8.3. The project-owned development image supplies it for Docker Compose. The future CloudPanel implementation must supply it for production without making a host operating-system distribution normative.
+Use PHP 8.3. The project-owned development image supplies it for Docker Compose. The CloudPanel site must select PHP 8.3, and the web installer rejects a different PHP web or CLI runtime without making a host operating-system distribution normative.
 
 Required extensions:
 
@@ -196,6 +204,8 @@ Required extensions:
 Laravel 13 requires PHP 8.3 or newer. AssestMe deliberately targets PHP 8.3 for one reproducible runtime contract across development, CI, production, and future container packaging.
 
 ### D-005 — Database
+
+**Status: SUPERSEDED by D-063 — 2026-07-31.** The following text remains as the historical SQLite-only contract and continues to govern the SQLite driver where it is not superseded.
 
 Use one SQLite file:
 
@@ -305,7 +315,7 @@ The previous requirement to represent the complete Finding collection through on
 
 The list owns Eloquent query, search, filters, deterministic reorder, empty state, collection actions, accessible row selection, inline status, and inline report-inclusion controls. Only status and report inclusion are editable inline. The inspector owns the complete single-Finding editor, collapsible description, scope/risk, solutions, and evidence sections, previous/next navigation, explicit save, save-and-next, dirty/offline/error/conflict states, and read-only rendering for completed or archived assessments.
 
-The native Filament Repeater remains permitted for bounded child collections such as the solutions belonging to the selected Finding. It is not the primary Finding-list workspace. No Node.js pipeline, external data grid, JavaScript persistence layer, or frontend runtime dependency is introduced.
+The native Filament Repeater remains permitted for bounded child collections such as the solutions belonging to the selected Finding. It is not the primary Finding-list workspace. No Node.js pipeline, external data grid, or frontend runtime dependency is introduced. The only permitted JavaScript persistence layer is the application-owned IndexedDB draft store defined by D-062.
 
 This decision supersedes only the incompatible table-Repeater presentation and whole-Finding-collection submission rules in §§9.4–9.5, 10.1, 16.1, Milestones 0/3, and their corresponding acceptance wording. Assessment metadata may retain its separate signed persistence path. All other approved domain, persistence, optimistic-locking, idempotency, lifecycle, report, evidence, deployment, and test decisions remain authoritative. Every Finding mutation continues to serialize on the assessment save lock, compare and increment `lock_version`, and record an idempotent request UUID; no unsigned or last-write-wins path is permitted.
 
@@ -402,6 +412,8 @@ Provide:
 
 Autosave never marks an assessment completed.
 
+D-062 local draft persistence is not an authoritative server autosave. Writing a draft to IndexedDB never increments `lock_version`, never completes an assessment, and never replaces explicit signed server persistence.
+
 ### D-017 — Deletion
 
 Global setting:
@@ -425,9 +437,11 @@ A failure must:
 
 ### D-019 — Supported installation profiles
 
+**Status: SUPERSEDED by D-064 — 2026-07-31.** The following text records the former unimplemented CloudPanel boundary.
+
 Development has one supported profile: `docker/compose.dev.yml`. The application is served by Laravel Artisan inside the `app` container and is available at `http://127.0.0.1:8000/admin` or, subject to the development host firewall, at `http://<development-host-ip>:8000/admin` from an authorized local network.
 
-Production has one approved destination: a dedicated PHP site managed by CloudPanel. The CloudPanel procedure is outside this activity and is not yet implemented. A future approved decision and implementation must define at least PHP-FPM, document root, `.env`, SQLite, permissions, scheduler, backup, deployment, update, and rollback behavior.
+Production has one approved destination: a dedicated PHP 8.3 site managed by CloudPanel. D-064 through D-069 define the installable release ZIP, `public` document root, application-owned web installer, SQLite/MySQL/MariaDB selection, permissions, scheduler heartbeat, backup, update, and rollback operator procedures. CloudPanel remains infrastructure operated through its GUI; AssestMe does not modify CloudPanel or install operating-system packages over HTTP.
 
 The following are not supported installation profiles:
 
@@ -447,6 +461,8 @@ Scripts that remain technically executable on a host may be retained for CI, dia
 Every assessment has `lock_version`.
 
 Every save request has a UUID idempotency key and expected version. A stale version causes a conflict; the server never performs last-write-wins.
+
+For an IndexedDB-backed draft, the idempotency UUID may be generated by the browser, validated by the server, and reused until the browser receives a matching authoritative save confirmation. A draft is never removed only because a request was sent.
 
 ### D-021 — Lifecycle
 
@@ -525,7 +541,7 @@ The authoritative development command is:
 docker compose -f docker/compose.dev.yml up --build
 ```
 
-No Compose file exists at the repository root. The topology contains only the required `app` service and the optional `selenium` service under the `browser` profile. Normal `up` starts only `app`; `app` has no mandatory dependency on Selenium. No custom network, reverse proxy, database service, cache, mail service, administration service, worker, or other infrastructure service is permitted.
+No Compose file exists at the repository root. The topology contains the required `app` service, the optional `selenium` service under the `browser` profile, and isolated `mysql-test` and `mariadb-test` services under the `database` profile. Normal `up` starts only `app`; `app` has no mandatory dependency on Selenium or a server database. No custom network, reverse proxy, cache, mail service, administration service, worker, or production runtime service is permitted.
 
 The project-owned development image uses the official Debian-based PHP `8.3.32-cli-bookworm` image, Composer `2.10.2` copied from the official Composer image, Xdebug `3.5.3`, and WeasyPrint `57.2`. It supplies Bash, Git, Curl, Unzip, Zip, the utilities used by maintained scripts, the native/font libraries required by WeasyPrint, development-only Poppler utilities, and every D-004 extension. PHP extensions are built and enabled with the official PHP image helpers; Xdebug is installed through PECL without a third-party extension installer. The application image contains no Nginx, PHP-FPM, Node.js, Redis, external database, Supervisor, systemd, Horizon, queue worker, Chrome, or ChromeDriver. The optional Selenium service remains isolated browser-test infrastructure and is not a report renderer. The repository is not copied into the image.
 
@@ -553,7 +569,7 @@ Script classification:
 
 - environment-neutral: `scripts/preflight.sh`, `scripts/bootstrap-local.sh`, `scripts/isolated-environment.sh`, `scripts/quality-isolated.sh`, `scripts/dusk-isolated.sh`, and `scripts/verify.sh`;
 - Docker-specific: `docker/dev/entrypoint.sh` and `docker/compose.dev.yml`;
-- future CloudPanel-specific: none yet; CloudPanel production configuration is not implemented by this decision;
+- CloudPanel-specific: `scripts/build-cloudpanel-release.sh`, `scripts/cloudpanel-smoke.sh`, `scripts/ci-install-release-sqlite.sh`, `docs/cloudpanel-installation.md`, and `docs/cloudpanel-acceptance-checklist.md`;
 - legacy/deprecated generic-host production artifacts: `scripts/deploy-production.sh`, `scripts/rollback-production.sh`, `scripts/rehearse-production.sh`, `stubs/nginx/assestme.conf`, `stubs/php/assestme.ini`, and `stubs/cron/assestme`;
 - deprecated direct-host installation: none is supported; technically reusable host execution of environment-neutral scripts is limited to CI, diagnostics, and internal verification.
 
@@ -815,11 +831,116 @@ The preview may expand temporarily over the application viewport through one app
 
 ### D-061 — Native backup management and CLI-only restore
 
+**Status: SUPERSEDED in its SQLite-only implementation details by D-066 — 2026-07-31.** The native Filament management surface and CLI-only restore boundary remain authoritative.
+
 Backup management is exposed as a native Filament page inside `SettingsCluster`. The page lists only application-managed local archives contained directly in the configured backup root and supports manual creation, explicit verification, authenticated download, and confirmed deletion.
 
 Backup restore remains CLI-only because it requires maintenance mode and replaces the SQLite database and private storage used by the active web application. The web interface provides accurate restore instructions but does not upload, queue, schedule, or execute a restore.
 
 No database table, new dependency, remote replication service, background worker, scheduler container, or second backup implementation is introduced. The existing `CreateBackup`, `VerifyBackup`, `RestoreBackup`, retention, manifest, hash, rollback, and operational-check contracts remain authoritative.
+
+### D-062 — Durable browser drafts with IndexedDB
+
+**Status: APPROVED — 2026-07-31.**
+
+AssestMe uses one application-owned plain-JavaScript IndexedDB database to protect unsaved Workspace data on the current browser origin and device.
+
+The local store is a recovery mechanism, not an authoritative database, server autosave, audit history, synchronization engine, or backup.
+
+Supported local drafts are:
+
+- assessment metadata edited in the Workspace;
+- the complete editable state of one existing selected Finding, including its bounded solution collection and contextual properties.
+
+Evidence uploads, pending temporary files, existing evidence projections, and new evidence URL fields are excluded.
+
+Every local draft records at least:
+
+- local draft UUID;
+- schema version;
+- entity key;
+- user ID;
+- assessment ID;
+- optional Finding ID;
+- current Workspace tab ID;
+- draft kind;
+- base assessment `lock_version`;
+- browser-generated idempotency request UUID;
+- JSON-compatible payload;
+- last update timestamp;
+- optional last attempted request UUID and timestamp.
+
+The browser writes the draft after a short debounce and immediately before an explicit server save. A successful IndexedDB write is shown separately from an authoritative server save.
+
+The server remains authoritative. Existing validation, assessment save locking, transactions, `lock_version`, payload hashing, idempotent request storage, lifecycle restrictions, and failure behavior remain unchanged.
+
+A browser-generated request UUID is accepted only after server-side UUID validation. The same UUID is used for retries of the same draft payload. The local draft is deleted only after a matching successful server confirmation. Sending a request, detecting `navigator.onLine`, or receiving an unrelated save confirmation never deletes a draft.
+
+When a later page load finds an exact normalized match between the local payload and the current server payload, the local draft may be removed as already persisted. Otherwise recovery is explicit.
+
+A draft whose base `lock_version` differs from the current server version is never restored or submitted automatically. The UI identifies it as based on an older version and requires an explicit user choice before placing its values back into the form. Any subsequent server save still uses the current signed persistence path and optimistic locking.
+
+IndexedDB errors, unavailable storage, quota failures, and denied persistent-storage requests are visible. Persistent storage permission is best-effort and is never described as guaranteed. Online server saving remains available when local storage fails.
+
+Local drafts are scoped to the browser origin. A draft created under an IP address, hostname, protocol, or port is not assumed to exist under another origin. Draft content remains present in the local browser profile and must not be described as encrypted or as an off-device backup.
+
+No Service Worker, PWA installation, offline navigation, automatic background synchronization, automatic merge, Node.js build, external JavaScript dependency, or server-side draft table is introduced.
+
+### D-063 — Fresh installations on SQLite, MySQL, and MariaDB
+
+**Status: APPROVED — 2026-07-31.**
+
+AssestMe supports three explicit database choices for a new installation: SQLite, MySQL, and MariaDB. MySQL and MariaDB share PDO infrastructure but retain distinct product labels, version detection, executable validation, CI jobs, diagnostics, dump tools, and restore tools. Only versions executed by the maintained CI matrix may be listed as compatible.
+
+Laravel migrations and initial seeders create a new schema on the selected driver. The installer never converts an existing database, never imports an earlier installation, never performs a cross-driver data migration, and never runs `migrate:fresh`. Before the first migration it classifies the target as empty, a recognized resumable partial AssestMe installation, foreign, or complete. A foreign or complete database is never erased by the installer.
+
+The existing Docker Compose development profile remains file-backed SQLite at `database/database.sqlite`. Production SQLite defaults to a configurable path under `storage/app/database`, outside `public`. MySQL and MariaDB use `utf8mb4`, InnoDB, portable migrations, and a temporary isolated connection for destructive capability probes whose randomly named tables are removed in `finally`.
+
+### D-064 — CloudPanel production and installable release
+
+**Status: APPROVED — 2026-07-31.**
+
+CloudPanel is the sole approved production destination. An operator creates a PHP 8.3 Laravel site, enables HTTPS and temporary Basic Authentication or an IP restriction, sets the document root to `public`, extracts the versioned CloudPanel release ZIP, and opens `/install`. The repository includes the Italian GUI procedure, update and rollback boundaries, a capability-based smoke script, and a manual acceptance checklist. Compatibility proven in CI is distinct from a test on a real CloudPanel instance and must be reported as such.
+
+The release ZIP contains application code, production-only locked Composer dependencies, published Filament and installer assets, migrations, seeders, `.env.example`, CloudPanel documentation, an application version, and a SHA-256 file manifest. It contains no `.env`, credential, real database, backup, log, local cache, test screenshot, development dependency, or Git metadata. Composer and Node.js are not required on the production server.
+
+### D-065 — Bounded and irreversible web installer
+
+**Status: APPROVED — 2026-07-31.**
+
+The installer is an AssestMe-specific server-rendered Blade flow. It starts without `.env`, tables, a configured database, or an administrator by creating one cryptographically random site-user-only bootstrap key. A resumed installation reuses that key; it becomes the final `APP_KEY` and is removed only after the atomic final `.env` and private installed lock are valid. An installed instance missing its key fails closed.
+
+Progress and final installation state are separate. Resumable progress is authenticated encryption under the application key, mode `0600`, contains no administrator password, and is deleted after completion. The final `storage/app/private/installed.lock` contains only non-sensitive version, time, and driver metadata. Finalization holds an operating-system `flock`, repeats external probes, writes only explicitly allowlisted environment keys through a validated serializer and same-filesystem atomic rename, runs resumable migrations and idempotent seeders, creates the singleton administrator through the same action as the CLI, performs real final checks, then commits `.env` and the installed lock.
+
+Before installation, `/`, `/admin`, and application routes redirect to the rate-limited CSRF-protected installer without loops. `/up` distinguishes a bootable uninstalled application, a healthy installed application, and runtime failure. After the lock exists, every installer route returns `404`; no web reset, cookie, query parameter, or missing browser session can reopen it. Existing AssestMe tables or an administrator without a valid lock are an anomaly and also fail closed. Scheduler verification may remain visibly pending but does not prevent creation of the final lock.
+
+### D-066 — Multi-driver backup, verification, and CLI restore
+
+**Status: APPROVED — 2026-07-31.**
+
+Backup archives use manifest schema v2 with an explicit driver, product, server version, payload format, and allowlisted payload path. SQLite stores `database/database.sqlite`; MySQL and MariaDB store `database/database.sql`. Verification validates every archive path and SHA-256 and rejects traversal or a driver/format/path mismatch. Existing valid schema-v1 SQLite archives remain readable.
+
+SQLite snapshots retain checkpointing and `VACUUM INTO`. MySQL and MariaDB dumps use the locked `spatie/db-dumper` package and separately validated driver-coherent absolute dump executables with consistent InnoDB options. Restore executables are independently configured and validated. Database passwords never appear in logs or command arguments; a temporary credentials file, when required, is mode `0600` and deleted in `finally`.
+
+Restore remains an explicit CLI-only maintenance operation. It verifies the archive, creates and verifies a safety backup, imports without a shell command, and runs schema, migration, singleton-administrator, and integrity diagnostics. A failed server-database restore triggers a best-effort safety-dump compensation. If compensation fails, the application stays in maintenance mode, reports both artifact paths, and never claims atomicity or success.
+
+### D-067 — Multi-database verification evidence
+
+**Status: APPROVED — 2026-07-31.**
+
+The authoritative local aggregate gate remains isolated and non-destructive. CI additionally runs the portable application and database-specific integration suites against real disposable SQLite, MySQL, and MariaDB targets. The matrix pins the minimum and recent server versions actually executed for each product, installs both PDO drivers plus product-appropriate client utilities and WeasyPrint, and separates common, backup/restore, installer browser, and complete-gate workloads so evidence is real without duplicating every expensive gate.
+
+### D-068 — CloudPanel scheduler heartbeat
+
+**Status: APPROVED — 2026-07-31.**
+
+The Laravel Scheduler retains backup at 02:30 Europe/Rome, database integrity at 03:30 Europe/Rome, expired-save-request cleanup, and adds an atomic every-minute heartbeat in private storage. The installer and diagnostics validate a detected PHP 8.3 CLI executable through Symfony Process, display the exact absolute `php artisan schedule:run` command and the separate `* * * * *` frequency, and consider the scheduler verified only while the heartbeat is recent. AssestMe does not call or modify the CloudPanel API.
+
+### D-069 — Installer package evaluation
+
+**Status: APPROVED — 2026-07-31.**
+
+`eii/laravel-installer` is not an authoritative runtime dependency. Its current design is incompatible with the signed contract because its database test is MySQL-connection-centric, its normal flow includes destructive fresh migration behavior, its progress persistence can retain environment data, its environment rewriting and route lock model do not provide AssestMe's atomic allowlist and anomalous-state guarantees, and its default requirements/assets do not match this application. Useful high-level wizard sequencing may be informed by its MIT-licensed structure, but no generic installer framework or Snipe-IT code is copied.
 
 ### D-028 — Authentication and MFA
 
@@ -833,6 +954,8 @@ When enabled:
 - do not use email recovery.
 
 ### D-029 — Backups
+
+**Status: SUPERSEDED by D-066 — 2026-07-31.** The following sentence records the former SQLite-only scope.
 
 Implement application-aware local backups with a restore test. Off-host copying and encrypted storage are operational responsibilities outside v1.
 
@@ -993,9 +1116,9 @@ fixtures/evidence/
 
 Rules:
 
-- do not create additional product, architecture, or feature Markdown files;
+- do not create additional product, architecture, or feature Markdown files beyond the explicitly approved CloudPanel operator guide and acceptance checklist;
 - shell scripts and configuration stubs are allowed and must be executable or directly usable;
-- `plan.md` is the only product/architecture document;
+- `plan.md` is the only product/architecture decision document; CloudPanel Markdown files are operational documentation only;
 - implementation comments document non-obvious code behavior;
 - screenshots from manual QA go under `storage/app/qa-artifacts` and are not committed.
 
@@ -1005,7 +1128,7 @@ Rules:
 
 The supported development host provides Docker, Docker Compose, and the repository only. The project-owned image provides PHP 8.3 CLI, every D-004 extension, Composer 2, and the standard shell/file utilities used by maintained development scripts. PHP, Composer, PHP extensions, Chrome, and ChromeDriver are not installed directly on the workstation as part of the supported profile.
 
-The application runtime does not require the standalone SQLite CLI. SQLite access is provided by PHP's `pdo_sqlite` extension. Production runtime provisioning is reserved for the future CloudPanel decision and implementation.
+The application runtime does not require the standalone SQLite CLI. SQLite access is provided by PHP's `pdo_sqlite` extension. MySQL and MariaDB use `pdo_mysql`; their application backups and CLI-only restores additionally require a product-compatible dump and restore client whose absolute path is validated by the installer and diagnostics. CloudPanel runtime provisioning is an operator action and the web installer never installs operating-system packages.
 
 ### 5.2 Preflight
 
@@ -1153,7 +1276,7 @@ LARAVEL_PDF_WEASYPRINT_BINARY=/usr/bin/weasyprint
 ASSESTME_BACKUP_ROOT=/workspace/backups
 ```
 
-No `.env.docker` file is used and no secret is stored in Compose. Production environment differences are reserved for the future CloudPanel implementation.
+No `.env.docker` file is used and no secret is stored in Compose. In production, the web installer writes only its explicit allowlist to an atomically activated mode-`0600` `.env` after the real checks succeed.
 
 ### 5.6 Administrator bootstrap
 
@@ -1209,13 +1332,13 @@ Completion evidence:
 
 ### 5.8 Production layout
 
-The approved production destination is a dedicated PHP site managed by CloudPanel. Its layout is not defined or implemented in this activity. A future decision must specify the CloudPanel document root, `.env`, SQLite location, ownership, permissions, scheduler, backups, deployment, update, and rollback before production installation is supported operationally.
+The approved production destination is a dedicated PHP 8.3 site managed by CloudPanel. The installable ZIP is extracted into the site directory, the document root is the release `public` directory, and persistent `.env`, private storage, database/backup files, and operator-managed release state remain outside the public root. The installer creates or verifies the bounded storage tree, configures SQLite/MySQL/MariaDB, writes `.env` atomically, and permanently closes itself with a private installed lock. The complete GUI procedure, update, persistence, backup, application rollback, and acceptance recording are maintained in `docs/cloudpanel-installation.md` and `docs/cloudpanel-acceptance-checklist.md`.
 
 The former generic `releases/shared/current` layout is superseded and is not an official installation profile.
 
 ### 5.9 Nginx and PHP-FPM
 
-CloudPanel must provide PHP-FPM and the web-server integration in the future production implementation. The existing generic Nginx and PHP stubs are legacy/deprecated regression artifacts only and must not be installed or partially adapted as CloudPanel configuration in this activity.
+CloudPanel provides PHP-FPM and web-server integration. AssestMe requires PHP 8.3 and the installer-listed extensions and binaries, but does not rewrite CloudPanel-managed web-server files. The existing generic Nginx and PHP stubs remain legacy/deprecated regression artifacts and are not the supported CloudPanel configuration.
 
 PHP production limits:
 
@@ -1229,11 +1352,11 @@ max_execution_time = 120
 
 ### 5.10 TLS
 
-TLS and hostname handling belong to the future CloudPanel production decision. No CloudPanel or generic-host TLS procedure is implemented by this activity. Local Docker development uses unencrypted HTTP on all host IPv4 interfaces; access control and any required network restriction remain the responsibility of the development host firewall. This exposure does not make the Docker profile suitable for production.
+CloudPanel must enable TLS before production installation. The installer requires an HTTPS application URL in production, restricts it to HTTP/HTTPS without an arbitrary path, and compares it to the current host. Before the administrator exists, the operator must protect the site with CloudPanel Basic Authentication or a temporary IP restriction; CSRF, rate limiting, and the installer lock are additional controls, not substitutes. Local Docker development uses unencrypted HTTP and remains unsuitable for production.
 
 ### 5.11 Deployment and rollback
 
-CloudPanel deployment, update, and rollback are not implemented in this activity. `scripts/deploy-production.sh`, `scripts/rollback-production.sh`, and `scripts/rehearse-production.sh` implement the superseded generic-host model and remain legacy/deprecated internal artifacts until a future CloudPanel decision determines whether they are removed or replaced. Technical executability and regression tests do not make them a supported production profile.
+CloudPanel installation uses the production-only ZIP built by `scripts/build-cloudpanel-release.sh`; update and application-code rollback are manual, backup-first operator procedures documented in `docs/cloudpanel-installation.md`. `scripts/deploy-production.sh`, `scripts/rollback-production.sh`, and `scripts/rehearse-production.sh` implement the superseded generic-host model and remain legacy/deprecated internal artifacts. Technical executability and regression tests do not make them a supported production profile.
 
 ### 5.12 Backups
 
@@ -2318,15 +2441,15 @@ A stale tab receives conflict status and becomes read-only until the user reload
 
 ### 10.6 Offline/close behavior
 
-When offline:
+Under D-062, the previous current-browser-state-only behavior is superseded for the explicitly supported assessment and existing-Finding draft fields. When offline:
 
-- show Offline;
-- stop sending;
-- retain current browser state;
-- show `beforeunload` warning for unsaved changes;
-- do not claim offline persistence.
+- show Offline distinctly from local draft durability and authoritative server-save status;
+- stop sending server requests;
+- continue writing allowlisted draft payloads to the application-owned IndexedDB store when local storage is available;
+- show a `beforeunload` warning while changes are not yet durably written locally or include evidence fields/files excluded from the draft;
+- do not claim offline navigation, complete Workspace functionality, automatic synchronization, guaranteed persistence, evidence protection, or PWA support.
 
-Reconnect triggers explicit retry/save by the user.
+Reconnect never deletes or automatically submits a draft. Authoritative retry/save remains an explicit user action.
 
 ### 10.7 Buttons
 
@@ -3415,6 +3538,24 @@ No OPEN product decision remains. D-009/D-059 are accepted pending the explicitl
 
 The implementation agent must maintain this section.
 
+The CloudPanel installer and multi-database implementation started on 2026-07-31 from the fetched `develop` HEAD `bedc1d034f780196c37ccf93b0d0ba37d5a27bb3`, exactly aligned with `origin/develop`. The worktree already contained the separate uncommitted D-062 IndexedDB draft slice; those files and their history are preserved as user-owned concurrent work. Mandatory read-only inspection covered `AGENTS.md`, the complete specification, README, Composer manifests and every locked package/version, environment and application configuration, bootstrap and routes, all migrations and seeders, verification/deployment scripts, CI, database-specific actions, commands, tests, and the running Docker runtime. The baseline container reports PHP `8.3.32`, Laravel `13.19.0`, Filament `5.6.8`, Livewire `4.3.3`, and WeasyPrint `57.2`; it has `pdo_sqlite` but not `pdo_mysql`. The audit confirmed unconditional SQLite PRAGMAs in diagnostics and integrity checks, fixed SQLite payload assumptions in backup/verification/restore, physical `-wal`/`-shm` restore handling, SQLite-only CI and isolated gates, SQLite-specific UI text, file-database assumptions in scripts/tests, database-backed default cache/session values that prevent a no-`.env` installer, and portable-schema risks requiring real server execution. D-063 through D-069 now supersede the incompatible SQLite-only, future-CloudPanel, and schema-v1 backup decisions before implementation starts.
+
+The D-063–D-069 implementation now provides a database-free bootstrap, stable private installation key, encrypted resumable installer state, irreversible private installation lock, global pre-install routing, explicit anomalous-schema refusal, Blade/form-request wizard, real PHP/filesystem/CLI/WeasyPrint checks, three independently labelled database configurations, a temporary capability connection with schema/FK/CRUD/transaction/encoding cleanup, empty/partial/foreign/complete classification, atomic allowlisted pending environment activation, resumable migration and idempotent seeding, shared singleton-administrator creation, final in-place checks, and an atomic scheduler heartbeat. Installed `/install` routes return `404`; there is no web reset, operating-system installer, data conversion, `migrate:fresh` installer path, credential logging, remote installer asset, or Node production build.
+
+Integrity, diagnostics, backup, and restore are driver-aware. SQLite retains its file/PRAGMA and `VACUUM INTO` behavior. MySQL and MariaDB independently verify product identity, server version, `utf8mb4`, collation, InnoDB, every `CHECK TABLE` row, dump/restore client identity, migration state, and singleton administrator. The locked `spatie/db-dumper` dependency is exactly `4.1.1`; SQL snapshots use product-specific absolute binaries, private option files rather than password arguments, verified consistency flags, and schema-v2 manifests, while schema-v1 SQLite archives remain readable. Server restore remains maintenance-mode CLI-only, creates and preserves a safety backup, imports without a shell, performs complete post-import diagnostics, attempts compensating safety import on failure, and leaves maintenance plus both diagnostic paths visible if compensation also fails.
+
+The D-063–D-069 implementation completed its local automated acceptance on 2026-07-31. The final authoritative Docker gate passed strict Composer validation, Pint over 413 files, PHPStan over 328 files with zero errors, 435 application tests/4,061 assertions, Canary 35/35 with zero skips, the locked audit with zero advisories, driver-aware diagnostics, storage audit, the 50-Finding benchmark, and Dusk 18 tests/631 assertions in 177.38 seconds. The benchmark returned HTTP 200 and passed every limit with 0.3698 seconds first render, 736,874 response bytes, 10 list queries, 6.1325 seconds PDF, and 0.2522 seconds XLSX in its focused reproducer. A production-only ZIP was built from the locked dependencies, extracted without `.env`, and completed a real SQLite installer run through permanent lock, login endpoint, heartbeat, diagnostics, and SHA-256 verification. Real server integration executed MySQL 8.0.46 and 8.4.11 plus MariaDB 10.6.27, 11.8.6, and 12.3.2; real dump/restore round trips passed on MySQL 8.0.46 and MariaDB 11.8.6. No real CloudPanel instance, hosted Actions runner, Edge, Firefox, iOS Safari, or Android Chrome was tested or claimed.
+
+The production deliverables now include an Italian CloudPanel GUI guide and acceptance checklist, a capability-oriented smoke script, and `scripts/build-cloudpanel-release.sh`. The release builder installs locked production vendors without development packages, publishes Filament assets, includes application/version/file manifests, and excludes `.env`, credentials, databases, backups, logs, caches, QA screenshots, development dependencies, and Git state. The CI definition adds real pinned MySQL `8.0.46`/`8.4.11` and MariaDB `11.8.6`/`12.3.2` services, common capability/migration/functional suites, genuine product backup/restore clients, and an extracted-release SQLite browser installation. Local real-server evidence additionally passed MySQL `8.0.46` and MariaDB `11.8.6` end-to-end dump/restore tests with `14` assertions each; capability/migration/seeding suites passed against MySQL `8.0.46` and `8.4.11` plus MariaDB `10.6.27`, `11.8.6`, and `12.3.2`. No hosted CI or real CloudPanel instance is claimed.
+
+The current isolated quality gate passes Pint over `413` files, configured PHPStan over `328` files with zero errors, `434` application tests with `4,057` assertions in `130.77` seconds, Canary strict `35/35` with zero skipped/needs-auth pages, and the locked Composer audit with zero advisories. A browser run from a freshly extracted production ZIP completed SQLite installation, permanent installer closure, real login, dashboard, and authenticated diagnostics with `1` test and `13` assertions in `17.64` seconds. The first local extracted-release attempt correctly created the administrator but later login loaded the Docker development database because the long-running server inherited Compose's `DB_DATABASE`; removing that development-only process override reproduced CloudPanel semantics and passed without an application fallback.
+
+The durable Workspace draft slice started on 2026-07-31 at commit `bedc1d0` on the clean `develop` branch. Complete read-only inspection covered `AGENTS.md`, all of specification 2.4, `composer.json`, `composer.lock`, the current Workspace page/schemas/views/assets, both authoritative save actions and DTOs, focused feature/browser tests, and the isolated Docker/Dusk bootstrap scripts. The required Docker invocation confirmed Livewire `4.3.3` and Filament asset publication under `public/js/app` and `public/css/app`; installed Livewire source proves that `Livewire.find(id)` returns the `$wire` proxy directly, `$get(path)` reads public state, `$set(path, value, false)` updates reactive state without firing a request, `$call()` invokes a component method, and `Livewire.on()` receives server-dispatched browser events. Phase 0 found the additional current-state-only conflict in §10.6 and stopped without code changes; the user then explicitly approved its targeted supersession by D-062. This slice adds no dependency, Node pipeline, Service Worker, PWA behavior, server draft table, evidence draft payload, background synchronization, automatic merge, or alternate authoritative persistence path.
+
+The D-062 durable Workspace draft slice was implemented and proportionally verified on 2026-07-31. One application-owned plain-JavaScript IndexedDB database now stores separate per-tab assessment-metadata and existing-Finding records with schema version, entity/user/assessment/Finding/tab identity, base `lock_version`, current and attempted browser UUIDs, explicit allowlisted JSON payload, and timestamps. Evidence state is absent from the payload and remains an explicitly warned server-only operation. Recovery is explicit, presents the newest of multiple local drafts first, removes exact normalized server matches, refuses automatic stale/read-only application, and preserves later edits across an earlier request confirmation. Explicit browser-mediated saves persist locally first, validate and reuse their UUID through the existing signed actions, and remove only the matching confirmed draft; server-side progressive enhancement retains UUID generation when no client UUID is supplied. Published application JS/CSS are byte-identical to their `resources/` sources after `php artisan filament:assets`.
+
+Accepted focused evidence is Pint clean over the five retained PHP files, `30` passing feature tests with `143` assertions across `WorkspacePageTest` and `WorkspacePersistenceTest`, scoped configured PHPStan with zero errors over the three changed application PHP files, and the retained isolated Dusk test with `1` pass and `26` assertions on Chromium `150.0.7871.114`. The retained browser proof covers a pristine offline event without a false unload warning, restoration of pre-offline saved/conflict status, allowlisted Finding and existing nested-solution persistence beyond reload, explicit recovery without server mutation, evidence-key exclusion, exactly one `lock_version` increment on explicit save, confirmed draft removal after asynchronous recovery completes, and zero `SEVERE` console entries. Additional disposable QA harnesses, removed after execution, passed assessment metadata recovery/save, offline update under Chrome DevTools network emulation, explicit evidence warning, stale-version and read-only presentation, later-edit preservation during an older in-flight save, and visual inspection of current, recovery, assessment, stale, and read-only states. `scripts/verify.sh` was intentionally not run. Physical network disconnection, browser/device restart, Edge, Firefox, iOS Safari, and Android Chrome were not verified or claimed; IndexedDB persistence remains best-effort and origin/profile scoped. Structural add/delete/duplicate/reorder recovery for a solution collection whose cardinality no longer matches the server-rendered Filament Repeater is deliberately rejected visibly rather than reconstructed through unstable DOM manipulation or an implicit server request.
+
 The assessment company-name fallback regression slice started on 2026-07-31 at commit `32ecc1b` on the clean `develop` branch, aligned with `origin/develop`. The authoritative Docker `app` and optional `selenium` services are healthy; the locked runtime remains Laravel `13.19.0` and Filament `5.6.8`. Read-only inspection confirmed the reported nullable native column state in `AssessmentsTable` and `LatestAssessments`, and found the same `assessment.client.trade_name` plus `displayName()` pattern in `UrgentFindings`. This bounded slice will first reproduce the null-state rendering failure while proving `client_id`, the Eloquent relation, and `Client::displayName()` are correct, then change only the affected Filament column state paths, add focused list/dashboard regressions including company search, and run proportional Docker tests, Pint, scoped PHPStan, and real browser verification. It introduces no dependency, migration, model, relationship, save action, report, translation, or unrelated UI change.
 
 The assessment company-name fallback regression slice completed on 2026-07-31. The two requested columns and the one exactly analogous urgent-Finding dashboard column now use required `legal_name` relationship paths as their native Filament state while retaining `Client::displayName()` for displayed trade-name precedence; the assessment list also retains its existing legal/trade search columns and sortable configuration, and both dashboard queries retain eager loading. Before the application patch, the focused list and latest-widget legal-name regressions each failed because the rendered HTML omitted `Azienda Test S.r.l.`, while their preceding assertions proved the expected `client_id`, loaded relation, and `displayName()` result. The unchanged regressions passed after the three one-line column changes. Final Docker evidence is `16` passing `WorkspacePageTest` tests with `88` assertions, `7` passing `DashboardFoundationTest` tests with `45` assertions, `11` passing `StandardTableEnhancementsTest` tests with `48` assertions, Pint clean over the six changed PHP/test files, and scoped PHPStan clean over the three application files. The focused isolated Selenium/Chromium verification passed with `1` test and `13` assertions after three preliminary test-only Workspace assertions were aligned from non-rendered text to the actual details-tab input-value contract; it proved both display-name branches in the list and latest-assessment widget before and after reload, opened the correct Workspace, retained `client_id`/relation ownership, and reported no severe console error. Visual inspection passed for `storage/app/qa-artifacts/assessment-company-name-list.png` (`63,689` bytes, SHA-256 `cb53c0f22e3114a51ad81ff9c7ef7569bd5a46bb7613f31d279fa6dea1eabae7`) and `assessment-company-name-dashboard.png` (`61,319` bytes, SHA-256 `d76c94895ddcdee081db87cd81a6829f3963533b1506f7f9caf6127daf330e19`). The configured Docker login endpoint returned HTTP `200`. No dependency, migration, model, relationship, persistence action, form, report, translation, or generated data changed; `scripts/verify.sh` and unrelated suites were not run or claimed for this proportional bugfix.
@@ -3664,7 +3805,14 @@ Milestone 3 completed with the complete assessment/finding schema, native Filame
 
 ## 23. Discoveries and deviations
 
+- 2026-07-31: `eii/laravel-installer` `2.0.0` is solver-compatible with Laravel 13/Livewire 4 but is unsuitable as AssestMe's authoritative runtime installer. Its current source derives tests from the MySQL connection, uses `migrate:fresh`, persists environment/admin material in progress data, edits `.env` through regex replacement, protects installation routes with only flag/lock conventions, and ships requirements/assets that do not match the no-Node/no-remote AssestMe contract. Its MIT license permits reuse of ideas, but no runtime dependency or copied Snipe-IT code was introduced.
+- 2026-07-31: A Laravel SQLite connection rejects a configured database path until the file exists. The installer capability probe therefore creates only the explicitly validated private non-symlink target with exclusive creation and mode `0600`; it never creates below `public` and never substitutes another database path. For server clients, process product identity cannot safely be inferred from aliases: MySQL and MariaDB dump/restore executables have separate canonical basenames and `--version` checks, and passwords are supplied only through mode-`0600` temporary option files.
+- 2026-07-31: Docker Compose process variables intentionally override `.env`. An extracted release served from the development `app` container must unset the profile's `DB_DATABASE=/workspace/database/database.sqlite`; otherwise post-install requests target the development database even though the installer correctly wrote and used the extracted release database. The clean rerun without that development-only override passed login and diagnostics. A normal CloudPanel PHP-FPM site has no Compose override, and the release CI job starts the extracted application in a separate process environment.
+- 2026-07-31: Livewire `4.3.3` returns its public `$wire` proxy directly from `Livewire.find(componentId)`; the installed client implementation supports `$get(path)`, `$set(path, value, false)`, `$call(method)`, and `Livewire.on(event, callback)` with the required non-requesting set and browser-event semantics. Filament's registered asset objects are copied by `php artisan filament:assets` into `public/js/app` and `public/css/app`; no Node pipeline is involved. The plan advanced concurrently from the D-062 specification 2.5 decision to specification 2.6 for separately approved D-063 through D-069 work, so D-062 and its targeted D-008/D-016/D-020/§10.6 supersessions are retained without reverting the later authoritative version.
+- 2026-07-31: Filament Repeater state can be restored through Livewire `$set(..., false)` for an existing solution collection when draft items are aligned to the currently rendered stable item keys; TextInput, Textarea, Select, Toggle, and nested solution values were verified in Chromium without field-by-field DOM mutation. A different collection cardinality cannot be safely rendered by that non-requesting state update, so the UI keeps the draft and reports a structure mismatch. The browser confirmation path must recheck edit and evidence revisions after every awaited IndexedDB operation: otherwise a late input can occur after the first comparison but before a clean signal. The final implementation performs that post-transaction comparison and never marks a pristine form dirty merely because the browser emitted `offline`.
+- 2026-07-31: The literal isolated-Dusk invocation initially reached a persistent Compose `app` service that already owned the `assestme-app` network alias and produced `ERR_CONNECTION_REFUSED`. Rerunning the same repository script with a unique disposable app container name and matching `DUSK_BROWSER_HOST` used the existing Selenium infrastructure and passed; no Docker, Selenium, proxy, CDP test infrastructure, or production dependency was added. DevTools network emulation was used only by the disposable manual-QA harness and is reported as emulation, not as a physical network disconnect.
 - 2026-07-31: Filament `5.6.8` does not invoke the effective display formatter for these `TextColumn` cells when their relationship-backed native state is null, even though the formatter can resolve a non-null fallback from the record. Binding the column to required `legal_name` guarantees a native state and lets the existing `displayName()` choose `trade_name` when present. The global audit found exactly one additional affected column, `UrgentFindings::assessment.client.trade_name`; forms, filters, title generation, report code, and direct `trade_name` data uses are not affected. The optional `agent-browser` CLI was unavailable on both host and application container, so the repository-authoritative isolated Dusk/Selenium path supplied the real browser and visual evidence without adding a dependency.
+- 2026-07-31: The extracted-release CI smoke originally configured an HTTP application URL and then required production diagnostics, and its single-user Tinker expression contained doubled namespace separators. The final script serves the local harness over HTTP while persisting an HTTPS URL for the same host, executes valid PHP, and passed a clean extracted SQLite installation. The complete verifier also needed to create its ephemeral singleton administrator and installation lock before diagnostics and benchmark routing; both now use the authoritative commands with an unlogged random temporary password. A seven-day-old unhealthy Selenium container later stalled WebDriver; restarting only that test service restored health, after which the unchanged full Dusk suite passed 18 tests/631 assertions.
 - 2026-07-25: Filament's `full-height` page class alone cannot resolve a percentage height when its containing main panel supplies only `min-height: calc(100dvh - 4rem)`; the Report page must adopt that same locked topbar subtraction explicitly at the desktop workbench breakpoint. Height must then propagate with `min-height: 0` through the page content, content schema, form component, embedded form schema, grid wrapper, and panel components. The settings form renders two direct `.fi-sc` siblings: the first is the body and the second is the native action footer. Applying flex growth to both placed the valid 36 px Save button outside its clipping boundary even though its DOM rectangle remained inside the viewport. Limiting flex growth to the first sibling and preserving the last sibling at natural size keeps the action entirely visible and hit-testable. The browser regression deliberately failed on document overflow, option scrollability, and then the clipped save boundary before the final clean rerun passed.
 - 2026-07-25: Filament's page-level `Width::Full` removes only the inherited `7xl` cap and composes directly with the existing responsive schema grid; no application CSS or panel-wide width change is required. After the preview grew from two fifths to three fifths, its normal A4-ratio iframe became taller than the browser viewport, so the old assertion that fullscreen must increase its numeric height became invalid even though the full-viewport viewer remained more usable. The correct expansion contract is fixed positioning over the complete client viewport with the iframe filling the remaining height below its toolbar; the focused rerun proves that behavior and preserves the narrow sequential layout.
 - 2026-07-25: Reusing a report Blade view in browser screen media does not prove renderer parity. Exact production/preview engine parity requires both callers to terminate in the same renderer service; the accepted transient response is therefore a real WeasyPrint PDF displayed by the browser's native PDF viewer with private `no-store` controls. A complete field trace also found six visible General-owned report controls that the accepted WeasyPrint DTO/view never consumed; removing those controls from this page while preserving their stored keys avoids presenting inert or misleading DOMPDF-era behavior. Filament's single-file upload raw state is still an array, so preview logo parity requires explicit first-path normalization before applying the same validation and data-URI builder as production. Chromium's fixed overlay fills the document client viewport, which correctly excludes the browser scrollbar width; the first focused geometry assertion used `innerWidth` and failed, then the corrected client-viewport assertion and the Escape-path selector were each rerun before the final passing browser test.
@@ -3787,4 +3935,4 @@ Record unexpected package behavior, version incompatibilities, and material desi
 
 Complete this section only after all acceptance criteria pass.
 
-Not yet implemented.
+The D-063–D-069 CloudPanel release, fresh-install wizard, and SQLite/MySQL/MariaDB support scope is implemented and passes the complete local automated gate recorded in Progress. The global product outcome remains open because real CloudPanel acceptance and the plan-wide physical Edge, Firefox, iOS Safari, and Android Chrome checklist have not been executed. Compatibility claims remain limited to the exact locally exercised runtime and database versions; the GitHub Actions matrix is configured but hosted execution is not claimed.

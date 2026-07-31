@@ -473,7 +473,9 @@ final class MilestoneZeroTest extends DuskTestCase
             $browser->script('window.dispatchEvent(new Event("offline"))');
             $browser->waitForText('Offline');
             $browser->script('window.dispatchEvent(new Event("online"))');
-            $browser->waitForText('Modifiche non salvate');
+            $browser->waitUntil(
+                'return document.querySelector("[data-assestme-save-status]")?.dataset.status === "saved"',
+            );
             $browser->click('[data-dusk="finding-close"]')->waitUntilMissing('[data-assestme-finding-inspector]');
 
             $browser->resize(390, 844)->pause(500);

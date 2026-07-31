@@ -16,7 +16,7 @@ Read `plan.md` completely before changing code. `plan.md` version 2.4 is the aut
 - PHP 8.3 with the extensions locked by the plan.
 - Laravel 13.
 - Filament 5.
-- SQLite.
+- SQLite, MySQL, and MariaDB for fresh installations; no cross-driver data migration.
 - Filament Table Builder as the authoritative Finding navigator, with native Filament components for the selected-Finding editor.
 - Spatie Laravel PDF with WeasyPrint as the sole production renderer.
 - PhpSpreadsheet.
@@ -24,7 +24,7 @@ Read `plan.md` completely before changing code. `plan.md` version 2.4 is the aut
 - File cache/session and synchronous queue.
 - Laravel Dusk for browser testing.
 
-Do not require Node.js, npm, pnpm, Vite builds, Redis, Chromium, or an external cloud PDF/storage/service dependency. The optional Selenium service is browser-test infrastructure only and is not part of PDF generation. Docker Compose through `docker/compose.dev.yml` is the only supported development installation profile. CloudPanel is the approved production destination, but its configuration and procedure are not implemented yet.
+Do not require Node.js, npm, pnpm, Vite builds, Redis, Chromium, or an external cloud PDF/storage/service dependency. The optional Selenium service is browser-test infrastructure only and is not part of PDF generation. Docker Compose through `docker/compose.dev.yml` is the only supported development installation profile. CloudPanel is the approved production destination and uses the application-owned web installer plus the installable release ZIP and Italian operator documentation approved by D-063 through D-069.
 
 ## No fallback and no fake success
 
@@ -79,7 +79,7 @@ Run development and verification commands through the Docker Compose development
 ## Data and files
 
 - Store timestamps UTC and display Europe/Rome.
-- Preserve SQLite PRAGMAs and portable migrations.
+- Preserve SQLite PRAGMAs, portable migrations, and explicit MySQL/MariaDB capability checks.
 - Do not expose private storage or SQLite under the public root.
 - Use generated physical filenames and SHA-256.
 - Reject unsupported file types exactly as listed in the plan.
@@ -140,9 +140,9 @@ If the installed Canary command differs, use its official strict zero-skip comma
 
 ## Documentation policy
 
-Do not create additional product, architecture, or feature Markdown files.
+Do not create additional product, architecture, or feature Markdown files except the explicitly approved CloudPanel operator guide and acceptance checklist.
 
-Allowed: code, comments, translations, shell scripts, configuration stubs, JSON schemas/fixtures, CI workflows, and test artifacts. `plan.md` remains the only product/architecture document.
+Allowed: code, comments, translations, shell scripts, configuration stubs, JSON schemas/fixtures, CI workflows, test artifacts, `docs/cloudpanel-installation.md`, and `docs/cloudpanel-acceptance-checklist.md`. `plan.md` remains the only product/architecture decision document.
 
 ## Final handoff
 

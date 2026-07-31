@@ -7,6 +7,7 @@ use App\Enums\OperationalCheckStatus;
 use App\Enums\OperationalCheckType;
 use App\Services\Operations\OperationalCheckStore;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -37,17 +38,20 @@ it('persists a successful SQLite integrity check', function (): void {
 
 it('persists and logs a failed SQLite integrity check', function (): void {
     Log::spy();
-    DB::partialMock()
-        ->shouldReceive('getDriverName')
-        ->once()
+    $connection = Mockery::mock(Connection::class);
+    $connection->shouldReceive('getDriverName')
+        ->twice()
         ->andReturn('sqlite');
-    DB::partialMock()
-        ->shouldReceive('select')
+    $connection->shouldReceive('select')
         ->once()
         ->with('PRAGMA integrity_check')
         ->andReturn([(object) ['integrity_check' => 'database disk image is malformed']]);
+    DB::partialMock()
+        ->shouldReceive('connection')
+        ->once()
+        ->andReturn($connection);
     expect(Artisan::call('assestme:integrity-check'))->toBe(1)
-        ->and(Artisan::output())->toContain('Controllo di integrità SQLite fallito');
+        ->and(Artisan::output())->toContain('Controllo di integrità del database fallito');
 
     $check = app(OperationalCheckStore::class)->find(OperationalCheckType::DatabaseIntegrity);
 
@@ -59,7 +63,7 @@ it('persists and logs a failed SQLite integrity check', function (): void {
 
     Log::shouldHaveReceived('error')
         ->once()
-        ->with('Scheduled SQLite integrity check failed.', Mockery::type('array'));
+        ->with('Scheduled database integrity check failed.', Mockery::type('array'));
 });
 
 it('keeps the last success timestamp while replacing a failure warning after recovery', function (): void {

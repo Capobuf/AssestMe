@@ -48,7 +48,7 @@ final class IntegrityCheckCommand extends Command
 
     private function recordFailure(RecordOperationalCheck $recordOperationalCheck, Throwable $exception): void
     {
-        Log::error('Scheduled SQLite integrity check failed.', [
+        Log::error('Scheduled database integrity check failed.', [
             'exception' => $exception::class,
             'message' => $exception->getMessage(),
         ]);
@@ -60,7 +60,7 @@ final class IntegrityCheckCommand extends Command
                 $exception->getMessage(),
             );
         } catch (Throwable $recordingException) {
-            Log::critical('SQLite integrity failure status could not be persisted.', [
+            Log::critical('Database integrity failure status could not be persisted.', [
                 'exception' => $recordingException::class,
                 'message' => $recordingException->getMessage(),
                 'integrity_exception' => $exception::class,

@@ -8,6 +8,6 @@ return new class extends SettingsMigration
 {
     public function up(): void
     {
-        $this->migrator->delete('report.confidentiality_label');
+        $this->migrator->deleteIfExists('report.confidentiality_label');
     }
 };

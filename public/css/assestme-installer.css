@@ -1,0 +1,47 @@
+:root { color-scheme: light; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #172019; background: #f3f6f1; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
+a { color: #176b3a; }
+.installer-header { min-height: 4rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem clamp(1rem, 4vw, 3rem); background: #111713; color: white; }
+.installer-brand { color: white; text-decoration: none; display: flex; align-items: center; gap: .7rem; font-size: 1.1rem; }
+.installer-brand span { width: 2rem; height: 2rem; display: grid; place-items: center; border-radius: .55rem; background: #b7f34b; color: #111713; font-weight: 900; }
+.installer-version { color: #cbd4cd; font-size: .85rem; }
+.installer-shell { width: min(68rem, calc(100% - 2rem)); margin: clamp(1.25rem, 4vw, 3rem) auto; flex: 1; }
+.installer-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: .35rem; margin-bottom: 1rem; }
+.installer-steps span { display: flex; align-items: center; gap: .4rem; padding: .65rem; border-radius: .55rem; background: #e3e9e1; color: #56605a; font-size: .82rem; }
+.installer-steps b { width: 1.4rem; height: 1.4rem; display: grid; place-items: center; border-radius: 999px; background: #cbd4cd; }
+.installer-steps .is-current { background: #dff7ad; color: #172019; }
+.installer-steps .is-complete b, .installer-steps .is-current b { background: #3b8d50; color: white; }
+.installer-card { background: white; border: 1px solid #d9e0d8; border-radius: 1rem; padding: clamp(1.2rem, 4vw, 2.6rem); box-shadow: 0 .8rem 2.5rem rgba(18, 37, 24, .08); }
+.installer-card h1 { margin: .2rem 0 1rem; font-size: clamp(1.7rem, 4vw, 2.5rem); line-height: 1.1; }
+.installer-card h2 { margin-top: 1.8rem; }
+.installer-eyebrow { color: #3b8d50; text-transform: uppercase; letter-spacing: .09em; font-size: .75rem; font-weight: 800; }
+.installer-alert { padding: 1rem; border-radius: .7rem; margin: 1rem 0; }
+.installer-alert-warning { background: #fff6cc; border: 1px solid #e5cb55; }
+.installer-alert-error { background: #fff0ed; border: 1px solid #d88678; }
+.installer-alert-success { background: #e8f8e8; border: 1px solid #7ab887; }
+.installer-checklist { line-height: 1.7; }
+.installer-form { display: grid; gap: 1rem; }
+.installer-form label { display: grid; gap: .4rem; font-weight: 700; }
+.installer-form small, .requirement small { color: #657169; font-weight: 400; }
+.installer-form input, .installer-form select { width: 100%; min-height: 2.8rem; padding: .65rem .75rem; border: 1px solid #aab5ad; border-radius: .5rem; background: white; color: #172019; font: inherit; }
+.installer-form input:focus, .installer-form select:focus { outline: 3px solid rgba(105, 173, 63, .3); border-color: #3b8d50; }
+.installer-form fieldset { border: 1px solid #ccd5ce; border-radius: .7rem; padding: 1rem; display: grid; gap: .6rem; }
+.installer-choice { display: flex !important; grid-template-columns: auto 1fr; align-items: center; gap: .6rem !important; }
+.installer-choice input { width: 1.2rem; min-height: 1.2rem; }
+.installer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.installer-button { display: inline-flex; justify-content: center; align-items: center; min-height: 2.8rem; padding: .7rem 1.15rem; border: 0; border-radius: .55rem; background: #216e3d; color: white; text-decoration: none; font: inherit; font-weight: 800; cursor: pointer; }
+.installer-button:hover { background: #17572f; }
+.installer-button:disabled { background: #9ba69e; cursor: not-allowed; }
+.installer-button-secondary { color: #245d35; background: #e5eee6; }
+.installer-actions { display: flex; justify-content: flex-end; gap: .7rem; margin-top: 1.2rem; }
+.installer-requirements { display: grid; gap: .55rem; }
+.requirement { display: grid; grid-template-columns: auto 1fr auto; gap: .75rem; align-items: center; padding: .75rem; border: 1px solid #d7dfd8; border-radius: .6rem; }
+.requirement > span { width: 1.7rem; height: 1.7rem; display: grid; place-items: center; border-radius: 999px; font-weight: 900; }
+.requirement > div { display: grid; overflow-wrap: anywhere; }
+.requirement > b { font-size: .8rem; }
+.requirement.is-passed > span { background: #dff7ad; color: #235d32; }
+.requirement.is-failed > span { background: #ffd8cf; color: #8a2c1d; }
+.installer-cron code { display: block; padding: .8rem; margin: .5rem 0; border-radius: .45rem; background: #101713; color: #dff7ad; overflow-wrap: anywhere; }
+.installer-footer { padding: 1rem; text-align: center; color: #68736b; font-size: .8rem; }
+@media (max-width: 48rem) { .installer-steps { grid-template-columns: 1fr; } .installer-steps span:not(.is-current) { display: none; } .installer-grid { grid-template-columns: 1fr; } .requirement { grid-template-columns: auto 1fr; } .requirement > b { grid-column: 2; } .installer-actions { flex-direction: column; } }

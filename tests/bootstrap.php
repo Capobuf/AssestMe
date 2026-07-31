@@ -24,7 +24,22 @@ if (! $ownsRoot && (getenv('ASSESTME_TEST_ISOLATED') !== '1' || ! is_file($testR
 
 $filesystem = new Filesystem;
 $storage = $testRoot.'/storage';
-$database = $testRoot.'/database.sqlite';
+$requestedDriver = getenv('ASSESTME_TEST_DB_DRIVER');
+$databaseDriver = is_string($requestedDriver) && trim($requestedDriver) !== ''
+    ? trim($requestedDriver)
+    : 'sqlite';
+
+if (! in_array($databaseDriver, ['sqlite', 'mysql', 'mariadb'], true)) {
+    throw new RuntimeException('ASSESTME_TEST_DB_DRIVER must be sqlite, mysql, or mariadb.');
+}
+
+$database = $databaseDriver === 'sqlite'
+    ? $testRoot.'/database.sqlite'
+    : (string) (getenv('ASSESTME_TEST_DB_DATABASE') ?: 'assestme_test');
+
+if ($databaseDriver !== 'sqlite' && preg_match('/^assestme_test(?:_[a-z0-9_]+)?$/', $database) !== 1) {
+    throw new RuntimeException('Server database tests may target only an assestme_test-prefixed database.');
+}
 $directories = [
     $storage.'/app/private',
     $storage.'/framework/cache/data',
@@ -39,7 +54,15 @@ foreach ($directories as $directory) {
     $filesystem->ensureDirectoryExists($directory);
 }
 
-if (! file_exists($database) && ! touch($database)) {
+$filesystem->put($storage.'/app/private/installed.lock', json_encode([
+    'schema_version' => 1,
+    'installed_at' => '2026-07-31T00:00:00+00:00',
+    'application_version' => 'testing',
+    'database_driver' => $databaseDriver,
+], JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)."\n");
+chmod($storage.'/app/private/installed.lock', 0600);
+
+if ($databaseDriver === 'sqlite' && ! file_exists($database) && ! touch($database)) {
     throw new RuntimeException('The isolated test database could not be created.');
 }
 
@@ -50,8 +73,21 @@ $environment = [
     'ASSESTME_TEST_ISOLATED' => '1',
     'ASSESTME_TEST_ROOT' => $testRoot,
     'CACHE_STORE' => 'array',
-    'DB_CONNECTION' => 'sqlite',
+    'DB_CONNECTION' => $databaseDriver,
     'DB_DATABASE' => $database,
+    'DB_HOST' => $databaseDriver === 'sqlite'
+        ? ''
+        : (string) (getenv('ASSESTME_TEST_DB_HOST') ?: $databaseDriver.'-test'),
+    'DB_PASSWORD' => $databaseDriver === 'sqlite'
+        ? ''
+        : (string) (getenv('ASSESTME_TEST_DB_PASSWORD') ?: ''),
+    'DB_PORT' => $databaseDriver === 'sqlite'
+        ? ''
+        : (string) (getenv('ASSESTME_TEST_DB_PORT') ?: '3306'),
+    'DB_SOCKET' => '',
+    'DB_USERNAME' => $databaseDriver === 'sqlite'
+        ? ''
+        : (string) (getenv('ASSESTME_TEST_DB_USERNAME') ?: 'root'),
     'FILESYSTEM_DISK' => 'local',
     'LARAVEL_STORAGE_PATH' => $storage,
     'LOG_CHANNEL' => 'null',

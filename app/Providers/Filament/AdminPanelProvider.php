@@ -75,6 +75,7 @@ class AdminPanelProvider extends PanelProvider
             ->assets([
                 Css::make('assestme-workspace', resource_path('css/assestme-workspace.css')),
                 Js::make('assestme-workspace', resource_path('js/assestme-workspace.js')),
+                Js::make('assestme-workspace-drafts', resource_path('js/assestme-workspace-drafts.js')),
             ])
             ->colors([
                 'gray' => Color::Neutral,

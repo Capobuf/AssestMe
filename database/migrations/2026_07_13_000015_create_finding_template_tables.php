@@ -55,8 +55,9 @@ return new class extends Migration
             $table->unsignedInteger('sort_order');
             $table->timestamps();
             $table->softDeletes();
-            $table->unique(['finding_template_id', 'external_id']);
-            $table->index(['finding_template_id', 'sort_order']);
+            // Explicit names stay below MySQL and MariaDB's 64-byte identifier limit.
+            $table->unique(['finding_template_id', 'external_id'], 'template_solution_external_unique');
+            $table->index(['finding_template_id', 'sort_order'], 'template_solution_sort_index');
         });
     }
 

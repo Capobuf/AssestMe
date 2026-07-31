@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Actions\Installation\CreateSingletonAdministrator;
+use App\Data\Installation\AdministratorData;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 final class CreateAdminCommand extends Command
 {
@@ -22,7 +23,7 @@ final class CreateAdminCommand extends Command
 
     protected $description = 'Create or explicitly replace the single AssestMe administrator';
 
-    public function handle(): int
+    public function handle(CreateSingletonAdministrator $createAdministrator): int
     {
         $existing = User::query()->first();
         $replace = (bool) $this->option('replace');
@@ -55,38 +56,28 @@ final class CreateAdminCommand extends Command
             $password = $this->passwordOptionOrAsk();
         }
 
-        $validator = Validator::make([
-            'name' => $name,
-            'email' => $email,
-            'password' => $password,
-        ], [
-            'name' => ['required', 'string', 'max:120'],
-            'email' => ['required', 'string', 'email:rfc', 'max:254'],
-            'password' => [
-                'required',
-                'string',
-                Password::min(14)->max(128)->mixedCase()->numbers()->symbols(),
-            ],
-        ]);
-
-        if ($validator->fails()) {
-            foreach ($validator->errors()->all() as $message) {
-                $this->error($message);
+        try {
+            $data = AdministratorData::validate($name, $email, $password);
+        } catch (ValidationException $exception) {
+            foreach ($exception->errors() as $messages) {
+                foreach ($messages as $message) {
+                    $this->error($message);
+                }
             }
 
             return self::FAILURE;
         }
 
-        $attributes = [
-            'name' => $name,
-            'email' => $email,
-            'password' => $password,
-        ];
+        try {
+            if ($existing) {
+                $createAdministrator->replace($existing, $data);
+            } else {
+                $createAdministrator($data);
+            }
+        } catch (\LogicException $exception) {
+            $this->error($exception->getMessage());
 
-        if ($existing) {
-            $existing->update($attributes);
-        } else {
-            User::query()->create($attributes);
+            return self::FAILURE;
         }
 
         $this->info(__('assestme.admin.created'));

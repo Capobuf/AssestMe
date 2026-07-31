@@ -78,6 +78,7 @@ exit(App\Models\User::query()->exists() ? 0 : 1);
     fi
 fi
 
+php artisan assestme:installation:lock --force --no-interaction
 php artisan assestme:diagnose
 
 info "AssestMe application bootstrap completed."

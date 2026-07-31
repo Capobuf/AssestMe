@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Actions\Backups;
 
+use App\Data\Backups\BackupDatabaseData;
 use App\Data\Backups\BackupFileEntry;
 use App\Data\Backups\BackupManifest;
+use App\Services\Database\Snapshot\DatabaseSnapshotterResolver;
 use Illuminate\Database\Connection;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 use JsonException;
 use Phar;
@@ -24,38 +25,42 @@ final readonly class CreateBackup
         private Filesystem $files,
         private PruneBackups $pruneBackups,
         private VerifyBackup $verifyBackup,
+        private DatabaseSnapshotterResolver $databaseSnapshotterResolver,
     ) {}
 
-    public function __invoke(?string $output = null, bool $prune = true): string
-    {
+    public function __invoke(
+        ?string $output = null,
+        bool $prune = true,
+        ?Connection $database = null,
+    ): string {
         $output ??= $this->defaultOutputPath();
         $managedOutput = $this->isManagedOutput($output);
         $this->assertAbsolutePath($output, 'Backup output');
         $this->assertArchiveExtension($output);
 
-        if ($this->files->exists($output)) {
+        if ($this->files->exists($output) || is_link($output)) {
             throw new InvalidArgumentException("Backup output already exists: {$output}");
         }
 
-        $database = DB::connection();
-        $databasePath = $this->databasePath($database);
+        $database ??= DB::connection();
         $privateStoragePath = $this->privateStoragePath();
-        $this->assertDistinctOutput($output, $databasePath, $privateStoragePath);
+        $this->assertDistinctOutput($output, $database, $privateStoragePath);
 
         $workingDirectory = storage_path('framework/assestme-backups/'.bin2hex(random_bytes(12)));
         $stage = $workingDirectory.DIRECTORY_SEPARATOR.'stage';
         $archiveCreated = false;
 
-        $this->files->ensureDirectoryExists($stage, 0700, true);
-        $this->files->ensureDirectoryExists(dirname($output), 0700, true);
-
         try {
-            $this->snapshotDatabase($database, $databasePath, $stage);
+            $this->files->ensureDirectoryExists($stage, 0700, true);
+            $this->files->ensureDirectoryExists(dirname($output), 0700, true);
+            $snapshot = $this->databaseSnapshotterResolver
+                ->resolve($database)
+                ->createSnapshot($database, $stage);
             $this->copyPrivateStorage($privateStoragePath, $stage);
             $createdAt = now('UTC')->toIso8601String();
             $version = (string) config('assestme.version', 'development');
-            $this->writeMetadata($stage, $createdAt, $version);
-            $this->writeManifest($stage, $createdAt, $version);
+            $this->writeMetadata($database, $snapshot, $stage, $createdAt, $version);
+            $this->writeManifest($snapshot, $stage, $createdAt, $version);
             $this->createArchive($stage, $output, $workingDirectory);
             $archiveCreated = true;
             $this->verifyBackup->handle($output);
@@ -70,13 +75,19 @@ final readonly class CreateBackup
 
             return $output;
         } catch (Throwable $exception) {
-            if ($archiveCreated) {
-                $this->files->delete($output);
+            if ($archiveCreated && ! $this->deleteFileIfPresent($output)) {
+                throw new RuntimeException('The failed backup archive could not be removed securely.');
             }
 
             throw $exception;
         } finally {
-            $this->files->deleteDirectory($workingDirectory);
+            if (! $this->deleteDirectoryIfPresent($workingDirectory)) {
+                if ($archiveCreated) {
+                    $this->deleteFileIfPresent($output);
+                }
+
+                throw new RuntimeException('The backup working directory could not be removed securely.');
+            }
         }
     }
 
@@ -98,57 +109,12 @@ final readonly class CreateBackup
             && preg_match('/^assestme-\d{8}-\d{6}(?:-\d+)?\.tar\.gz$/', basename($output)) === 1;
     }
 
-    private function databasePath(Connection $database): string
-    {
-        if ($database->getDriverName() !== 'sqlite') {
-            throw new RuntimeException('AssestMe backups require the configured SQLite connection.');
-        }
-
-        $path = $database->getConfig('database');
-
-        if (! is_string($path) || $path === '' || $path === ':memory:') {
-            throw new RuntimeException('AssestMe backups require a file-backed SQLite database.');
-        }
-
-        $this->assertAbsolutePath($path, 'SQLite database');
-
-        if (! is_file($path)) {
-            throw new RuntimeException("SQLite database does not exist: {$path}");
-        }
-
-        return $path;
-    }
-
     private function privateStoragePath(): string
     {
         $path = (string) config('assestme.backup.private_storage_path');
         $this->assertAbsolutePath($path, 'Private storage');
 
         return rtrim($path, '/\\');
-    }
-
-    private function snapshotDatabase(Connection $database, string $databasePath, string $stage): void
-    {
-        $destination = $stage.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'database.sqlite';
-        $this->files->ensureDirectoryExists(dirname($destination), 0700, true);
-        $checkpoint = $database->selectOne('PRAGMA wal_checkpoint(TRUNCATE)');
-        $checkpointColumns = is_object($checkpoint) ? array_values((array) $checkpoint) : [];
-
-        if (! isset($checkpointColumns[0]) || (int) $checkpointColumns[0] !== 0) {
-            throw new RuntimeException('SQLite WAL checkpoint could not complete without a busy writer.');
-        }
-
-        $quotedDestination = $database->getPdo()->quote($destination);
-
-        if ($quotedDestination === false) {
-            throw new RuntimeException('The SQLite snapshot destination could not be quoted.');
-        }
-
-        $database->unprepared("VACUUM INTO {$quotedDestination}");
-
-        if (! is_file($destination) || filesize($destination) === 0) {
-            throw new RuntimeException("SQLite VACUUM did not create a valid snapshot of {$databasePath}.");
-        }
     }
 
     private function copyPrivateStorage(string $source, string $stage): void
@@ -176,21 +142,27 @@ final readonly class CreateBackup
     }
 
     /** @throws JsonException */
-    private function writeMetadata(string $stage, string $createdAt, string $version): void
-    {
-        $settingsTablePresent = Schema::hasTable('settings');
+    private function writeMetadata(
+        Connection $database,
+        BackupDatabaseData $snapshot,
+        string $stage,
+        string $createdAt,
+        string $version,
+    ): void {
+        $settingsTablePresent = $database->getSchemaBuilder()->hasTable('settings');
         $metadata = [
             'format' => 'assestme-backup',
-            'schema_version' => 1,
+            'schema_version' => 2,
             'created_at' => $createdAt,
             'application' => [
                 'version' => $version,
                 'laravel_version' => app()->version(),
                 'php_version' => PHP_VERSION,
             ],
+            'database' => $snapshot->toArray(),
             'settings' => [
                 'table_present' => $settingsTablePresent,
-                'record_count' => $settingsTablePresent ? DB::table('settings')->count() : 0,
+                'record_count' => $settingsTablePresent ? $database->table('settings')->count() : 0,
             ],
         ];
 
@@ -201,8 +173,12 @@ final readonly class CreateBackup
     }
 
     /** @throws JsonException */
-    private function writeManifest(string $stage, string $createdAt, string $version): void
-    {
+    private function writeManifest(
+        BackupDatabaseData $snapshot,
+        string $stage,
+        string $createdAt,
+        string $version,
+    ): void {
         $entries = [];
 
         foreach ($this->files->allFiles($stage, true) as $file) {
@@ -214,7 +190,7 @@ final readonly class CreateBackup
             static fn (BackupFileEntry $left, BackupFileEntry $right): int => $left->path <=> $right->path,
         );
 
-        $manifest = new BackupManifest(1, $createdAt, $version, $entries);
+        $manifest = new BackupManifest(2, $createdAt, $version, $snapshot, $entries);
         $this->writeFile($stage.DIRECTORY_SEPARATOR.'manifest.json', $manifest->toJson());
     }
 
@@ -249,6 +225,10 @@ final readonly class CreateBackup
             $compressed = $archive->compress(Phar::GZ);
             unset($compressed, $archive);
 
+            if (! chmod($tarPath.'.gz', 0600)) {
+                throw new RuntimeException('The staged backup archive permissions could not be restricted.');
+            }
+
             if (! $this->files->move($tarPath.'.gz', $output)) {
                 throw new RuntimeException('The compressed backup archive could not be moved into place.');
             }
@@ -278,14 +258,111 @@ final readonly class CreateBackup
         }
     }
 
-    private function assertDistinctOutput(string $output, string $database, string $privateStorage): void
-    {
-        $normalizedOutput = strtolower(str_replace('\\', '/', $output));
-        $normalizedDatabase = strtolower(str_replace('\\', '/', $database));
-        $normalizedStorage = rtrim(strtolower(str_replace('\\', '/', $privateStorage)), '/').'/';
+    private function assertDistinctOutput(
+        string $output,
+        Connection $database,
+        string $privateStorage,
+    ): void {
+        $canonicalOutput = $this->canonicalProspectivePath($output, 'Backup output', true);
+        $canonicalStorage = $this->canonicalProspectivePath($privateStorage, 'Private storage', false);
+        $canonicalPublic = $this->canonicalProspectivePath(public_path(), 'Public directory', false);
+        $databasePath = $database->getDriverName() === 'sqlite'
+            ? $database->getConfig('database')
+            : null;
+        $canonicalDatabase = is_string($databasePath) && $databasePath !== ':memory:'
+            ? $this->canonicalProspectivePath($databasePath, 'SQLite database', false)
+            : null;
 
-        if ($normalizedOutput === $normalizedDatabase || str_starts_with($normalizedOutput, $normalizedStorage)) {
-            throw new InvalidArgumentException('Backup output must be outside the database and private storage paths.');
+        if (($canonicalDatabase !== null && $canonicalOutput === $canonicalDatabase)
+            || $this->pathEqualsOrIsWithin($canonicalOutput, $canonicalStorage)
+            || $this->pathEqualsOrIsWithin($canonicalOutput, $canonicalPublic)) {
+            throw new InvalidArgumentException(
+                'Backup output must be outside the public directory, database, and private storage paths.',
+            );
         }
+    }
+
+    private function canonicalProspectivePath(
+        string $path,
+        string $label,
+        bool $rejectSymbolicAncestors,
+    ): string {
+        $normalized = rtrim(str_replace('\\', '/', $path), '/');
+
+        if (! str_starts_with($normalized, '/')
+            || preg_match('/[\x00-\x1F\x7F]/', $normalized) === 1) {
+            throw new InvalidArgumentException("{$label} path is not a valid canonical absolute path: {$path}");
+        }
+
+        $segments = explode('/', substr($normalized, 1));
+
+        if (array_intersect($segments, ['', '.', '..']) !== []) {
+            throw new InvalidArgumentException("{$label} path is not canonical: {$path}");
+        }
+
+        $candidate = '/'.implode('/', $segments);
+        $suffix = [];
+
+        while (! file_exists($candidate) && ! is_link($candidate)) {
+            array_unshift($suffix, basename($candidate));
+            $parent = dirname($candidate);
+
+            if ($parent === $candidate) {
+                throw new InvalidArgumentException("{$label} path could not be resolved safely: {$path}");
+            }
+
+            $candidate = $parent;
+        }
+
+        if (is_link($candidate) && $rejectSymbolicAncestors) {
+            throw new InvalidArgumentException("{$label} path must not use symbolic links: {$path}");
+        }
+
+        $resolvedAncestor = realpath($candidate);
+
+        if ($resolvedAncestor === false
+            || ($suffix !== [] && ! is_dir($resolvedAncestor))
+            || ($suffix === [] && ! is_dir($resolvedAncestor) && ! is_file($resolvedAncestor))) {
+            throw new InvalidArgumentException("{$label} path has no valid directory ancestor: {$path}");
+        }
+
+        if ($rejectSymbolicAncestors
+            && rtrim(str_replace('\\', '/', $resolvedAncestor), '/') !== rtrim($candidate, '/')) {
+            throw new InvalidArgumentException("{$label} path must not use symbolic links: {$path}");
+        }
+
+        return rtrim(str_replace('\\', '/', $resolvedAncestor), '/')
+            .($suffix === [] ? '' : '/'.implode('/', $suffix));
+    }
+
+    private function pathEqualsOrIsWithin(string $path, string $root): bool
+    {
+        $root = rtrim($root, '/');
+
+        return $path === $root || str_starts_with($path, $root.'/');
+    }
+
+    private function deleteFileIfPresent(string $path): bool
+    {
+        if (! file_exists($path) && ! is_link($path)) {
+            return true;
+        }
+
+        return $this->files->delete($path)
+            && ! file_exists($path)
+            && ! is_link($path);
+    }
+
+    private function deleteDirectoryIfPresent(string $path): bool
+    {
+        if (! is_dir($path) && ! is_link($path)) {
+            return true;
+        }
+
+        if (is_link($path) || ! $this->files->deleteDirectory($path)) {
+            return false;
+        }
+
+        return ! file_exists($path);
     }
 }

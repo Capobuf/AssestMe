@@ -8,10 +8,13 @@ return new class extends SettingsMigration
 {
     public function up(): void
     {
-        $this->migrator->add('report.show_resolution', true);
-        $this->migrator->delete('report.repeated_header_footer');
-        $this->migrator->delete('report.header_text');
-        $this->migrator->delete('report.footer_text');
-        $this->migrator->delete('report.new_page_per_finding');
+        if (! $this->migrator->exists('report.show_resolution')) {
+            $this->migrator->add('report.show_resolution', true);
+        }
+
+        $this->migrator->deleteIfExists('report.repeated_header_footer');
+        $this->migrator->deleteIfExists('report.header_text');
+        $this->migrator->deleteIfExists('report.footer_text');
+        $this->migrator->deleteIfExists('report.new_page_per_finding');
     }
 };

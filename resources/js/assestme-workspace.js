@@ -1,12 +1,65 @@
 (() => {
     'use strict';
 
-    let dirty = false;
     let listScrollTop = 0;
     let livewireHookRegistered = false;
     let workspaceHeightFrame = null;
     let workspaceScrollRestoreFrame = null;
+    const workspaceEntityStates = new Map();
     const workspaceScrollSnapshots = new Map();
+
+    const activeEntityKey = () => {
+        const context = document.querySelector('[data-assestme-workspace-context]');
+        const form = context?.querySelector('[data-assestme-draft-form]');
+        const kind = form?.dataset.assestmeDraftForm ?? context?.dataset.activeForm;
+        const userId = context?.dataset.userId;
+        const assessmentId = context?.dataset.assessmentId;
+
+        if (!userId || !assessmentId) {
+            return null;
+        }
+
+        if (kind === 'assessment') {
+            return `user:${userId}:assessment:${assessmentId}:metadata`;
+        }
+
+        const findingId = context?.dataset.findingId;
+
+        return kind === 'finding' && findingId
+            ? `user:${userId}:assessment:${assessmentId}:finding:${findingId}`
+            : null;
+    };
+
+    const stateForEntity = (entityKey, create = true) => {
+        if (!entityKey) {
+            return null;
+        }
+
+        if (!workspaceEntityStates.has(entityKey) && create) {
+            workspaceEntityStates.set(entityKey, {
+                dirty: false,
+                localDraftIsDurable: false,
+                localDraftStatus: 'local',
+                excludedEvidenceIsDirty: false,
+                statusBeforeOffline: null,
+            });
+        }
+
+        return workspaceEntityStates.get(entityKey) ?? null;
+    };
+
+    const stateFromDraftEvent = (event) => {
+        const entityKey = event.detail?.entityKey;
+
+        if (typeof entityKey !== 'string' || entityKey.length === 0) {
+            return null;
+        }
+
+        return {
+            entityKey,
+            state: stateForEntity(entityKey),
+        };
+    };
 
     const statusElement = () => document.querySelector('[data-assestme-save-status]');
     const listScroller = (list = document.querySelector('.assestme-findings-list')) => (
@@ -18,11 +71,34 @@
             return;
         }
 
-        const label = element.dataset[`${status}Label`];
+        const labelKey = `${status.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())}Label`;
+        const label = element.dataset[labelKey];
 
         if (label) {
             element.textContent = label;
             element.dataset.status = status;
+        }
+    };
+
+    const currentStatusForState = (state) => {
+        if (!navigator.onLine) {
+            return 'offline';
+        }
+
+        if (state.excludedEvidenceIsDirty) {
+            return 'unsaved';
+        }
+
+        if (state.localDraftIsDurable) {
+            return state.localDraftStatus;
+        }
+
+        return state.localDraftStatus === 'storage_error' ? 'storage_error' : 'unsaved';
+    };
+
+    const showStatusForEntity = (entityKey, state) => {
+        if (entityKey === activeEntityKey()) {
+            showStatus(currentStatusForState(state));
         }
     };
 
@@ -56,6 +132,18 @@
 
         event.preventDefault();
         event.stopImmediatePropagation();
+        const entityKey = activeEntityKey();
+        const state = stateForEntity(entityKey);
+        if (state) {
+            state.dirty = true;
+            state.localDraftIsDurable = false;
+            state.localDraftStatus = 'local';
+            state.excludedEvidenceIsDirty = true;
+            showStatusForEntity(entityKey, state);
+            window.dispatchEvent(new CustomEvent('assestme-evidence-dirty', {
+                detail: { entityKey },
+            }));
+        }
         document.documentElement.dataset.assestmeEvidencePaste = 'queued';
         Promise.all(images.map((file) => pond.addFile(file)))
             .then(() => {
@@ -152,8 +240,10 @@
     };
 
     const refreshWorkspaceAfterMorph = () => {
-        if (statusElement()?.dataset.status === 'saved') {
-            dirty = false;
+        const renderedStatus = statusElement()?.dataset.status;
+        const state = stateForEntity(activeEntityKey(), false);
+        if (state?.dirty && ['saved', 'unsaved'].includes(renderedStatus)) {
+            showStatus(currentStatusForState(state));
         }
 
         enhanceFindingRows();
@@ -255,16 +345,30 @@
     enhanceFindingRows();
     updateWorkspaceAvailableHeight();
 
-    document.addEventListener('input', (event) => {
+    const markWorkspaceDirty = (event) => {
         const element = workspaceStatusFor(event.target);
 
         if (!element) {
             return;
         }
 
-        dirty = true;
-        showStatus(navigator.onLine ? 'unsaved' : 'offline', element);
-    });
+        const entityKey = activeEntityKey();
+        const state = stateForEntity(entityKey);
+        if (!state) {
+            return;
+        }
+
+        state.dirty = true;
+        state.localDraftIsDurable = false;
+        state.localDraftStatus = 'local';
+        if (event.target.closest?.('.assestme-workbench-section--evidence') || event.target.matches?.('input[type="file"]')) {
+            state.excludedEvidenceIsDirty = true;
+        }
+        showStatus(currentStatusForState(state), element);
+    };
+
+    document.addEventListener('input', markWorkspaceDirty);
+    document.addEventListener('change', markWorkspaceDirty);
     document.addEventListener('paste', addPastedEvidence);
     document.addEventListener('click', activateCompactSearch);
     document.addEventListener('click', revealExpandedPropertySection);
@@ -305,22 +409,37 @@
     });
 
     window.addEventListener('offline', () => {
-        if (!statusElement()) {
+        const entityKey = activeEntityKey();
+        const state = stateForEntity(entityKey);
+        const element = statusElement();
+        if (!element || !state) {
             return;
         }
 
-        dirty = true;
+        if (element.dataset.status !== 'offline') {
+            state.statusBeforeOffline = element.dataset.status ?? null;
+        }
         showStatus('offline');
     });
 
     window.addEventListener('online', () => {
-        if (dirty) {
-            showStatus('unsaved');
+        const state = stateForEntity(activeEntityKey(), false);
+        if (state?.dirty) {
+            showStatus(currentStatusForState(state));
+        } else if (state?.statusBeforeOffline) {
+            showStatus(state.statusBeforeOffline);
+        }
+        if (state) {
+            state.statusBeforeOffline = null;
         }
     });
 
     window.addEventListener('beforeunload', (event) => {
-        if (!dirty) {
+        const hasUnprotectedChanges = Array.from(workspaceEntityStates.values()).some((state) => (
+            state.dirty && (!state.localDraftIsDurable || state.excludedEvidenceIsDirty)
+        ));
+
+        if (!hasUnprotectedChanges) {
             return;
         }
 
@@ -333,8 +452,7 @@
     window.addEventListener('assestme-finding-selected', () => {
         cancelScheduledScrollRestore();
         requestAnimationFrame(() => {
-            enhanceFindingRows();
-            updateWorkspaceAvailableHeight();
+            refreshWorkspaceAfterMorph();
             const editor = document.querySelector('[data-assestme-workbench-editor]');
             const properties = document.querySelector('.assestme-workbench-properties__body');
             if (editor) {
@@ -349,6 +467,79 @@
     window.addEventListener('assestme-finding-validation-failed', () => {
         cancelScheduledScrollRestore();
         requestAnimationFrame(() => document.querySelector('.assestme-workbench-form [aria-invalid="true"]')?.focus());
+    });
+    window.addEventListener('assestme-local-draft-persisted', (event) => {
+        const draftEvent = stateFromDraftEvent(event);
+        if (!draftEvent) {
+            return;
+        }
+
+        if (event.detail?.clearEvidence === true) {
+            draftEvent.state.excludedEvidenceIsDirty = false;
+        }
+        draftEvent.state.dirty = true;
+        draftEvent.state.localDraftIsDurable = true;
+        draftEvent.state.localDraftStatus = event.detail?.stale ? 'stale' : 'local';
+        showStatusForEntity(draftEvent.entityKey, draftEvent.state);
+    });
+    window.addEventListener('assestme-local-draft-dirty', (event) => {
+        const draftEvent = stateFromDraftEvent(event);
+        if (!draftEvent) {
+            return;
+        }
+
+        if (event.detail?.clearEvidence === true) {
+            draftEvent.state.excludedEvidenceIsDirty = false;
+        }
+        draftEvent.state.dirty = true;
+        draftEvent.state.localDraftIsDurable = false;
+        draftEvent.state.localDraftStatus = 'local';
+        showStatusForEntity(draftEvent.entityKey, draftEvent.state);
+    });
+    window.addEventListener('assestme-local-draft-restored', (event) => {
+        const draftEvent = stateFromDraftEvent(event);
+        if (!draftEvent) {
+            return;
+        }
+
+        draftEvent.state.dirty = true;
+        draftEvent.state.localDraftIsDurable = true;
+        draftEvent.state.localDraftStatus = event.detail?.stale ? 'stale' : 'local';
+        showStatusForEntity(draftEvent.entityKey, draftEvent.state);
+    });
+    window.addEventListener('assestme-local-draft-failed', (event) => {
+        const draftEvent = stateFromDraftEvent(event);
+        if (!draftEvent) {
+            return;
+        }
+
+        draftEvent.state.dirty = true;
+        draftEvent.state.localDraftIsDurable = false;
+        draftEvent.state.localDraftStatus = 'storage_error';
+        showStatusForEntity(draftEvent.entityKey, draftEvent.state);
+    });
+    window.addEventListener('assestme-local-draft-clean', (event) => {
+        const draftEvent = stateFromDraftEvent(event);
+        if (!draftEvent) {
+            return;
+        }
+
+        if (event.detail?.clearEvidence !== true && draftEvent.state.excludedEvidenceIsDirty) {
+            draftEvent.state.dirty = true;
+            draftEvent.state.localDraftIsDurable = false;
+            draftEvent.state.localDraftStatus = 'local';
+            showStatusForEntity(draftEvent.entityKey, draftEvent.state);
+
+            return;
+        }
+
+        draftEvent.state.dirty = false;
+        draftEvent.state.localDraftIsDurable = false;
+        draftEvent.state.localDraftStatus = 'local';
+        draftEvent.state.excludedEvidenceIsDirty = false;
+        if (draftEvent.entityKey === activeEntityKey()) {
+            showStatus('saved');
+        }
     });
     registerLivewireHook();
 })();

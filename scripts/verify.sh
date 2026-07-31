@@ -33,6 +33,11 @@ trap assestme_end_isolated_environment EXIT
 
 php artisan migrate:fresh --seed --force
 
+export DEV_ADMIN_PASSWORD="$(php -r 'echo "Verify!".bin2hex(random_bytes(16))."aA1";')"
+php artisan assestme:create-admin --from-env >/dev/null
+unset DEV_ADMIN_PASSWORD
+php artisan assestme:installation:lock --force >/dev/null
+
 php artisan migrate:status
 php artisan assestme:diagnose
 php artisan assestme:benchmark --findings=50

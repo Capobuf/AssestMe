@@ -13,14 +13,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('assessments', function (Blueprint $table): void {
-            $table->foreignId('client_id')->after('id')->constrained()->restrictOnDelete();
-            $table->string('report_title_override')->nullable()->after('title');
-            $table->string('scope_type', 32)->default(ScopeType::Organization->value)->after('assessment_date');
-            $table->text('scope_description')->nullable()->after('scope_type');
-            $table->text('introduction')->nullable()->after('scope_description');
-            $table->text('executive_summary')->nullable()->after('introduction');
-            $table->text('methodology_notes')->nullable()->after('executive_summary');
-            $table->char('locale', 2)->default('it')->after('methodology_notes');
+            $table->foreignId('client_id')->constrained()->restrictOnDelete();
+            $table->string('report_title_override')->nullable();
+            $table->string('scope_type', 32)->default(ScopeType::Organization->value);
+            $table->text('scope_description')->nullable();
+            $table->text('introduction')->nullable();
+            $table->text('executive_summary')->nullable();
+            $table->text('methodology_notes')->nullable();
+            $table->char('locale', 2)->default('it');
         });
 
         Schema::create('assessment_site', function (Blueprint $table): void {
@@ -30,18 +30,18 @@ return new class extends Migration
         });
 
         Schema::table('findings', function (Blueprint $table): void {
-            $table->foreignId('source_template_id')->nullable()->after('assessment_id')->constrained('finding_templates')->nullOnDelete();
-            $table->foreignId('category_id')->nullable()->after('title')->constrained()->restrictOnDelete();
-            $table->text('technical_notes')->nullable()->after('entrepreneur_notes');
-            $table->string('scope_type', 32)->default(ScopeType::Organization->value)->after('technical_notes');
-            $table->text('scope_description')->nullable()->after('scope_type');
-            $table->foreignId('consequence_level_id')->nullable()->after('scope_description')->constrained('consequence_levels')->restrictOnDelete();
-            $table->foreignId('likelihood_level_id')->nullable()->after('consequence_level_id')->constrained('likelihood_levels')->restrictOnDelete();
-            $table->foreignId('priority_level_id')->nullable()->after('likelihood_level_id')->constrained('priority_levels')->restrictOnDelete();
-            $table->boolean('priority_is_overridden')->default(false)->after('priority_level_id');
-            $table->text('priority_rationale')->nullable()->after('priority_is_overridden');
-            $table->text('resolution_notes')->nullable()->after('status');
-            $table->timestamp('resolved_at')->nullable()->after('resolution_notes');
+            $table->foreignId('source_template_id')->nullable()->constrained('finding_templates')->nullOnDelete();
+            $table->foreignId('category_id')->nullable()->constrained()->restrictOnDelete();
+            $table->text('technical_notes')->nullable();
+            $table->string('scope_type', 32)->default(ScopeType::Organization->value);
+            $table->text('scope_description')->nullable();
+            $table->foreignId('consequence_level_id')->nullable()->constrained('consequence_levels')->restrictOnDelete();
+            $table->foreignId('likelihood_level_id')->nullable()->constrained('likelihood_levels')->restrictOnDelete();
+            $table->foreignId('priority_level_id')->nullable()->constrained('priority_levels')->restrictOnDelete();
+            $table->boolean('priority_is_overridden')->default(false);
+            $table->text('priority_rationale')->nullable();
+            $table->text('resolution_notes')->nullable();
+            $table->timestamp('resolved_at')->nullable();
         });
 
         Schema::create('finding_tag', function (Blueprint $table): void {
@@ -86,8 +86,8 @@ return new class extends Migration
         });
 
         Schema::table('findings', function (Blueprint $table): void {
-            $table->foreignId('recommended_solution_id')->nullable()->after('priority_rationale')->constrained('finding_solutions')->restrictOnDelete();
-            $table->foreignId('implemented_solution_id')->nullable()->after('recommended_solution_id')->constrained('finding_solutions')->restrictOnDelete();
+            $table->foreignId('recommended_solution_id')->nullable()->constrained('finding_solutions')->restrictOnDelete();
+            $table->foreignId('implemented_solution_id')->nullable()->constrained('finding_solutions')->restrictOnDelete();
         });
 
         Schema::create('evidences', function (Blueprint $table): void {

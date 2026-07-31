@@ -8,7 +8,14 @@ return new class extends SettingsMigration
 {
     public function up(): void
     {
-        $this->migrator->add('report.cover_title_mode', 'separate');
-        $this->migrator->add('report.show_priority_descriptions', true);
+        $this->addIfMissing('report.cover_title_mode', 'separate');
+        $this->addIfMissing('report.show_priority_descriptions', true);
+    }
+
+    private function addIfMissing(string $property, bool|int|string|null $value): void
+    {
+        if (! $this->migrator->exists($property)) {
+            $this->migrator->add($property, $value);
+        }
     }
 };

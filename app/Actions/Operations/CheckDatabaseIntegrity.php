@@ -4,27 +4,21 @@ declare(strict_types=1);
 
 namespace App\Actions\Operations;
 
+use App\Data\Database\DatabaseIntegrityResult;
+use App\Services\Database\DatabaseDriverResolver;
+use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
-final class CheckDatabaseIntegrity
+final readonly class CheckDatabaseIntegrity
 {
-    public function __invoke(): void
+    public function __construct(private DatabaseDriverResolver $databaseDriverResolver) {}
+
+    public function __invoke(?Connection $connection = null): DatabaseIntegrityResult
     {
-        if (DB::getDriverName() !== 'sqlite') {
-            throw new RuntimeException('Database integrity checks require the configured SQLite connection.');
-        }
+        $connection ??= DB::connection();
 
-        $rows = DB::select('PRAGMA integrity_check');
-        $results = array_map(
-            static fn (object $row): string => strtolower(trim((string) (array_values((array) $row)[0] ?? ''))),
-            $rows,
-        );
-
-        if ($results !== ['ok']) {
-            $detail = implode('; ', array_filter($results));
-
-            throw new RuntimeException('SQLite integrity check failed'.($detail === '' ? '.' : ": {$detail}"));
-        }
+        return $this->databaseDriverResolver
+            ->integrityChecker($connection)
+            ->check($connection);
     }
 }

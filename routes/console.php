@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Assessments\PurgeExpiredWorkspaceSaveRequests;
+use App\Actions\Installation\WriteSchedulerHeartbeat;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -24,4 +25,11 @@ Schedule::command('assestme:integrity-check')
 Schedule::call(fn (): int => app(PurgeExpiredWorkspaceSaveRequests::class)())
     ->name('assestme:purge-workspace-save-requests')
     ->hourly()
+    ->withoutOverlapping();
+
+Schedule::call(static function (): void {
+    app(WriteSchedulerHeartbeat::class)();
+})
+    ->name('assestme:scheduler-heartbeat')
+    ->everyMinute()
     ->withoutOverlapping();

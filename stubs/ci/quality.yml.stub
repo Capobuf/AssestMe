@@ -32,12 +32,15 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
-          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip
+          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sqlite3, xml, zip
           ini-values: memory_limit=512M
           tools: composer:v2
 
       - name: Install locked dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install WeasyPrint runtime
+        run: sudo apt-get update && sudo apt-get install --yes weasyprint
 
       - name: Prepare application assets
         run: |
@@ -83,7 +86,7 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
-          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_sqlite, sqlite3, xml, zip
+          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sqlite3, xml, zip
           ini-values: memory_limit=512M
           tools: composer:v2
 
