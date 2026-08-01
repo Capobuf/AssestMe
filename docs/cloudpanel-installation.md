@@ -1,6 +1,6 @@
 # Installazione di AssestMe su CloudPanel
 
-Questa procedura usa l'archivio di release `assestme-<versione>.zip`: contiene già le dipendenze PHP di produzione e non richiede Composer, Node.js o npm sul server. La compatibilità automatizzata è verificata in CI; una pubblicazione non equivale a una certificazione di una specifica istanza CloudPanel.
+Questa è una procedura specifica per CloudPanel. Per requisiti, limiti di compatibilità e hosting tradizionale, leggere prima la [guida hosting generale](hosting-installation.md). L'archivio di release `assestme-<versione>.zip` contiene già le dipendenze PHP di produzione e non richiede Composer, Node.js o npm sul server. La compatibilità automatizzata è verificata in CI; una pubblicazione non equivale a una certificazione di una specifica istanza CloudPanel.
 
 ## Prima di iniziare
 
@@ -74,7 +74,7 @@ Su alcune distribuzioni `default-mysql-client` installa in realtà client MariaD
 5. Scegliere SQLite oppure MySQL / MariaDB. Per SQLite usare il percorso proposto sotto `storage/app/database`, fuori da `public`. Per un server database inserire i dati creati in CloudPanel e, se necessario, il socket Unix; AssestMe stabilisce la connessione tramite PDO e rileva automaticamente se il prodotto è MySQL o MariaDB.
 6. Eseguire il test database. AssestMe verifica identità del prodotto, versione, charset, InnoDB, privilegi, schema, vincoli, transazioni e cleanup delle tabelle casuali di probe. Un database non vuoto o appartenente a un'altra applicazione viene bloccato senza offrire cancellazioni.
 7. Creare l'unico amministratore con una password di 14–128 caratteri contenente maiuscole, minuscole, numeri e simboli.
-8. Avviare la finalizzazione una sola volta. Il processo ripetibile esegue migration normali, seeder idempotenti, creazione amministratore, PDF e health check. SQLite esegue sempre il backup reale finale. Per MySQL/MariaDB, se il dump client è disponibile esegue e verifica il backup; se manca, i due controlli restano `pending` e l'installazione può completarsi. Un backup tentato ma fallito resta invece bloccante. Non usa `migrate:fresh`.
+8. Avviare la finalizzazione una sola volta. Il processo ripetibile esegue migration normali, seeder idempotenti, creazione amministratore, PDF e health check. SQLite esegue sempre il backup reale finale. Per MySQL/MariaDB, se il dump client è disponibile esegue e verifica il backup; se manca oppure il dump fallisce, i due controlli restano `pending` con il dettaglio operativo e l'installazione può completarsi. Il comando manuale di backup continua invece a fallire e a registrare l’errore. Non usa `migrate:fresh`.
 9. Conservare la pagina finale fino a quando il cron è configurato. Dopo il lock definitivo `/install` e tutte le sue sotto-route rispondono `404`; non esiste reset web.
 
 ## Scheduler CloudPanel
@@ -128,7 +128,7 @@ Lo script crea e verifica un backup applicativo; per MySQL/MariaDB richiede quin
 
 ## Hosting PHP tradizionale
 
-Lo stesso ZIP e wizard sono utilizzabili su un hosting PHP tradizionale che consenta una document root `public`, storage privato scrivibile, PHP web e CLI 8.3 o superiore, le estensioni PDO richieste, WeasyPrint e la configurazione manuale di un cron ogni minuto. Il wizard non usa API CloudPanel e non installa pacchetti. Quando shell, sudo o cron non sono disponibili, il provider deve predisporre queste capability; non esiste un percorso di installazione degradato senza WeasyPrint o senza PDO.
+Lo stesso ZIP e wizard sono utilizzabili su un hosting PHP tradizionale che soddisfa la guida hosting generale. Il wizard non usa API CloudPanel e non installa pacchetti. Per cPanel con `public_html` fisso usare il template split-root documentato nella guida, senza caricare l’intero progetto nella document root.
 
 ## Aggiornamento manuale
 

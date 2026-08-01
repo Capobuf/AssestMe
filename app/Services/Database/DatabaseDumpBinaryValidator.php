@@ -12,14 +12,14 @@ final class DatabaseDumpBinaryValidator
 {
     public function validate(string $driver, string $path): string
     {
-        $expectedBasename = match ($driver) {
-            'mysql' => 'mysqldump',
-            'mariadb' => 'mariadb-dump',
+        $expectedBasenames = match ($driver) {
+            'mysql' => ['mysqldump'],
+            'mariadb' => ['mariadb-dump', 'mysqldump'],
             default => throw new RuntimeException("Database dump binaries are unsupported for driver {$driver}."),
         };
 
         if (! $this->isAbsolutePath($path)
-            || basename($path) !== $expectedBasename) {
+            || ! in_array(basename($path), $expectedBasenames, true)) {
             throw new RuntimeException("The configured {$driver} dump binary is invalid.");
         }
 
@@ -65,8 +65,7 @@ final class DatabaseDumpBinaryValidator
         $productMatches = match ($driver) {
             'mysql' => str_contains($versionOutput, 'mysqldump')
                 && ! str_contains($versionOutput, 'mariadb'),
-            'mariadb' => str_contains($versionOutput, 'mariadb-dump')
-                && str_contains($versionOutput, 'mariadb'),
+            'mariadb' => str_contains($versionOutput, 'mariadb'),
         };
 
         if (! $productMatches) {

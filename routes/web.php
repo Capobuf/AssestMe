@@ -28,7 +28,7 @@ Route::prefix('install')
         Route::post('/database', 'storeDatabase')->name('database.store');
         Route::get('/administrator', 'administrator')->name('administrator');
         Route::post('/finalize', 'finalize')->name('finalize');
-        Route::get('/documentation/cloudpanel', 'documentation')->name('documentation');
+        Route::get('/documentation/hosting', 'documentation')->name('documentation.hosting');
     });
 
 Route::redirect('/', '/admin');

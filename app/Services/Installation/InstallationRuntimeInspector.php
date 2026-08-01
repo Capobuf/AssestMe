@@ -166,7 +166,9 @@ final class InstallationRuntimeInspector
             );
 
             $directoryInspection = $outsidePublic
-                ? $this->inspectRequiredDirectory($path)
+                ? ($this->isPrivateRuntimeDirectory($name)
+                    ? $this->inspectPrivateRequiredDirectory($path)
+                    : $this->inspectRequiredDirectory($path))
                 : ['passed' => false, 'actual' => 'sensitive_path_under_public'];
 
             $requirements[] = new InstallationRequirementResult(
@@ -266,6 +268,41 @@ final class InstallationRuntimeInspector
 
         if (! is_dir($path)) {
             return ['passed' => false, 'actual' => 'not_a_directory'];
+        }
+
+        if (! is_readable($path) || ! is_writable($path)) {
+            return ['passed' => false, 'actual' => 'directory_not_readable_and_writable'];
+        }
+
+        return $this->probeAtomicFileOperations($path)
+            ? ['passed' => true, 'actual' => $path]
+            : ['passed' => false, 'actual' => 'atomic_rename_delete_probe_failed'];
+    }
+
+    /** @return array{passed: bool, actual: string} */
+    private function inspectPrivateRequiredDirectory(string $path): array
+    {
+        if (! file_exists($path) && ! @mkdir($path, 0700, true) && ! is_dir($path)) {
+            return ['passed' => false, 'actual' => 'directory_not_creatable'];
+        }
+
+        if (is_link($path)) {
+            return ['passed' => false, 'actual' => 'symlink_not_allowed'];
+        }
+
+        if (! is_dir($path)) {
+            return ['passed' => false, 'actual' => 'not_a_directory'];
+        }
+
+        if (! @chmod($path, 0700)) {
+            return ['passed' => false, 'actual' => 'private_directory_permissions_not_securable_by_web_process'];
+        }
+
+        clearstatcache(true, $path);
+        $permissions = @fileperms($path);
+
+        if ($permissions === false || ($permissions & 0777) !== 0700) {
+            return ['passed' => false, 'actual' => 'private_directory_permissions_not_securable_by_web_process'];
         }
 
         if (! is_readable($path) || ! is_writable($path)) {
@@ -413,7 +450,12 @@ final class InstallationRuntimeInspector
         }
 
         $webVersion = PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;
+        $compactVersion = (string) PHP_MAJOR_VERSION.PHP_MINOR_VERSION;
         $candidates = [
+            "/usr/local/bin/ea-php{$compactVersion}",
+            '/usr/local/bin/ea-php83',
+            "/opt/plesk/php/{$webVersion}/bin/php",
+            '/opt/plesk/php/8.3/bin/php',
             "/usr/bin/php{$webVersion}",
             "/usr/local/bin/php{$webVersion}",
             '/usr/bin/php8.3',
@@ -522,10 +564,22 @@ final class InstallationRuntimeInspector
     /** @return list<string> */
     private function weasyPrintCandidates(): array
     {
-        return $this->weasyPrintCandidatePaths ?? [
+        if ($this->weasyPrintCandidatePaths !== null) {
+            return $this->weasyPrintCandidatePaths;
+        }
+
+        $candidates = [
             '/usr/bin/weasyprint',
             '/usr/local/bin/weasyprint',
         ];
+
+        $home = getenv('HOME');
+
+        if (is_string($home) && $this->isAbsolutePath($home)) {
+            $candidates[] = rtrim($home, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.'.local/bin/weasyprint';
+        }
+
+        return array_values(array_unique($candidates));
     }
 
     private function inspectWeasyPrintVersion(string $binary, string $workingDirectory): ?string
@@ -710,5 +764,10 @@ final class InstallationRuntimeInspector
         $value = config($key);
 
         return is_string($value) ? $value : null;
+    }
+
+    private function isPrivateRuntimeDirectory(string $name): bool
+    {
+        return in_array($name, ['storage_app_private', 'storage_framework_installer'], true);
     }
 }

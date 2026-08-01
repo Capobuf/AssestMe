@@ -80,7 +80,7 @@ printf '%s\n' "$release_version" > "$staging_path/VERSION"
     composer check-platform-reqs --no-dev
 )
 
-if [[ -e "$staging_path/.env" || ! -f "$staging_path/vendor/autoload.php" ]]; then
+if [[ -e "$staging_path/.env" || ! -f "$staging_path/vendor/autoload.php" || ! -f "$staging_path/deploy/shared-hosting/index.php.dist" ]]; then
     echo "Release staging validation failed." >&2
     exit 70
 fi

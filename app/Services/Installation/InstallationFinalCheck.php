@@ -23,6 +23,7 @@ use Illuminate\Session\FileSessionHandler;
 use Illuminate\Session\Store;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
@@ -131,7 +132,7 @@ final readonly class InstallationFinalCheck
             'status' => $scheduler->isRecent() ? 'passed' : 'pending',
             'detail' => $scheduler->isRecent()
                 ? 'Heartbeat recente rilevato.'
-                : 'Cron CloudPanel non ancora verificato; configurarlo dopo il completamento.',
+                : 'Scheduler non ancora verificato. Configura un cron job dal pannello hosting.',
         ];
 
         return new InstallationFinalCheckResult($checks);
@@ -140,11 +141,30 @@ final readonly class InstallationFinalCheck
     /** @return list<array{key: string, label: string, status: 'passed'|'failed'|'pending', detail: string}> */
     private function backupChecks(DatabaseConfigurationData $database): array
     {
-        $dumpBinary = $database->driver === SupportedDatabaseDriver::Sqlite
-            ? null
-            : $this->databaseClientBinaryResolver->resolveDump($database->driver->value);
+        if ($database->driver === SupportedDatabaseDriver::Sqlite) {
+            $backupPath = null;
 
-        if ($database->driver !== SupportedDatabaseDriver::Sqlite && $dumpBinary === null) {
+            return [
+                $this->check('backup', 'Backup reale', function () use (&$backupPath): string {
+                    $backupPath = ($this->createBackup)(prune: false);
+
+                    return 'Archivio creato: '.basename($backupPath);
+                }),
+                $this->check('backup_verification', 'Verifica backup', function () use (&$backupPath): string {
+                    if (! is_string($backupPath)) {
+                        throw new RuntimeException('Il backup da verificare non è disponibile.');
+                    }
+
+                    $this->verifyBackup->handle($backupPath);
+
+                    return 'Manifest, percorsi e SHA-256 verificati.';
+                }),
+            ];
+        }
+
+        $dumpBinary = $this->databaseClientBinaryResolver->resolveDump($database->driver->value);
+
+        if ($dumpBinary === null) {
             $detail = $database->driver === SupportedDatabaseDriver::MariaDb
                 ? 'Backup database non ancora disponibile. Installare il pacchetto mariadb-client; AssestMe rileverà automaticamente mariadb-dump.'
                 : 'Backup database non ancora disponibile. Installare un client MySQL che fornisca mysqldump; AssestMe lo rileverà automaticamente.';
@@ -155,24 +175,28 @@ final readonly class InstallationFinalCheck
             ];
         }
 
-        $backupPath = null;
+        try {
+            $backupPath = ($this->createBackup)(prune: false);
+            $this->verifyBackup->handle($backupPath);
 
-        return [
-            $this->check('backup', 'Backup reale', function () use (&$backupPath): string {
-                $backupPath = ($this->createBackup)(prune: false);
+            return [
+                ['key' => 'backup', 'label' => 'Backup reale', 'status' => 'passed', 'detail' => 'Archivio creato: '.basename($backupPath)],
+                ['key' => 'backup_verification', 'label' => 'Verifica backup', 'status' => 'passed', 'detail' => 'Manifest, percorsi e SHA-256 verificati.'],
+            ];
+        } catch (Throwable $exception) {
+            $detail = $this->safeFailureDetail($exception);
 
-                return 'Archivio creato: '.basename($backupPath);
-            }),
-            $this->check('backup_verification', 'Verifica backup', function () use (&$backupPath): string {
-                if (! is_string($backupPath)) {
-                    throw new RuntimeException('Il backup da verificare non è disponibile.');
-                }
+            Log::warning('Installation server database backup capability is pending.', [
+                'driver' => $database->driver->value,
+                'exception' => $exception::class,
+                'message' => $detail,
+            ]);
 
-                $this->verifyBackup->handle($backupPath);
-
-                return 'Manifest, percorsi e SHA-256 verificati.';
-            }),
-        ];
+            return [
+                ['key' => 'backup', 'label' => 'Backup reale', 'status' => 'pending', 'detail' => $detail],
+                ['key' => 'backup_verification', 'label' => 'Verifica backup', 'status' => 'pending', 'detail' => 'Verifica non eseguita perché il backup database non è stato creato.'],
+            ];
+        }
     }
 
     /** @return array{key: string, label: string, status: 'passed'|'failed', detail: string} */
@@ -182,9 +206,32 @@ final readonly class InstallationFinalCheck
             $detail = $callback();
 
             return ['key' => $key, 'label' => $label, 'status' => 'passed', 'detail' => is_string($detail) ? $detail : 'Superato.'];
-        } catch (Throwable) {
-            return ['key' => $key, 'label' => $label, 'status' => 'failed', 'detail' => 'Il controllo reale non è stato superato.'];
+        } catch (Throwable $exception) {
+            $detail = $this->safeFailureDetail($exception);
+
+            Log::error('Installation final check failed.', [
+                'check' => $key,
+                'exception' => $exception::class,
+                'message' => $detail,
+            ]);
+
+            return ['key' => $key, 'label' => $label, 'status' => 'failed', 'detail' => $detail];
         }
+    }
+
+    private function safeFailureDetail(Throwable $exception): string
+    {
+        $detail = $exception->getMessage();
+        $detail = preg_replace(
+            '~(?:--defaults-file=)?\S*\.assestme-db-credentials-\S*~',
+            '[temporary credentials file]',
+            $detail,
+        ) ?? $detail;
+        $detail = preg_replace('/(--password(?:=|\s+)|\bpassword\s*[:=]\s*)\S+/i', '$1[redacted]', $detail) ?? $detail;
+        $detail = preg_replace('/\s+/', ' ', $detail) ?? $detail;
+        $detail = mb_substr(trim($detail), 0, 500);
+
+        return $detail !== '' ? $detail : 'Il controllo reale non è stato superato.';
     }
 
     private function checkStorage(): string

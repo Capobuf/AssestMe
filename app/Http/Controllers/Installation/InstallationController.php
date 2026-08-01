@@ -280,7 +280,7 @@ final class InstallationController extends Controller
 
     public function documentation(): BinaryFileResponse
     {
-        $path = base_path('docs/cloudpanel-installation.md');
+        $path = base_path('docs/hosting-installation.md');
         abort_unless(is_file($path), 404);
 
         return response()->file($path, ['Content-Type' => 'text/markdown; charset=UTF-8']);

@@ -12,14 +12,14 @@ final class DatabaseRestoreBinaryValidator
 {
     public function validate(string $driver, string $path): string
     {
-        $expectedBasename = match ($driver) {
-            'mysql' => 'mysql',
-            'mariadb' => 'mariadb',
+        $expectedBasenames = match ($driver) {
+            'mysql' => ['mysql'],
+            'mariadb' => ['mariadb', 'mysql'],
             default => throw new RuntimeException("Database restore binaries are unsupported for driver {$driver}."),
         };
 
         if (! str_starts_with($path, DIRECTORY_SEPARATOR)
-            || basename($path) !== $expectedBasename) {
+            || ! in_array(basename($path), $expectedBasenames, true)) {
             throw new RuntimeException("The configured {$driver} restore binary is invalid.");
         }
 

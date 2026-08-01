@@ -17,6 +17,7 @@ use App\Services\Installation\InstallationState;
 use App\Services\Installation\SchedulerHeartbeat;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Illuminate\Support\ViewErrorBag;
 
@@ -107,7 +108,8 @@ it('shows operational WeasyPrint installation instructions when automatic detect
         ->assertSee('sudo apt update')
         ->assertSee('sudo apt install -y weasyprint')
         ->assertSee('weasyprint --version')
-        ->assertSee('chiedi al provider hosting')
+        ->assertSee('Hosting condiviso, cPanel o Plesk')
+        ->assertSee('LARAVEL_PDF_WEASYPRINT_BINARY')
         ->assertSee('Verifica nuovamente');
 });
 
@@ -256,7 +258,7 @@ it('renders the generic server database page and administrator back link', funct
         ->assertSee('href="'.route('installation.database').'"', false);
 });
 
-it('renders complete manual CloudPanel and SSH scheduler instructions', function (): void {
+it('renders panel-neutral scheduler instructions for CloudPanel cPanel Plesk and shell', function (): void {
     $php = (string) realpath(PHP_BINARY);
     $artisan = base_path('artisan');
     $command = $php.' '.$artisan.' schedule:run';
@@ -267,12 +269,45 @@ it('renders complete manual CloudPanel and SSH scheduler instructions', function
         'cronCommand' => $command,
         'errors' => new ViewErrorBag,
     ])
-        ->assertSee('CloudPanel → Sites → assestme → Cron Jobs → Add Cron Job')
-        ->assertSee('site user')
+        ->assertSee('CloudPanel')
+        ->assertSee('Sites → dominio → Cron Jobs → Add Cron Job')
+        ->assertSee('cPanel')
+        ->assertSee('Advanced → Cron Jobs → Add New Cron Job')
+        ->assertSee('Plesk')
+        ->assertSee('Websites &amp; Domains → Scheduled Tasks → Add Task', false)
+        ->assertSee('Run a PHP script')
         ->assertSee('* * * * *')
         ->assertSee($command)
         ->assertSee('crontab -e')
         ->assertSee('* * * * * '.$command);
+});
+
+it('serves the generic hosting documentation through the installer middleware', function (): void {
+    $this->get('/install/documentation/hosting')
+        ->assertOk()
+        ->assertHeader('Content-Type', 'text/markdown; charset=UTF-8');
+
+    expect(file_get_contents(base_path('docs/hosting-installation.md')))
+        ->toContain('Installazione AssestMe su hosting PHP')
+        ->toContain('Shared hosting con document root fissa');
+});
+
+it('keeps the real sanitized final-check detail instead of replacing it with a generic message', function (): void {
+    $method = new ReflectionMethod(InstallationFinalCheck::class, 'check');
+    $check = $method->invoke(
+        app(InstallationFinalCheck::class),
+        'storage',
+        'Storage privato',
+        static fn (): never => throw new RuntimeException(
+            'dump failed at --defaults-file=/tmp/.assestme-db-credentials-test password=do-not-expose',
+        ),
+    );
+
+    expect($check['status'])->toBe('failed')
+        ->and($check['detail'])->toContain('dump failed')
+        ->and($check['detail'])->toContain('[temporary credentials file]')
+        ->and($check['detail'])->toContain('password=[redacted]')
+        ->and($check['detail'])->not->toContain('do-not-expose');
 });
 
 it('keeps final server backup checks pending when no matching dump client is available', function (SupportedDatabaseDriver $driver, string $message): void {
@@ -312,6 +347,46 @@ it('keeps final server backup checks pending when no matching dump client is ava
         'Backup database non ancora disponibile. Installare il pacchetto mariadb-client; AssestMe rileverà automaticamente mariadb-dump.',
     ],
 ]);
+
+it('keeps a failed server backup pending but retains a failed SQLite final backup', function (): void {
+    $root = dirname((string) config('assestme.installation.state_path'));
+    $binaryDirectory = $root.'/client-bin';
+    $binary = $binaryDirectory.'/mysqldump';
+    $originalResolver = app(DatabaseClientBinaryResolver::class);
+    $originalBackupRoot = config('assestme.backup.root');
+    File::ensureDirectoryExists($binaryDirectory, 0700, true);
+    File::put($binary, "#!/bin/sh\nprintf '%s\\n' 'mysqldump Ver 8.0.36 MySQL Community Server'\n");
+    chmod($binary, 0700);
+    config()->set('assestme.backup.root', public_path('installer-backups'));
+    app()->instance(DatabaseClientBinaryResolver::class, new DatabaseClientBinaryResolver(
+        app(DatabaseDumpBinaryValidator::class),
+        app(DatabaseRestoreBinaryValidator::class),
+        [$binaryDirectory],
+    ));
+    app()->forgetInstance(InstallationFinalCheck::class);
+
+    try {
+        $method = new ReflectionMethod(InstallationFinalCheck::class, 'backupChecks');
+        $serverChecks = $method->invoke(
+            app(InstallationFinalCheck::class),
+            new DatabaseConfigurationData(driver: SupportedDatabaseDriver::MySql, database: 'assestme'),
+        );
+        $sqliteChecks = $method->invoke(
+            app(InstallationFinalCheck::class),
+            new DatabaseConfigurationData(driver: SupportedDatabaseDriver::Sqlite, database: database_path('database.sqlite')),
+        );
+
+        expect($serverChecks[0]['status'])->toBe('pending')
+            ->and($serverChecks[0]['detail'])->toContain('Backup output must be outside the public directory, database, and private storage paths.')
+            ->and((new InstallationFinalCheckResult($serverChecks))->passed())->toBeTrue()
+            ->and($sqliteChecks[0]['status'])->toBe('failed')
+            ->and((new InstallationFinalCheckResult($sqliteChecks))->passed())->toBeFalse();
+    } finally {
+        config()->set('assestme.backup.root', $originalBackupRoot);
+        app()->instance(DatabaseClientBinaryResolver::class, $originalResolver);
+        app()->forgetInstance(InstallationFinalCheck::class);
+    }
+});
 
 it('rejects an SQLite path below public through the HTTP database step', function (): void {
     $state = app(InstallationState::class);

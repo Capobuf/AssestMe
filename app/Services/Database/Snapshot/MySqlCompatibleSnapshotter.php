@@ -70,8 +70,8 @@ abstract readonly class MySqlCompatibleSnapshotter implements DatabaseSnapshotte
 
         try {
             $dumper->dumpToFile($destination);
-        } catch (Throwable) {
-            throw new RuntimeException("The {$this->expectedProduct()} database snapshot could not be created.");
+        } catch (Throwable $exception) {
+            throw new RuntimeException($exception->getMessage(), previous: $exception);
         }
 
         if (! is_file($destination) || filesize($destination) === 0) {

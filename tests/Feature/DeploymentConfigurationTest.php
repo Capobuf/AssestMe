@@ -219,6 +219,8 @@ it('records the superseded installation history and approved Docker and hosted p
         'AGENTS.md',
         'docs/cloudpanel-acceptance-checklist.md',
         'docs/cloudpanel-installation.md',
+        'docs/cpanel-installation.md',
+        'docs/hosting-installation.md',
         'plan.md',
     ]);
     expect(base_path('scripts/cloudpanel'))->not->toBeDirectory();

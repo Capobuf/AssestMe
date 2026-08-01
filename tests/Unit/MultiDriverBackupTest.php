@@ -18,6 +18,7 @@ use Illuminate\Database\Schema\Builder;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Mockery\MockInterface;
 use Tests\TestCase;
 
@@ -42,21 +43,25 @@ for argument in "$@"; do
 done
 
 if [ -z "$credentials" ] || [ ! -f "$credentials" ]; then
+    printf '%s\n' 'tablespace access denied without PROCESS' >&2
     exit 3
 fi
 
 if [ -n "${DB_PASSWORD+x}" ] || [ -n "${MYSQL_PWD+x}" ]; then
+    printf '%s\n' 'tablespace access denied without PROCESS' >&2
     exit 4
 fi
 
 case "$0" in
     *mysqldump)
         if [ -z "$MYSQL_TEST_LOGIN_FILE" ] || [ -e "$MYSQL_TEST_LOGIN_FILE" ]; then
+            printf '%s\n' 'tablespace access denied without PROCESS' >&2
             exit 5
         fi
         ;;
     *mariadb-dump)
         if [ -n "${MYSQL_TEST_LOGIN_FILE+x}" ]; then
+            printf '%s\n' 'tablespace access denied without PROCESS' >&2
             exit 6
         fi
         ;;
@@ -67,7 +72,7 @@ stat -c '%a' "$credentials" > "$ASSESTME_TEST_CREDENTIAL_MODE"
 cp "$credentials" "$ASSESTME_TEST_CREDENTIAL_COPY"
 
 if [ "$ASSESTME_TEST_DUMP_FAIL" = "1" ]; then
-    printf '%s\n' "$ASSESTME_TEST_DUMP_SECRET" >&2
+    printf '%s\n' 'tablespace access denied without PROCESS' >&2
     exit 7
 fi
 
@@ -385,6 +390,7 @@ CREDENTIAL;
         ->and($arguments)->toContain('--quick')
         ->and($arguments)->toContain('--skip-lock-tables')
         ->and($arguments)->toContain('--skip-add-locks')
+        ->and($arguments)->toContain('--no-tablespaces')
         ->and($arguments)->toContain('--default-character-set=utf8mb4')
         ->and($arguments)->toContain('--set-gtid-purged=OFF')
         ->and($arguments)->not->toContain('--no-login-paths')
@@ -417,10 +423,11 @@ it('uses the distinct MariaDB binary and preserves a configured Unix socket', fu
     expect($snapshot->driver)->toBe('mariadb')
         ->and($snapshot->product)->toBe('MariaDB')
         ->and(File::get($this->captureCredentialCopy))->toContain('socket="/run/mysqld/mysqld.sock"')
-        ->and(File::get($this->captureCredentialCopy))->not->toContain("\nhost=");
+        ->and(File::get($this->captureCredentialCopy))->not->toContain("\nhost=")
+        ->and(file($this->captureArguments, FILE_IGNORE_NEW_LINES))->not->toContain('--no-tablespaces');
 });
 
-it('does not expose a database password or process stderr when a dump fails', function (): void {
+it('preserves sanitized dump stderr and removes partial credentials and output when a dump fails', function (): void {
     $binary = assestMeCreateFakeDumpBinary(
         $this->backupWorkspace.DIRECTORY_SEPARATOR.'bin',
         'mysqldump',
@@ -428,7 +435,7 @@ it('does not expose a database password or process stderr when a dump fails', fu
     );
     config()->set('assestme.backup.dump_binary', $binary);
     $password = 'never expose # $ password';
-    $stderrSecret = 'stderr must remain private';
+    $stderrSecret = 'tablespace access denied without PROCESS';
     putenv('ASSESTME_TEST_DUMP_FAIL=1');
     putenv("ASSESTME_TEST_DUMP_SECRET={$stderrSecret}");
     $_ENV['ASSESTME_TEST_DUMP_FAIL'] = '1';
@@ -442,17 +449,62 @@ it('does not expose a database password or process stderr when a dump fails', fu
         password: $password,
     );
     $snapshotter = app(MySqlSnapshotter::class);
+    Log::spy();
 
     try {
         $snapshotter->createSnapshot($connection, $this->stage);
         $this->fail('The failed database dump unexpectedly succeeded.');
     } catch (RuntimeException $exception) {
-        expect($exception->getMessage())->toBe('The MySQL database snapshot could not be created.')
+        expect($exception->getMessage())->toContain('Backup MySQL non riuscito:')
             ->and($exception->getMessage())->not->toContain($password)
-            ->and($exception->getMessage())->not->toContain($stderrSecret)
+            ->and($exception->getMessage())->toContain($stderrSecret)
             ->and(File::glob($this->stage.DIRECTORY_SEPARATOR.'database/.assestme-db-credentials-*'))->toBeEmpty()
             ->and(File::exists($this->stage.DIRECTORY_SEPARATOR.'database/database.sql'))->toBeFalse();
+
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->with('Database dump failed.', Mockery::on(
+                static fn (array $context): bool => $context['exit_code'] === 7
+                    && $context['message'] === $stderrSecret
+                    && ! str_contains($context['message'], $password),
+            ));
     }
+});
+
+it('accepts Percona mysqldump output as a MySQL client', function (): void {
+    $directory = $this->backupWorkspace.DIRECTORY_SEPARATOR.'percona-bin';
+    $dump = assestMeCreateFakeDumpBinary(
+        $directory,
+        'mysqldump',
+        "mysqldump Ver 8.0.36-28 for Linux on x86_64\n(Percona Server (GPL))",
+    );
+    $resolver = new DatabaseClientBinaryResolver(
+        new DatabaseDumpBinaryValidator,
+        new DatabaseRestoreBinaryValidator,
+        [$directory],
+    );
+
+    expect($resolver->resolveDump('mysql'))->toBe((string) realpath($dump));
+});
+
+it('accepts MariaDB legacy dump and restore aliases only after the MariaDB version probe', function (): void {
+    $directory = $this->backupWorkspace.DIRECTORY_SEPARATOR.'mariadb-aliases';
+    $dump = assestMeCreateFakeDumpBinary(
+        $directory,
+        'mysqldump',
+        'mysqldump Ver 10.19 Distrib 10.11.8-MariaDB',
+    );
+    $restore = $directory.DIRECTORY_SEPARATOR.'mysql';
+    File::put($restore, "#!/bin/sh\nprintf '%s\\n' 'mysql Ver 15.1 Distrib 10.11.8-MariaDB'\n");
+    chmod($restore, 0700);
+    $resolver = new DatabaseClientBinaryResolver(
+        new DatabaseDumpBinaryValidator,
+        new DatabaseRestoreBinaryValidator,
+        [$directory],
+    );
+
+    expect($resolver->resolveDump('mariadb'))->toBe((string) realpath($dump))
+        ->and($resolver->resolveRestore('mariadb'))->toBe((string) realpath($restore));
 });
 
 it('rejects a leading-dash database name before starting the dump process', function (): void {

@@ -1,0 +1,28 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
+
+define('LARAVEL_START', microtime(true));
+
+$appRoot = '/absolute/path/to/assestme';
+
+if (! str_starts_with($appRoot, DIRECTORY_SEPARATOR)
+    || ! is_file($appRoot.'/vendor/autoload.php')
+    || ! is_file($appRoot.'/bootstrap/app.php')) {
+    http_response_code(500);
+    exit('AssestMe application root is not configured correctly.');
+}
+
+if (file_exists($maintenance = $appRoot.'/storage/framework/maintenance.php')) {
+    require $maintenance;
+}
+
+require $appRoot.'/vendor/autoload.php';
+
+/** @var Application $app */
+$app = require_once $appRoot.'/bootstrap/app.php';
+$app->usePublicPath(__DIR__);
+$app->handleRequest(Request::capture());

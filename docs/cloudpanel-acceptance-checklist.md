@@ -19,7 +19,7 @@ Compilare questa scheda su una vera istanza. Conservare il risultato con i rifer
 
 ## Installazione
 
-- [ ] Archivio `.sha256` verificato.
+- [ ] Manifest interno `RELEASE-MANIFEST.sha256` verificato.
 - [ ] Archivio estratto senza `.env` e con `vendor/autoload.php`.
 - [ ] Ownership del site user verificata; nessun `0777` ricorsivo.
 - [ ] HTTPS operativo prima dell'inserimento di credenziali.
@@ -53,6 +53,7 @@ Compilare questa scheda su una vera istanza. Conservare il risultato con i rifer
 - [ ] SQLite: backup AssestMe reale creato e manifest verificato.
 - [ ] MySQL/MariaDB con dump client: backup reale creato e manifest verificato.
 - [ ] MySQL/MariaDB senza dump client: installer completato con `backup` e `backup_verification` pending e istruzione operativa visibile.
+- [ ] MySQL/MariaDB con dump fallito: installer completato con controlli pending e dettaglio sanitizzato visibile.
 - [ ] Dopo l'installazione del client, AssestMe lo rileva senza rieseguire il setup.
 - [ ] Restore provato in maintenance su ambiente sacrificabile.
 - [ ] Per server database, safety backup e risultato compensazione annotati.

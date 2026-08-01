@@ -17,15 +17,15 @@ final readonly class DatabaseClientBinaryResolver
 
     public function resolveDump(string $driver): ?string
     {
-        $name = match ($driver) {
-            'mysql' => 'mysqldump',
-            'mariadb' => 'mariadb-dump',
+        $names = match ($driver) {
+            'mysql' => ['mysqldump'],
+            'mariadb' => ['mariadb-dump', 'mysqldump'],
             default => throw new RuntimeException("Database dump binaries are unsupported for driver {$driver}."),
         };
 
         return $this->resolve(
             $driver,
-            $name,
+            $names,
             'assestme.backup.dump_binary',
             $this->dumpBinaryValidator->validate(...),
         );
@@ -33,24 +33,27 @@ final readonly class DatabaseClientBinaryResolver
 
     public function resolveRestore(string $driver): ?string
     {
-        $name = match ($driver) {
-            'mysql' => 'mysql',
-            'mariadb' => 'mariadb',
+        $names = match ($driver) {
+            'mysql' => ['mysql'],
+            'mariadb' => ['mariadb', 'mysql'],
             default => throw new RuntimeException("Database restore binaries are unsupported for driver {$driver}."),
         };
 
         return $this->resolve(
             $driver,
-            $name,
+            $names,
             'assestme.backup.restore_binary',
             $this->restoreBinaryValidator->validate(...),
         );
     }
 
-    /** @param callable(string, string): string $validator */
+    /**
+     * @param  list<string>  $names
+     * @param  callable(string, string): string  $validator
+     */
     private function resolve(
         string $driver,
-        string $name,
+        array $names,
         string $overrideKey,
         callable $validator,
     ): ?string {
@@ -59,7 +62,9 @@ final readonly class DatabaseClientBinaryResolver
             ? [trim($override)]
             : [];
         foreach ($this->candidateDirectories() as $directory) {
-            $candidates[] = rtrim($directory, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.$name;
+            foreach ($names as $name) {
+                $candidates[] = rtrim($directory, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR.$name;
+            }
         }
 
         foreach (array_values(array_unique($candidates)) as $candidate) {

@@ -133,6 +133,13 @@ it('returns structured passing results after real runtime filesystem CLI and PDF
         expect($this->runtimeInspectorRoot.DIRECTORY_SEPARATOR.$relativeDirectory)->toBeDirectory();
     }
 
+    foreach (['storage/app/private', 'storage/framework/installer'] as $relativeDirectory) {
+        $permissions = fileperms($this->runtimeInspectorRoot.DIRECTORY_SEPARATOR.$relativeDirectory);
+
+        expect($permissions)->not->toBeFalse()
+            ->and($permissions & 0777)->toBe(0700);
+    }
+
     expect(File::glob(
         $this->runtimeInspectorRoot.DIRECTORY_SEPARATOR.'storage/framework/installer/weasyprint-probe-*',
     ))->toBe([]);
@@ -201,6 +208,27 @@ it('tries standard PHP CLI candidates after an invalid advanced override', funct
     expect($result->phpBinary)->toBe(realpath($php))
         ->and($result->requirement('runtime.php_cli')?->passed)->toBeTrue();
 });
+
+it('accepts CLI probes from cPanel and Plesk candidate-equivalent paths', function (string $relativePath): void {
+    $php = installationRuntimeFakePhp($this->runtimeInspectorRoot, '8.3.21');
+    $candidate = $this->runtimeInspectorRoot.DIRECTORY_SEPARATOR.$relativePath;
+    File::ensureDirectoryExists(dirname($candidate), 0700, true);
+    File::move($php, $candidate);
+    chmod($candidate, 0700);
+    $weasyPrint = installationRuntimeFakeWeasyPrint($this->runtimeInspectorRoot);
+    $inspector = new InstallationRuntimeInspector(
+        phpCandidatePaths: [$candidate],
+        weasyPrintCandidatePaths: [$weasyPrint],
+    );
+
+    $result = $inspector->inspect($this->runtimeInspectorRoot);
+
+    expect($result->phpBinary)->toBe((string) realpath($candidate))
+        ->and($result->requirement('runtime.php_cli')?->passed)->toBeTrue();
+})->with([
+    'cPanel EA PHP' => ['usr/local/bin/ea-php83'],
+    'Plesk PHP' => ['opt/plesk/php/8.3/bin/php'],
+]);
 
 it('reports that mandatory WeasyPrint was not detected after all candidates fail', function (): void {
     $inspector = new InstallationRuntimeInspector(

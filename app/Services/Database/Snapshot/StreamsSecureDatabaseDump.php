@@ -6,6 +6,7 @@ namespace App\Services\Database\Snapshot;
 
 use App\Services\Database\DatabaseClientOptionFile;
 use App\Services\Database\DatabaseClientProcessEnvironment;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Symfony\Component\Process\Process;
 use Throwable;
@@ -43,6 +44,9 @@ trait StreamsSecureDatabaseDump
         $outputHandle = false;
         $outputCreated = false;
         $dumpFailed = false;
+        $failureDetail = null;
+        $failurePhase = 'preparing_output';
+        $exitCode = null;
 
         try {
             $outputHandle = fopen($dumpFile, 'xb');
@@ -57,6 +61,7 @@ trait StreamsSecureDatabaseDump
                 throw new RuntimeException('Database dump output permissions could not be restricted.');
             }
 
+            $failurePhase = 'starting_process';
             $process = new Process(
                 $this->dumpCommand($credentialsPath),
                 env: (new DatabaseClientProcessEnvironment)->forDriver(
@@ -67,20 +72,42 @@ trait StreamsSecureDatabaseDump
             );
             $process->start();
 
+            $failurePhase = 'streaming_output';
+            $processErrorOutput = '';
             foreach ($process as $type => $contents) {
                 if ($type === Process::OUT) {
                     $this->writeAll($outputHandle, $contents);
+                } elseif (strlen($processErrorOutput) < 4096) {
+                    $processErrorOutput .= substr($contents, 0, 4096 - strlen($processErrorOutput));
                 }
             }
 
-            if (! $process->isSuccessful() || ! fflush($outputHandle)) {
-                throw new RuntimeException('Database dump process failed.');
+            $exitCode = $process->getExitCode();
+
+            if (! $process->isSuccessful()) {
+                $failurePhase = 'process_exit';
+                $failureDetail = trim($processErrorOutput);
+
+                if ($failureDetail === '') {
+                    $failureDetail = 'Database dump process failed.';
+                }
+
+                throw new RuntimeException($failureDetail);
             }
-        } catch (Throwable) {
+
+            if (! fflush($outputHandle)) {
+                $failurePhase = 'flushing_output';
+
+                throw new RuntimeException('Database dump output could not be flushed.');
+            }
+        } catch (Throwable $exception) {
             $dumpFailed = true;
+            $failureDetail ??= $exception->getMessage();
         } finally {
             if (is_resource($outputHandle) && ! fclose($outputHandle)) {
                 $dumpFailed = true;
+                $failurePhase = 'closing_output';
+                $failureDetail ??= 'Database dump output could not be closed.';
             }
         }
 
@@ -95,7 +122,22 @@ trait StreamsSecureDatabaseDump
                 unlink($dumpFile);
             }
 
-            throw new RuntimeException('Database dump could not be created securely.');
+            $failureDetail ??= $credentialsCleanupFailed
+                ? 'Temporary database credentials could not be removed securely.'
+                : 'Database dump could not be created securely.';
+            $failureDetail = $this->sanitizeFailureDetail($failureDetail, $credentialsPath);
+
+            Log::warning('Database dump failed.', [
+                'driver' => $this->databaseClientDriver(),
+                'client_type' => $this->databaseClientDriver(),
+                'exit_code' => $exitCode,
+                'phase' => $failurePhase,
+                'message' => $failureDetail,
+            ]);
+
+            $product = $this->databaseClientDriver() === 'mariadb' ? 'MariaDB' : 'MySQL';
+
+            throw new RuntimeException("Backup {$product} non riuscito: {$failureDetail}");
         }
     }
 
@@ -159,6 +201,10 @@ trait StreamsSecureDatabaseDump
             $command[] = "--ignore-table-data={$this->dbName}.{$tableName}";
         }
 
+        if ($this->databaseClientDriver() === 'mysql') {
+            $command[] = '--no-tablespaces';
+        }
+
         if ($this->defaultCharacterSet !== '') {
             $command[] = "--default-character-set={$this->defaultCharacterSet}";
         }
@@ -203,6 +249,21 @@ trait StreamsSecureDatabaseDump
 
             $contents = substr($contents, $written);
         }
+    }
+
+    private function sanitizeFailureDetail(string $failureDetail, string $credentialsPath): string
+    {
+        $sanitized = str_replace($credentialsPath, '[temporary credentials file]', $failureDetail);
+
+        if ($this->password !== '') {
+            $sanitized = str_replace($this->password, '[redacted]', $sanitized);
+        }
+
+        $sanitized = preg_replace('/--defaults-file=\S+/', '--defaults-file=[temporary credentials file]', $sanitized) ?? $sanitized;
+        $sanitized = preg_replace('/(--password(?:=|\s+)|\bpassword\s*[:=]\s*)\S+/i', '$1[redacted]', $sanitized) ?? $sanitized;
+        $sanitized = preg_replace('/\s+/', ' ', $sanitized) ?? $sanitized;
+
+        return mb_substr(trim($sanitized), 0, 500);
     }
 
     /** @return list<string> */

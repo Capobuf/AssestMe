@@ -112,7 +112,15 @@ final readonly class FinalizeInstallation
         $result = $this->finalCheck->run($application, $database);
 
         if (! $result->passed()) {
-            throw new RuntimeException('One or more final installation checks failed.');
+            $failedLabels = array_map(
+                static fn (array $check): string => $check['label'],
+                array_filter(
+                    $result->checks,
+                    static fn (array $check): bool => $check['status'] === 'failed',
+                ),
+            );
+
+            throw new RuntimeException('Controlli finali non superati: '.implode('; ', $failedLabels).'.');
         }
 
         $this->environmentWriter->activatePending($application, $database, $applicationKey);

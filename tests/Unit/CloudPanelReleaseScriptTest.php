@@ -19,6 +19,7 @@ it('defines a production-only self-contained CloudPanel archive build', function
         ->toContain("--exclude='vendor/'")
         ->toContain('RELEASE-MANIFEST.sha256')
         ->toContain('vendor/autoload.php')
+        ->toContain('deploy/shared-hosting/index.php.dist')
         ->toContain('assestme-${release_version}.zip')
         ->not->toContain($legacyArchiveSuffix)
         ->not->toContain($externalChecksumSuffix)
