@@ -76,18 +76,26 @@ jobs:
           - name: mysql-8.0.46
             driver: mysql
             image: mysql:8.0.46
+            client_package: default-mysql-client
+            health_cmd: mysqladmin ping --host=127.0.0.1 --password=assestme-ci-database
             full_suite: false
           - name: mysql-8.4.11
             driver: mysql
             image: mysql:8.4.11
+            client_package: default-mysql-client
+            health_cmd: mysqladmin ping --host=127.0.0.1 --password=assestme-ci-database
             full_suite: true
           - name: mariadb-11.8.6
             driver: mariadb
             image: mariadb:11.8.6
+            client_package: mariadb-client
+            health_cmd: healthcheck.sh --connect --innodb_initialized
             full_suite: false
           - name: mariadb-12.3.2
             driver: mariadb
             image: mariadb:12.3.2
+            client_package: mariadb-client
+            health_cmd: healthcheck.sh --connect --innodb_initialized
             full_suite: true
     name: Database / ${{ matrix.name }}
     env:
@@ -112,7 +120,7 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping --host=127.0.0.1 --password=assestme-ci-database"
+          --health-cmd="${{ matrix.health_cmd }}"
           --health-interval=5s
           --health-timeout=5s
           --health-retries=30
@@ -130,7 +138,7 @@ jobs:
           tools: composer:v2
 
       - name: Install database clients and WeasyPrint
-        run: sudo apt-get update && sudo apt-get install --yes default-mysql-client mariadb-client weasyprint
+        run: sudo apt-get update && sudo apt-get install --yes "${{ matrix.client_package }}" weasyprint
 
       - name: Install locked dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -152,8 +160,13 @@ jobs:
           tests/Feature/WorkspacePageTest.php
           tests/Feature/FindingTemplateImportExportTest.php
 
-      - name: Run driver-aware integrity and diagnostics
-        run: php artisan test tests/Unit/DatabaseIntegrityCheckTest.php tests/Feature/DiagnoseCommandTest.php
+      - name: Run driver-aware integrity regressions
+        run: php artisan test tests/Unit/DatabaseIntegrityCheckTest.php
+
+      - name: Run SQLite diagnostic regressions
+        env:
+          ASSESTME_TEST_DB_DRIVER: sqlite
+        run: php artisan test tests/Feature/DiagnoseCommandTest.php
 
       - name: Select product-authentic dump and restore clients
         run: |
@@ -200,6 +213,13 @@ jobs:
 
       - name: Install release build and runtime tools
         run: sudo apt-get update && sudo apt-get install --yes rsync unzip weasyprint
+
+      - name: Resolve runtime binaries
+        run: |
+          weasyprint_binary="$(command -v weasyprint)"
+          test -n "$weasyprint_binary"
+          test -x "$weasyprint_binary"
+          echo "LARAVEL_PDF_WEASYPRINT_BINARY=$weasyprint_binary" >> "$GITHUB_ENV"
 
       - name: Install locked development dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
@@ -270,6 +290,8 @@ jobs:
       APP_FALLBACK_LOCALE: it
       APP_LOCALE: it
       APP_TIMEZONE: Europe/Rome
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ${{ github.workspace }}/database/database.sqlite
       DEV_ADMIN_NAME: CI Administrator
       DEV_ADMIN_EMAIL: admin@assestme.local
       DEV_ADMIN_PASSWORD: CI-Only!AssestMe-2026

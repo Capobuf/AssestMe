@@ -38,6 +38,12 @@ mkdir -p \
     storage/logs
 [[ -f database/database.sqlite ]] || install -m 660 /dev/null database/database.sqlite
 
+if ! grep -Eq '^APP_KEY=base64:.+' .env; then
+    application_key="$(php -r 'echo "base64:".base64_encode(random_bytes(32));')"
+    sed -i "s|^APP_KEY=.*$|APP_KEY=${application_key}|" .env
+    grep -Fqx "APP_KEY=${application_key}" .env || fail "APP_KEY could not be written to .env."
+fi
+
 composer_lock_hash="$(sha256sum composer.lock | cut -d ' ' -f 1)"
 composer_marker="vendor/.assestme-composer-lock.sha256"
 installed_lock_hash=""
@@ -50,10 +56,6 @@ if [[ ! -f vendor/autoload.php || "$installed_lock_hash" != "$composer_lock_hash
     printf '%s\n' "$composer_lock_hash" > "$composer_marker"
 else
     info "Composer dependencies already match composer.lock."
-fi
-
-if ! grep -Eq '^APP_KEY=base64:.+' .env; then
-    php artisan key:generate --force
 fi
 
 php artisan optimize:clear

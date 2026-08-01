@@ -16,12 +16,21 @@ use Database\Seeders\MilestoneOneSeeder;
 use Database\Seeders\MilestoneTwoSeeder;
 use Illuminate\Support\Facades\Storage;
 use Smalot\PdfParser\Parser;
+use Symfony\Component\Process\Process;
 
 beforeEach(function (): void {
     $this->seed(MilestoneOneSeeder::class);
     $this->seed(MilestoneTwoSeeder::class);
     Storage::fake('local');
 });
+
+function editorialEvidencePdfUrlAnnotations(string $path): string
+{
+    $process = new Process(['pdfinfo', '-url', $path]);
+    $process->mustRun();
+
+    return $process->getOutput();
+}
 
 it('preserves mixed evidence order image proportions captions and the immutable snapshot', function (): void {
     [$assessment, $finding] = editorialEvidencePdfReadyAssessment();
@@ -124,6 +133,7 @@ it('preserves mixed evidence order image proportions captions and the immutable 
     $withCaptions = app(GenerateAssessmentPdf::class)($assessment->fresh());
     $withCaptionsPath = Storage::disk('local')->path($withCaptions->file_path);
     $withCaptionsContents = file_get_contents($withCaptionsPath);
+    $withCaptionsUrls = editorialEvidencePdfUrlAnnotations($withCaptionsPath);
     $parsed = (new Parser)->parseFile($withCaptionsPath);
     $normalizedText = editorialEvidencePdfNormalize($parsed->getText());
 
@@ -145,7 +155,8 @@ it('preserves mixed evidence order image proportions captions and the immutable 
             $documentPath,
             $horizontalPath,
         )
-        ->and($withCaptionsContents)->toContain('https://example.test/editorial-evidence')
+        ->and($withCaptionsUrls)->toContain('https://example.test/editorial-evidence')
+        ->and($withCaptionsUrls)->not->toContain('https://example.test/excluded-evidence')
         ->and($withCaptionsContents)->not->toContain($verticalPath, $documentPath, $horizontalPath);
 
     $orderedTokens = [

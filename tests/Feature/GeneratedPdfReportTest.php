@@ -40,6 +40,14 @@ beforeEach(function (): void {
     Storage::fake('local');
 });
 
+function generatedPdfReportUrlAnnotations(string $path): string
+{
+    $process = new Process(['pdfinfo', '-url', $path]);
+    $process->mustRun();
+
+    return $process->getOutput();
+}
+
 it('uses WeasyPrint as the only installed production PDF renderer', function (): void {
     $composer = json_decode((string) file_get_contents(base_path('composer.json')), true, 512, JSON_THROW_ON_ERROR);
     $lockedPackages = json_decode((string) file_get_contents(base_path('composer.lock')), true, 512, JSON_THROW_ON_ERROR);
@@ -547,7 +555,7 @@ it('renders verified evidence, links, alternatives, branding, scope, and resolut
     $text = (new Parser)->parseFile($path)->getText();
     $pageTexts = collect((new Parser)->parseFile($path)->getPages())
         ->map(static fn ($page): string => $page->getText());
-    $rawPdf = file_get_contents($path);
+    $urlAnnotations = generatedPdfReportUrlAnnotations($path);
 
     expect($report->payload_snapshot['logos'])->toHaveCount(2)
         ->and($report->payload_snapshot['assessment']['sites'])->toBe(['Sede operativa Milano'])
@@ -565,7 +573,7 @@ it('renders verified evidence, links, alternatives, branding, scope, and resolut
         )
         ->and($pageTexts->contains(static fn (string $page): bool => str_contains($page, 'Evidenze')
             && str_contains($page, 'Didascalia immagine verificata')))->toBeTrue()
-        ->and($rawPdf)->toContain('https://example.test/security');
+        ->and($urlAnnotations)->toContain('https://example.test/security');
 });
 
 it('rejects invalid and oversized report logos before creating a report', function (string $contents, string $message): void {

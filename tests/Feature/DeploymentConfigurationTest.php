@@ -165,6 +165,8 @@ it('configures the Docker PHP runtime and idempotent bootstrap contract', functi
     expect($bootstrap)
         ->toContain('[[ ! -f vendor/autoload.php || "$installed_lock_hash" != "$composer_lock_hash" ]]')
         ->toContain('[[ -f database/database.sqlite ]] || install -m 660 /dev/null database/database.sqlite')
+        ->toContain('base64_encode(random_bytes(32))')
+        ->toContain('grep -Fqx "APP_KEY=${application_key}" .env')
         ->toContain('App\\Models\\User::query()->exists()')
         ->toContain('php artisan assestme:create-admin \\')
         ->toContain('--from-env')
