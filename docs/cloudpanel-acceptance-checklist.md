@@ -31,6 +31,7 @@ Compilare questa scheda su una vera istanza. Conservare il risultato con i rifer
 - [ ] PDF minimo WeasyPrint rilevato automaticamente e superato.
 - [ ] PHP CLI 8.3 o superiore rilevato automaticamente e validato.
 - [ ] Il wizard non richiede nome applicazione né percorsi PHP, WeasyPrint, dump o restore; `APP_NAME` è `AssestMe`.
+- [ ] Il wizard mostra soltanto SQLite e MySQL / MariaDB; per un database server il prodotto viene rilevato automaticamente tramite PDO.
 - [ ] Estensione `pdo_sqlite` oppure `pdo_mysql` coerente rilevata.
 - [ ] Probe database completo e cleanup superati.
 - [ ] Probe MySQL/MariaDB completato tramite PDO senza eseguire client dump/restore.

@@ -4,7 +4,7 @@ Questa procedura usa l'archivio di release `assestme-<versione>.zip`: contiene g
 
 ## Prima di iniziare
 
-Preparare un dominio dedicato e scegliere uno dei database supportati per una nuova installazione: SQLite, MySQL oppure MariaDB. L'installer non converte e non importa database AssestMe esistenti.
+Preparare un dominio dedicato e scegliere uno dei database supportati per una nuova installazione: SQLite oppure MySQL / MariaDB. Per un database server, AssestMe stabilisce la connessione tramite PDO e rileva automaticamente se il prodotto è MySQL o MariaDB. L'installer non converte e non importa database AssestMe esistenti.
 
 L'installer crea il primo e unico amministratore. Prima di rendere raggiungibile il dominio, abilitare obbligatoriamente in CloudPanel la **Basic Authentication** del sito oppure una restrizione temporanea per il proprio indirizzo IP. CSRF, rate limiting e lock dell'applicazione sono protezioni aggiuntive, non sostituiscono questo controllo perimetrale.
 
@@ -71,7 +71,7 @@ Su alcune distribuzioni `default-mysql-client` installa in realtà client MariaD
 2. Controllare dominio e versione nella schermata iniziale e confermare che il database sia nuovo.
 3. Superare i controlli reali su PHP 8.3 o superiore, estensioni, directory, PHP CLI rilevato automaticamente e generazione PDF WeasyPrint.
 4. Inserire URL HTTPS, timezone `Europe/Rome`, locale `it` e directory backup. Il nome applicazione resta sempre `AssestMe`; il wizard non chiede percorsi di binari.
-5. Scegliere separatamente SQLite, MySQL o MariaDB. Per SQLite usare il percorso proposto sotto `storage/app/database`, fuori da `public`. Per un server database inserire i dati creati in CloudPanel e, se necessario, il socket Unix.
+5. Scegliere SQLite oppure MySQL / MariaDB. Per SQLite usare il percorso proposto sotto `storage/app/database`, fuori da `public`. Per un server database inserire i dati creati in CloudPanel e, se necessario, il socket Unix; AssestMe stabilisce la connessione tramite PDO e rileva automaticamente se il prodotto è MySQL o MariaDB.
 6. Eseguire il test database. AssestMe verifica identità del prodotto, versione, charset, InnoDB, privilegi, schema, vincoli, transazioni e cleanup delle tabelle casuali di probe. Un database non vuoto o appartenente a un'altra applicazione viene bloccato senza offrire cancellazioni.
 7. Creare l'unico amministratore con una password di 14–128 caratteri contenente maiuscole, minuscole, numeri e simboli.
 8. Avviare la finalizzazione una sola volta. Il processo ripetibile esegue migration normali, seeder idempotenti, creazione amministratore, PDF e health check. SQLite esegue sempre il backup reale finale. Per MySQL/MariaDB, se il dump client è disponibile esegue e verifica il backup; se manca, i due controlli restano `pending` e l'installazione può completarsi. Un backup tentato ma fallito resta invece bloccante. Non usa `migrate:fresh`.

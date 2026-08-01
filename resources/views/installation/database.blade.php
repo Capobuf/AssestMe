@@ -2,12 +2,12 @@
 
 @section('content')
     <p class="installer-eyebrow">Verifica capacità</p>
-    <h1>Configura {{ $database->driver->label() }}</h1>
-    <p>La verifica crea due tabelle casuali di probe, prova schema, vincoli, CRUD e rollback, quindi le elimina sempre. Un database non vuoto non verrà cancellato.</p>
+    <h1>Configura {{ $database->driver === \App\Enums\SupportedDatabaseDriver::Sqlite ? 'SQLite' : 'MySQL / MariaDB' }}</h1>
+    <p>La verifica crea due tabelle casuali di probe, prova schema, vincoli, CRUD e rollback, quindi le elimina sempre. AssestMe rileverà automaticamente se il server è MySQL o MariaDB. Un database non vuoto non verrà cancellato.</p>
 
     <form method="post" action="{{ route('installation.database.store') }}" class="installer-form" data-database-form>
         @csrf
-        <input type="hidden" name="database_driver" value="{{ $database->driver->value }}">
+        <input type="hidden" name="database_driver" value="{{ $database->driver->value === 'sqlite' ? 'sqlite' : 'mysql' }}">
 
         @if ($database->driver->value === 'sqlite')
             <label>Percorso file SQLite assoluto
@@ -32,6 +32,9 @@
             </div>
         @endif
 
-        <button class="installer-button" type="submit">Testa realmente il database</button>
+        <div class="installer-actions">
+            <a class="installer-button installer-button-secondary" href="{{ route('installation.configuration') }}">Indietro</a>
+            <button class="installer-button" type="submit">Testa realmente il database</button>
+        </div>
     </form>
 @endsection

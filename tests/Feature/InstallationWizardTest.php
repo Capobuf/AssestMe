@@ -44,8 +44,8 @@ it('exposes only the protected installer flow before the definitive lock', funct
         ->assertOk()
         ->assertSee('Basic Authentication')
         ->assertSee('SQLite')
-        ->assertSee('MySQL')
-        ->assertSee('MariaDB');
+        ->assertSee('MySQL / MariaDB')
+        ->assertDontSee('scelte separate');
 
     $this->get('/')->assertRedirect('/install');
     $this->get('/admin')->assertRedirect('/install');
@@ -123,7 +123,13 @@ it('omits binary and application name fields and ignores a submitted application
         ->assertOk()
         ->assertDontSee('name="application_name"', false)
         ->assertDontSee('name="weasyprint_binary"', false)
-        ->assertDontSee('name="php_binary"', false);
+        ->assertDontSee('name="php_binary"', false)
+        ->assertSee('value="sqlite"', false)
+        ->assertSee('value="mysql"', false)
+        ->assertDontSee('value="mariadb"', false)
+        ->assertSee('SQLite')
+        ->assertSee('MySQL / MariaDB')
+        ->assertSee('href="'.route('installation.runtime').'"', false);
 
     $response = $this->post('/install/configuration', [
         'application_name' => 'Nome manipolato',
@@ -144,7 +150,110 @@ it('omits binary and application name fields and ignores a submitted application
     $this->get('/install/database')
         ->assertOk()
         ->assertDontSee('name="dump_binary"', false)
-        ->assertDontSee('name="restore_binary"', false);
+        ->assertDontSee('name="restore_binary"', false)
+        ->assertSee('href="'.route('installation.configuration').'"', false);
+});
+
+it('keeps a detected MariaDB server configuration when returning to application settings', function (): void {
+    $state = app(InstallationState::class);
+    $progress = $state->progress();
+    $application = new ApplicationConfigurationData(
+        name: 'AssestMe',
+        url: rtrim(url('/'), '/'),
+        timezone: 'Europe/Rome',
+        locale: 'it',
+        backupRoot: storage_path('backups'),
+        weasyPrintBinary: '/usr/bin/weasyprint',
+        phpBinary: PHP_BINARY,
+    );
+    $database = new DatabaseConfigurationData(
+        driver: SupportedDatabaseDriver::MariaDb,
+        database: 'assestme_mariadb',
+        host: 'database.example.test',
+        port: 3307,
+        username: 'assestme_user',
+        password: 'Encrypted state password',
+    );
+    $state->save(new InstallationProgressData(
+        installationId: $progress->installationId,
+        step: 'configuration',
+        application: $application,
+        database: $database,
+    ));
+
+    $this->get('/install/configuration')
+        ->assertOk()
+        ->assertSee('value="mysql" checked', false)
+        ->assertDontSee('value="mariadb"', false)
+        ->assertSee($application->url)
+        ->assertSee($application->timezone)
+        ->assertSee($application->backupRoot);
+
+    $this->post('/install/configuration', [
+        'application_url' => $application->url,
+        'timezone' => $application->timezone,
+        'locale' => $application->locale,
+        'backup_root' => $application->backupRoot,
+        'database_driver' => 'mysql',
+    ])->assertRedirect('/install/database');
+
+    $saved = $state->progress()->database;
+    expect($saved?->driver)->toBe(SupportedDatabaseDriver::MariaDb)
+        ->and($saved?->host)->toBe($database->host)
+        ->and($saved?->port)->toBe($database->port)
+        ->and($saved?->database)->toBe($database->database)
+        ->and($saved?->username)->toBe($database->username);
+});
+
+it('renders the generic server database page and administrator back link', function (): void {
+    $state = app(InstallationState::class);
+    $progress = $state->progress();
+    $application = new ApplicationConfigurationData(
+        name: 'AssestMe',
+        url: rtrim(url('/'), '/'),
+        timezone: 'Europe/Rome',
+        locale: 'it',
+        backupRoot: storage_path('backups'),
+        weasyPrintBinary: '/usr/bin/weasyprint',
+        phpBinary: PHP_BINARY,
+    );
+    $database = new DatabaseConfigurationData(
+        driver: SupportedDatabaseDriver::MariaDb,
+        database: 'assestme_mariadb',
+        host: 'database.example.test',
+        port: 3307,
+        username: 'assestme_user',
+        password: 'Encrypted state password',
+    );
+    $state->save(new InstallationProgressData(
+        installationId: $progress->installationId,
+        step: 'database',
+        application: $application,
+        database: $database,
+    ));
+
+    $this->get('/install/database')
+        ->assertOk()
+        ->assertSee('Configura MySQL / MariaDB')
+        ->assertSee('value="mysql"', false)
+        ->assertDontSee('value="mariadb"', false)
+        ->assertSee($database->host)
+        ->assertSee((string) $database->port)
+        ->assertSee($database->database)
+        ->assertSee($database->username)
+        ->assertDontSee($database->password)
+        ->assertSee('href="'.route('installation.configuration').'"', false);
+
+    $state->save(new InstallationProgressData(
+        installationId: $progress->installationId,
+        step: 'administrator',
+        application: $application,
+        database: $database,
+    ));
+
+    $this->get('/install/administrator')
+        ->assertOk()
+        ->assertSee('href="'.route('installation.database').'"', false);
 });
 
 it('renders complete manual CloudPanel and SSH scheduler instructions', function (): void {

@@ -28,7 +28,7 @@ final class DatabaseConfigurationRequest extends FormRequest
         };
 
         return [
-            'database_driver' => ['required', 'in:sqlite,mysql,mariadb'],
+            'database_driver' => ['required', 'in:sqlite,mysql'],
             'sqlite_path' => ['required_if:database_driver,sqlite', 'nullable', 'string', 'max:4096', $absolutePath],
             'database_host' => ['required_unless:database_driver,sqlite', 'nullable', 'string', 'max:253'],
             'database_port' => ['required_unless:database_driver,sqlite', 'nullable', 'integer', 'between:1,65535'],

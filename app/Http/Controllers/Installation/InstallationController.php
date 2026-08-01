@@ -124,10 +124,18 @@ final class InstallationController extends Controller
             return back()->withInput()->with('installation_error', $exception->getMessage());
         }
 
-        $driver = SupportedDatabaseDriver::from((string) $request->validated('database_driver'));
-        $database = $progress->database?->driver === $driver
-            ? $progress->database
-            : $this->defaultDatabaseConfiguration($driver);
+        $requestedDriver = SupportedDatabaseDriver::from((string) $request->validated('database_driver'));
+        $currentDatabase = $progress->database;
+        $sameDatabaseFamily = $currentDatabase !== null
+            && (
+                ($requestedDriver === SupportedDatabaseDriver::Sqlite
+                    && $currentDatabase->driver === SupportedDatabaseDriver::Sqlite)
+                || ($requestedDriver === SupportedDatabaseDriver::MySql
+                    && $currentDatabase->driver !== SupportedDatabaseDriver::Sqlite)
+            );
+        $database = $sameDatabaseFamily
+            ? $currentDatabase
+            : $this->defaultDatabaseConfiguration($requestedDriver);
 
         $this->installationState->save(new InstallationProgressData(
             installationId: $progress->installationId,
@@ -155,8 +163,16 @@ final class InstallationController extends Controller
         $progress = $this->installationState->progress();
         $database = $request->toData();
 
+        $sameDatabaseFamily = $progress->database !== null
+            && (
+                ($progress->database->driver === SupportedDatabaseDriver::Sqlite
+                    && $database->driver === SupportedDatabaseDriver::Sqlite)
+                || ($progress->database->driver !== SupportedDatabaseDriver::Sqlite
+                    && $database->driver !== SupportedDatabaseDriver::Sqlite)
+            );
+
         if ($database->password === ''
-            && $progress->database?->driver === $database->driver
+            && $sameDatabaseFamily
             && $progress->database->database === $database->database
             && $progress->database->host === $database->host
             && $progress->database->username === $database->username) {
@@ -175,6 +191,22 @@ final class InstallationController extends Controller
 
         try {
             $probe = $this->databaseCapabilityProbe->probe($database);
+
+            if ($database->driver !== SupportedDatabaseDriver::Sqlite
+                && $database->driver !== $probe->driver) {
+                $database = new DatabaseConfigurationData(
+                    driver: $probe->driver,
+                    database: $database->database,
+                    host: $database->host,
+                    port: $database->port,
+                    username: $database->username,
+                    password: $database->password,
+                    socket: $database->socket,
+                    charset: $database->charset,
+                    collation: $database->collation,
+                );
+            }
+
             $classification = $this->databaseClassifier->classify($database, $progress->installationId);
 
             if ($classification->status === InstallationDatabaseStatus::Foreign) {

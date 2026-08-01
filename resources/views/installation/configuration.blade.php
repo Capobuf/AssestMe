@@ -1,6 +1,13 @@
 @extends('installation.layout', ['title' => 'Configurazione', 'step' => 3])
 
 @section('content')
+    @php
+        $selectedDatabaseDriver = old(
+            'database_driver',
+            $database?->driver->value === 'sqlite' ? 'sqlite' : 'mysql',
+        );
+    @endphp
+
     <p class="installer-eyebrow">Configurazione applicazione</p>
     <h1>Impostazioni di produzione</h1>
 
@@ -23,10 +30,13 @@
         </label>
         <fieldset>
             <legend>Database nuovo</legend>
-            @foreach (['sqlite' => 'SQLite', 'mysql' => 'MySQL', 'mariadb' => 'MariaDB'] as $value => $label)
-                <label class="installer-choice"><input type="radio" name="database_driver" value="{{ $value }}" @checked(old('database_driver', $database?->driver->value ?? 'sqlite') === $value)> <span><strong>{{ $label }}</strong></span></label>
+            @foreach (['sqlite' => 'SQLite', 'mysql' => 'MySQL / MariaDB'] as $value => $label)
+                <label class="installer-choice"><input type="radio" name="database_driver" value="{{ $value }}" @checked($selectedDatabaseDriver === $value)> <span><strong>{{ $label }}</strong></span></label>
             @endforeach
         </fieldset>
-        <button class="installer-button" type="submit">Continua al database</button>
+        <div class="installer-actions">
+            <a class="installer-button installer-button-secondary" href="{{ route('installation.runtime') }}">Indietro</a>
+            <button class="installer-button" type="submit">Continua al database</button>
+        </div>
     </form>
 @endsection

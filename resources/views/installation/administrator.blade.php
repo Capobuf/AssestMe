@@ -12,6 +12,9 @@
         <label>Password<input name="password" required type="password" minlength="14" maxlength="128" autocomplete="new-password"></label>
         <label>Conferma password<input name="password_confirmation" required type="password" minlength="14" maxlength="128" autocomplete="new-password"></label>
         <small>Da 14 a 128 caratteri, con maiuscole, minuscole, numeri e simboli.</small>
-        <button class="installer-button" type="submit">Installa e chiudi l’installer</button>
+        <div class="installer-actions">
+            <a class="installer-button installer-button-secondary" href="{{ route('installation.database') }}">Indietro</a>
+            <button class="installer-button" type="submit">Installa e chiudi l’installer</button>
+        </div>
     </form>
 @endsection

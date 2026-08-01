@@ -97,7 +97,7 @@ final readonly class DatabaseCapabilityProbe
             );
 
             $result = new DatabaseCapabilityProbeResultData(
-                driver: $configuration->driver,
+                driver: $identity->driver,
                 product: $identity->product,
                 serverVersion: $identity->version,
                 charset: $charset,

@@ -32,7 +32,7 @@ final class ApplicationConfigurationRequest extends FormRequest
             'timezone' => ['required', 'timezone:all'],
             'locale' => ['required', 'in:it'],
             'backup_root' => ['required', 'string', 'max:4096', $absolutePath],
-            'database_driver' => ['required', 'in:sqlite,mysql,mariadb'],
+            'database_driver' => ['required', 'in:sqlite,mysql'],
         ];
     }
 

@@ -19,23 +19,9 @@ final class DatabaseServerProductRecognizer
         }
 
         $description = mb_strtolower(trim($version.' '.$versionComment));
-        $reportedDriver = match (true) {
-            str_contains($description, 'mariadb') => SupportedDatabaseDriver::MariaDb,
-            str_contains($description, 'mysql') => SupportedDatabaseDriver::MySql,
-            default => null,
-        };
-
-        if (! $reportedDriver instanceof SupportedDatabaseDriver) {
-            throw new DatabaseCapabilityProbeException(
-                'The database server could not be recognized as MySQL or MariaDB.',
-            );
-        }
-
-        if ($selectedDriver !== $reportedDriver) {
-            throw new DatabaseCapabilityProbeException(
-                "Selected {$selectedDriver->label()}, but the server reports {$reportedDriver->label()}.",
-            );
-        }
+        $reportedDriver = str_contains($description, 'mariadb')
+            ? SupportedDatabaseDriver::MariaDb
+            : SupportedDatabaseDriver::MySql;
 
         return new DatabaseServerIdentityData(
             driver: $reportedDriver,

@@ -24,7 +24,7 @@ it('executes the complete capability probe against the selected real test server
     }
 
     $probe = app(DatabaseCapabilityProbe::class)->probe(new DatabaseConfigurationData(
-        driver: $driver,
+        driver: SupportedDatabaseDriver::MySql,
         database: (string) ($configuration['database'] ?? ''),
         host: (string) ($configuration['host'] ?? ''),
         port: (int) ($configuration['port'] ?? 3306),

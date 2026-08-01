@@ -138,38 +138,29 @@ it('rejects unsafe SQLite paths before configuring the probe connection', functi
     }
 });
 
-it('recognizes MySQL and MariaDB independently and rejects product mismatches', function (): void {
+it('recognizes MySQL and MariaDB from the connected server identity', function (): void {
     $recognizer = app(DatabaseServerProductRecognizer::class);
     $mysql = $recognizer->recognize(
         SupportedDatabaseDriver::MySql,
-        'server-version',
-        'MySQL Community Server',
+        '8.4.7',
+        'Ubuntu',
     );
     $mariaDb = $recognizer->recognize(
+        SupportedDatabaseDriver::MySql,
+        '11.4.5-MariaDB-ubu2404',
+        'Ubuntu 24.04',
+    );
+    $mysqlDetectedFromPreviousMariaDbState = $recognizer->recognize(
         SupportedDatabaseDriver::MariaDb,
-        'server-version-MariaDB',
-        'MariaDB Server',
+        '8.4.7',
+        'Ubuntu',
     );
 
     expect($mysql->driver)->toBe(SupportedDatabaseDriver::MySql)
         ->and($mysql->product)->toBe('MySQL')
         ->and($mariaDb->driver)->toBe(SupportedDatabaseDriver::MariaDb)
         ->and($mariaDb->product)->toBe('MariaDB')
-        ->and(fn () => $recognizer->recognize(
-            SupportedDatabaseDriver::MySql,
-            'server-version-MariaDB',
-            'MariaDB Server',
-        ))->toThrow(DatabaseCapabilityProbeException::class, 'Selected MySQL, but the server reports MariaDB.')
-        ->and(fn () => $recognizer->recognize(
-            SupportedDatabaseDriver::MariaDb,
-            'server-version',
-            'MySQL Community Server',
-        ))->toThrow(DatabaseCapabilityProbeException::class, 'Selected MariaDB, but the server reports MySQL.')
-        ->and(fn () => $recognizer->recognize(
-            SupportedDatabaseDriver::MySql,
-            'unknown-server',
-            'unknown-product',
-        ))->toThrow(DatabaseCapabilityProbeException::class, 'could not be recognized');
+        ->and($mysqlDetectedFromPreviousMariaDbState->driver)->toBe(SupportedDatabaseDriver::MySql);
 });
 
 it('does not expose credentials when a server connection fails', function (): void {
