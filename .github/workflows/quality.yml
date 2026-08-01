@@ -31,7 +31,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3.32'
+          php-version: '8.3'
           coverage: none
           extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sockets, sqlite3, xml, zip
           ini-values: memory_limit=512M
@@ -50,39 +50,31 @@ jobs:
         run: RUN_DUSK=0 scripts/verify.sh
 
       - name: Start pinned browser-test infrastructure
-        run: |
-          docker run --detach --rm \
-            --name assestme-ci-selenium \
-            --network host \
-            --shm-size 2g \
-            selenium/standalone-chromium:4.46.0-20260707
-          for attempt in $(seq 1 60); do
-            if curl --fail --silent http://127.0.0.1:4444/status | grep -Eq '"ready"[[:space:]]*:[[:space:]]*true'; then
-              break
-            fi
-            sleep 1
-          done
-          curl --fail --silent http://127.0.0.1:4444/status | grep -Eq '"ready"[[:space:]]*:[[:space:]]*true'
-          echo 'DUSK_DRIVER_URL=http://127.0.0.1:4444' >> "$GITHUB_ENV"
+        run: docker compose -f docker/compose.dev.yml --profile browser up --build --detach --wait app selenium
 
       - name: Prepare inspectable browser-test root
         run: |
-          test_root="${RUNNER_TEMP}/assestme-dusk"
-          mkdir -p "$test_root"
-          touch "$test_root/.assestme-test-root"
-          echo "ASSESTME_TEST_ROOT=$test_root" >> "$GITHUB_ENV"
-          echo 'ASSESTME_TEST_ISOLATED=1' >> "$GITHUB_ENV"
+          docker compose -f docker/compose.dev.yml --profile browser exec -T app \
+            sh -c 'mkdir -p /tmp/assestme-ci-dusk && touch /tmp/assestme-ci-dusk/.assestme-test-root'
 
       - name: Run isolated Dusk suite
-        run: scripts/dusk-isolated.sh
+        run: |
+          docker compose -f docker/compose.dev.yml --profile browser exec -T \
+            -e ASSESTME_TEST_ROOT=/tmp/assestme-ci-dusk \
+            -e ASSESTME_TEST_ISOLATED=1 \
+            app scripts/dusk-isolated.sh
 
       - name: Stop pinned browser-test infrastructure
         if: always()
         run: |
-          container_id="$(docker ps --all --quiet --filter 'name=^/assestme-ci-selenium$')"
-          if [[ -n "$container_id" ]]; then
-            docker stop "$container_id"
+          container_id="$(docker compose -f docker/compose.dev.yml --profile browser ps --quiet app)"
+          if [[ -n "$container_id" ]] && docker compose -f docker/compose.dev.yml --profile browser exec -T app \
+              test -d /tmp/assestme-ci-dusk/storage/logs; then
+            mkdir -p storage/framework/assestme-ci-dusk/storage/logs
+            docker cp "${container_id}:/tmp/assestme-ci-dusk/storage/logs/." \
+              storage/framework/assestme-ci-dusk/storage/logs
           fi
+          docker compose -f docker/compose.dev.yml --profile browser down --remove-orphans
 
       - name: Upload failure artifacts
         if: failure()
@@ -91,7 +83,7 @@ jobs:
           name: assestme-failure-artifacts
           path: |
             storage/logs/*.log
-            ${{ runner.temp }}/assestme-dusk/storage/logs/*.log
+            storage/framework/assestme-ci-dusk/storage/logs/*.log
             tests/Browser/screenshots
             tests/Browser/console
           if-no-files-found: ignore
