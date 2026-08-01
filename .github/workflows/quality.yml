@@ -49,11 +49,32 @@ jobs:
       - name: Run isolated quality gates
         run: RUN_DUSK=0 scripts/verify.sh
 
-      - name: Install matching ChromeDriver
-        run: php artisan dusk:chrome-driver --detect
+      - name: Start pinned browser-test infrastructure
+        run: |
+          docker run --detach --rm \
+            --name assestme-ci-selenium \
+            --network host \
+            --shm-size 2g \
+            selenium/standalone-chromium:4.46.0-20260707
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:4444/status | grep -Eq '"ready"[[:space:]]*:[[:space:]]*true'; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:4444/status | grep -Eq '"ready"[[:space:]]*:[[:space:]]*true'
+          echo 'DUSK_DRIVER_URL=http://127.0.0.1:4444' >> "$GITHUB_ENV"
 
       - name: Run isolated Dusk suite
         run: scripts/dusk-isolated.sh
+
+      - name: Stop pinned browser-test infrastructure
+        if: always()
+        run: |
+          container_id="$(docker ps --all --quiet --filter 'name=^/assestme-ci-selenium$')"
+          if [[ -n "$container_id" ]]; then
+            docker stop "$container_id"
+          fi
 
       - name: Upload failure artifacts
         if: failure()
@@ -150,15 +171,14 @@ jobs:
         if: matrix.full_suite
         run: >-
           php artisan test
-          tests/Feature/CompanyManagementTest.php
-          tests/Feature/SiteManagementTest.php
-          tests/Feature/AssetManagementTest.php
-          tests/Feature/RiskConfigurationTest.php
-          tests/Feature/TemplateManagementTest.php
-          tests/Feature/AssessmentManagementTest.php
-          tests/Feature/EvidenceManagementTest.php
+          tests/Feature/ClientSiteFoundationTest.php
+          tests/Feature/AssetFoundationTest.php
+          tests/Feature/RiskEffortFoundationTest.php
+          tests/Feature/FindingTemplateCrudTest.php
+          tests/Feature/AssessmentDomainTest.php
+          tests/Feature/EvidenceTest.php
           tests/Feature/WorkspacePageTest.php
-          tests/Feature/FindingTemplateImportExportTest.php
+          tests/Feature/TemplateImportExportTest.php
 
       - name: Run driver-aware integrity regressions
         run: php artisan test tests/Unit/DatabaseIntegrityCheckTest.php
@@ -290,6 +310,7 @@ jobs:
       APP_FALLBACK_LOCALE: it
       APP_LOCALE: it
       APP_TIMEZONE: Europe/Rome
+      ASSESTME_BACKUP_ROOT: ${{ github.workspace }}/backups
       DB_CONNECTION: sqlite
       DB_DATABASE: ${{ github.workspace }}/database/database.sqlite
       DEV_ADMIN_NAME: CI Administrator
