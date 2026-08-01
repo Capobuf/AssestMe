@@ -61,6 +61,7 @@ final class CloudPanelInstallationTest extends DuskTestCase
                 ->assertSee('CloudPanel')
                 ->assertSee('cPanel')
                 ->assertSee('Plesk')
+                ->click('[data-dusk="scheduler-shell"]')
                 ->assertSee('crontab -e')
                 ->assertSee((string) realpath(PHP_BINARY))
                 ->assertSee($releasePath.'/artisan schedule:run')

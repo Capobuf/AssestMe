@@ -41,7 +41,7 @@
             <p>Su Plesk il task può essere eseguito in un ambiente chroot. Se il percorso PHP rilevato non è raggiungibile dal task pianificato, usa l’opzione “Run a PHP script” o chiedi al provider il percorso corretto.</p>
         </details>
         <details>
-            <summary>Shell o pannello generico</summary>
+            <summary data-dusk="scheduler-shell">Shell o pannello generico</summary>
             <code>crontab -e</code>
             <code>* * * * * {{ $cronCommand }}</code>
         </details>
