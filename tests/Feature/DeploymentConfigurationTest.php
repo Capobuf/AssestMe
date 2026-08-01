@@ -485,3 +485,50 @@ it('uses a configured remote Dusk driver without starting local ChromeDriver', f
         ->toContain('http://${DUSK_READY_HOST}:${DUSK_PORT}/admin/login')
         ->toContain('assestme_end_isolated_environment');
 });
+
+it('publishes the validated rolling develop prerelease only after every quality job', function (): void {
+    $workflowPath = base_path('.github/workflows/quality.yml');
+    $workflowSource = (string) file_get_contents($workflowPath);
+    $legacyArchiveSuffix = '-cloudpanel'.'.zip';
+    $externalChecksumSuffix = '.zip'.'.sha256';
+
+    /** @var array{permissions: array{contents: string}, jobs: array<string, array<string, mixed>>} $workflow */
+    $workflow = Yaml::parseFile($workflowPath);
+    $publish = $workflow['jobs']['publish-develop-release'];
+    $cloudPanel = $workflow['jobs']['cloudpanel-release'];
+
+    expect($workflow['permissions'])->toBe(['contents' => 'read'])
+        ->and($publish['if'])->toContain("github.event_name == 'push'")
+        ->and($publish['if'])->toContain("github.ref == 'refs/heads/develop'")
+        ->and($publish['needs'])->toBe([
+            'quality',
+            'database-compatibility',
+            'cloudpanel-release',
+            'clean-checkout-bootstrap',
+        ])
+        ->and($publish['permissions'])->toBe(['contents' => 'write'])
+        ->and($publish['concurrency'])->toBe([
+            'group' => 'assestme-develop-release',
+            'cancel-in-progress' => true,
+        ])
+        ->and($workflowSource)->toContain('name: assestme-ci-release')
+        ->toContain('path: ${{ runner.temp }}/release/assestme-ci.zip')
+        ->toContain('uses: actions/download-artifact@v4')
+        ->toContain('assestme-develop.zip')
+        ->toContain("release_tag='develop-latest'")
+        ->toContain("release_title='AssestMe develop — ultima build valida'")
+        ->toContain('--prerelease')
+        ->toContain('git rev-parse origin/develop')
+        ->not->toContain($legacyArchiveSuffix)
+        ->not->toContain($externalChecksumSuffix)
+        ->and($cloudPanel['steps'])->toContain([
+            'name' => 'Upload validated installable release',
+            'uses' => 'actions/upload-artifact@v4',
+            'with' => [
+                'name' => 'assestme-ci-release',
+                'path' => '${{ runner.temp }}/release/assestme-ci.zip',
+                'if-no-files-found' => 'error',
+                'retention-days' => 7,
+            ],
+        ]);
+});

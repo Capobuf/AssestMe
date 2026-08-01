@@ -251,9 +251,8 @@ jobs:
       - name: Validate archive contents
         run: |
           cd "${RUNNER_TEMP}/release"
-          sha256sum --check assestme-ci-cloudpanel.zip.sha256
           mkdir "${RUNNER_TEMP}/extracted"
-          unzip -q assestme-ci-cloudpanel.zip -d "${RUNNER_TEMP}/extracted"
+          unzip -q assestme-ci.zip -d "${RUNNER_TEMP}/extracted"
           test ! -e "${RUNNER_TEMP}/extracted/assestme/.env"
           test -f "${RUNNER_TEMP}/extracted/assestme/vendor/autoload.php"
           test -f "${RUNNER_TEMP}/extracted/assestme/RELEASE-MANIFEST.sha256"
@@ -295,14 +294,13 @@ jobs:
           php artisan schedule:run
           php artisan assestme:diagnose --json
 
-      - name: Upload installable CloudPanel release
+      - name: Upload validated installable release
         uses: actions/upload-artifact@v4
         with:
-          name: assestme-ci-cloudpanel
-          path: |
-            ${{ runner.temp }}/release/assestme-ci-cloudpanel.zip
-            ${{ runner.temp }}/release/assestme-ci-cloudpanel.zip.sha256
+          name: assestme-ci-release
+          path: ${{ runner.temp }}/release/assestme-ci.zip
           if-no-files-found: error
+          retention-days: 7
 
   clean-checkout-bootstrap:
     runs-on: ubuntu-24.04
@@ -344,3 +342,116 @@ jobs:
           test "$(php artisan tinker --execute='echo App\Models\Category::query()->count();')" = "18"
           test "$(php artisan tinker --execute='echo App\Models\Assessment::query()->count();')" = "0"
           test "$(php artisan tinker --execute='echo App\Models\FindingTemplate::query()->count();')" -gt "0"
+
+  publish-develop-release:
+    name: Publish develop release
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/develop'
+    needs:
+      - quality
+      - database-compatibility
+      - cloudpanel-release
+      - clean-checkout-bootstrap
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: assestme-develop-release
+      cancel-in-progress: true
+
+    steps:
+      - name: Check out validated commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download validated release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: assestme-ci-release
+          path: dist
+
+      - name: Prepare stable develop asset
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          test -s dist/assestme-ci.zip
+          install -m 0644 dist/assestme-ci.zip dist/assestme-develop.zip
+          test -s dist/assestme-develop.zip
+
+          mapfile -t archives < <(find dist -maxdepth 1 -type f -name '*.zip' -print | sort)
+
+          if [[ "${#archives[@]}" -ne 2 ]]; then
+              printf 'Expected the CI archive and the renamed develop archive, found %s.\n' \
+                  "${#archives[@]}" >&2
+              printf '%s\n' "${archives[@]}" >&2
+              exit 1
+          fi
+
+          if find dist -type f -name '*.sha256' -print -quit | grep -q .; then
+              printf 'Unexpected external SHA-256 sidecar found in the release artifact.\n' >&2
+              find dist -type f -name '*.sha256' -print >&2
+              exit 1
+          fi
+
+      - name: Confirm this is still the latest develop commit
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          git fetch --no-tags --depth=1 origin develop
+          latest_develop_sha="$(git rev-parse origin/develop)"
+
+          if [[ "$GITHUB_SHA" != "$latest_develop_sha" ]]; then
+              printf 'Refusing to publish obsolete commit %s; develop is now %s.\n' \
+                  "$GITHUB_SHA" "$latest_develop_sha" >&2
+              exit 1
+          fi
+
+      - name: Publish rolling develop prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+
+          release_tag='develop-latest'
+          release_title='AssestMe develop — ultima build valida'
+          release_asset='dist/assestme-develop.zip'
+          short_sha="${GITHUB_SHA:0:7}"
+
+          cat > release-notes.md <<EOF
+          Build automatica validata del branch \`develop\`.
+
+          - Commit: \`${GITHUB_SHA}\`
+          - Commit breve: \`${short_sha}\`
+          - Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+
+          Il file \`assestme-develop.zip\` è il pacchetto installabile prodotto e verificato dal job \`cloudpanel-release\`.
+
+          Questa è una prerelease di sviluppo. Non sostituisce una release stabile versionata.
+          EOF
+
+          if gh release view "$release_tag" \
+              --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release delete "$release_tag" \
+                  --repo "$GITHUB_REPOSITORY" \
+                  --cleanup-tag \
+                  --yes
+          else
+              gh api \
+                  --method DELETE \
+                  "repos/${GITHUB_REPOSITORY}/git/refs/tags/${release_tag}" \
+                  >/dev/null 2>&1 || true
+          fi
+
+          gh release create "$release_tag" \
+              "$release_asset" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "$release_title" \
+              --notes-file release-notes.md \
+              --prerelease

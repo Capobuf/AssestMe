@@ -7,6 +7,8 @@ use Symfony\Component\Process\Process;
 it('defines a production-only self-contained CloudPanel archive build', function (): void {
     $projectPath = dirname(__DIR__, 2);
     $script = file_get_contents($projectPath.'/scripts/build-cloudpanel-release.sh');
+    $legacyArchiveSuffix = '-cloudpanel'.'.zip';
+    $externalChecksumSuffix = '.zip'.'.sha256';
 
     expect($script)
         ->toContain('composer install')
@@ -17,7 +19,10 @@ it('defines a production-only self-contained CloudPanel archive build', function
         ->toContain("--exclude='vendor/'")
         ->toContain('RELEASE-MANIFEST.sha256')
         ->toContain('vendor/autoload.php')
-        ->toContain('assestme-${release_version}-cloudpanel.zip');
+        ->toContain('assestme-${release_version}.zip')
+        ->not->toContain($legacyArchiveSuffix)
+        ->not->toContain($externalChecksumSuffix)
+        ->not->toContain('checksum'.'_path');
 });
 
 it('rejects an unsafe release version before creating files', function (): void {

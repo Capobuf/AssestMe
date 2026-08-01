@@ -1,6 +1,6 @@
 # Installazione di AssestMe su CloudPanel
 
-Questa procedura usa l'archivio di release `assestme-<versione>-cloudpanel.zip`: contiene già le dipendenze PHP di produzione e non richiede Composer, Node.js o npm sul server. La compatibilità automatizzata è verificata in CI; una pubblicazione non equivale a una certificazione di una specifica istanza CloudPanel.
+Questa procedura usa l'archivio di release `assestme-<versione>.zip`: contiene già le dipendenze PHP di produzione e non richiede Composer, Node.js o npm sul server. La compatibilità automatizzata è verificata in CI; una pubblicazione non equivale a una certificazione di una specifica istanza CloudPanel.
 
 ## Prima di iniziare
 
@@ -8,11 +8,7 @@ Preparare un dominio dedicato e scegliere uno dei database supportati per una nu
 
 L'installer crea il primo e unico amministratore. Prima di rendere raggiungibile il dominio, abilitare obbligatoriamente in CloudPanel la **Basic Authentication** del sito oppure una restrizione temporanea per il proprio indirizzo IP. CSRF, rate limiting e lock dell'applicazione sono protezioni aggiuntive, non sostituiscono questo controllo perimetrale.
 
-Scaricare soltanto l'archivio di release e il file `.sha256` associato, quindi verificare l'impronta prima del caricamento:
-
-```bash
-sha256sum --check assestme-<versione>-cloudpanel.zip.sha256
-```
+Scaricare soltanto l'archivio di release pubblicato. Il pacchetto contiene `RELEASE-MANIFEST.sha256`, già verificato dal workflow prima della pubblicazione, per controllare i file interni dopo l'estrazione.
 
 ## Creazione del sito dalla GUI
 

@@ -95,8 +95,7 @@ find "$staging_path/bootstrap/cache" -type f ! -name '.gitignore' -delete
         | xargs -0 sha256sum > RELEASE-MANIFEST.sha256
 )
 
-archive_path="$output_directory/assestme-${release_version}-cloudpanel.zip"
-checksum_path="${archive_path}.sha256"
+archive_path="$output_directory/assestme-${release_version}.zip"
 
 php -r '
 $source = $argv[1];
@@ -125,10 +124,4 @@ if (! $zip->close()) {
 }
 ' "$staging_path" "$archive_path"
 
-(
-    cd "$output_directory"
-    sha256sum "$(basename "$archive_path")" > "$(basename "$checksum_path")"
-)
-
 echo "$archive_path"
-echo "$checksum_path"
