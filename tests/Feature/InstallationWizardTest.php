@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Illuminate\Support\ViewErrorBag;
+use PDO as NativePdo;
 
 beforeEach(function (): void {
     $root = storage_path('framework/testing/installer-wizard-'.Str::uuid());
@@ -417,6 +418,97 @@ it('rejects an SQLite path below public through the HTTP database step', functio
         ->assertSessionHas('installation_error', 'The SQLite database must not be stored under the public directory.');
 
     expect($state->progress()->step)->toBe('database');
+});
+
+it('reinitializes a foreign database only after the typed destructive confirmation', function (): void {
+    $state = app(InstallationState::class);
+    $progress = $state->progress();
+    $databasePath = dirname((string) config('assestme.installation.state_path')).'/previous-installation.sqlite';
+    $application = new ApplicationConfigurationData(
+        name: 'AssestMe',
+        url: 'https://localhost',
+        timezone: 'Europe/Rome',
+        locale: 'it',
+        backupRoot: storage_path('backups'),
+        weasyPrintBinary: '/usr/bin/weasyprint',
+        phpBinary: PHP_BINARY,
+    );
+
+    $state->save(new InstallationProgressData(
+        installationId: $progress->installationId,
+        step: 'database',
+        application: $application,
+        database: new DatabaseConfigurationData(
+            driver: SupportedDatabaseDriver::Sqlite,
+            database: $databasePath,
+        ),
+    ));
+
+    $pdo = new NativePdo('sqlite:'.$databasePath);
+    $pdo->exec('CREATE TABLE previous_installation (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)');
+    $pdo->exec("INSERT INTO previous_installation (id, payload) VALUES (1, 'keep until confirmed')");
+    unset($pdo);
+
+    $request = [
+        'database_driver' => 'sqlite',
+        'sqlite_path' => $databasePath,
+    ];
+
+    $this->post('/install/database', $request)
+        ->assertRedirect()
+        ->assertSessionHas('installation_error', 'Il database contiene tabelle applicative esistenti: previous_installation.')
+        ->assertSessionHas('installation_database_reset_tables', ['previous_installation']);
+
+    $pdo = new NativePdo('sqlite:'.$databasePath);
+    expect($pdo->query('SELECT payload FROM previous_installation WHERE id = 1')?->fetchColumn())
+        ->toBe('keep until confirmed');
+    unset($pdo);
+
+    $this->get('/install/database')
+        ->assertOk()
+        ->assertSee('Re-inizializzazione distruttiva del database')
+        ->assertSee('previous_installation')
+        ->assertSee('REINIZIALIZZA');
+
+    $this->post('/install/database', [
+        ...$request,
+        'reinitialize_database' => '1',
+        'database_reset_confirmation' => 'CANCELLA',
+    ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('database_reset_confirmation');
+
+    $pdo = new NativePdo('sqlite:'.$databasePath);
+    expect($pdo->query('SELECT payload FROM previous_installation WHERE id = 1')?->fetchColumn())
+        ->toBe('keep until confirmed');
+    unset($pdo);
+
+    $this->get('/install/database')
+        ->assertOk()
+        ->assertSee('Re-inizializzazione distruttiva del database');
+
+    $this->post('/install/database', [
+        ...$request,
+        'reinitialize_database' => '1',
+        'database_reset_confirmation' => 'REINIZIALIZZA',
+    ])
+        ->assertRedirect('/install/administrator')
+        ->assertSessionHas('installation_success', static fn (string $message): bool => str_contains($message, 'SQLite')
+            && str_contains($message, 'verificato')
+            && str_contains($message, 'Database re-inizializzato'));
+
+    expect($state->progress()->step)->toBe('administrator');
+
+    $this->get('/install/administrator')
+        ->assertOk()
+        ->assertSee('SQLite')
+        ->assertSee('verificato')
+        ->assertSee('Database re-inizializzato');
+
+    $pdo = new NativePdo('sqlite:'.$databasePath);
+    $tables = $pdo->query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")?->fetchAll(NativePdo::FETCH_COLUMN);
+    expect($tables)->toBe([]);
+    unset($pdo);
 });
 
 it('makes every installer route return 404 after the definitive lock', function (): void {

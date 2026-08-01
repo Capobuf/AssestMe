@@ -162,6 +162,7 @@ final class InstallationController extends Controller
     {
         $progress = $this->installationState->progress();
         $database = $request->toData();
+        $reinitialized = false;
 
         $sameDatabaseFamily = $progress->database !== null
             && (
@@ -210,9 +211,23 @@ final class InstallationController extends Controller
             $classification = $this->databaseClassifier->classify($database, $progress->installationId);
 
             if ($classification->status === InstallationDatabaseStatus::Foreign) {
-                throw new InstallationDatabaseClassificationException(
-                    'Il database contiene tabelle applicative estranee: '.implode(', ', $classification->tables).'.',
-                );
+                if (! $request->confirmsDatabaseReinitialization()) {
+                    return back()
+                        ->withInput($request->except('database_password'))
+                        ->with('installation_error', 'Il database contiene tabelle applicative esistenti: '.implode(', ', $classification->tables).'.')
+                        ->with('installation_database_reset_tables', $classification->tables);
+                }
+
+                $this->databaseClassifier->reinitialize($database);
+                $reinitialized = true;
+                $probe = $this->databaseCapabilityProbe->probe($database);
+                $classification = $this->databaseClassifier->classify($database, $progress->installationId);
+
+                if ($classification->status !== InstallationDatabaseStatus::Empty) {
+                    throw new InstallationDatabaseClassificationException(
+                        'Il database non risulta vuoto dopo la re-inizializzazione.',
+                    );
+                }
             }
         } catch (DatabaseCapabilityProbeException|InstallationDatabaseClassificationException|RuntimeException $exception) {
             return back()
@@ -230,9 +245,14 @@ final class InstallationController extends Controller
             application: $progress->application,
             database: $database,
         ));
+        $request->session()->forget('installation_database_reset_tables');
 
         return redirect()->route('installation.administrator')
-            ->with('installation_success', "{$probe->product} {$probe->serverVersion} verificato.");
+            ->with(
+                'installation_success',
+                "{$probe->product} {$probe->serverVersion} verificato."
+                .($reinitialized ? ' Database re-inizializzato.' : ''),
+            );
     }
 
     public function administrator(): View|RedirectResponse

@@ -1,9 +1,10 @@
 @extends('installation.layout', ['title' => 'Database', 'step' => 4])
 
 @section('content')
+    @php($resetTables = session('installation_database_reset_tables'))
     <p class="installer-eyebrow">Verifica capacità</p>
     <h1>Configura {{ $database->driver === \App\Enums\SupportedDatabaseDriver::Sqlite ? 'SQLite' : 'MySQL / MariaDB' }}</h1>
-    <p>La verifica crea due tabelle casuali di probe, prova schema, vincoli, CRUD e rollback, quindi le elimina sempre. AssestMe rileverà automaticamente se il server è MySQL o MariaDB. Un database non vuoto non verrà cancellato.</p>
+    <p>La verifica crea due tabelle casuali di probe, prova schema, vincoli, CRUD e rollback, quindi le elimina sempre. AssestMe rileverà automaticamente se il server è MySQL o MariaDB. Un database esistente non viene mai cancellato automaticamente.</p>
 
     <form method="post" action="{{ route('installation.database.store') }}" class="installer-form" data-database-form>
         @csrf
@@ -29,6 +30,19 @@
             <div class="installer-grid">
                 <label>Charset<input name="database_charset" readonly value="utf8mb4"></label>
                 <label>Collation<input name="database_collation" readonly value="utf8mb4_unicode_ci"></label>
+            </div>
+        @endif
+
+        @if (is_array($resetTables) && $resetTables !== [])
+            @php(session()->keep('installation_database_reset_tables'))
+            <div class="installer-alert installer-alert-warning">
+                <strong>Re-inizializzazione distruttiva del database</strong>
+                <p>Per ripartire da zero verranno eliminate tutte le tabelle e viste del database selezionato, inclusi i dati esistenti. Tabelle rilevate: {{ implode(', ', $resetTables) }}.</p>
+                <p>Questa azione non può essere annullata dall’installer. Verifica di avere un backup prima di confermare.</p>
+                <label><input name="reinitialize_database" type="checkbox" value="1" @checked(old('reinitialize_database'))> Confermo di voler re-inizializzare questo database.</label>
+                <label>Scrivi <code>REINIZIALIZZA</code> per confermare
+                    <input name="database_reset_confirmation" autocomplete="off" value="{{ old('database_reset_confirmation') }}">
+                </label>
             </div>
         @endif
 

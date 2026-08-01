@@ -29,7 +29,7 @@
             <input name="backup_root" required value="{{ old('backup_root', $application?->backupRoot ?? storage_path('backups')) }}">
         </label>
         <fieldset>
-            <legend>Database nuovo</legend>
+            <legend>Database</legend>
             @foreach (['sqlite' => 'SQLite', 'mysql' => 'MySQL / MariaDB'] as $value => $label)
                 <label class="installer-choice"><input type="radio" name="database_driver" value="{{ $value }}" @checked($selectedDatabaseDriver === $value)> <span><strong>{{ $label }}</strong></span></label>
             @endforeach

@@ -7,6 +7,7 @@ namespace App\Services\Installation;
 use App\Data\Installation\DatabaseConfigurationData;
 use App\Data\Installation\InstallationDatabaseClassificationData;
 use App\Data\Installation\InstallationDatabaseStatus;
+use App\Enums\SupportedDatabaseDriver;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Config;
@@ -124,6 +125,45 @@ final class InstallationDatabaseClassifier
         } catch (Throwable) {
             throw new InstallationDatabaseClassificationException(
                 'The installation marker could not be finalized safely.',
+            );
+        } finally {
+            $this->disconnect();
+        }
+    }
+
+    public function reinitialize(DatabaseConfigurationData $configuration): void
+    {
+        try {
+            $connection = $this->connect($configuration);
+            $schema = $connection->getSchemaBuilder();
+
+            $schema->dropAllViews();
+
+            if ($configuration->driver === SupportedDatabaseDriver::Sqlite) {
+                $tables = $this->applicationTables($connection);
+                $schema->withoutForeignKeyConstraints(static function () use ($schema, $tables): void {
+                    foreach ($tables as $table) {
+                        $schema->drop($table);
+                    }
+                });
+            } else {
+                $schema->dropAllTables();
+            }
+
+            // A fresh connection verifies SQLite's current WAL-backed schema catalog.
+            $this->disconnect();
+            $connection = $this->connect($configuration);
+
+            if ($this->applicationTables($connection) !== []) {
+                throw new InstallationDatabaseClassificationException(
+                    'The selected database could not be reinitialized completely.',
+                );
+            }
+        } catch (InstallationDatabaseClassificationException $exception) {
+            throw $exception;
+        } catch (Throwable) {
+            throw new InstallationDatabaseClassificationException(
+                'The selected database could not be reinitialized safely.',
             );
         } finally {
             $this->disconnect();

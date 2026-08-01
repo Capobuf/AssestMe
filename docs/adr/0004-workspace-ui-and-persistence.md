@@ -1,0 +1,36 @@
+# ADR: Workspace, UI, and persistence
+
+- Status: Accepted
+- Baseline: AssestMe specification 2.7
+- Source commit: `d466ff1c0c3851fecee3d468cde7cb9359db5ae4`
+
+## Context
+
+Defines the Finding workbench, navigation, responsive modes, save protocol, lifecycle, and offline recovery.
+
+## Decisions
+
+| ID | Status | Decision |
+|---|---|---|
+| D-008 (v1) | SUPERSEDED | Advance Table Repeater was the selected assessment-grid component; superseded by D-008 on 2026-07-13 |
+| D-008 (v2) | SUPERSEDED | The assessment workspace used only the native Filament 5 table Repeater; superseded by D-008 on 2026-07-18 |
+| D-008 | APPROVED | The Finding workspace uses a Filament Table structured list with a single-record lateral inspector; native Repeaters remain permitted for bounded child collections such as Finding solutions |
+| D-016 | APPROVED | Autosave plus explicit draft save, both using the same persistence layer |
+| D-020 | APPROVED | Optimistic locking and idempotent workspace-save requests |
+| D-021 | APPROVED | Completed assessments are read-only until explicitly reopened |
+| D-044 | APPROVED | Assessment creation proposes a reusable automatically generated but user-editable title, exposes only organization/site/custom assessment scopes, filters one or more sites by company, and makes the Workspace the primary post-create and list-row destination |
+| D-046 | APPROVED | The dashboard separates four compact clickable operational KPIs, the latest five assessments, urgent findings, and a compact application-status section for backup, database integrity, and unresolved cleanup operations |
+| D-047 | APPROVED | Company, site, asset, template, and generated-file Filament surfaces use the approved native responsive layouts, explicit create/cancel destinations, conditional solution fields, and compact tabular generated-file history |
+| D-054 | APPROVED | The Finding workspace has exactly two intentional container-responsive modes: lateral desktop split at an effective workspace-container width of at least 64rem, and sequential list/detail below that threshold; the intermediate absolute-positioned inspector is removed |
+| D-055 | APPROVED | The Finding workspace presents a three-area application workbench with a compact Filament Table navigator, a dominant selected-Finding editor, and contextual properties; narrow containers retain deliberate sequential navigator/editor behavior |
+| D-056 | APPROVED | The Finding workbench uses the approved lime/green/white/black palette, one solid primary action per context, aggregated export and Finding-creation actions, and a reduced navigator row containing only selection-critical information |
+| D-057 | APPROVED | Filament 5 native clusters and parent items define the hierarchical sidebar; Tag is removed from v1; Finding assets remain required only for `selected_assets`; and implementation verification is proportional while `scripts/verify.sh` remains the complete authoritative gate |
+| D-058 | APPROVED | The compact Finding navigator retains expandable icon search but removes its unusable filter control, places icon-only native reorder beside search, and keeps Finding titles visible during reorder; the non-functional summary preview tab is removed, contextual properties use compact collapsible sections with reliable internal scrolling, and generated-file history receives an aligned responsive tabular presentation |
+| D-062 | APPROVED | Existing assessment and Finding forms use an application-owned IndexedDB draft store for durable local recovery; server persistence remains authoritative, signed, explicit, optimistic-locked, and idempotent |
+
+## Consequences
+
+- The listed decisions remain normative with their recorded status.
+- `SUPERSEDED` entries remain historical evidence and must not be reactivated implicitly.
+- Detailed application contracts live in the reference pages linked from [the documentation index](../index.md); those pages may clarify implementation but may not contradict these decisions.
+- A future change requires explicit approval and a recorded superseding decision, not a silent edit.

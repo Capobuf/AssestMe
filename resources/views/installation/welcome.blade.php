@@ -11,7 +11,7 @@
     </div>
 
     <ul class="installer-checklist">
-        <li>Il database scelto deve essere nuovo e privo di tabelle applicative.</li>
+        <li>Il database scelto può essere nuovo oppure re-inizializzato esplicitamente dal wizard con conferma distruttiva.</li>
         <li>Sono disponibili SQLite e MySQL / MariaDB; il prodotto server viene rilevato automaticamente.</li>
         <li>Non vengono convertiti né importati database di installazioni precedenti.</li>
         <li>Composer e Node.js non sono necessari sul server se usi il release ZIP.</li>

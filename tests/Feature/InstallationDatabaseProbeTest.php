@@ -238,7 +238,7 @@ it('classifies only a matching marked installation as resumable or complete', fu
     }
 });
 
-it('classifies an unknown non-empty database as foreign and never erases it', function (): void {
+it('requires an explicit reinitialization to erase an unknown non-empty database', function (): void {
     $path = tempnam(sys_get_temp_dir(), 'assestme-foreign-');
 
     if (! is_string($path)) {
@@ -257,6 +257,7 @@ it('classifies an unknown non-empty database as foreign and never erases it', fu
         $pdo->setAttribute(NativePdo::ATTR_ERRMODE, NativePdo::ERRMODE_EXCEPTION);
         $pdo->exec('CREATE TABLE foreign_application_data (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)');
         $pdo->exec("INSERT INTO foreign_application_data (id, payload) VALUES (1, 'preserve me')");
+        $pdo->exec('CREATE VIEW foreign_application_view AS SELECT payload FROM foreign_application_data');
         unset($pdo);
 
         $classification = $classifier->classify($configuration, $installationId);
@@ -276,6 +277,16 @@ it('classifies an unknown non-empty database as foreign and never erases it', fu
             throw new TestRuntimeException('The preserved foreign table could not be read.');
         }
         expect($statement->fetchColumn())->toBe('preserve me');
+        unset($pdo);
+
+        $classifier->reinitialize($configuration);
+
+        expect($classifier->classify($configuration, $installationId)->status)
+            ->toBe(InstallationDatabaseStatus::Empty);
+
+        $pdo = new NativePdo('sqlite:'.$path);
+        expect($pdo->query("SELECT name FROM sqlite_master WHERE type = 'view'")?->fetchAll(NativePdo::FETCH_COLUMN))
+            ->toBe([]);
         unset($pdo);
     } finally {
         foreach ([$path, $path.'-wal', $path.'-shm'] as $temporaryPath) {

@@ -38,7 +38,15 @@ final class DatabaseConfigurationRequest extends FormRequest
             'database_socket' => ['nullable', 'string', 'max:4096'],
             'database_charset' => ['required_unless:database_driver,sqlite', 'nullable', 'in:utf8mb4'],
             'database_collation' => ['required_unless:database_driver,sqlite', 'nullable', 'in:utf8mb4_unicode_ci'],
+            'reinitialize_database' => ['nullable', 'boolean'],
+            'database_reset_confirmation' => ['required_if:reinitialize_database,1', 'nullable', 'string', 'in:REINIZIALIZZA'],
         ];
+    }
+
+    public function confirmsDatabaseReinitialization(): bool
+    {
+        return $this->boolean('reinitialize_database')
+            && $this->validated('database_reset_confirmation') === 'REINIZIALIZZA';
     }
 
     public function toData(): DatabaseConfigurationData
@@ -63,6 +71,11 @@ final class DatabaseConfigurationRequest extends FormRequest
     protected function failedValidation(Validator $validator): void
     {
         $this->request->remove('database_password');
+
+        $resetTables = $this->session()->get('installation_database_reset_tables');
+        if (is_array($resetTables) && $resetTables !== []) {
+            $this->session()->flash('installation_database_reset_tables', $resetTables);
+        }
 
         throw new HttpResponseException(
             redirect()->back()->withErrors($validator)->withInput($this->except('database_password')),
