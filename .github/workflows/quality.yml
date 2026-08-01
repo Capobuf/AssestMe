@@ -65,6 +65,14 @@ jobs:
           curl --fail --silent http://127.0.0.1:4444/status | grep -Eq '"ready"[[:space:]]*:[[:space:]]*true'
           echo 'DUSK_DRIVER_URL=http://127.0.0.1:4444' >> "$GITHUB_ENV"
 
+      - name: Prepare inspectable browser-test root
+        run: |
+          test_root="${RUNNER_TEMP}/assestme-dusk"
+          mkdir -p "$test_root"
+          touch "$test_root/.assestme-test-root"
+          echo "ASSESTME_TEST_ROOT=$test_root" >> "$GITHUB_ENV"
+          echo 'ASSESTME_TEST_ISOLATED=1' >> "$GITHUB_ENV"
+
       - name: Run isolated Dusk suite
         run: scripts/dusk-isolated.sh
 
@@ -83,6 +91,7 @@ jobs:
           name: assestme-failure-artifacts
           path: |
             storage/logs/*.log
+            ${{ runner.temp }}/assestme-dusk/storage/logs/*.log
             tests/Browser/screenshots
             tests/Browser/console
           if-no-files-found: ignore
