@@ -191,7 +191,7 @@ it('uses the MariaDB client identity and returns a sanitized nonzero import fail
         ->and(File::glob($this->restoreWorkspace.DIRECTORY_SEPARATOR.'.assestme-db-credentials-*'))->toBeEmpty();
 });
 
-it('strictly rejects restore binary symlinks basenames and product mismatches', function (): void {
+it('accepts a verified restore symlink and rejects basenames or product mismatches', function (): void {
     $validator = new DatabaseRestoreBinaryValidator;
     $real = assestMeCreateFakeRestoreBinary(
         $this->restoreWorkspace.DIRECTORY_SEPARATOR.'real',
@@ -213,8 +213,7 @@ it('strictly rejects restore binary symlinks basenames and product mismatches', 
         'mysql Ver 8.0.46 MySQL Community Server',
     );
 
-    expect(fn (): string => $validator->validate('mysql', $link))
-        ->toThrow(RuntimeException::class, 'restore binary is invalid')
+    expect($validator->validate('mysql', $link))->toBe((string) realpath($real))
         ->and(fn (): string => $validator->validate('mysql', $wrongName))
         ->toThrow(RuntimeException::class, 'restore binary is invalid')
         ->and(fn (): string => $validator->validate('mysql', $wrongProduct))

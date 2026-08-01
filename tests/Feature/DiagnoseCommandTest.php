@@ -25,7 +25,7 @@ function assestMeDiagnosticServerConnection(
     $connection->shouldReceive('getPdo')->once()->andReturn(new NativePdo('sqlite::memory:'));
     $connection->shouldReceive('getDriverName')->times(3)->andReturn($driver);
     $connection->shouldReceive('getName')->once()->andReturn("{$driver}-diagnostic");
-    $connection->shouldReceive('getDatabaseName')->twice()->andReturn('assestme');
+    $connection->shouldReceive('getDatabaseName')->once()->andReturn('assestme');
     $connection->shouldReceive('table')->once()->with('users')->andReturn($users);
     $users->shouldReceive('count')->once()->andReturn(1);
     $connection->shouldReceive('selectOne')

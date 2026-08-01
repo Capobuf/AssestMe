@@ -20,8 +20,6 @@ final readonly class DatabaseConfigurationData
         public string $socket = '',
         public string $charset = 'utf8mb4',
         public string $collation = 'utf8mb4_unicode_ci',
-        public string $dumpBinary = '',
-        public string $restoreBinary = '',
     ) {}
 
     /** @return array<string, bool|int|string|null> */
@@ -59,7 +57,7 @@ final readonly class DatabaseConfigurationData
         ];
     }
 
-    /** @return array{driver: string, database: string, host: string, port: int, username: string, password: string, socket: string, charset: string, collation: string, dump_binary: string, restore_binary: string} */
+    /** @return array{driver: string, database: string, host: string, port: int, username: string, password: string, socket: string, charset: string, collation: string} */
     public function toArray(): array
     {
         return [
@@ -72,12 +70,10 @@ final readonly class DatabaseConfigurationData
             'socket' => $this->socket,
             'charset' => $this->charset,
             'collation' => $this->collation,
-            'dump_binary' => $this->dumpBinary,
-            'restore_binary' => $this->restoreBinary,
         ];
     }
 
-    /** @param array{driver: string, database: string, host: string, port: int, username: string, password: string, socket: string, charset: string, collation: string, dump_binary: string, restore_binary: string} $data */
+    /** @param array{driver: string, database: string, host: string, port: int, username: string, password: string, socket: string, charset: string, collation: string, dump_binary?: string, restore_binary?: string} $data */
     public static function fromArray(array $data): self
     {
         return new self(
@@ -90,8 +86,6 @@ final readonly class DatabaseConfigurationData
             socket: $data['socket'],
             charset: $data['charset'],
             collation: $data['collation'],
-            dumpBinary: $data['dump_binary'],
-            restoreBinary: $data['restore_binary'],
         );
     }
 }

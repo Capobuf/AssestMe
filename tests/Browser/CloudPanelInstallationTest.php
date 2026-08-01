@@ -37,15 +37,17 @@ final class CloudPanelInstallationTest extends DuskTestCase
                 ->waitForText('Requisiti runtime e filesystem', 20)
                 ->press('Continua')
                 ->waitForText('Impostazioni di produzione', 20)
-                ->type('application_name', 'AssestMe')
+                ->assertMissing('input[name="application_name"]')
+                ->assertMissing('input[name="weasyprint_binary"]')
+                ->assertMissing('input[name="php_binary"]')
                 ->type('application_url', rtrim((string) config('app.url'), '/'))
                 ->type('timezone', 'Europe/Rome')
                 ->type('backup_root', $releasePath.'/storage/backups')
-                ->type('weasyprint_binary', (string) getenv('LARAVEL_PDF_WEASYPRINT_BINARY'))
-                ->type('php_binary', (string) realpath(PHP_BINARY))
                 ->radio('database_driver', 'sqlite')
                 ->press('Continua al database')
                 ->waitForText('Configura SQLite', 20)
+                ->assertMissing('input[name="dump_binary"]')
+                ->assertMissing('input[name="restore_binary"]')
                 ->type('sqlite_path', $releasePath.'/storage/app/database/database.sqlite')
                 ->press('Testa realmente il database')
                 ->waitForText('Crea l’unico amministratore', 20)
@@ -56,6 +58,9 @@ final class CloudPanelInstallationTest extends DuskTestCase
                 ->press('Installa e chiudi l’installer')
                 ->waitForText('AssestMe è pronto', 120)
                 ->assertSee('Scheduler CloudPanel')
+                ->assertSee('CloudPanel → Sites → assestme → Cron Jobs → Add Cron Job')
+                ->assertSee((string) realpath(PHP_BINARY))
+                ->assertSee($releasePath.'/artisan schedule:run')
                 ->visit('/install')
                 ->assertSee('404')
                 ->visit('/admin/login')
@@ -65,6 +70,8 @@ final class CloudPanelInstallationTest extends DuskTestCase
             $passwordInput = $browser->element('input[type="password"]');
             Assert::assertNotNull($emailInput);
             Assert::assertNotNull($passwordInput);
+            $emailInput->clear();
+            $passwordInput->clear();
             $emailInput->sendKeys('admin@assestme.invalid');
             $passwordInput->sendKeys($password);
 

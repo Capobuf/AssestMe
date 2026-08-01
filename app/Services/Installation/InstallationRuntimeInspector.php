@@ -11,6 +11,8 @@ use Throwable;
 
 final class InstallationRuntimeInspector
 {
+    private const MINIMUM_PHP_VERSION = '8.3.0';
+
     /** @var list<string> */
     private const COMMON_EXTENSIONS = [
         'bcmath',
@@ -51,13 +53,15 @@ final class InstallationRuntimeInspector
         'bootstrap_cache' => 'bootstrap/cache',
     ];
 
-    /** @var list<string> */
-    private const PHP_CANDIDATES = [
-        '/usr/bin/php8.3',
-        '/usr/local/bin/php8.3',
-        '/usr/bin/php',
-        '/usr/local/bin/php',
-    ];
+    /**
+     * @param  list<string>|null  $phpCandidatePaths
+     * @param  list<string>|null  $weasyPrintCandidatePaths
+     */
+    public function __construct(
+        private readonly ?string $runtimeVersion = null,
+        private readonly ?array $phpCandidatePaths = null,
+        private readonly ?array $weasyPrintCandidatePaths = null,
+    ) {}
 
     public function inspect(
         string $basePath,
@@ -109,13 +113,13 @@ final class InstallationRuntimeInspector
     /** @return list<InstallationRequirementResult> */
     private function inspectPhpRuntime(): array
     {
-        $runtimeVersion = phpversion();
+        $runtimeVersion = $this->runtimeVersion ?? PHP_VERSION;
         $requirements = [
             new InstallationRequirementResult(
                 key: 'runtime.php.version',
                 group: 'runtime',
-                passed: preg_match('/^8\.3(?:\.|$)/', $runtimeVersion) === 1,
-                expected: '8.3.x',
+                passed: version_compare($runtimeVersion, self::MINIMUM_PHP_VERSION, '>='),
+                expected: '>= 8.3.0',
                 actual: $runtimeVersion,
             ),
         ];
@@ -368,24 +372,9 @@ final class InstallationRuntimeInspector
     {
         $configuredBinary = $configuredBinary !== null ? trim($configuredBinary) : null;
 
-        if ($configuredBinary !== null && $configuredBinary !== '') {
-            if (! $this->isAbsolutePath($configuredBinary)) {
-                return [
-                    'requirement' => new InstallationRequirementResult(
-                        key: 'runtime.php_cli',
-                        group: 'executable',
-                        passed: false,
-                        expected: 'absolute_executable_php_8.3_cli',
-                        actual: 'configured_path_not_absolute',
-                    ),
-                    'binary' => null,
-                ];
-            }
-
-            $candidates = [$configuredBinary];
-        } else {
-            $candidates = $this->phpCandidatesFromRuntime();
-        }
+        $candidates = $configuredBinary !== null && $configuredBinary !== ''
+            ? [$configuredBinary, ...$this->phpCandidatesFromRuntime()]
+            : $this->phpCandidatesFromRuntime();
 
         foreach ($candidates as $candidate) {
             $inspection = $this->inspectPhpCandidate($candidate, $workingDirectory);
@@ -396,7 +385,7 @@ final class InstallationRuntimeInspector
                         key: 'runtime.php_cli',
                         group: 'executable',
                         passed: true,
-                        expected: 'absolute_executable_php_8.3_cli',
+                        expected: 'absolute_executable_php_cli_>=8.3.0',
                         actual: $inspection['binary'].' '.$inspection['version'],
                     ),
                     'binary' => $inspection['binary'],
@@ -409,10 +398,8 @@ final class InstallationRuntimeInspector
                 key: 'runtime.php_cli',
                 group: 'executable',
                 passed: false,
-                expected: 'absolute_executable_php_8.3_cli',
-                actual: $configuredBinary !== null && $configuredBinary !== ''
-                    ? 'configured_php_cli_invalid'
-                    : 'php_8.3_cli_not_detected',
+                expected: 'absolute_executable_php_cli_>=8.3.0',
+                actual: 'php_cli_>=8.3.0_not_detected',
             ),
             'binary' => null,
         ];
@@ -421,24 +408,20 @@ final class InstallationRuntimeInspector
     /** @return list<string> */
     private function phpCandidatesFromRuntime(): array
     {
-        $candidates = self::PHP_CANDIDATES;
-        $path = getenv('PATH');
-
-        if (is_string($path)) {
-            foreach (explode(PATH_SEPARATOR, $path) as $directory) {
-                if (! $this->isAbsolutePath($directory)) {
-                    continue;
-                }
-
-                $directory = rtrim($directory, DIRECTORY_SEPARATOR);
-                $candidates[] = $directory.DIRECTORY_SEPARATOR.'php8.3';
-                $candidates[] = $directory.DIRECTORY_SEPARATOR.'php';
-            }
+        if ($this->phpCandidatePaths !== null) {
+            return $this->phpCandidatePaths;
         }
 
-        if ($this->isAbsolutePath(PHP_BINARY)) {
-            $candidates[] = PHP_BINARY;
-        }
+        $webVersion = PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION;
+        $candidates = [
+            "/usr/bin/php{$webVersion}",
+            "/usr/local/bin/php{$webVersion}",
+            '/usr/bin/php8.3',
+            '/usr/local/bin/php8.3',
+            '/usr/bin/php',
+            '/usr/local/bin/php',
+            PHP_BINARY,
+        ];
 
         return array_values(array_unique($candidates));
     }
@@ -467,7 +450,8 @@ final class InstallationRuntimeInspector
 
             $output = $process->getOutput().PHP_EOL.$process->getErrorOutput();
 
-            if (preg_match('/^PHP\s+(8\.3\.[^\s]+)\s+\(cli\)/mi', $output, $matches) !== 1) {
+            if (preg_match('/^PHP\s+([0-9]+(?:\.[0-9]+){1,2}[^\s]*)\s+\(cli\)/mi', $output, $matches) !== 1
+                || ! version_compare($matches[1], self::MINIMUM_PHP_VERSION, '>=')) {
                 return null;
             }
 
@@ -485,32 +469,8 @@ final class InstallationRuntimeInspector
      */
     private function inspectWeasyPrint(?string $configuredBinary, ?string $projectRoot): array
     {
-        $configuredBinary = $configuredBinary !== null ? trim($configuredBinary) : '';
-
-        if ($configuredBinary === '' || ! $this->isAbsolutePath($configuredBinary)) {
-            return $this->failedWeasyPrint(
-                $configuredBinary === '' ? 'binary_not_configured' : 'configured_path_not_absolute',
-            );
-        }
-
-        if (is_link($configuredBinary)) {
-            return $this->failedWeasyPrint('symlink_not_allowed');
-        }
-
-        $binary = realpath($configuredBinary);
-
-        if ($binary === false || ! is_file($binary) || ! is_executable($binary)) {
-            return $this->failedWeasyPrint('configured_binary_invalid');
-        }
-
         if ($projectRoot === null) {
             return $this->failedWeasyPrint('project_root_unavailable');
-        }
-
-        $version = $this->inspectWeasyPrintVersion($binary, $projectRoot);
-
-        if ($version === null) {
-            return $this->failedWeasyPrint('version_probe_failed');
         }
 
         $probeDirectory = $projectRoot
@@ -522,19 +482,49 @@ final class InstallationRuntimeInspector
             return $this->failedWeasyPrint('installer_runtime_directory_unavailable');
         }
 
-        if (! $this->generateMinimalPdf($binary, $probeDirectory, $projectRoot)) {
-            return $this->failedWeasyPrint('minimal_pdf_probe_failed');
+        $configuredBinary = $configuredBinary !== null ? trim($configuredBinary) : '';
+        $candidates = $configuredBinary !== ''
+            ? [$configuredBinary, ...$this->weasyPrintCandidates()]
+            : $this->weasyPrintCandidates();
+
+        foreach (array_values(array_unique($candidates)) as $candidate) {
+            if (! $this->isAbsolutePath($candidate)) {
+                continue;
+            }
+
+            $binary = realpath($candidate);
+
+            if ($binary === false || ! is_file($binary) || ! is_executable($binary)) {
+                continue;
+            }
+
+            $version = $this->inspectWeasyPrintVersion($binary, $projectRoot);
+
+            if ($version === null || ! $this->generateMinimalPdf($binary, $probeDirectory, $projectRoot)) {
+                continue;
+            }
+
+            return [
+                'requirement' => new InstallationRequirementResult(
+                    key: 'runtime.weasyprint',
+                    group: 'pdf',
+                    passed: true,
+                    expected: 'absolute_executable_weasyprint_with_pdf_output',
+                    actual: $binary.' WeasyPrint '.$version.' %PDF-',
+                ),
+                'binary' => $binary,
+            ];
         }
 
-        return [
-            'requirement' => new InstallationRequirementResult(
-                key: 'runtime.weasyprint',
-                group: 'pdf',
-                passed: true,
-                expected: 'absolute_regular_non_symlink_executable_with_pdf_output',
-                actual: $binary.' WeasyPrint '.$version.' %PDF-',
-            ),
-            'binary' => $binary,
+        return $this->failedWeasyPrint('weasyprint_not_detected_or_pdf_probe_failed');
+    }
+
+    /** @return list<string> */
+    private function weasyPrintCandidates(): array
+    {
+        return $this->weasyPrintCandidatePaths ?? [
+            '/usr/bin/weasyprint',
+            '/usr/local/bin/weasyprint',
         ];
     }
 
@@ -625,7 +615,7 @@ final class InstallationRuntimeInspector
                 key: 'runtime.weasyprint',
                 group: 'pdf',
                 passed: false,
-                expected: 'absolute_regular_non_symlink_executable_with_pdf_output',
+                expected: 'absolute_executable_weasyprint_with_pdf_output',
                 actual: $actual,
             ),
             'binary' => null,

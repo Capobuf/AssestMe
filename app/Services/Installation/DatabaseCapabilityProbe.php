@@ -23,6 +23,16 @@ final readonly class DatabaseCapabilityProbe
 
     public function probe(DatabaseConfigurationData $configuration): DatabaseCapabilityProbeResultData
     {
+        $extension = $configuration->driver === SupportedDatabaseDriver::Sqlite
+            ? 'pdo_sqlite'
+            : 'pdo_mysql';
+
+        if (! extension_loaded($extension)) {
+            throw new DatabaseCapabilityProbeException(
+                "L'estensione PHP {$extension} è obbligatoria per usare {$configuration->driver->label()}.",
+            );
+        }
+
         $this->assertSafeSqlitePath($configuration);
         $this->createSqliteFileWhenMissing($configuration);
 

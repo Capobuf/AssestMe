@@ -78,14 +78,18 @@ post /install/welcome
 grep -q 'Requisiti runtime' "$response_file" || { echo 'Welcome step failed.' >&2; exit 70; }
 post /install/requirements
 grep -q 'Impostazioni di produzione' "$response_file" || { echo 'Runtime step failed.' >&2; exit 70; }
+for removed_field in application_name weasyprint_binary php_binary dump_binary restore_binary; do
+    if grep -q "name=\"$removed_field\"" "$response_file"; then
+        echo "Removed installer field is still present: $removed_field" >&2
+        exit 70
+    fi
+done
 post /install/configuration \
-    --data-urlencode 'application_name=AssestMe' \
+    --data-urlencode 'application_name=Ignored value' \
     --data-urlencode "application_url=$configured_url" \
     --data-urlencode 'timezone=Europe/Rome' \
     --data-urlencode 'locale=it' \
     --data-urlencode "backup_root=$project_path/storage/backups" \
-    --data-urlencode "weasyprint_binary=$weasyprint_binary" \
-    --data-urlencode "php_binary=$php_binary" \
     --data-urlencode 'database_driver=sqlite'
 grep -q 'Configura SQLite' "$response_file" || { echo 'Application configuration step failed.' >&2; exit 70; }
 post /install/database \
@@ -115,6 +119,11 @@ if [[ "$install_status" != '404' || "$login_status" != '200' ]]; then
     echo "The installer lock or administrator login endpoint is invalid." >&2
     exit 70
 fi
+
+grep -q '^APP_NAME="AssestMe"$' "$project_path/.env" || {
+    echo 'The installer did not preserve the fixed application name.' >&2
+    exit 70
+}
 
 (
     cd "$project_path"

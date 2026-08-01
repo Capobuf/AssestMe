@@ -34,8 +34,6 @@ final class InstallationRuntimeConfigurator
             'laravel-pdf.weasyprint.binary' => $application->weasyPrintBinary,
             'assestme.installation.php_binary' => $application->phpBinary,
             'assestme.backup.root' => $application->backupRoot,
-            'assestme.backup.dump_binary' => $database->dumpBinary,
-            'assestme.backup.restore_binary' => $database->restoreBinary,
         ]);
 
         app()->setLocale($application->locale);

@@ -11,6 +11,8 @@ use Illuminate\Validation\Validator;
 
 final class ApplicationConfigurationRequest extends FormRequest
 {
+    private const APPLICATION_NAME = 'AssestMe';
+
     public function authorize(): bool
     {
         return true;
@@ -26,13 +28,10 @@ final class ApplicationConfigurationRequest extends FormRequest
         };
 
         return [
-            'application_name' => ['required', 'string', 'max:120'],
             'application_url' => ['required', 'url:http,https', 'max:2048'],
             'timezone' => ['required', 'timezone:all'],
             'locale' => ['required', 'in:it'],
             'backup_root' => ['required', 'string', 'max:4096', $absolutePath],
-            'weasyprint_binary' => ['required', 'string', 'max:4096', $absolutePath],
-            'php_binary' => ['required', 'string', 'max:4096', $absolutePath],
             'database_driver' => ['required', 'in:sqlite,mysql,mariadb'],
         ];
     }
@@ -67,19 +66,19 @@ final class ApplicationConfigurationRequest extends FormRequest
         }];
     }
 
-    public function toData(): ApplicationConfigurationData
+    public function toData(string $weasyPrintBinary, string $phpBinary): ApplicationConfigurationData
     {
-        /** @var array{application_name: string, application_url: string, timezone: string, locale: string, backup_root: string, weasyprint_binary: string, php_binary: string} $validated */
+        /** @var array{application_url: string, timezone: string, locale: string, backup_root: string} $validated */
         $validated = $this->validated();
 
         return new ApplicationConfigurationData(
-            name: trim($validated['application_name']),
+            name: self::APPLICATION_NAME,
             url: rtrim($validated['application_url'], '/'),
             timezone: $validated['timezone'],
             locale: $validated['locale'],
             backupRoot: $validated['backup_root'],
-            weasyPrintBinary: $validated['weasyprint_binary'],
-            phpBinary: $validated['php_binary'],
+            weasyPrintBinary: $weasyPrintBinary,
+            phpBinary: $phpBinary,
         );
     }
 

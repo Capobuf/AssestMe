@@ -4,13 +4,21 @@ declare(strict_types=1);
 
 use App\Data\Installation\ApplicationConfigurationData;
 use App\Data\Installation\DatabaseConfigurationData;
+use App\Data\Installation\InstallationFinalCheckResult;
 use App\Data\Installation\InstallationProgressData;
 use App\Enums\SupportedDatabaseDriver;
 use App\Models\User;
+use App\Services\Database\DatabaseClientBinaryResolver;
+use App\Services\Database\DatabaseDumpBinaryValidator;
+use App\Services\Database\DatabaseRestoreBinaryValidator;
+use App\Services\Installation\InstallationFinalCheck;
+use App\Services\Installation\InstallationRuntimeInspector;
 use App\Services\Installation\InstallationState;
+use App\Services\Installation\SchedulerHeartbeat;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
+use Illuminate\Support\ViewErrorBag;
 
 beforeEach(function (): void {
     $root = storage_path('framework/testing/installer-wizard-'.Str::uuid());
@@ -50,6 +58,14 @@ it('exposes only the protected installer flow before the definitive lock', funct
 });
 
 it('does not advance while a real runtime requirement is missing', function (): void {
+    Config::set([
+        'assestme.installation.php_binary' => null,
+        'laravel-pdf.weasyprint.binary' => null,
+    ]);
+    app()->instance(InstallationRuntimeInspector::class, new InstallationRuntimeInspector(
+        phpCandidatePaths: [],
+        weasyPrintCandidatePaths: [],
+    ));
     $state = app(InstallationState::class);
     $progress = $state->progress();
     $state->save(new InstallationProgressData(
@@ -76,6 +92,117 @@ it('does not advance while a real runtime requirement is missing', function (): 
 
     expect($state->progress()->step)->toBe('runtime');
 });
+
+it('shows operational WeasyPrint installation instructions when automatic detection fails', function (): void {
+    $inspection = (new InstallationRuntimeInspector(
+        phpCandidatePaths: [PHP_BINARY],
+        weasyPrintCandidatePaths: [],
+    ))->inspect(base_path(), configuredWeasyPrintBinary: '/missing/weasyprint');
+
+    $this->view('installation.runtime', [
+        'inspection' => $inspection,
+        'errors' => new ViewErrorBag,
+    ])
+        ->assertSee('WeasyPrint è obbligatorio')
+        ->assertSee('sudo apt update')
+        ->assertSee('sudo apt install -y weasyprint')
+        ->assertSee('weasyprint --version')
+        ->assertSee('chiedi al provider hosting')
+        ->assertSee('Verifica nuovamente');
+});
+
+it('omits binary and application name fields and ignores a submitted application name', function (): void {
+    $state = app(InstallationState::class);
+    $progress = $state->progress();
+    $state->save(new InstallationProgressData(
+        installationId: $progress->installationId,
+        step: 'configuration',
+    ));
+
+    $this->get('/install/configuration')
+        ->assertOk()
+        ->assertDontSee('name="application_name"', false)
+        ->assertDontSee('name="weasyprint_binary"', false)
+        ->assertDontSee('name="php_binary"', false);
+
+    $response = $this->post('/install/configuration', [
+        'application_name' => 'Nome manipolato',
+        'application_url' => rtrim(url('/'), '/'),
+        'timezone' => 'Europe/Rome',
+        'locale' => 'it',
+        'backup_root' => storage_path('backups'),
+        'database_driver' => 'mysql',
+    ]);
+    expect($response->getStatusCode())->toBe(302)
+        ->and($response->headers->get('Location'))->toBe(url('/install/database'));
+
+    $saved = $state->progress();
+    expect($saved->application?->name)->toBe('AssestMe')
+        ->and($saved->application?->phpBinary)->toBeString()->toStartWith(DIRECTORY_SEPARATOR)
+        ->and($saved->application?->weasyPrintBinary)->toBeString()->toStartWith(DIRECTORY_SEPARATOR);
+
+    $this->get('/install/database')
+        ->assertOk()
+        ->assertDontSee('name="dump_binary"', false)
+        ->assertDontSee('name="restore_binary"', false);
+});
+
+it('renders complete manual CloudPanel and SSH scheduler instructions', function (): void {
+    $php = (string) realpath(PHP_BINARY);
+    $artisan = base_path('artisan');
+    $command = $php.' '.$artisan.' schedule:run';
+
+    $this->view('installation.complete', [
+        'checks' => [],
+        'scheduler' => app(SchedulerHeartbeat::class)->status(),
+        'cronCommand' => $command,
+        'errors' => new ViewErrorBag,
+    ])
+        ->assertSee('CloudPanel → Sites → assestme → Cron Jobs → Add Cron Job')
+        ->assertSee('site user')
+        ->assertSee('* * * * *')
+        ->assertSee($command)
+        ->assertSee('crontab -e')
+        ->assertSee('* * * * * '.$command);
+});
+
+it('keeps final server backup checks pending when no matching dump client is available', function (SupportedDatabaseDriver $driver, string $message): void {
+    $originalResolver = app(DatabaseClientBinaryResolver::class);
+    $resolver = new DatabaseClientBinaryResolver(
+        app(DatabaseDumpBinaryValidator::class),
+        app(DatabaseRestoreBinaryValidator::class),
+        [],
+    );
+    config()->set('assestme.backup.dump_binary');
+    app()->instance(DatabaseClientBinaryResolver::class, $resolver);
+    app()->forgetInstance(InstallationFinalCheck::class);
+
+    try {
+        $method = new ReflectionMethod(InstallationFinalCheck::class, 'backupChecks');
+        $checks = $method->invoke(
+            app(InstallationFinalCheck::class),
+            new DatabaseConfigurationData(driver: $driver, database: 'assestme'),
+        );
+
+        expect($checks)->toHaveCount(2)
+            ->and($checks[0]['status'])->toBe('pending')
+            ->and($checks[1]['status'])->toBe('pending')
+            ->and($checks[0]['detail'])->toBe($message)
+            ->and((new InstallationFinalCheckResult($checks))->passed())->toBeTrue();
+    } finally {
+        app()->instance(DatabaseClientBinaryResolver::class, $originalResolver);
+        app()->forgetInstance(InstallationFinalCheck::class);
+    }
+})->with([
+    'MySQL' => [
+        SupportedDatabaseDriver::MySql,
+        'Backup database non ancora disponibile. Installare un client MySQL che fornisca mysqldump; AssestMe lo rileverà automaticamente.',
+    ],
+    'MariaDB' => [
+        SupportedDatabaseDriver::MariaDb,
+        'Backup database non ancora disponibile. Installare il pacchetto mariadb-client; AssestMe rileverà automaticamente mariadb-dump.',
+    ],
+]);
 
 it('rejects an SQLite path below public through the HTTP database step', function (): void {
     $state = app(InstallationState::class);

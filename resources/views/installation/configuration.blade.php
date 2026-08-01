@@ -6,9 +6,6 @@
 
     <form method="post" action="{{ route('installation.configuration.store') }}" class="installer-form">
         @csrf
-        <label>Nome applicazione
-            <input name="application_name" required maxlength="120" value="{{ old('application_name', $application?->name ?? 'AssestMe') }}">
-        </label>
         <label>APP_URL
             <input name="application_url" required type="url" value="{{ old('application_url', $application?->url ?? $detectedUrl) }}">
             <small>In produzione deve usare HTTPS e corrispondere al dominio corrente, senza percorsi aggiuntivi.</small>
@@ -23,12 +20,6 @@
         </div>
         <label>Directory backup assoluta
             <input name="backup_root" required value="{{ old('backup_root', $application?->backupRoot ?? storage_path('backups')) }}">
-        </label>
-        <label>Binario WeasyPrint
-            <input name="weasyprint_binary" required value="{{ old('weasyprint_binary', $application?->weasyPrintBinary ?? $inspection->weasyPrintBinary) }}">
-        </label>
-        <label>Binario PHP CLI 8.3
-            <input name="php_binary" required value="{{ old('php_binary', $application?->phpBinary ?? $inspection->phpBinary) }}">
         </label>
         <fieldset>
             <legend>Database nuovo</legend>

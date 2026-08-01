@@ -163,7 +163,7 @@ return [
             'warning' => 'Da configurare',
         ],
         'checks' => [
-            'php_version' => 'PHP 8.3',
+            'php_version' => 'PHP >= 8.3.0',
             'memory_limit' => 'Memoria PHP',
             'common_extensions' => 'Estensioni PHP comuni',
             'php_cli' => 'PHP CLI',

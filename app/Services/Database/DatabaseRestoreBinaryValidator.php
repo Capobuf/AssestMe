@@ -19,22 +19,19 @@ final class DatabaseRestoreBinaryValidator
         };
 
         if (! str_starts_with($path, DIRECTORY_SEPARATOR)
-            || basename($path) !== $expectedBasename
-            || is_link($path)
-            || ! is_file($path)
-            || ! is_executable($path)) {
+            || basename($path) !== $expectedBasename) {
             throw new RuntimeException("The configured {$driver} restore binary is invalid.");
         }
 
         $realPath = realpath($path);
 
-        if ($realPath === false || $realPath !== $path) {
-            throw new RuntimeException("The configured {$driver} restore binary path must be canonical.");
+        if ($realPath === false || ! is_file($realPath) || ! is_executable($realPath)) {
+            throw new RuntimeException("The configured {$driver} restore binary is invalid.");
         }
 
         try {
             $process = new Process(
-                [$path, '--version'],
+                [$realPath, '--version'],
                 env: (new DatabaseClientProcessEnvironment)->forDriver(
                     $driver,
                     storage_path('framework/.assestme-version-check'),

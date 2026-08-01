@@ -19,9 +19,15 @@
 
     <section class="installer-cron" data-scheduler-panel>
         <h2>Scheduler CloudPanel</h2>
-        <p>In CloudPanel apri <strong>Cron Jobs</strong>, imposta la frequenza e il comando separatamente:</p>
+        <p>Apri <strong>CloudPanel → Sites → assestme → Cron Jobs → Add Cron Job</strong>.</p>
+        <p>Esegui il cron come <strong>site user</strong> e inserisci i due valori separatamente:</p>
+        <p><strong>Frequenza:</strong></p>
         <code>* * * * *</code>
+        <p><strong>Comando:</strong></p>
         <code>{{ $cronCommand }}</code>
+        <p>Alternativa SSH:</p>
+        <code>crontab -e</code>
+        <code>* * * * * {{ $cronCommand }}</code>
         <p data-scheduler-status>Scheduler {{ $scheduler->isRecent() ? 'verificato' : 'non ancora verificato' }}.</p>
         <button class="installer-button installer-button-secondary" type="button" data-recheck-health>Verifica nuovamente</button>
     </section>

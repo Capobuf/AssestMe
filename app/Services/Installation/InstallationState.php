@@ -36,7 +36,7 @@ final readonly class InstallationState
              *   installation_id?: string,
              *   step?: string,
              *   application?: array{name: string, url: string, timezone: string, locale: string, backup_root: string, weasyprint_binary: string, php_binary: string}|null,
-             *   database?: array{driver: string, database: string, host: string, port: int, username: string, password: string, socket: string, charset: string, collation: string, dump_binary: string, restore_binary: string}|null
+             *   database?: array{driver: string, database: string, host: string, port: int, username: string, password: string, socket: string, charset: string, collation: string, dump_binary?: string, restore_binary?: string}|null
              * } $data
              */
             $data = json_decode($json, true, 32, JSON_THROW_ON_ERROR);

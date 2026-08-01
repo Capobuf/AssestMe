@@ -7,6 +7,7 @@ use App\Actions\Backups\RestoreBackup;
 use App\Actions\Backups\VerifyBackup;
 use App\Models\Client;
 use App\Models\User;
+use App\Services\Database\DatabaseClientBinaryResolver;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -24,12 +25,11 @@ it('round trips a real server database dump restore and private storage with saf
         return;
     }
 
-    $dumpBinary = getenv('ASSESTME_DB_DUMP_BINARY');
-    $restoreBinary = getenv('ASSESTME_DB_RESTORE_BINARY');
-    expect($dumpBinary)->toBeString()->not->toBeEmpty()
-        ->and($restoreBinary)->toBeString()->not->toBeEmpty();
-    config()->set('assestme.backup.dump_binary', $dumpBinary);
-    config()->set('assestme.backup.restore_binary', $restoreBinary);
+    config()->set('assestme.backup.dump_binary');
+    config()->set('assestme.backup.restore_binary');
+    $clients = app(DatabaseClientBinaryResolver::class);
+    expect($clients->resolveDump($driver))->toBeString()->not->toBeEmpty()
+        ->and($clients->resolveRestore($driver))->toBeString()->not->toBeEmpty();
 
     $backupRoot = (string) config('assestme.backup.root');
     $privateRoot = (string) config('assestme.backup.private_storage_path');

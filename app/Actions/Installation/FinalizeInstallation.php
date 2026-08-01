@@ -9,7 +9,6 @@ use App\Data\Installation\InstallationDatabaseStatus;
 use App\Data\Installation\InstallationFinalCheckResult;
 use App\Models\User;
 use App\Services\Installation\DatabaseCapabilityProbe;
-use App\Services\Installation\DatabaseClientBinaryInspector;
 use App\Services\Installation\InstallationDatabaseClassifier;
 use App\Services\Installation\InstallationEnvironmentWriter;
 use App\Services\Installation\InstallationFinalCheck;
@@ -25,7 +24,6 @@ final readonly class FinalizeInstallation
     public function __construct(
         private InstallationState $installationState,
         private DatabaseCapabilityProbe $databaseCapabilityProbe,
-        private DatabaseClientBinaryInspector $databaseClientBinaryInspector,
         private InstallationDatabaseClassifier $databaseClassifier,
         private InstallationEnvironmentWriter $environmentWriter,
         private InstallationRuntimeConfigurator $runtimeConfigurator,
@@ -89,7 +87,6 @@ final readonly class FinalizeInstallation
             throw new RuntimeException('The installer application key is invalid.');
         }
 
-        $this->databaseClientBinaryInspector->inspect($database);
         $this->databaseCapabilityProbe->probe($database);
         $classification = $this->databaseClassifier->classify($database, $progress->installationId);
 

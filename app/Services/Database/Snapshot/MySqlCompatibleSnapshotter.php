@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Database\Snapshot;
 
 use App\Data\Backups\BackupDatabaseData;
+use App\Services\Database\DatabaseClientBinaryResolver;
 use App\Services\Database\DatabaseClientConfigurationResolver;
-use App\Services\Database\DatabaseDumpBinaryValidator;
 use App\Services\Database\DatabaseServerIdentityResolver;
 use Illuminate\Database\Connection;
 use Illuminate\Filesystem\Filesystem;
@@ -17,7 +17,7 @@ abstract readonly class MySqlCompatibleSnapshotter implements DatabaseSnapshotte
 {
     public function __construct(
         private Filesystem $files,
-        private DatabaseDumpBinaryValidator $binaryValidator,
+        private DatabaseClientBinaryResolver $binaryResolver,
         private DatabaseClientConfigurationResolver $configurationResolver,
         private DatabaseServerIdentityResolver $identityResolver,
     ) {}
@@ -40,13 +40,11 @@ abstract readonly class MySqlCompatibleSnapshotter implements DatabaseSnapshotte
             );
         }
 
-        $configuredBinary = config('assestme.backup.dump_binary');
+        $binary = $this->binaryResolver->resolveDump($driver);
 
-        if (! is_string($configuredBinary) || $configuredBinary === '') {
-            throw new RuntimeException("The {$driver} dump binary is not configured.");
+        if ($binary === null) {
+            throw new RuntimeException($this->missingDumpClientMessage());
         }
-
-        $binary = $this->binaryValidator->validate($driver, $configuredBinary);
         $configuration = $this->configurationResolver->resolve($connection);
         $destination = $stage.DIRECTORY_SEPARATOR.'database'.DIRECTORY_SEPARATOR.'database.sql';
         $this->files->ensureDirectoryExists(dirname($destination), 0700, true);
@@ -94,4 +92,11 @@ abstract readonly class MySqlCompatibleSnapshotter implements DatabaseSnapshotte
     abstract protected function expectedProduct(): string;
 
     abstract protected function newDumper(): SafeMySqlDumper|SafeMariaDbDumper;
+
+    private function missingDumpClientMessage(): string
+    {
+        return $this->expectedDriver() === 'mariadb'
+            ? 'Backup database non ancora disponibile. Installare il pacchetto mariadb-client; AssestMe rileverà automaticamente mariadb-dump.'
+            : 'Backup database non ancora disponibile. Installare un client MySQL che fornisca mysqldump; AssestMe lo rileverà automaticamente.';
+    }
 }

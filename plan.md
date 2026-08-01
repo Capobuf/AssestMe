@@ -1,9 +1,9 @@
 # AssestMe — Deterministic Executable Development Plan
 
-Specification version: **2.6**
+Specification version: **2.7**
 Status: **approved for implementation**  
 Application name: **AssestMe**  
-Reference runtime: **PHP 8.3 capability contract; no normative host distribution**
+Reference runtime: **PHP >= 8.3.0 capability contract; no normative host distribution**
 Primary development URL: **http://127.0.0.1:8000/admin**  
 Application language for the first release: **Italian**  
 Code, identifiers, commit messages, tests, and code comments: **English**
@@ -63,7 +63,8 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-003 (v1) | SUPERSEDED | Ubuntu Server 24.04 LTS was the normative reference environment; superseded by D-003 on 2026-07-17 |
 | D-003 | APPROVED | No host operating-system distribution is normative; runtime and bootstrap are capability-based |
 | D-004 (v1) | SUPERSEDED | PHP 8.3 was required from the official Ubuntu 24.04 repositories; superseded by D-004 on 2026-07-17 |
-| D-004 | APPROVED | PHP 8.3 is required without prescribing an operating-system package source |
+| D-004 (v2) | SUPERSEDED | PHP 8.3 was required without prescribing an operating-system package source; superseded by D-004 on 2026-08-01 |
+| D-004 | APPROVED | PHP web and CLI must be version 8.3.0 or newer, without a maximum version or prescribed operating-system package source |
 | D-005 | SUPERSEDED | SQLite was the sole database with foreign keys, WAL, and a 5-second busy timeout; superseded by D-063 on 2026-07-31 |
 | D-006 | APPROVED | File cache/session and synchronous queue; no Redis or worker |
 | D-007 (v1) | SUPERSEDED | Docker was prohibited together with frontend build dependencies; superseded by D-007 on 2026-07-17 |
@@ -131,12 +132,15 @@ The following decisions are normative. `Status: APPROVED` means an implementatio
 | D-061 | SUPERSEDED | The native Settings-cluster backup page and CLI-only restore boundary remain, but its SQLite-only archive contract is superseded by D-066 on 2026-07-31 |
 | D-062 | APPROVED | Existing assessment and Finding forms use an application-owned IndexedDB draft store for durable local recovery; server persistence remains authoritative, signed, explicit, optimistic-locked, and idempotent |
 | D-063 | APPROVED | Fresh AssestMe installations support SQLite, MySQL, and MariaDB through portable Laravel migrations; no data conversion or migration between database drivers is provided |
-| D-064 | APPROVED | CloudPanel production uses a prebuilt release ZIP with production vendors and local assets, document root `public`, and an application-specific web installer; Composer and Node.js are not required on the production server |
+| D-064 (v1) | SUPERSEDED | CloudPanel was the sole approved production destination; superseded by D-064 on 2026-08-01 |
+| D-064 | APPROVED | The prebuilt release ZIP and application-specific web installer support CloudPanel and traditional PHP hosting that provide the verified runtime capabilities, a `public` document root, private writable storage, and manual scheduler configuration; Composer and Node.js are not required on the production server |
 | D-065 | APPROVED | The installer uses a stable bootstrap application key, encrypted resumable non-administrator state, an atomic allowlisted `.env` writer, filesystem finalization locking, real capability checks, and an irreversible private installed lock; installed or anomalous instances never reopen the web installer |
-| D-066 | APPROVED | Backups use a driver-aware schema-v2 manifest and SQLite snapshots or MySQL/MariaDB SQL dumps; schema-v1 SQLite archives remain readable, verification is mandatory, and restore remains maintenance-mode CLI-only with a safety backup and best-effort compensation |
+| D-066 (v1) | SUPERSEDED | Server database dump and restore executables were configured during installation; superseded by D-066 on 2026-08-01 |
+| D-066 | APPROVED | Backups use a driver-aware schema-v2 manifest and operation-time automatic client discovery; SQLite backup remains mandatory, while missing MySQL/MariaDB clients do not block installation but make SQL backup/restore unavailable with actionable errors; restore remains maintenance-mode CLI-only with a required safety backup and best-effort compensation |
 | D-067 | APPROVED | CI proves common behavior against real SQLite, MySQL, and MariaDB databases at explicitly pinned tested versions; no unexecuted server version or real CloudPanel environment is described as compatible or certified |
-| D-068 | APPROVED | CloudPanel scheduler setup remains an operator GUI action; AssestMe emits an atomic every-minute heartbeat, reports its freshness, and shows the exact detected PHP CLI plus Artisan command without attempting to configure CloudPanel |
+| D-068 | APPROVED | Scheduler setup remains an operator action in CloudPanel or the hosting control panel/crontab; AssestMe emits an atomic every-minute heartbeat, reports its freshness, and shows the exact detected PHP CLI plus Artisan command without attempting to configure cron |
 | D-069 | APPROVED | `eii/laravel-installer` is excluded as an authoritative runtime dependency; AssestMe implements only its bounded installation flow with Laravel routes, controllers, form requests, Blade, file sessions, application services, local static CSS, and Symfony Process |
+| D-070 | APPROVED | The installer fixes `APP_NAME` to `AssestMe`, detects PHP CLI and mandatory WeasyPrint automatically with simple deterministic real probes, never installs packages, and exposes only optional advanced environment overrides for non-standard paths |
 
 ### D-001 — Framework
 
@@ -174,7 +178,7 @@ The current GitHub Actions workflow may use a hosted Ubuntu runner as CI infrast
 
 ### D-004 — PHP
 
-Use PHP 8.3. The project-owned development image supplies it for Docker Compose. The CloudPanel site must select PHP 8.3, and the web installer rejects a different PHP web or CLI runtime without making a host operating-system distribution normative.
+Use PHP 8.3.0 or newer without an upper bound. The project-owned development image may remain locked to a tested PHP 8.3 patch for Docker Compose, while a production host may provide PHP 8.3, PHP 8.4, or a later compatible release. The web installer applies the same minimum to PHP web and a separately probed PHP CLI executable without making a host operating-system distribution normative.
 
 Required extensions:
 
@@ -201,7 +205,7 @@ Required extensions:
 - `zip`
 - `zlib`
 
-Laravel 13 requires PHP 8.3 or newer. AssestMe deliberately targets PHP 8.3 for one reproducible runtime contract across development, CI, production, and future container packaging.
+The web pre-flight reports `Atteso: >= 8.3.0`; PHP 8.2 is rejected and no maximum is imposed.
 
 ### D-005 — Database
 
@@ -441,7 +445,7 @@ A failure must:
 
 Development has one supported profile: `docker/compose.dev.yml`. The application is served by Laravel Artisan inside the `app` container and is available at `http://127.0.0.1:8000/admin` or, subject to the development host firewall, at `http://<development-host-ip>:8000/admin` from an authorized local network.
 
-Production has one approved destination: a dedicated PHP 8.3 site managed by CloudPanel. D-064 through D-069 define the installable release ZIP, `public` document root, application-owned web installer, SQLite/MySQL/MariaDB selection, permissions, scheduler heartbeat, backup, update, and rollback operator procedures. CloudPanel remains infrastructure operated through its GUI; AssestMe does not modify CloudPanel or install operating-system packages over HTTP.
+Production uses the prebuilt release ZIP on CloudPanel or a traditional PHP hosting environment that provides the same verified capabilities. D-064 through D-070 define the `public` document root, application-owned web installer, SQLite/MySQL/MariaDB selection, permissions, scheduler heartbeat, backup, update, and rollback operator procedures. Hosting infrastructure remains operator-managed; AssestMe does not call control-panel APIs, change cron, or install operating-system packages over HTTP.
 
 The following are not supported installation profiles:
 
@@ -450,7 +454,7 @@ The following are not supported installation profiles:
 - Laravel Sail;
 - Kubernetes;
 - Docker Swarm;
-- shared hosting without shell access;
+- hosting without the required PHP CLI, WeasyPrint, private writable storage, or manual scheduler capability;
 - external managed databases;
 - the previous generic `releases/shared/current` layout.
 
@@ -896,11 +900,11 @@ Laravel migrations and initial seeders create a new schema on the selected drive
 
 The existing Docker Compose development profile remains file-backed SQLite at `database/database.sqlite`. Production SQLite defaults to a configurable path under `storage/app/database`, outside `public`. MySQL and MariaDB use `utf8mb4`, InnoDB, portable migrations, and a temporary isolated connection for destructive capability probes whose randomly named tables are removed in `finally`.
 
-### D-064 — CloudPanel production and installable release
+### D-064 — Hosted production and installable release
 
-**Status: APPROVED — 2026-07-31.**
+**Status: APPROVED — 2026-08-01.**
 
-CloudPanel is the sole approved production destination. An operator creates a PHP 8.3 Laravel site, enables HTTPS and temporary Basic Authentication or an IP restriction, sets the document root to `public`, extracts the versioned CloudPanel release ZIP, and opens `/install`. The repository includes the Italian GUI procedure, update and rollback boundaries, a capability-based smoke script, and a manual acceptance checklist. Compatibility proven in CI is distinct from a test on a real CloudPanel instance and must be reported as such.
+CloudPanel is the documented production destination, and the same release ZIP and capability-based wizard support a traditional PHP host that exposes a `public` document root, private writable storage, PHP web and CLI 8.3.0 or newer, required PDO extensions, WeasyPrint, and manual cron configuration. An operator enables HTTPS and temporary Basic Authentication or an IP restriction, extracts the release ZIP, and opens `/install`. The repository includes the Italian CloudPanel GUI procedure, traditional-host capability notes, update and rollback boundaries, a capability-based smoke script, and a manual acceptance checklist. Compatibility proven in CI is distinct from a test on a real hosting instance and must be reported as such.
 
 The release ZIP contains application code, production-only locked Composer dependencies, published Filament and installer assets, migrations, seeders, `.env.example`, CloudPanel documentation, an application version, and a SHA-256 file manifest. It contains no `.env`, credential, real database, backup, log, local cache, test screenshot, development dependency, or Git metadata. Composer and Node.js are not required on the production server.
 
@@ -914,13 +918,17 @@ Progress and final installation state are separate. Resumable progress is authen
 
 Before installation, `/`, `/admin`, and application routes redirect to the rate-limited CSRF-protected installer without loops. `/up` distinguishes a bootable uninstalled application, a healthy installed application, and runtime failure. After the lock exists, every installer route returns `404`; no web reset, cookie, query parameter, or missing browser session can reopen it. Existing AssestMe tables or an administrator without a valid lock are an anomaly and also fail closed. Scheduler verification may remain visibly pending but does not prevent creation of the final lock.
 
+The application name is fixed to `AssestMe`. The wizard does not request PHP CLI, WeasyPrint, dump, or restore paths. It discovers PHP CLI and mandatory WeasyPrint using deterministic absolute candidates plus optional advanced environment overrides and runs real version/PDF probes. Missing WeasyPrint is blocking and shows operator installation instructions; the web process never attempts package installation.
+
+Database connection and capability testing use PHP PDO and Laravel only: `pdo_sqlite` is required for SQLite and `pdo_mysql` for MySQL/MariaDB. SQL client executables are neither requested nor executed by the database step. SQLite retains a mandatory real final backup. For MySQL/MariaDB a detected dump client triggers the same real backup and verification; if no matching client exists, both checks are `pending` and installation may complete. A detected client whose real backup fails produces `failed` checks and remains blocking.
+
 ### D-066 — Multi-driver backup, verification, and CLI restore
 
-**Status: APPROVED — 2026-07-31.**
+**Status: APPROVED — 2026-08-01.**
 
 Backup archives use manifest schema v2 with an explicit driver, product, server version, payload format, and allowlisted payload path. SQLite stores `database/database.sqlite`; MySQL and MariaDB store `database/database.sql`. Verification validates every archive path and SHA-256 and rejects traversal or a driver/format/path mismatch. Existing valid schema-v1 SQLite archives remain readable.
 
-SQLite snapshots retain checkpointing and `VACUUM INTO`. MySQL and MariaDB dumps use the locked `spatie/db-dumper` package and separately validated driver-coherent absolute dump executables with consistent InnoDB options. Restore executables are independently configured and validated. Database passwords never appear in logs or command arguments; a temporary credentials file, when required, is mode `0600` and deleted in `finally`.
+SQLite snapshots retain checkpointing and `VACUUM INTO`. MySQL and MariaDB dumps use the locked `spatie/db-dumper` package and operation-time driver-coherent client discovery with consistent InnoDB options. The optional `ASSESTME_DB_DUMP_BINARY` and `ASSESTME_DB_RESTORE_BINARY` values override automatic `/usr/bin`, `/usr/local/bin`, and absolute `PATH` candidates for non-standard hosting only. Every candidate is resolved, checked as a regular executable, and verified with `--version`; a MariaDB client is never accepted for MySQL or vice versa. Paths detected automatically are not stored in the database.
 
 Restore remains an explicit CLI-only maintenance operation. It verifies the archive, creates and verifies a safety backup, imports without a shell command, and runs schema, migration, singleton-administrator, and integrity diagnostics. A failed server-database restore triggers a best-effort safety-dump compensation. If compensation fails, the application stays in maintenance mode, reports both artifact paths, and never claims atomicity or success.
 
@@ -930,11 +938,11 @@ Restore remains an explicit CLI-only maintenance operation. It verifies the arch
 
 The authoritative local aggregate gate remains isolated and non-destructive. CI additionally runs the portable application and database-specific integration suites against real disposable SQLite, MySQL, and MariaDB targets. The matrix pins the minimum and recent server versions actually executed for each product, installs both PDO drivers plus product-appropriate client utilities and WeasyPrint, and separates common, backup/restore, installer browser, and complete-gate workloads so evidence is real without duplicating every expensive gate.
 
-### D-068 — CloudPanel scheduler heartbeat
+### D-068 — Operator-managed scheduler heartbeat
 
-**Status: APPROVED — 2026-07-31.**
+**Status: APPROVED — 2026-08-01.**
 
-The Laravel Scheduler retains backup at 02:30 Europe/Rome, database integrity at 03:30 Europe/Rome, expired-save-request cleanup, and adds an atomic every-minute heartbeat in private storage. The installer and diagnostics validate a detected PHP 8.3 CLI executable through Symfony Process, display the exact absolute `php artisan schedule:run` command and the separate `* * * * *` frequency, and consider the scheduler verified only while the heartbeat is recent. AssestMe does not call or modify the CloudPanel API.
+The Laravel Scheduler retains backup at 02:30 Europe/Rome, database integrity at 03:30 Europe/Rome, expired-save-request cleanup, and adds an atomic every-minute heartbeat in private storage. The installer and diagnostics validate a detected PHP CLI >= 8.3.0 through Symfony Process, display the exact absolute `php artisan schedule:run` command and the separate `* * * * *` frequency, and consider the scheduler verified only while the heartbeat is recent. The final page gives both **CloudPanel → Sites → assestme → Cron Jobs → Add Cron Job** and the complete `crontab -e` line, requiring execution as site user. AssestMe does not call a hosting API or modify cron.
 
 ### D-069 — Installer package evaluation
 
@@ -1128,7 +1136,7 @@ Rules:
 
 The supported development host provides Docker, Docker Compose, and the repository only. The project-owned image provides PHP 8.3 CLI, every D-004 extension, Composer 2, and the standard shell/file utilities used by maintained development scripts. PHP, Composer, PHP extensions, Chrome, and ChromeDriver are not installed directly on the workstation as part of the supported profile.
 
-The application runtime does not require the standalone SQLite CLI. SQLite access is provided by PHP's `pdo_sqlite` extension. MySQL and MariaDB use `pdo_mysql`; their application backups and CLI-only restores additionally require a product-compatible dump and restore client whose absolute path is validated by the installer and diagnostics. CloudPanel runtime provisioning is an operator action and the web installer never installs operating-system packages.
+The application runtime does not require the standalone SQLite CLI. SQLite access is provided by PHP's `pdo_sqlite` extension. MySQL and MariaDB use `pdo_mysql`; normal installation and use do not require SQL clients. Backup and CLI-only restore discover product-compatible clients at operation time and report an actionable error when unavailable. Runtime provisioning is an operator/provider action and the web installer never installs operating-system packages.
 
 ### 5.2 Preflight
 
@@ -1143,7 +1151,7 @@ composer --version
 
 Required:
 
-- PHP `8.3.x`;
+- PHP `>= 8.3.0`;
 - every required extension from D-004;
 - Composer 2;
 - Laravel project markers `artisan`, `composer.json`, and `composer.lock`;
@@ -1332,13 +1340,13 @@ Completion evidence:
 
 ### 5.8 Production layout
 
-The approved production destination is a dedicated PHP 8.3 site managed by CloudPanel. The installable ZIP is extracted into the site directory, the document root is the release `public` directory, and persistent `.env`, private storage, database/backup files, and operator-managed release state remain outside the public root. The installer creates or verifies the bounded storage tree, configures SQLite/MySQL/MariaDB, writes `.env` atomically, and permanently closes itself with a private installed lock. The complete GUI procedure, update, persistence, backup, application rollback, and acceptance recording are maintained in `docs/cloudpanel-installation.md` and `docs/cloudpanel-acceptance-checklist.md`.
+The approved production release runs on CloudPanel or a traditional PHP host with the same verified capabilities. The installable ZIP is extracted into the site directory, the document root is the release `public` directory, and persistent `.env`, private storage, database/backup files, and operator-managed release state remain outside the public root. The installer creates or verifies the bounded storage tree, configures SQLite/MySQL/MariaDB, writes `.env` atomically, and permanently closes itself with a private installed lock. The complete CloudPanel GUI procedure, traditional-host capability boundary, update, persistence, backup, application rollback, and acceptance recording are maintained in `docs/cloudpanel-installation.md` and `docs/cloudpanel-acceptance-checklist.md`.
 
 The former generic `releases/shared/current` layout is superseded and is not an official installation profile.
 
 ### 5.9 Nginx and PHP-FPM
 
-CloudPanel provides PHP-FPM and web-server integration. AssestMe requires PHP 8.3 and the installer-listed extensions and binaries, but does not rewrite CloudPanel-managed web-server files. The existing generic Nginx and PHP stubs remain legacy/deprecated regression artifacts and are not the supported CloudPanel configuration.
+CloudPanel or the hosting provider supplies PHP-FPM/web-server integration. AssestMe requires PHP >= 8.3.0, the installer-listed extensions, and mandatory WeasyPrint, but does not rewrite provider-managed web-server files. The existing generic Nginx and PHP stubs remain legacy/deprecated regression artifacts and are not a supported production configuration.
 
 PHP production limits:
 
@@ -3432,7 +3440,7 @@ The recorded central-grid or DOMPDF proof failure would have blocked this histor
 
 ### Environment
 
-- PHP 8.3 capability contract documented and verified without a normative host distribution;
+- PHP >= 8.3.0 capability contract documented and verified without a normative host distribution or upper bound;
 - clean `composer install` from lock;
 - no runtime Node/Redis or external cloud renderer; Docker Compose is the authoritative development path, and any local renderer binary must be the single renderer accepted through D-059;
 - SQLite PRAGMAs verified;
@@ -3513,7 +3521,7 @@ This section records how the external blueprint review dated 2026-07-13 was reso
 
 | Review ID | Resolution in specification 2.0 |
 |---|---|
-| B-01 | SUPERSEDED by specification 2.3: PHP 8.3 remains exact, while runtime provisioning and preflight are capability-based with no normative host distribution or package source |
+| B-01 | SUPERSEDED by specification 2.7: PHP web and CLI require >= 8.3.0 without a maximum, while runtime provisioning and preflight are capability-based with no normative host distribution or package source |
 | B-02 | RESOLVED by D-009 on 2026-07-24: `LARAVEL_PDF_DRIVER=weasyprint` selects the sole accepted production renderer |
 | B-03 | Nginx/PHP-FPM, paths, ownership, permissions, TLS, release deploy, rollback, cron, and PHP limits defined |
 | B-04 | `lock_version`, request UUID, payload hash, one in-flight request, coalescing, stale-tab conflict protocol |
@@ -3537,6 +3545,10 @@ No OPEN product decision remains. D-009/D-059 are accepted pending the explicitl
 ## 22. Progress
 
 The implementation agent must maintain this section.
+
+The web-installer simplification slice started on 2026-08-01 from the clean `develop` HEAD `a73fa8b883d054c89a5d16fa33accaa30eecb865`, exactly aligned with `origin/develop`. The user explicitly approved PHP web and CLI runtimes `>= 8.3.0` without a maximum, a fixed `AssestMe` installer name, automatic deterministic PHP CLI and mandatory WeasyPrint discovery, PDO/Laravel database capability testing without SQL clients, and deferred product-coherent dump/restore client discovery at the actual backup or restore operation. MySQL and MariaDB installation may finish without those clients while recording final backup checks as pending; SQLite retains its mandatory real final backup. The bounded implementation will update only the installer/runtime/database/backup/restore paths, directly coupled tests and CloudPanel operational documentation, and will not touch IndexedDB, offline persistence, or the Finding Workspace. No package installation, CloudPanel API, automatic crontab mutation, dependency, database migration, capability DTO, binary registry, or additional architectural layer is introduced.
+
+The web-installer simplification slice completed its proportional local verification on 2026-08-01. The final explicitly requested installer/runtime/PDO command passed `27` tests with `181` assertions; the expanded directly affected group including backup and restore passed `45` tests with `370` assertions. The same real `DatabaseCapabilityProbe` passed against MySQL `8.4.11` and MariaDB `12.3.2` with both SQL-client overrides empty. A real MySQL-context `assestme:backup` invocation without a matching dump client exited `1`, displayed the required installation guidance, exposed no credential, and created no archive. Updated diagnostics and deployment-plan failures were rerun first and passed. Pint `--dirty` passed over `28` changed PHP files, scoped PHPStan passed `18` changed application files with zero errors, changed shell scripts passed `bash -n`, and `git diff --check` passed. A newly built installable ZIP completed the focused extracted-release CloudPanel Dusk path through automatic runtime discovery, absent binary fields, SQLite final backup, fixed `APP_NAME`, permanent installer lock, generated cron instructions, real login, and authenticated diagnostics: `1` test with `21` assertions. The first local Dusk launches were not counted as passing: one reached an old occupied port and one inherited the Compose development `DB_DATABASE`, causing the post-install login to read the development database; the accepted rerun used a fresh port and removed only those parent-process database overrides. The complete `scripts/verify.sh` gate and the full non-focused test suite were not run or claimed for this proportional installer slice.
 
 Rolling develop prerelease publication started on 2026-08-01 from the clean `develop` HEAD `344f161c0515f650e7baf92c082e8da4f355dd91`, exactly aligned with `origin/develop`. The bounded CI slice keeps the existing CloudPanel package construction and extracted-release SQLite installer, changes the installable archive convention to `assestme-<version>.zip`, removes only the external ZIP SHA-256 sidecar while retaining and verifying the internal `RELEASE-MANIFEST.sha256`, and adds a `develop`-push-only rolling prerelease after every existing Quality job succeeds. The stable prerelease will use tag `develop-latest`, title `AssestMe develop — ultima build valida`, and the single asset `assestme-develop.zip`; pull requests will continue to build and validate the package without publishing. The initial mechanical reference scan also found the old filename and sidecar instructions in the approved CloudPanel operator guide and one current unit-test expectation, so those directly coupled references are included in the same naming correction without changing packaging structure, exclusions, installer behavior, dependencies, or an approved decision.
 
@@ -3823,6 +3835,7 @@ Milestone 3 completed with the complete assessment/finding schema, native Filame
 
 ## 23. Discoveries and deviations
 
+- 2026-08-01: The development application image exposes `/usr/bin/mysqldump` and `/usr/bin/mysql` as symlinks to MariaDB clients. Canonical-path and executable checks alone would therefore misclassify them for a MySQL connection. The operation-time resolver follows the symlink but accepts it only after the existing `--version` validator confirms the requested product; the real MySQL no-client command proof consequently returned the intended actionable failure instead of running a MariaDB client under a MySQL alias.
 - 2026-07-31: `eii/laravel-installer` `2.0.0` is solver-compatible with Laravel 13/Livewire 4 but is unsuitable as AssestMe's authoritative runtime installer. Its current source derives tests from the MySQL connection, uses `migrate:fresh`, persists environment/admin material in progress data, edits `.env` through regex replacement, protects installation routes with only flag/lock conventions, and ships requirements/assets that do not match the no-Node/no-remote AssestMe contract. Its MIT license permits reuse of ideas, but no runtime dependency or copied Snipe-IT code was introduced.
 - 2026-07-31: A Laravel SQLite connection rejects a configured database path until the file exists. The installer capability probe therefore creates only the explicitly validated private non-symlink target with exclusive creation and mode `0600`; it never creates below `public` and never substitutes another database path. For server clients, process product identity cannot safely be inferred from aliases: MySQL and MariaDB dump/restore executables have separate canonical basenames and `--version` checks, and passwords are supplied only through mode-`0600` temporary option files.
 - 2026-07-31: Docker Compose process variables intentionally override `.env`. An extracted release served from the development `app` container must unset the profile's `DB_DATABASE=/workspace/database/database.sqlite`; otherwise post-install requests target the development database even though the installer correctly wrote and used the extracted release database. The clean rerun without that development-only override passed login and diagnostics. A normal CloudPanel PHP-FPM site has no Compose override, and the release CI job starts the extracted application in a separate process environment.

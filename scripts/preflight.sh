@@ -20,8 +20,8 @@ database_driver="${2:-${DB_CONNECTION:-sqlite}}"
 [[ "$database_driver" == "sqlite" || "$database_driver" == "mysql" || "$database_driver" == "mariadb" ]] || \
     fail "Database driver must be sqlite, mysql, or mariadb."
 
-php_version="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')"
-[[ "$php_version" == "8.3" ]] || fail "PHP 8.3.x is required; detected $(php -r 'echo PHP_VERSION;')."
+php -r 'exit(version_compare(PHP_VERSION, "8.3.0", ">=") ? 0 : 1);' || \
+    fail "PHP >= 8.3.0 is required; detected $(php -r 'echo PHP_VERSION;')."
 
 required_extensions=(
     bcmath ctype curl dom fileinfo filter gd iconv intl libxml mbstring openssl

@@ -9,11 +9,13 @@ use App\Actions\Backups\VerifyBackup;
 use App\Data\Installation\ApplicationConfigurationData;
 use App\Data\Installation\DatabaseConfigurationData;
 use App\Data\Installation\InstallationFinalCheckResult;
+use App\Enums\SupportedDatabaseDriver;
 use App\Models\AssetType;
 use App\Models\Category;
 use App\Models\FindingTemplate;
 use App\Models\RiskProfile;
 use App\Models\User;
+use App\Services\Database\DatabaseClientBinaryResolver;
 use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Filesystem\Filesystem;
@@ -31,6 +33,7 @@ final readonly class InstallationFinalCheck
         private Filesystem $files,
         private InstallationRuntimeInspector $runtimeInspector,
         private DatabaseCapabilityProbe $databaseCapabilityProbe,
+        private DatabaseClientBinaryResolver $databaseClientBinaryResolver,
         private CreateBackup $createBackup,
         private VerifyBackup $verifyBackup,
         private SchedulerHeartbeat $schedulerHeartbeat,
@@ -103,21 +106,7 @@ final readonly class InstallationFinalCheck
             return 'PDF reale generato con intestazione %PDF-.';
         });
 
-        $backupPath = null;
-        $checks[] = $this->check('backup', 'Backup reale', function () use (&$backupPath): string {
-            $backupPath = ($this->createBackup)(prune: false);
-
-            return 'Archivio creato: '.basename($backupPath);
-        });
-        $checks[] = $this->check('backup_verification', 'Verifica backup', function () use (&$backupPath): string {
-            if (! is_string($backupPath)) {
-                throw new RuntimeException('Il backup da verificare non è disponibile.');
-            }
-
-            $this->verifyBackup->handle($backupPath);
-
-            return 'Manifest, percorsi e SHA-256 verificati.';
-        });
+        array_push($checks, ...$this->backupChecks($database));
 
         $checks[] = $this->check('health', 'Health applicativo', function (): string {
             DB::connection()->select('SELECT 1');
@@ -125,7 +114,7 @@ final readonly class InstallationFinalCheck
             return 'Bootstrap, database e invarianti applicative rispondono.';
         });
 
-        $checks[] = $this->check('php_cli', 'PHP CLI 8.3', function () use ($application): string {
+        $checks[] = $this->check('php_cli', 'PHP CLI >= 8.3.0', function () use ($application): string {
             $inspection = $this->runtimeInspector->inspect(base_path(), $application->phpBinary, $application->weasyPrintBinary);
 
             if ($inspection->phpBinary !== $application->phpBinary || ! $inspection->passed()) {
@@ -146,6 +135,44 @@ final readonly class InstallationFinalCheck
         ];
 
         return new InstallationFinalCheckResult($checks);
+    }
+
+    /** @return list<array{key: string, label: string, status: 'passed'|'failed'|'pending', detail: string}> */
+    private function backupChecks(DatabaseConfigurationData $database): array
+    {
+        $dumpBinary = $database->driver === SupportedDatabaseDriver::Sqlite
+            ? null
+            : $this->databaseClientBinaryResolver->resolveDump($database->driver->value);
+
+        if ($database->driver !== SupportedDatabaseDriver::Sqlite && $dumpBinary === null) {
+            $detail = $database->driver === SupportedDatabaseDriver::MariaDb
+                ? 'Backup database non ancora disponibile. Installare il pacchetto mariadb-client; AssestMe rileverà automaticamente mariadb-dump.'
+                : 'Backup database non ancora disponibile. Installare un client MySQL che fornisca mysqldump; AssestMe lo rileverà automaticamente.';
+
+            return [
+                ['key' => 'backup', 'label' => 'Backup reale', 'status' => 'pending', 'detail' => $detail],
+                ['key' => 'backup_verification', 'label' => 'Verifica backup', 'status' => 'pending', 'detail' => $detail],
+            ];
+        }
+
+        $backupPath = null;
+
+        return [
+            $this->check('backup', 'Backup reale', function () use (&$backupPath): string {
+                $backupPath = ($this->createBackup)(prune: false);
+
+                return 'Archivio creato: '.basename($backupPath);
+            }),
+            $this->check('backup_verification', 'Verifica backup', function () use (&$backupPath): string {
+                if (! is_string($backupPath)) {
+                    throw new RuntimeException('Il backup da verificare non è disponibile.');
+                }
+
+                $this->verifyBackup->handle($backupPath);
+
+                return 'Manifest, percorsi e SHA-256 verificati.';
+            }),
+        ];
     }
 
     /** @return array{key: string, label: string, status: 'passed'|'failed', detail: string} */

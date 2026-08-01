@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Database\Restore;
 
+use App\Services\Database\DatabaseClientBinaryResolver;
 use App\Services\Database\DatabaseClientConfigurationResolver;
 use App\Services\Database\DatabaseClientOptionFile;
 use App\Services\Database\DatabaseClientProcessEnvironment;
-use App\Services\Database\DatabaseRestoreBinaryValidator;
 use App\Services\Database\DatabaseServerIdentityResolver;
 use Illuminate\Database\Connection;
 use RuntimeException;
@@ -17,7 +17,7 @@ use Throwable;
 abstract class MySqlCompatibleRestorer implements DatabaseRestorer
 {
     public function __construct(
-        private readonly DatabaseRestoreBinaryValidator $binaryValidator,
+        private readonly DatabaseClientBinaryResolver $binaryResolver,
         private readonly DatabaseClientConfigurationResolver $configurationResolver,
         private readonly DatabaseServerIdentityResolver $identityResolver,
         private readonly DatabaseClientOptionFile $optionFile,
@@ -41,13 +41,11 @@ abstract class MySqlCompatibleRestorer implements DatabaseRestorer
         }
 
         $this->validateSource($source);
-        $configuredBinary = config('assestme.backup.restore_binary');
+        $binary = $this->binaryResolver->resolveRestore($driver);
 
-        if (! is_string($configuredBinary) || $configuredBinary === '') {
-            throw new RuntimeException("The {$driver} restore binary is not configured.");
+        if ($binary === null) {
+            throw new RuntimeException($this->missingRestoreClientMessage());
         }
-
-        $binary = $this->binaryValidator->validate($driver, $configuredBinary);
         $configuration = $this->configurationResolver->resolve($connection);
         $credentialsPath = $this->optionFile->create(
             dirname($source),
@@ -103,6 +101,13 @@ abstract class MySqlCompatibleRestorer implements DatabaseRestorer
     abstract protected function expectedDriver(): string;
 
     abstract protected function expectedProduct(): string;
+
+    private function missingRestoreClientMessage(): string
+    {
+        return $this->expectedDriver() === 'mariadb'
+            ? 'Restore database non disponibile. Installare il pacchetto mariadb-client; AssestMe rileverà automaticamente mariadb.'
+            : 'Restore database non disponibile. Installare un client MySQL che fornisca mysql; AssestMe lo rileverà automaticamente.';
+    }
 
     private function validateSource(string $source): void
     {

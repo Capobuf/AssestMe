@@ -15,6 +15,8 @@ use Throwable;
 
 final readonly class InstallationEnvironmentWriter
 {
+    private const APPLICATION_NAME = 'AssestMe';
+
     public function __construct(private Filesystem $files) {}
 
     public function writePending(
@@ -97,7 +99,7 @@ final readonly class InstallationEnvironmentWriter
         string $applicationKey,
     ): array {
         $values = [
-            'APP_NAME' => $application->name,
+            'APP_NAME' => self::APPLICATION_NAME,
             'APP_ENV' => 'production',
             'APP_KEY' => $applicationKey,
             'APP_DEBUG' => 'false',
@@ -130,8 +132,8 @@ final readonly class InstallationEnvironmentWriter
             'LARAVEL_PDF_DRIVER' => 'weasyprint',
             'LARAVEL_PDF_WEASYPRINT_BINARY' => $application->weasyPrintBinary,
             'ASSESTME_PHP_BINARY' => $application->phpBinary,
-            'ASSESTME_DB_DUMP_BINARY' => $database->dumpBinary,
-            'ASSESTME_DB_RESTORE_BINARY' => $database->restoreBinary,
+            'ASSESTME_DB_DUMP_BINARY' => $this->optionalConfiguredString('assestme.backup.dump_binary'),
+            'ASSESTME_DB_RESTORE_BINARY' => $this->optionalConfiguredString('assestme.backup.restore_binary'),
             'ASSESTME_BACKUP_ROOT' => $application->backupRoot,
             'ASSESTME_VERSION' => (string) config('assestme.version', 'development'),
         ];
@@ -175,6 +177,13 @@ final readonly class InstallationEnvironmentWriter
         }
 
         return implode("\n", $lines)."\n";
+    }
+
+    private function optionalConfiguredString(string $key): string
+    {
+        $value = config($key);
+
+        return is_string($value) ? trim($value) : '';
     }
 
     /** @param array<string, string> $expected */

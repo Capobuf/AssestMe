@@ -15,7 +15,6 @@ use App\Http\Requests\Installation\ApplicationConfigurationRequest;
 use App\Http\Requests\Installation\DatabaseConfigurationRequest;
 use App\Services\Installation\DatabaseCapabilityProbe;
 use App\Services\Installation\DatabaseCapabilityProbeException;
-use App\Services\Installation\DatabaseClientBinaryInspector;
 use App\Services\Installation\InstallationDatabaseClassificationException;
 use App\Services\Installation\InstallationDatabaseClassifier;
 use App\Services\Installation\InstallationRuntimeInspector;
@@ -33,7 +32,6 @@ final class InstallationController extends Controller
     public function __construct(
         private readonly InstallationState $installationState,
         private readonly InstallationRuntimeInspector $runtimeInspector,
-        private readonly DatabaseClientBinaryInspector $databaseClientBinaryInspector,
         private readonly DatabaseCapabilityProbe $databaseCapabilityProbe,
         private readonly InstallationDatabaseClassifier $databaseClassifier,
         private readonly SchedulerHeartbeat $schedulerHeartbeat,
@@ -68,12 +66,7 @@ final class InstallationController extends Controller
 
     public function runtime(): View
     {
-        $progress = $this->installationState->progress();
-        $inspection = $this->runtimeInspector->inspect(
-            base_path(),
-            $progress->application?->phpBinary,
-            $progress->application?->weasyPrintBinary,
-        );
+        $inspection = $this->runtimeInspector->inspect(base_path());
 
         return view('installation.runtime', compact('inspection'));
     }
@@ -81,11 +74,7 @@ final class InstallationController extends Controller
     public function continueFromRuntime(Request $request): RedirectResponse
     {
         $progress = $this->installationState->progress();
-        $inspection = $this->runtimeInspector->inspect(
-            base_path(),
-            $progress->application?->phpBinary,
-            $progress->application?->weasyPrintBinary,
-        );
+        $inspection = $this->runtimeInspector->inspect(base_path());
 
         if ($request->boolean('refresh')) {
             return redirect()->route('installation.runtime');
@@ -108,16 +97,10 @@ final class InstallationController extends Controller
     public function configuration(Request $request): View
     {
         $progress = $this->installationState->progress();
-        $inspection = $this->runtimeInspector->inspect(
-            base_path(),
-            $progress->application?->phpBinary,
-            $progress->application?->weasyPrintBinary,
-        );
 
         return view('installation.configuration', [
             'application' => $progress->application,
             'database' => $progress->database,
-            'inspection' => $inspection,
             'detectedUrl' => $this->detectedUrl($request),
         ]);
     }
@@ -125,16 +108,15 @@ final class InstallationController extends Controller
     public function storeConfiguration(ApplicationConfigurationRequest $request): RedirectResponse
     {
         $progress = $this->installationState->progress();
-        $application = $request->toData();
-        $inspection = $this->runtimeInspector->inspect(
-            base_path(),
-            $application->phpBinary,
-            $application->weasyPrintBinary,
-        );
+        $inspection = $this->runtimeInspector->inspect(base_path());
 
-        if (! $inspection->passed()) {
+        if (! $inspection->passed()
+            || $inspection->phpBinary === null
+            || $inspection->weasyPrintBinary === null) {
             return back()->withInput()->with('installation_error', 'PHP CLI, WeasyPrint o filesystem non superano il controllo reale.');
         }
+
+        $application = $request->toData($inspection->weasyPrintBinary, $inspection->phpBinary);
 
         try {
             $this->assertBackupRoot($application->backupRoot);
@@ -188,13 +170,10 @@ final class InstallationController extends Controller
                 socket: $database->socket,
                 charset: $database->charset,
                 collation: $database->collation,
-                dumpBinary: $database->dumpBinary,
-                restoreBinary: $database->restoreBinary,
             );
         }
 
         try {
-            $this->databaseClientBinaryInspector->inspect($database);
             $probe = $this->databaseCapabilityProbe->probe($database);
             $classification = $this->databaseClassifier->classify($database, $progress->installationId);
 
@@ -300,31 +279,10 @@ final class InstallationController extends Controller
             );
         }
 
-        $dumpCandidates = $driver === SupportedDatabaseDriver::MariaDb
-            ? ['/usr/bin/mariadb-dump', '/usr/local/bin/mariadb-dump']
-            : ['/usr/bin/mysqldump', '/usr/local/bin/mysqldump'];
-        $restoreCandidates = $driver === SupportedDatabaseDriver::MariaDb
-            ? ['/usr/bin/mariadb', '/usr/local/bin/mariadb']
-            : ['/usr/bin/mysql', '/usr/local/bin/mysql'];
-
         return new DatabaseConfigurationData(
             driver: $driver,
             database: 'assestme',
-            dumpBinary: $this->firstExecutable($dumpCandidates),
-            restoreBinary: $this->firstExecutable($restoreCandidates),
         );
-    }
-
-    /** @param list<string> $candidates */
-    private function firstExecutable(array $candidates): string
-    {
-        foreach ($candidates as $candidate) {
-            if (is_file($candidate) && ! is_link($candidate) && is_executable($candidate)) {
-                return $candidate;
-            }
-        }
-
-        return $candidates[0];
     }
 
     private function assertBackupRoot(string $path): void

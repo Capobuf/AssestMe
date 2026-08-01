@@ -30,8 +30,6 @@
                 <label>Charset<input name="database_charset" readonly value="utf8mb4"></label>
                 <label>Collation<input name="database_collation" readonly value="utf8mb4_unicode_ci"></label>
             </div>
-            <label>Utility dump {{ $database->driver->label() }}<input name="dump_binary" required value="{{ old('dump_binary', $database->dumpBinary) }}"></label>
-            <label>Client restore {{ $database->driver->label() }}<input name="restore_binary" required value="{{ old('restore_binary', $database->restoreBinary) }}"></label>
         @endif
 
         <button class="installer-button" type="submit">Testa realmente il database</button>

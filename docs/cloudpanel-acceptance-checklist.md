@@ -9,8 +9,8 @@ Compilare questa scheda su una vera istanza. Conservare il risultato con i rifer
 - Versione CloudPanel:
 - Sistema operativo riportato dal pannello:
 - Versione PHP web:
-- Versione PHP CLI e percorso assoluto:
-- Versione WeasyPrint e percorso assoluto:
+- Versione PHP CLI >= 8.3 e percorso assoluto rilevato:
+- Versione WeasyPrint e percorso assoluto rilevato:
 - Driver database: SQLite / MySQL / MariaDB
 - Prodotto e versione database rilevati:
 - Dominio:
@@ -27,9 +27,13 @@ Compilare questa scheda su una vera istanza. Conservare il risultato con i rifer
 - [ ] `/admin` reindirizza a `/install` prima dell'installazione.
 - [ ] `/up` riporta `not_installed` prima dell'installazione.
 - [ ] Requisiti runtime e permessi superati dal processo web.
-- [ ] PDF minimo WeasyPrint superato.
-- [ ] PHP CLI 8.3 rilevato e validato.
+- [ ] PHP web 8.3 o superiore accettato; un runtime 8.2 viene rifiutato.
+- [ ] PDF minimo WeasyPrint rilevato automaticamente e superato.
+- [ ] PHP CLI 8.3 o superiore rilevato automaticamente e validato.
+- [ ] Il wizard non richiede nome applicazione né percorsi PHP, WeasyPrint, dump o restore; `APP_NAME` è `AssestMe`.
+- [ ] Estensione `pdo_sqlite` oppure `pdo_mysql` coerente rilevata.
 - [ ] Probe database completo e cleanup superati.
+- [ ] Probe MySQL/MariaDB completato tramite PDO senza eseguire client dump/restore.
 - [ ] Test con database non vuoto bloccato senza cancellazioni.
 - [ ] Migration e dati iniziali completati.
 - [ ] Unico amministratore creato e login riuscito.
@@ -38,13 +42,17 @@ Compilare questa scheda su una vera istanza. Conservare il risultato con i rifer
 
 ## Operatività
 
-- [ ] Cron CloudPanel inserito con frequenza `* * * * *`.
+- [ ] Aperto **CloudPanel → Sites → assestme → Cron Jobs → Add Cron Job**.
+- [ ] Cron CloudPanel inserito come site user con frequenza `* * * * *`.
 - [ ] Comando cron identico a quello mostrato dall'installer.
 - [ ] Heartbeat recente dopo almeno un minuto.
 - [ ] `php artisan assestme:diagnose` completato; allegare output senza segreti.
 - [ ] Diagnostica amministrativa visualizzata.
 - [ ] PDF applicativo generato e aperto correttamente.
-- [ ] Backup AssestMe creato e manifest verificato.
+- [ ] SQLite: backup AssestMe reale creato e manifest verificato.
+- [ ] MySQL/MariaDB con dump client: backup reale creato e manifest verificato.
+- [ ] MySQL/MariaDB senza dump client: installer completato con `backup` e `backup_verification` pending e istruzione operativa visibile.
+- [ ] Dopo l'installazione del client, AssestMe lo rileva senza rieseguire il setup.
 - [ ] Restore provato in maintenance su ambiente sacrificabile.
 - [ ] Per server database, safety backup e risultato compensazione annotati.
 - [ ] Basic Authentication/restrizione IP rimossa solo dopo login riuscito.
@@ -56,6 +64,7 @@ Compilare questa scheda su una vera istanza. Conservare il risultato con i rifer
 - Esito PDF:
 - Esito cron/heartbeat:
 - Esito backup/verifica:
+- Client dump/restore rilevati e relativo prodotto:
 - Esito restore:
 - Esito smoke script:
 - Problemi osservati, messaggio e orario:

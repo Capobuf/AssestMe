@@ -7,7 +7,9 @@ use App\Actions\Backups\PruneBackups;
 use App\Actions\Backups\RestoreBackup;
 use App\Actions\Backups\VerifyBackup;
 use App\Data\Backups\BackupManifest;
+use App\Services\Database\DatabaseClientBinaryResolver;
 use App\Services\Database\DatabaseDumpBinaryValidator;
+use App\Services\Database\DatabaseRestoreBinaryValidator;
 use App\Services\Database\Snapshot\DatabaseSnapshotterResolver;
 use App\Services\Database\Snapshot\MariaDbSnapshotter;
 use App\Services\Database\Snapshot\MySqlSnapshotter;
@@ -178,6 +180,7 @@ beforeEach(function (): void {
     $this->captureCredentialMode = $this->backupWorkspace.DIRECTORY_SEPARATOR.'credential-mode.txt';
     $this->captureCredentialCopy = $this->backupWorkspace.DIRECTORY_SEPARATOR.'credentials.txt';
     $this->originalDumpBinary = config('assestme.backup.dump_binary');
+    $this->originalRestoreBinary = config('assestme.backup.restore_binary');
     $this->originalBackupRoot = config('assestme.backup.root');
     $this->originalPrivateStorage = config('assestme.backup.private_storage_path');
     $this->originalDatabasePasswordEnvironment = getenv('DB_PASSWORD');
@@ -201,6 +204,7 @@ beforeEach(function (): void {
 
 afterEach(function (): void {
     config()->set('assestme.backup.dump_binary', $this->originalDumpBinary);
+    config()->set('assestme.backup.restore_binary', $this->originalRestoreBinary);
     config()->set('assestme.backup.root', $this->originalBackupRoot);
     config()->set('assestme.backup.private_storage_path', $this->originalPrivateStorage);
 
@@ -225,6 +229,43 @@ afterEach(function (): void {
     }
 
     File::deleteDirectory($this->backupWorkspace);
+});
+
+it('automatically resolves verified MySQL clients and rejects a MariaDB product under the MySQL name', function (): void {
+    $directory = $this->backupWorkspace.DIRECTORY_SEPARATOR.'automatic-bin';
+    $dump = assestMeCreateFakeDumpBinary(
+        $directory,
+        'mysqldump',
+        'mysqldump Ver unit-test for Linux (MySQL Community Server)',
+    );
+    $restore = $directory.DIRECTORY_SEPARATOR.'mysql';
+    File::put($restore, "#!/bin/sh\nprintf '%s\\n' 'mysql Ver 8.4.0 MySQL Community Server'\n");
+    chmod($restore, 0700);
+    config()->set('assestme.backup.dump_binary');
+    config()->set('assestme.backup.restore_binary');
+
+    $resolver = new DatabaseClientBinaryResolver(
+        new DatabaseDumpBinaryValidator,
+        new DatabaseRestoreBinaryValidator,
+        [$directory],
+    );
+
+    expect($resolver->resolveDump('mysql'))->toBe((string) realpath($dump))
+        ->and($resolver->resolveRestore('mysql'))->toBe((string) realpath($restore));
+
+    $mismatchDirectory = $this->backupWorkspace.DIRECTORY_SEPARATOR.'mismatched-bin';
+    assestMeCreateFakeDumpBinary(
+        $mismatchDirectory,
+        'mysqldump',
+        'mysqldump Ver unit-test Distrib unit-test-MariaDB',
+    );
+    $mismatchedResolver = new DatabaseClientBinaryResolver(
+        new DatabaseDumpBinaryValidator,
+        new DatabaseRestoreBinaryValidator,
+        [$mismatchDirectory],
+    );
+
+    expect($mismatchedResolver->resolveDump('mysql'))->toBeNull();
 });
 
 it('creates and verifies a complete MySQL manifest v2 archive through the public backup action', function (): void {
@@ -437,7 +478,7 @@ it('rejects a leading-dash database name before starting the dump process', func
         ->and(File::exists($this->stage.DIRECTORY_SEPARATOR.'database/database.sql'))->toBeFalse();
 });
 
-it('rejects a symlink or product-mismatched dump binary', function (): void {
+it('accepts a verified dump symlink and rejects basename or product mismatches', function (): void {
     $validator = new DatabaseDumpBinaryValidator;
     $realBinary = assestMeCreateFakeDumpBinary(
         $this->backupWorkspace.DIRECTORY_SEPARATOR.'real-bin',
@@ -459,8 +500,7 @@ it('rejects a symlink or product-mismatched dump binary', function (): void {
         'mysqldump Ver unit-test for Linux (MySQL Community Server)',
     );
 
-    expect(fn (): string => $validator->validate('mysql', $symlink))
-        ->toThrow(RuntimeException::class, 'dump binary is invalid')
+    expect($validator->validate('mysql', $symlink))->toBe((string) realpath($realBinary))
         ->and(fn (): string => $validator->validate('mysql', $wrongBasename))
         ->toThrow(RuntimeException::class, 'dump binary is invalid')
         ->and(fn (): string => $validator->validate('mysql', $wrongProduct))

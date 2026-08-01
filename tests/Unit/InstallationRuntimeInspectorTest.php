@@ -9,6 +9,31 @@ use Tests\TestCase;
 
 uses(TestCase::class);
 
+function installationRuntimeFakePhp(string $directory, string $version): string
+{
+    $path = $directory.DIRECTORY_SEPARATOR.'php-'.$version;
+    File::put($path, "#!/bin/sh\nprintf 'PHP {$version} (cli) (built: test)\\n'\n");
+    chmod($path, 0700);
+
+    return $path;
+}
+
+function installationRuntimeFakeWeasyPrint(string $directory): string
+{
+    $path = $directory.DIRECTORY_SEPARATOR.'weasyprint';
+    File::put($path, <<<'SH'
+#!/bin/sh
+if [ "${1:-}" = "--version" ]; then
+    printf 'WeasyPrint version 57.2\n'
+    exit 0
+fi
+printf '%%PDF-1.4\n' > "$2"
+SH);
+    chmod($path, 0700);
+
+    return $path;
+}
+
 beforeEach(function (): void {
     $this->runtimeInspectorRoot = sys_get_temp_dir()
         .DIRECTORY_SEPARATOR.'assestme-runtime-inspector-'.bin2hex(random_bytes(8));
@@ -82,7 +107,7 @@ it('returns structured passing results after real runtime filesystem CLI and PDF
         ->and($result->failures())->toBe([])
         ->and($result->phpBinary)->toBeString()->toStartWith(DIRECTORY_SEPARATOR)
         ->and($result->weasyPrintBinary)->toBeString()->toStartWith(DIRECTORY_SEPARATOR)
-        ->and($result->requirement('runtime.php.version')?->actual)->toStartWith('8.3.')
+        ->and($result->requirement('runtime.php.version')?->expected)->toBe('>= 8.3.0')
         ->and($result->requirement('runtime.php_cli')?->passed)->toBeTrue()
         ->and($result->requirement('runtime.weasyprint')?->actual)->toContain('%PDF-')
         ->and($extensionKeys)->toBe(array_map(
@@ -161,44 +186,35 @@ it('refuses a sensitive required directory that resolves below public', function
         ->and(File::allFiles($exposedDirectory))->toBe([]);
 });
 
-it('does not silently replace an invalid configured PHP CLI with another candidate', function (): void {
-    $result = app(InstallationRuntimeInspector::class)->inspect(
+it('tries standard PHP CLI candidates after an invalid advanced override', function (): void {
+    $php = installationRuntimeFakePhp($this->runtimeInspectorRoot, '8.4.2');
+    $weasyPrint = installationRuntimeFakeWeasyPrint($this->runtimeInspectorRoot);
+    $inspector = new InstallationRuntimeInspector(
+        phpCandidatePaths: [$php],
+        weasyPrintCandidatePaths: [$weasyPrint],
+    );
+    $result = $inspector->inspect(
         basePath: $this->runtimeInspectorRoot,
         configuredPhpBinary: $this->runtimeInspectorRoot.DIRECTORY_SEPARATOR.'missing-php',
-        configuredWeasyPrintBinary: $this->runtimeInspectorRoot.DIRECTORY_SEPARATOR.'missing-weasyprint',
     );
 
-    expect($result->phpBinary)->toBeNull()
-        ->and($result->requirement('runtime.php_cli')?->passed)->toBeFalse()
-        ->and($result->requirement('runtime.php_cli')?->actual)->toBe('configured_php_cli_invalid');
+    expect($result->phpBinary)->toBe(realpath($php))
+        ->and($result->requirement('runtime.php_cli')?->passed)->toBeTrue();
 });
 
-it('requires an absolute regular non-symlink WeasyPrint executable', function (): void {
-    $configuredBinary = config('laravel-pdf.weasyprint.binary');
-
-    expect($configuredBinary)->toBeString()->not->toBeEmpty();
-
-    $weasyPrintLink = $this->runtimeInspectorRoot.DIRECTORY_SEPARATOR.'weasyprint-link';
-    symlink($configuredBinary, $weasyPrintLink);
-    $this->runtimeInspectorLinks[] = $weasyPrintLink;
-
-    $relativeResult = app(InstallationRuntimeInspector::class)->inspect(
+it('reports that mandatory WeasyPrint was not detected after all candidates fail', function (): void {
+    $inspector = new InstallationRuntimeInspector(
+        phpCandidatePaths: [],
+        weasyPrintCandidatePaths: [],
+    );
+    $result = $inspector->inspect(
         basePath: $this->runtimeInspectorRoot,
-        configuredPhpBinary: $this->runtimeInspectorRoot.DIRECTORY_SEPARATOR.'missing-php',
         configuredWeasyPrintBinary: 'weasyprint',
     );
-    $symlinkResult = app(InstallationRuntimeInspector::class)->inspect(
-        basePath: $this->runtimeInspectorRoot,
-        configuredPhpBinary: $this->runtimeInspectorRoot.DIRECTORY_SEPARATOR.'missing-php',
-        configuredWeasyPrintBinary: $weasyPrintLink,
-    );
 
-    expect($relativeResult->requirement('runtime.weasyprint')?->actual)
-        ->toBe('configured_path_not_absolute')
-        ->and($symlinkResult->requirement('runtime.weasyprint')?->actual)
-        ->toBe('symlink_not_allowed')
-        ->and($relativeResult->weasyPrintBinary)->toBeNull()
-        ->and($symlinkResult->weasyPrintBinary)->toBeNull();
+    expect($result->requirement('runtime.weasyprint')?->actual)
+        ->toBe('weasyprint_not_detected_or_pdf_probe_failed')
+        ->and($result->weasyPrintBinary)->toBeNull();
 });
 
 it('rejects a successful WeasyPrint process that does not create a PDF signature', function (): void {
@@ -214,15 +230,58 @@ SH;
     File::put($fakeBinary, $script);
     chmod($fakeBinary, 0700);
 
-    $result = app(InstallationRuntimeInspector::class)->inspect(
+    $inspector = new InstallationRuntimeInspector(
+        phpCandidatePaths: [],
+        weasyPrintCandidatePaths: [$fakeBinary],
+    );
+    $result = $inspector->inspect(
         basePath: $this->runtimeInspectorRoot,
-        configuredPhpBinary: $this->runtimeInspectorRoot.DIRECTORY_SEPARATOR.'missing-php',
         configuredWeasyPrintBinary: $fakeBinary,
     );
 
     expect($result->requirement('runtime.weasyprint')?->passed)->toBeFalse()
-        ->and($result->requirement('runtime.weasyprint')?->actual)->toBe('minimal_pdf_probe_failed')
+        ->and($result->requirement('runtime.weasyprint')?->actual)->toBe('weasyprint_not_detected_or_pdf_probe_failed')
         ->and(File::glob(
             $this->runtimeInspectorRoot.DIRECTORY_SEPARATOR.'storage/framework/installer/weasyprint-probe-*',
         ))->toBe([]);
+});
+
+it('accepts PHP 8.3 and 8.4 web and CLI runtimes and rejects PHP 8.2', function (
+    string $version,
+    bool $expected,
+): void {
+    $php = installationRuntimeFakePhp($this->runtimeInspectorRoot, $version);
+    $weasyPrint = installationRuntimeFakeWeasyPrint($this->runtimeInspectorRoot);
+    $inspector = new InstallationRuntimeInspector(
+        runtimeVersion: $version,
+        phpCandidatePaths: [$php],
+        weasyPrintCandidatePaths: [$weasyPrint],
+    );
+    $result = $inspector->inspect(
+        $this->runtimeInspectorRoot,
+        configuredWeasyPrintBinary: $weasyPrint,
+    );
+
+    expect($result->requirement('runtime.php.version')?->passed)->toBe($expected)
+        ->and($result->requirement('runtime.php_cli')?->passed)->toBe($expected)
+        ->and($result->phpBinary === null)->toBe(! $expected);
+})->with([
+    'minimum PHP 8.3' => ['8.3.0', true],
+    'newer PHP 8.4' => ['8.4.3', true],
+    'unsupported PHP 8.2' => ['8.2.29', false],
+]);
+
+it('detects WeasyPrint automatically and verifies a real PDF signature', function (): void {
+    $php = installationRuntimeFakePhp($this->runtimeInspectorRoot, '8.3.0');
+    $weasyPrint = installationRuntimeFakeWeasyPrint($this->runtimeInspectorRoot);
+    $inspector = new InstallationRuntimeInspector(
+        phpCandidatePaths: [$php],
+        weasyPrintCandidatePaths: [$weasyPrint],
+    );
+    config()->set('laravel-pdf.weasyprint.binary');
+    $result = $inspector->inspect($this->runtimeInspectorRoot);
+
+    expect($result->weasyPrintBinary)->toBe(realpath($weasyPrint))
+        ->and($result->requirement('runtime.weasyprint')?->passed)->toBeTrue()
+        ->and($result->requirement('runtime.weasyprint')?->actual)->toContain('%PDF-');
 });

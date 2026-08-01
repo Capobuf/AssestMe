@@ -8,11 +8,9 @@ use App\Data\Database\DatabaseIntegrityResult;
 use App\Data\Diagnostics\ApplicationDiagnosticReport;
 use App\Data\Diagnostics\DiagnosticCheckData;
 use App\Data\Diagnostics\DiagnosticCheckStatus;
-use App\Data\Installation\DatabaseConfigurationData;
-use App\Enums\SupportedDatabaseDriver;
 use App\Services\Backups\LatestBackupStatus;
+use App\Services\Database\DatabaseClientBinaryResolver;
 use App\Services\Database\DatabaseDriverResolver;
-use App\Services\Installation\DatabaseClientBinaryInspector;
 use App\Services\Installation\InstallationRuntimeInspector;
 use App\Services\Installation\SchedulerHeartbeat;
 use Illuminate\Database\Connection;
@@ -50,7 +48,7 @@ final readonly class ApplicationDiagnostics
 
     public function __construct(
         private DatabaseDriverResolver $databaseDriverResolver,
-        private DatabaseClientBinaryInspector $databaseClientBinaryInspector,
+        private DatabaseClientBinaryResolver $databaseClientBinaryResolver,
         private InstallationRuntimeInspector $runtimeInspector,
         private SchedulerHeartbeat $schedulerHeartbeat,
         private LatestBackupStatus $latestBackupStatus,
@@ -128,7 +126,7 @@ final readonly class ApplicationDiagnostics
         if ($driver === 'sqlite') {
             $checks[] = $this->sqlitePathCheck($connection);
         } else {
-            $checks[] = $this->databaseUtilitiesCheck($connection, $driver);
+            $checks[] = $this->databaseUtilitiesCheck($driver);
         }
 
         try {
@@ -170,7 +168,7 @@ final readonly class ApplicationDiagnostics
      */
     private function runtimeChecks(array $missingExtensions): array
     {
-        $versionPassed = preg_match('/^8\.3(?:\.|$)/', PHP_VERSION) === 1;
+        $versionPassed = version_compare(PHP_VERSION, '8.3.0', '>=');
         $memoryLimit = trim((string) ini_get('memory_limit'));
         $memoryBytes = ini_parse_quantity($memoryLimit);
         $memoryPassed = $memoryLimit === '-1' || $memoryBytes >= 512 * 1024 * 1024;
@@ -367,32 +365,34 @@ final readonly class ApplicationDiagnostics
             : $this->failed('sqlite_path', 'sqlite', 'Percorso SQLite non sicuro o non disponibile.');
     }
 
-    private function databaseUtilitiesCheck(Connection $connection, string $driver): DiagnosticCheckData
+    private function databaseUtilitiesCheck(string $driver): DiagnosticCheckData
     {
-        $dumpBinary = config('assestme.backup.dump_binary');
-        $restoreBinary = config('assestme.backup.restore_binary');
-        $driverEnum = SupportedDatabaseDriver::from($driver);
-        $configuration = new DatabaseConfigurationData(
-            driver: $driverEnum,
-            database: $connection->getDatabaseName(),
-            dumpBinary: is_string($dumpBinary) ? $dumpBinary : '',
-            restoreBinary: is_string($restoreBinary) ? $restoreBinary : '',
-        );
-
         try {
-            $this->databaseClientBinaryInspector->inspect($configuration);
+            $dumpBinary = $this->databaseClientBinaryResolver->resolveDump($driver);
+            $restoreBinary = $this->databaseClientBinaryResolver->resolveRestore($driver);
         } catch (Throwable) {
             return $this->failed(
                 'database_utilities',
                 $driver,
-                'Utility dump e restore non valide per il driver configurato.',
+                'Il rilevamento dei client database non è riuscito.',
             );
+        }
+
+        if ($dumpBinary === null || $restoreBinary === null) {
+            $detail = match (true) {
+                $dumpBinary === null && $driver === 'mariadb' => 'Backup non disponibile: installare mariadb-client. Restore sicuro non disponibile senza safety backup.',
+                $dumpBinary === null => 'Backup non disponibile: installare un client MySQL che fornisca mysqldump. Restore sicuro non disponibile senza safety backup.',
+                $driver === 'mariadb' => 'Backup disponibile; restore non disponibile: installare mariadb-client per fornire mariadb.',
+                default => 'Backup disponibile; restore non disponibile: installare un client MySQL che fornisca mysql.',
+            };
+
+            return $this->warning('database_utilities', $driver, $detail);
         }
 
         return $this->passed(
             'database_utilities',
             $driver,
-            basename($configuration->dumpBinary).' / '.basename($configuration->restoreBinary),
+            basename($dumpBinary).' / '.basename($restoreBinary),
         );
     }
 

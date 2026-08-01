@@ -19,22 +19,19 @@ final class DatabaseDumpBinaryValidator
         };
 
         if (! $this->isAbsolutePath($path)
-            || basename($path) !== $expectedBasename
-            || is_link($path)
-            || ! is_file($path)
-            || ! is_executable($path)) {
+            || basename($path) !== $expectedBasename) {
             throw new RuntimeException("The configured {$driver} dump binary is invalid.");
         }
 
         $realPath = realpath($path);
 
-        if ($realPath === false || $realPath !== $path) {
-            throw new RuntimeException("The configured {$driver} dump binary path must be canonical.");
+        if ($realPath === false || ! is_file($realPath) || ! is_executable($realPath)) {
+            throw new RuntimeException("The configured {$driver} dump binary is invalid.");
         }
 
         try {
             $process = new Process(
-                [$path, '--version'],
+                [$realPath, '--version'],
                 env: [
                     'DATABASE_URL' => false,
                     'DB_DATABASE' => false,

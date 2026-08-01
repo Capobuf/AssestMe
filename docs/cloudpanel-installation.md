@@ -13,7 +13,7 @@ Scaricare soltanto l'archivio di release pubblicato. Il pacchetto contiene `RELE
 ## Creazione del sito dalla GUI
 
 1. In CloudPanel aprire **Sites**, scegliere **Add Site** e quindi **Create a PHP Site**.
-2. Selezionare il template Laravel 13 e PHP 8.3, inserire il dominio e creare il sito.
+2. Selezionare il template Laravel 13 e PHP 8.3 o superiore, inserire il dominio e creare il sito.
 3. Abilitare SSL/TLS dalla sezione del dominio e verificare che HTTPS sia operativo.
 4. Abilitare temporaneamente **Basic Authentication** nella sezione Security del sito, oppure limitare l'accesso al proprio IP.
 5. Impostare la document root sulla directory `public` dell'applicazione, mai sulla root del progetto. Esempio: `/home/<site-user>/htdocs/<dominio>/public`.
@@ -31,28 +31,78 @@ Scaricare soltanto l'archivio di release pubblicato. Il pacchetto contiene `RELE
 
 9. Per MySQL o MariaDB, aprire **Databases**, creare dalla GUI un database vuoto e un utente dedicato, annotando host, porta, nome database e utente. Per SQLite questo passaggio non serve.
 
+## Runtime e pacchetti
+
+AssestMe richiede PHP web e CLI 8.3 o superiore. Il wizard rileva automaticamente il PHP CLI coerente con il runtime web; non ne chiede il percorso. Richiede inoltre `pdo_sqlite` per SQLite oppure `pdo_mysql` per MySQL e MariaDB.
+
+WeasyPrint è obbligatorio per i report PDF e viene rilevato automaticamente. Su Debian e Ubuntu installarlo prima del wizard:
+
+```bash
+sudo apt update
+sudo apt install -y weasyprint
+weasyprint --version
+```
+
+L'installer web non esegue `sudo`, non installa pacchetti e non modifica il sistema. Se non si dispone di accesso root o sudo, chiedere al provider hosting di installare WeasyPrint; poi premere **Verifica nuovamente**.
+
+I client SQL non servono per connettersi, testare il database, eseguire migration, accedere o usare normalmente AssestMe. Servono soltanto per backup e restore MySQL/MariaDB. Possono essere installati prima o dopo il wizard; AssestMe li rileva alla successiva operazione.
+
+MariaDB su Debian/Ubuntu:
+
+```bash
+sudo apt install -y mariadb-client
+mariadb-dump --version
+mariadb --version
+```
+
+MySQL su Ubuntu:
+
+```bash
+sudo apt install -y mysql-client
+mysqldump --version
+mysql --version
+```
+
+Su alcune distribuzioni `default-mysql-client` installa in realtà client MariaDB. AssestMe esegue `--version` e accetta il client soltanto quando il prodotto corrisponde al driver scelto.
+
 ## Installer web
 
 1. Aprire `https://<dominio>/install` autenticandosi con la protezione temporanea CloudPanel.
 2. Controllare dominio e versione nella schermata iniziale e confermare che il database sia nuovo.
-3. Superare i controlli reali su PHP 8.3, estensioni, directory, PHP CLI e generazione PDF WeasyPrint.
-4. Inserire URL HTTPS, timezone `Europe/Rome`, locale `it`, directory backup, percorsi di WeasyPrint e PHP CLI.
+3. Superare i controlli reali su PHP 8.3 o superiore, estensioni, directory, PHP CLI rilevato automaticamente e generazione PDF WeasyPrint.
+4. Inserire URL HTTPS, timezone `Europe/Rome`, locale `it` e directory backup. Il nome applicazione resta sempre `AssestMe`; il wizard non chiede percorsi di binari.
 5. Scegliere separatamente SQLite, MySQL o MariaDB. Per SQLite usare il percorso proposto sotto `storage/app/database`, fuori da `public`. Per un server database inserire i dati creati in CloudPanel e, se necessario, il socket Unix.
 6. Eseguire il test database. AssestMe verifica identità del prodotto, versione, charset, InnoDB, privilegi, schema, vincoli, transazioni e cleanup delle tabelle casuali di probe. Un database non vuoto o appartenente a un'altra applicazione viene bloccato senza offrire cancellazioni.
 7. Creare l'unico amministratore con una password di 14–128 caratteri contenente maiuscole, minuscole, numeri e simboli.
-8. Avviare la finalizzazione una sola volta. Il processo ripetibile esegue migration normali, seeder idempotenti, creazione amministratore, PDF, backup, verifica e health check. Non usa `migrate:fresh`.
+8. Avviare la finalizzazione una sola volta. Il processo ripetibile esegue migration normali, seeder idempotenti, creazione amministratore, PDF e health check. SQLite esegue sempre il backup reale finale. Per MySQL/MariaDB, se il dump client è disponibile esegue e verifica il backup; se manca, i due controlli restano `pending` e l'installazione può completarsi. Un backup tentato ma fallito resta invece bloccante. Non usa `migrate:fresh`.
 9. Conservare la pagina finale fino a quando il cron è configurato. Dopo il lock definitivo `/install` e tutte le sue sotto-route rispondono `404`; non esiste reset web.
 
 ## Scheduler CloudPanel
 
-Nella pagina finale copiare esattamente il comando rilevato, composto dal percorso assoluto del PHP CLI 8.3 e dal percorso assoluto di `artisan`. In **Cron Jobs** del sito CloudPanel creare un job con:
+Nella pagina finale copiare esattamente il comando rilevato, composto dal percorso assoluto del PHP CLI e dal percorso assoluto di `artisan`.
+
+Aprire **CloudPanel → Sites → assestme → Cron Jobs → Add Cron Job** e creare il job come site user:
 
 ```text
 Frequenza: * * * * *
 Comando: <php-cli-assoluto> <artisan-assoluto> schedule:run
 ```
 
-Non aggiungere la frequenza nel campo comando. Attendere almeno un minuto e scegliere **Verifica nuovamente** nell'installer, oppure eseguire:
+Non aggiungere la frequenza nel campo comando.
+
+L'alternativa SSH, sempre come site user, è:
+
+```bash
+crontab -e
+```
+
+e aggiungere la riga completa:
+
+```text
+* * * * * <php-cli-assoluto> <artisan-assoluto> schedule:run
+```
+
+AssestMe non crea né modifica automaticamente il crontab. Attendere almeno un minuto e scegliere **Verifica nuovamente** nell'installer, oppure eseguire:
 
 ```bash
 php artisan assestme:diagnose
@@ -74,7 +124,11 @@ Da shell del site user è disponibile anche lo smoke test non distruttivo per la
 scripts/cloudpanel-smoke.sh /home/<site-user>/htdocs/<dominio> <dominio>
 ```
 
-Lo script crea e verifica un backup applicativo; non installa pacchetti e non stampa credenziali.
+Lo script crea e verifica un backup applicativo; per MySQL/MariaDB richiede quindi il dump client coerente. Non installa pacchetti e non stampa credenziali.
+
+## Hosting PHP tradizionale
+
+Lo stesso ZIP e wizard sono utilizzabili su un hosting PHP tradizionale che consenta una document root `public`, storage privato scrivibile, PHP web e CLI 8.3 o superiore, le estensioni PDO richieste, WeasyPrint e la configurazione manuale di un cron ogni minuto. Il wizard non usa API CloudPanel e non installa pacchetti. Quando shell, sudo o cron non sono disponibili, il provider deve predisporre queste capability; non esiste un percorso di installazione degradato senza WeasyPrint o senza PDO.
 
 ## Aggiornamento manuale
 
@@ -98,6 +152,6 @@ Procedura sintetica:
 
 Per un rollback applicativo, riattivare maintenance, ripristinare la directory della release precedente e il relativo `.env`, quindi ripristinare il database soltanto se la release ha applicato migration incompatibili. Verificare sempre l'archivio prima del restore.
 
-Il restore è esclusivamente CLI e richiede maintenance mode. Per MySQL e MariaDB crea prima un safety backup e tenta una compensazione se l'import fallisce; l'import SQL non è atomicamente garantito dal server. Se falliscono sia import sia compensazione, AssestMe resta in maintenance e conserva gli artefatti diagnostici. Sono necessari client coerenti con il prodotto (`mysql`/`mysqldump` oppure `mariadb`/`mariadb-dump`), configurabili con `ASSESTME_DB_RESTORE_BINARY` e `ASSESTME_DB_DUMP_BINARY`.
+Il restore è esclusivamente CLI e richiede maintenance mode. Per MySQL e MariaDB crea prima un safety backup e tenta una compensazione se l'import fallisce; l'import SQL non è atomicamente garantito dal server. Se falliscono sia import sia compensazione, AssestMe resta in maintenance e conserva gli artefatti diagnostici. Sono necessari client coerenti con il prodotto (`mysql`/`mysqldump` oppure `mariadb`/`mariadb-dump`), rilevati a ogni operazione. `ASSESTME_DB_RESTORE_BINARY` e `ASSESTME_DB_DUMP_BINARY` restano override avanzati per percorsi non standard; `ASSESTME_PHP_BINARY` e `LARAVEL_PDF_WEASYPRINT_BINARY` hanno lo stesso ruolo per PHP CLI e WeasyPrint.
 
 AssestMe non converte dati tra SQLite, MySQL e MariaDB. Un cambio di driver richiede una nuova installazione vuota e una procedura dati esterna esplicitamente progettata e validata.

@@ -127,8 +127,6 @@ it('round trips special environment values through an atomic pending file', func
         database: 'assestme',
         username: 'user name',
         password: $password,
-        dumpBinary: '/usr/bin/mariadb-dump',
-        restoreBinary: '/usr/bin/mariadb',
     );
     $writer = app(InstallationEnvironmentWriter::class);
     $key = 'base64:'.base64_encode(str_repeat('K', 32));
@@ -139,7 +137,7 @@ it('round trips special environment values through an atomic pending file', func
 
         expect($pending)->toBe($root.'/.env.pending')
             ->and($loaded['DB_PASSWORD'])->toBe($password)
-            ->and($loaded['APP_NAME'])->toBe('AssestMe Studio #1')
+            ->and($loaded['APP_NAME'])->toBe('AssestMe')
             ->and(fileperms($pending) & 0777)->toBe(0600);
 
         $writer->activatePending($application, $database, $key, $root);

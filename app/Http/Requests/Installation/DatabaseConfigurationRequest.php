@@ -38,8 +38,6 @@ final class DatabaseConfigurationRequest extends FormRequest
             'database_socket' => ['nullable', 'string', 'max:4096'],
             'database_charset' => ['required_unless:database_driver,sqlite', 'nullable', 'in:utf8mb4'],
             'database_collation' => ['required_unless:database_driver,sqlite', 'nullable', 'in:utf8mb4_unicode_ci'],
-            'dump_binary' => ['required_unless:database_driver,sqlite', 'nullable', 'string', 'max:4096', $absolutePath],
-            'restore_binary' => ['required_unless:database_driver,sqlite', 'nullable', 'string', 'max:4096', $absolutePath],
         ];
     }
 
@@ -59,8 +57,6 @@ final class DatabaseConfigurationRequest extends FormRequest
             socket: (string) ($this->validated('database_socket') ?? ''),
             charset: (string) ($this->validated('database_charset') ?? 'utf8mb4'),
             collation: (string) ($this->validated('database_collation') ?? 'utf8mb4_unicode_ci'),
-            dumpBinary: (string) ($this->validated('dump_binary') ?? ''),
-            restoreBinary: (string) ($this->validated('restore_binary') ?? ''),
         );
     }
 

@@ -185,7 +185,7 @@ it('configures the Docker PHP runtime and idempotent bootstrap contract', functi
         ->toContain("env('DEV_ADMIN_PASSWORD')");
 });
 
-it('records the superseded installation history and approved Docker and CloudPanel profiles only', function (): void {
+it('records the superseded installation history and approved Docker and hosted production profiles', function (): void {
     $plan = (string) file_get_contents(base_path('plan.md'));
 
     expect($plan)
@@ -203,7 +203,8 @@ it('records the superseded installation history and approved Docker and CloudPan
         ->toContain('| D-067 | APPROVED |')
         ->toContain('| D-068 | APPROVED |')
         ->toContain('| D-069 | APPROVED |')
-        ->toContain('CloudPanel is the sole approved production destination')
+        ->toContain('| D-070 | APPROVED |')
+        ->toContain('traditional PHP host')
         ->toContain('docker/compose.dev.yml');
 
     $markdownFiles = collect(File::allFiles(base_path()))
@@ -227,7 +228,7 @@ it('uses capability-based preflight and rejects an incomplete project root', fun
     $script = (string) file_get_contents(base_path('scripts/preflight.sh'));
 
     expect($script)
-        ->toContain('PHP 8.3.x is required')
+        ->toContain('PHP >= 8.3.0 is required')
         ->toContain('Missing required PHP extension')
         ->toContain('artisan, composer.json, and composer.lock')
         ->not->toContain('lsb_release')
