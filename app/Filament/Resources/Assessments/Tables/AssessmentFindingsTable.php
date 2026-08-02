@@ -110,6 +110,7 @@ final class AssessmentFindingsTable
                 ])
                     ->label(__('assestme.workspace.list.actions'))
                     ->icon('heroicon-m-ellipsis-vertical')
+                    ->dropdownTeleport(false)
                     ->extraAttributes(['data-dusk' => 'finding-actions'])
                     ->iconButton(),
             ])

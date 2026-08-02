@@ -424,6 +424,142 @@ final class WorkspaceResponsiveTest extends DuskTestCase
         });
     }
 
+    public function test_finding_record_action_menu_uses_an_absolute_panel_anchored_to_its_trigger(): void
+    {
+        $administrator = User::factory()->create();
+        $assessment = Assessment::factory()->create(['title' => 'Finding action menu browser']);
+        Finding::factory()->count(12)->for($assessment)->sequence(
+            fn ($sequence): array => [
+                'title' => 'Finding action menu '.($sequence->index + 1),
+                'sort_order' => $sequence->index + 1,
+            ],
+        )->create();
+
+        $this->browse(function (Browser $browser) use ($administrator, $assessment): void {
+            $browser->loginAs($administrator)
+                ->visit("/admin/assessments/{$assessment->getKey()}/workspace")
+                ->waitFor('[data-dusk="finding-actions"]');
+            self::resizeViewport($browser, 1920, 800);
+
+            $browser->click('.assestme-finding-row:first-of-type [data-dusk="finding-actions"]')
+                ->waitFor('[data-dusk="duplicate-finding"]');
+            $menu = $browser->script(<<<'JS'
+                const trigger = document.querySelector('[data-dusk="finding-actions"]');
+                const duplicateAction = document.querySelector('[data-dusk="duplicate-finding"]');
+                const panel = duplicateAction?.closest('.fi-dropdown-panel');
+                const sidebar = document.querySelector('.fi-sidebar');
+
+                if (! trigger || ! panel) {
+                    return false;
+                }
+
+                const triggerRect = trigger.getBoundingClientRect();
+                const panelRect = panel.getBoundingClientRect();
+                const verticalDistance = Math.min(
+                    Math.abs(panelRect.top - triggerRect.bottom),
+                    Math.abs(triggerRect.top - panelRect.bottom),
+                );
+
+                return {
+                    isAnchored: triggerRect.width > 0
+                        && triggerRect.height > 0
+                        && panelRect.width > 0
+                        && panelRect.height > 0
+                        && panelRect.left >= 0
+                        && panelRect.top >= 0
+                        && panelRect.right <= window.innerWidth
+                        && panelRect.bottom <= window.innerHeight
+                        && Math.abs(panelRect.right - triggerRect.right) <= 32
+                        && verticalDistance <= 32
+                        && (! sidebar || panelRect.left >= sidebar.getBoundingClientRect().right),
+                    position: getComputedStyle(panel).position,
+                    xFloat: panel.getAttributeNames().find((attribute) => attribute.startsWith('x-float')) ?? null,
+                };
+                JS)[0];
+            Assert::assertNotFalse($menu);
+            Assert::assertSame('x-float.placement.bottom-end.flip.offset', $menu['xFloat']);
+            Assert::assertSame('absolute', $menu['position']);
+            Assert::assertTrue($menu['isAnchored'], 'The Finding action menu must be geometrically anchored to its trigger.');
+            Assert::assertFalse((bool) $browser->script(<<<'JS'
+                return document.querySelector('.assestme-finding-row:first-of-type')?.classList.contains('is-selected');
+                JS)[0], 'Opening the Finding action menu must not select its row.');
+
+            $browser->keys('.assestme-finding-row:first-of-type [data-dusk="finding-actions"]', [WebDriverKeys::ESCAPE])
+                ->waitUntil(<<<'JS'
+                    return Array.from(document.querySelectorAll('.fi-dropdown-panel')).every((panel) => getComputedStyle(panel).display === 'none');
+                    JS)
+                ->keys('.assestme-finding-row:first-of-type [data-dusk="finding-actions"]', [WebDriverKeys::ENTER])
+                ->waitUntil(<<<'JS'
+                    return Array.from(document.querySelectorAll('.fi-dropdown-panel')).some((panel) => {
+                        return getComputedStyle(panel).display !== 'none'
+                            && panel.querySelector('[data-dusk="duplicate-finding"]') !== null;
+                    });
+                    JS)
+                ->click('[data-dusk="duplicate-finding"]')
+                ->waitFor('[data-assestme-finding-inspector]')
+                ->waitUntil('return document.querySelectorAll(".assestme-finding-row").length === 13');
+            Assert::assertSame(13, $assessment->findings()->count(), 'Duplicate Finding must invoke duplicateFinding().');
+
+            $browser->script(<<<'JS'
+                const trigger = Array.from(document.querySelectorAll('.assestme-finding-row [data-dusk="finding-actions"]'))
+                    .filter((candidate) => candidate.getBoundingClientRect().bottom <= window.innerHeight)
+                    .at(-1);
+
+                trigger?.setAttribute('data-dusk', 'last-visible-finding-actions');
+                JS);
+            $browser->pause(250)
+                ->click('[data-dusk="last-visible-finding-actions"]')
+                ->waitUntil(<<<'JS'
+                    return Array.from(document.querySelectorAll('.fi-dropdown-panel')).some((panel) => {
+                        const style = getComputedStyle(panel);
+
+                        return style.display !== 'none' && panel.querySelector('[data-dusk="duplicate-finding"]') !== null;
+                    });
+                    JS);
+            $lastMenu = $browser->script(<<<'JS'
+                const trigger = document.querySelector('[data-dusk="last-visible-finding-actions"]');
+                const panel = Array.from(document.querySelectorAll('.fi-dropdown-panel')).find((candidate) => {
+                    const style = getComputedStyle(candidate);
+
+                    return style.display !== 'none' && candidate.querySelector('[data-dusk="duplicate-finding"]') !== null;
+                });
+
+                if (! trigger || ! panel) {
+                    return false;
+                }
+
+                const triggerRect = trigger.getBoundingClientRect();
+                const panelRect = panel.getBoundingClientRect();
+
+                return {
+                    isFlipped: panelRect.bottom <= triggerRect.top,
+                    isInViewport: panelRect.left >= 0
+                        && panelRect.top >= 0
+                        && panelRect.right <= window.innerWidth
+                        && panelRect.bottom <= window.innerHeight,
+                    isRightAligned: Math.abs(panelRect.right - triggerRect.right) <= 32,
+                    panel: { left: panelRect.left, top: panelRect.top, right: panelRect.right, bottom: panelRect.bottom },
+                    trigger: { left: triggerRect.left, top: triggerRect.top, right: triggerRect.right, bottom: triggerRect.bottom },
+                    viewport: { width: window.innerWidth, height: window.innerHeight },
+                };
+                JS)[0];
+            Assert::assertNotFalse($lastMenu);
+            Assert::assertTrue($lastMenu['isInViewport'], 'The last visible Finding menu must stay inside the viewport: '.json_encode($lastMenu));
+            Assert::assertTrue($lastMenu['isRightAligned'], 'The last visible Finding menu must remain right-aligned: '.json_encode($lastMenu));
+            Assert::assertTrue($lastMenu['isFlipped'], 'The last visible Finding menu must flip above its trigger: '.json_encode($lastMenu));
+
+            $browser->click('.assestme-finding-row:first-of-type [data-dusk="finding-actions"]')
+                ->waitFor('[data-dusk="delete-finding"]')
+                ->click('[data-dusk="delete-finding"]')
+                ->waitFor('.fi-modal-window')
+                ->assertSee('Conferma')
+                ->press('Annulla')
+                ->waitUntilMissing('.fi-modal-window');
+
+            self::assertNoSevereBrowserLogs($browser, 'The Finding action menu flow produced severe console errors.');
+        });
+    }
+
     public function test_dirty_selection_save_next_and_version_conflict_use_the_signed_workspace_protocol(): void
     {
         $administrator = User::factory()->create();
