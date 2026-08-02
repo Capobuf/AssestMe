@@ -7,6 +7,7 @@
 - D-001 through D-070 are represented exactly once across thematic ADRs.
 - Existing general hosting, cPanel, CloudPanel, and CloudPanel acceptance documentation is included.
 - The former plan remains recoverable exactly from the verified commit/blob recorded in `source-baseline.md`.
+- 2026-08-02: CloudPanel GitHub Actions deployment integration completed locally on `develop`: `Quality` gained the gated `deploy_cloudpanel` job, `deploy/cloudpanel/deploy-assestme` supplies the restricted server command, and the CloudPanel guide records setup and verification commands. Server installation, secrets, and a live workflow run remain NOT VERIFIED.
 
 ## Implementation state inherited from specification 2.7
 

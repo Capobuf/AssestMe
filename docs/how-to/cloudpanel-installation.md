@@ -155,3 +155,103 @@ Per un rollback applicativo, riattivare maintenance, ripristinare la directory d
 Il restore è esclusivamente CLI e richiede maintenance mode. Per MySQL e MariaDB crea prima un safety backup e tenta una compensazione se l'import fallisce; l'import SQL non è atomicamente garantito dal server. Se falliscono sia import sia compensazione, AssestMe resta in maintenance e conserva gli artefatti diagnostici. Sono necessari client coerenti con il prodotto (`mysql`/`mysqldump` oppure `mariadb`/`mariadb-dump`), rilevati a ogni operazione. `ASSESTME_DB_RESTORE_BINARY` e `ASSESTME_DB_DUMP_BINARY` restano override avanzati per percorsi non standard; `ASSESTME_PHP_BINARY` e `LARAVEL_PDF_WEASYPRINT_BINARY` hanno lo stesso ruolo per PHP CLI e WeasyPrint.
 
 AssestMe non converte dati tra SQLite, MySQL e MariaDB. Un cambio di driver richiede una nuova installazione vuota e una procedura dati esterna esplicitamente progettata e validata.
+
+## Aggiornamento automatico da GitHub Actions
+
+L'istanza CI di AssestMe usa il workflow `Quality` del repository `Capobuf/AssestMe`: il job `deploy_cloudpanel` si esegue soltanto dopo il job terminale `publish-develop-release`, quindi dopo il successo dei controlli `quality`, `database-compatibility`, `cloudpanel-release` e `clean-checkout-bootstrap`. Il deploy è limitato agli eventi `push` sul branch `develop`; le pull request non ricevono i secret di deploy.
+
+Il job apre una connessione SSH non interattiva con una chiave dedicata e un file `known_hosts` verificato. La chiave è limitata sul server a un comando forzato che esegue `dploy deploy develop`; il comando crea la release, usa lo storage condiviso e l'overlay `.env`, esegue le operazioni dploy e aggiorna `current`. Non modificare questa procedura per cambiare document root, `.env`, database, storage condiviso o configurazione dploy.
+
+### Installare lo script server-side
+
+Dal checkout che contiene questa versione del repository, validare lo script e trasferirlo al server con un canale amministrativo già autorizzato. Sul server, come operatore che può impostare ownership del site user, impostare `DEPLOY_SCRIPT_SOURCE` al percorso assoluto effettivamente trasferito; non assumere un percorso del checkout del repository sul server.
+
+```bash
+DEPLOY_SCRIPT_SOURCE=/percorso/assoluto/verificato/deploy-assestme
+
+test -f "$DEPLOY_SCRIPT_SOURCE"
+bash -n "$DEPLOY_SCRIPT_SOURCE"
+
+install -d \
+  -o bydot-assestme \
+  -g bydot-assestme \
+  -m 750 \
+  /home/bydot-assestme/bin
+
+install \
+  -o bydot-assestme \
+  -g bydot-assestme \
+  -m 750 \
+  "$DEPLOY_SCRIPT_SOURCE" \
+  /home/bydot-assestme/bin/deploy-assestme
+```
+
+Lo script installato è `/home/bydot-assestme/bin/deploy-assestme`. Usa il lock `/home/bydot-assestme/.dploy/github-actions-deploy.lock`, pertanto due deploy GitHub non possono sovrapporsi nemmeno oltre alla concorrenza del workflow. Dopo `dploy deploy develop` controlla `current`, `artisan` e `public/index.php`, esegue `php8.3 artisan about` e stampa nei log SSH la release, il commit e il subject effettivamente pubblicati.
+
+### Creare e limitare la chiave SSH dedicata
+
+Generare una sola volta la coppia di chiavi su una postazione amministrativa sicura:
+
+```bash
+ssh-keygen \
+  -t ed25519 \
+  -C "github-actions-assestme-deploy" \
+  -f assestme-actions \
+  -N ""
+```
+
+`assestme-actions` è la chiave privata da inserire nel secret `CLOUDPANEL_SSH_PRIVATE_KEY`; `assestme-actions.pub` è la chiave pubblica da installare sul server. Nessuno dei due file deve essere committato. Questa coppia è diversa dalla deploy key GitHub già usata da CloudPanel per clonare il repository e non deve riutilizzarla.
+
+Aggiungere la chiave pubblica dedicata a `/home/bydot-assestme/.ssh/authorized_keys`, preceduta dal comando forzato e dalle restrizioni seguenti. Non usare `restrict` finché la versione OpenSSH del server e la compatibilità con il comando forzato non sono state verificate.
+
+```text
+command="/home/bydot-assestme/bin/deploy-assestme",no-agent-forwarding,no-port-forwarding,no-X11-forwarding,no-pty ssh-ed25519 CHIAVE_PUBBLICA github-actions-assestme-deploy
+```
+
+Il comando forzato è intenzionale: la riga SSH del workflow non trasmette un comando remoto arbitrario e propaga l'exit code dello script. Un errore SSH o dploy fa quindi fallire il job.
+
+### Creare `CLOUDPANEL_KNOWN_HOSTS`
+
+Non accettare una fingerprint alla cieca e non usare un hostname dietro un proxy Cloudflare per SSH ordinario. Prima leggere direttamente sul server la fingerprint ED25519:
+
+```bash
+ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+```
+
+Poi, dalla postazione amministrativa, acquisire la chiave dell'host reale e confrontarne la fingerprint con il valore letto sul server:
+
+```bash
+ssh-keyscan \
+  -p PORTA_SSH \
+  -t ed25519 \
+  -H HOST_O_IP_SERVER \
+  > cloudpanel-known-hosts
+
+ssh-keygen -lf cloudpanel-known-hosts
+```
+
+Solo se le fingerprint coincidono, inserire l'intero contenuto di `cloudpanel-known-hosts` nel secret `CLOUDPANEL_KNOWN_HOSTS`.
+
+### Configurare i repository secret
+
+In GitHub aprire esattamente:
+
+```text
+Repository
+→ Settings
+→ Secrets and variables
+→ Actions
+→ New repository secret
+```
+
+Creare i cinque repository secret richiesti dal job:
+
+```text
+CLOUDPANEL_HOST
+CLOUDPANEL_PORT
+CLOUDPANEL_USER
+CLOUDPANEL_SSH_PRIVATE_KEY
+CLOUDPANEL_KNOWN_HOSTS
+```
+
+Il valore noto di `CLOUDPANEL_USER` è `bydot-assestme`, ma resta un secret per uniformità operativa e non è inserito nel workflow. Non pubblicare valori dei secret in issue, commit, workflow o log. Dopo l'installazione dello script, della chiave pubblica e dei secret, un vero push su `develop` eseguirà il primo deploy automatico; conservarne il log come evidenza dell'istanza reale.

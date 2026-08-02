@@ -566,3 +566,69 @@ it('publishes the validated rolling develop prerelease only after every quality 
             ],
         ]);
 });
+
+it('deploys CloudPanel only after the successful terminal develop job with verified SSH', function (): void {
+    $workflowPath = base_path('.github/workflows/quality.yml');
+    $workflowSource = (string) file_get_contents($workflowPath);
+
+    /** @var array{jobs: array<string, array<string, mixed>>} $workflow */
+    $workflow = Yaml::parseFile($workflowPath);
+    $deploy = $workflow['jobs']['deploy_cloudpanel'];
+
+    expect($deploy['name'])->toBe('Deploy CloudPanel CI')
+        ->and($deploy['needs'])->toBe(['publish-develop-release'])
+        ->and($deploy['if'])->toContain("github.event_name == 'push'")
+        ->toContain("github.ref == 'refs/heads/develop'")
+        ->toContain('success()')
+        ->and($deploy['runs-on'])->toBe('ubuntu-latest')
+        ->and($deploy['timeout-minutes'])->toBe(20)
+        ->and($deploy['permissions'])->toBe(['contents' => 'read'])
+        ->and($deploy['concurrency'])->toBe([
+            'group' => 'assestme-cloudpanel-ci',
+            'cancel-in-progress' => false,
+        ])
+        ->and($workflow['jobs']['publish-develop-release']['needs'])->toContain('quality')
+        ->toContain('database-compatibility')
+        ->toContain('cloudpanel-release')
+        ->toContain('clean-checkout-bootstrap')
+        ->and($workflowSource)->toContain('CLOUDPANEL_SSH_PRIVATE_KEY')
+        ->toContain('CLOUDPANEL_KNOWN_HOSTS')
+        ->toContain('CLOUDPANEL_HOST')
+        ->toContain('CLOUDPANEL_PORT')
+        ->toContain('CLOUDPANEL_USER')
+        ->toContain('-o BatchMode=yes')
+        ->toContain('-o IdentitiesOnly=yes')
+        ->toContain('-o StrictHostKeyChecking=yes')
+        ->toContain('-o ConnectTimeout=20')
+        ->not->toContain('StrictHostKeyChecking=no')
+        ->not->toContain('ssh-action');
+});
+
+it('defines a locked forced-command CloudPanel deploy script with explicit failure paths', function (): void {
+    $scriptPath = base_path('deploy/cloudpanel/deploy-assestme');
+    $script = (string) file_get_contents($scriptPath);
+    $syntax = new Process(['bash', '-n', $scriptPath], base_path());
+    $syntax->run();
+
+    expect($scriptPath)->toBeFile()
+        ->and(is_executable($scriptPath))->toBeTrue()
+        ->and($syntax->isSuccessful())->toBeTrue($syntax->getErrorOutput())
+        ->and($script)
+        ->toContain('set -Eeuo pipefail')
+        ->toContain('umask 027')
+        ->toContain('DEPLOY_ROOT=/home/bydot-assestme/htdocs/assestme.bydot.it')
+        ->toContain('LOCK_FILE="$HOME/.dploy/github-actions-deploy.lock"')
+        ->toContain('if ! /usr/bin/flock -n 9; then')
+        ->toContain('Another AssestMe deployment is already running.')
+        ->toContain('exit 75')
+        ->toContain('/usr/local/bin/dploy deploy develop')
+        ->toContain('test -f "$CURRENT_RELEASE/artisan"')
+        ->toContain('test -f "$CURRENT_RELEASE/public/index.php"')
+        ->toContain('/usr/bin/php8.3')
+        ->toContain('about')
+        ->toContain('/usr/bin/git -C "$CURRENT_RELEASE" rev-parse HEAD')
+        ->toContain('Deployed release: %s')
+        ->toContain('Deployed commit: %s')
+        ->not->toContain('sudo')
+        ->not->toContain('|| true');
+});

@@ -455,3 +455,85 @@ jobs:
               --title "$release_title" \
               --notes-file release-notes.md \
               --prerelease
+
+  deploy_cloudpanel:
+    name: Deploy CloudPanel CI
+    needs:
+      - publish-develop-release
+    if: >-
+      ${{
+        github.event_name == 'push' &&
+        github.ref == 'refs/heads/develop' &&
+        success()
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    concurrency:
+      group: assestme-cloudpanel-ci
+      cancel-in-progress: false
+
+    steps:
+      - name: Configure SSH
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.CLOUDPANEL_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.CLOUDPANEL_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+
+          test -n "$SSH_PRIVATE_KEY" || {
+            echo "CLOUDPANEL_SSH_PRIVATE_KEY is not configured." >&2
+            exit 1
+          }
+
+          test -n "$SSH_KNOWN_HOSTS" || {
+            echo "CLOUDPANEL_KNOWN_HOSTS is not configured." >&2
+            exit 1
+          }
+
+          install -d -m 700 "$HOME/.ssh"
+
+          printf '%s\n' "$SSH_PRIVATE_KEY" \
+            > "$HOME/.ssh/cloudpanel_deploy"
+
+          printf '%s\n' "$SSH_KNOWN_HOSTS" \
+            > "$HOME/.ssh/known_hosts"
+
+          chmod 600 \
+            "$HOME/.ssh/cloudpanel_deploy" \
+            "$HOME/.ssh/known_hosts"
+
+      - name: Deploy develop to CloudPanel
+        shell: bash
+        env:
+          CLOUDPANEL_HOST: ${{ secrets.CLOUDPANEL_HOST }}
+          CLOUDPANEL_PORT: ${{ secrets.CLOUDPANEL_PORT }}
+          CLOUDPANEL_USER: ${{ secrets.CLOUDPANEL_USER }}
+        run: |
+          set -Eeuo pipefail
+
+          test -n "$CLOUDPANEL_HOST" || {
+            echo "CLOUDPANEL_HOST is not configured." >&2
+            exit 1
+          }
+
+          test -n "$CLOUDPANEL_PORT" || {
+            echo "CLOUDPANEL_PORT is not configured." >&2
+            exit 1
+          }
+
+          test -n "$CLOUDPANEL_USER" || {
+            echo "CLOUDPANEL_USER is not configured." >&2
+            exit 1
+          }
+
+          ssh \
+            -p "$CLOUDPANEL_PORT" \
+            -i "$HOME/.ssh/cloudpanel_deploy" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=20 \
+            "$CLOUDPANEL_USER@$CLOUDPANEL_HOST"

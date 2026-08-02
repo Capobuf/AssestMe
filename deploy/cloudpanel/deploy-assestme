@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+umask 027
+
+export HOME=/home/bydot-assestme
+export PATH=/usr/local/bin:/usr/bin:/bin
+
+DEPLOY_ROOT=/home/bydot-assestme/htdocs/assestme.bydot.it
+LOCK_FILE="$HOME/.dploy/github-actions-deploy.lock"
+
+exec 9>"$LOCK_FILE"
+
+if ! /usr/bin/flock -n 9; then
+    echo "Another AssestMe deployment is already running." >&2
+    exit 75
+fi
+
+/usr/local/bin/dploy deploy develop
+
+CURRENT_RELEASE="$(readlink -f "$DEPLOY_ROOT/current")"
+
+test -n "$CURRENT_RELEASE"
+test -d "$CURRENT_RELEASE"
+test -f "$CURRENT_RELEASE/artisan"
+test -f "$CURRENT_RELEASE/public/index.php"
+
+/usr/bin/php8.3 \
+    "$CURRENT_RELEASE/artisan" \
+    about \
+    --no-ansi \
+    >/dev/null
+
+DEPLOYED_COMMIT="$(/usr/bin/git -C "$CURRENT_RELEASE" rev-parse HEAD)"
+DEPLOYED_SUBJECT="$(/usr/bin/git -C "$CURRENT_RELEASE" log -1 --format='%s')"
+
+printf 'Deployed release: %s\n' "$CURRENT_RELEASE"
+printf 'Deployed commit: %s\n' "$DEPLOYED_COMMIT"
+printf 'Commit subject: %s\n' "$DEPLOYED_SUBJECT"
