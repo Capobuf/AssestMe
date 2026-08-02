@@ -17,6 +17,7 @@
 ## Dusk verification discoveries
 
 - On 2026-08-02, the isolated full Dusk suite stopped in `ApprovedUxQaTest` before completing because the required `/usr/bin/weasyprint` binary was not executable. This is an environment prerequisite failure outside the two Dusk determinism tests; no renderer fallback was introduced.
+- The Docker development runtime supplies the required executable `/usr/bin/weasyprint` (version 57.2) and Selenium Chromium. It reproduces the CI browser path while retaining isolated Dusk database and storage roots.
 
 ## Update rule
 

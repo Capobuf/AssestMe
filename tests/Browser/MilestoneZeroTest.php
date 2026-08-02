@@ -282,15 +282,17 @@ final class MilestoneZeroTest extends DuskTestCase
             $browser->click('.assestme-finding-row:first-of-type')
                 ->waitFor('[data-assestme-finding-inspector]')
                 ->click('.assestme-workbench-properties .fi-section:first-of-type .fi-section-header')
-                ->select('[data-dusk="finding-property-status"] select', 'planned')
-                ->click('[data-dusk="finding-property-report"]')
+                ->select('[data-dusk="finding-property-status"] select', 'planned');
+            $browser->click('[data-dusk="finding-property-report"]')
                 ->waitUntil(<<<'JS'
-                    const toggle = document.querySelector('[data-dusk="finding-property-report"]');
-                    const root = document.querySelector('.assestme-findings-workspace')?.closest('[wire\\:id]');
-                    const component = root ? Livewire.find(root.getAttribute('wire:id')) : null;
+                    return (() => {
+                        const toggle = document.querySelector('[data-dusk="finding-property-report"]');
+                        const root = document.querySelector('.assestme-findings-workspace')?.closest('[wire\\:id]');
+                        const component = root ? Livewire.find(root.getAttribute('wire:id')) : null;
 
-                    return toggle?.getAttribute('aria-checked') === 'false'
-                        && component?.$get('findingData.include_in_report') === false;
+                        return toggle?.getAttribute('aria-checked') === 'false'
+                            && component?.$get('findingData.include_in_report') === false;
+                    })();
                     JS);
             $versionBeforeSave = (int) $browser->attribute(
                 '[data-assestme-workspace-context]',
