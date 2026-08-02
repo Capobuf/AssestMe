@@ -548,8 +548,21 @@ final class WorkspaceResponsiveTest extends DuskTestCase
             Assert::assertTrue($lastMenu['isRightAligned'], 'The last visible Finding menu must remain right-aligned: '.json_encode($lastMenu));
             Assert::assertTrue($lastMenu['isFlipped'], 'The last visible Finding menu must flip above its trigger: '.json_encode($lastMenu));
 
+            $browser->keys(
+                '[data-dusk="last-visible-finding-actions"]',
+                [WebDriverKeys::ESCAPE],
+            )->waitUntil(<<<'JS'
+                return Array.from(document.querySelectorAll('.fi-dropdown-panel'))
+                    .every((panel) => getComputedStyle(panel).display === 'none');
+                JS);
             $browser->click('.assestme-finding-row:first-of-type [data-dusk="finding-actions"]')
-                ->waitFor('[data-dusk="delete-finding"]')
+                ->waitUntil(<<<'JS'
+                    return Array.from(document.querySelectorAll('.fi-dropdown-panel'))
+                        .some((panel) => {
+                            return getComputedStyle(panel).display !== 'none'
+                                && panel.querySelector('[data-dusk="delete-finding"]') !== null;
+                        });
+                    JS)
                 ->click('[data-dusk="delete-finding"]')
                 ->waitFor('.fi-modal-window')
                 ->assertSee('Conferma')

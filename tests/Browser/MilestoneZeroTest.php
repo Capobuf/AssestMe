@@ -284,8 +284,25 @@ final class MilestoneZeroTest extends DuskTestCase
                 ->click('.assestme-workbench-properties .fi-section:first-of-type .fi-section-header')
                 ->select('[data-dusk="finding-property-status"] select', 'planned')
                 ->click('[data-dusk="finding-property-report"]')
-                ->click('[data-dusk="save-finding"]')
-                ->waitUntil('return document.querySelector(\'[data-assestme-save-status]\').dataset.status === "saved"')
+                ->waitUntil(<<<'JS'
+                    const toggle = document.querySelector('[data-dusk="finding-property-report"]');
+                    const root = document.querySelector('.assestme-findings-workspace')?.closest('[wire\\:id]');
+                    const component = root ? Livewire.find(root.getAttribute('wire:id')) : null;
+
+                    return toggle?.getAttribute('aria-checked') === 'false'
+                        && component?.$get('findingData.include_in_report') === false;
+                    JS);
+            $versionBeforeSave = (int) $browser->attribute(
+                '[data-assestme-workspace-context]',
+                'data-expected-version',
+            );
+            $browser->click('[data-dusk="save-finding"]')
+                ->waitUntil(
+                    "return Number(document.querySelector('[data-assestme-workspace-context]')?.dataset.expectedVersion) > {$versionBeforeSave}",
+                )
+                ->waitUntil(
+                    'return document.querySelector("[data-assestme-save-status]")?.dataset.status === "saved"',
+                )
                 ->click('[data-dusk="finding-close"]')
                 ->waitUntilMissing('[data-assestme-finding-inspector]');
 
