@@ -284,11 +284,14 @@ it('renders panel-neutral scheduler instructions for CloudPanel cPanel Plesk and
 });
 
 it('serves the generic hosting documentation through the installer middleware', function (): void {
+    $documentationPath = base_path('docs/how-to/hosting-installation.md');
+
     $this->get('/install/documentation/hosting')
         ->assertOk()
         ->assertHeader('Content-Type', 'text/markdown; charset=UTF-8');
 
-    expect(file_get_contents(base_path('docs/hosting-installation.md')))
+    expect($documentationPath)->toBeFile()
+        ->and((string) file_get_contents($documentationPath))
         ->toContain('Installazione AssestMe su hosting PHP')
         ->toContain('Shared hosting con document root fissa');
 });
@@ -516,6 +519,7 @@ it('makes every installer route return 404 after the definitive lock', function 
 
     $this->get('/install')->assertNotFound();
     $this->get('/install/requirements')->assertNotFound();
+    $this->get('/install/documentation/hosting')->assertNotFound();
     $this->post('/install/welcome')->assertNotFound();
     $this->post('/install/finalize')->assertNotFound();
     $this->get('/')->assertRedirect('/admin');

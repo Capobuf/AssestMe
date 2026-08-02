@@ -189,40 +189,71 @@ it('records the superseded installation history and approved Docker and hosted p
     $plan = (string) file_get_contents(base_path('plan.md'));
 
     expect($plan)
+        ->toContain('# AssestMe documentation entry point')
+        ->toContain('docs/index.md')
+        ->toContain('contains no duplicated product or architecture requirements')
+        ->not->toContain('| D-007');
+
+    $runtimeAdr = (string) file_get_contents(
+        base_path('docs/adr/0002-runtime-and-dependencies.md'),
+    );
+    $databaseAdr = (string) file_get_contents(
+        base_path('docs/adr/0003-domain-data-and-import.md'),
+    );
+    $backupAdr = (string) file_get_contents(
+        base_path('docs/adr/0006-storage-deletion-and-backup.md'),
+    );
+    $securityAdr = (string) file_get_contents(
+        base_path('docs/adr/0007-security-and-installation-state.md'),
+    );
+    $verificationAdr = (string) file_get_contents(
+        base_path('docs/adr/0008-testing-and-verification.md'),
+    );
+    $deploymentAdr = (string) file_get_contents(
+        base_path('docs/adr/0009-deployment-and-installer.md'),
+    );
+
+    expect($runtimeAdr)
         ->toContain('| D-007 (v2) | SUPERSEDED |')
         ->toContain('| D-007 | APPROVED | The application requires no Node.js frontend build; Docker Compose is the maintained and authoritative local development environment |')
-        ->toContain('| D-019 (v1) | SUPERSEDED |')
-        ->toContain('| D-019 | SUPERSEDED | Docker Compose development and a future, not-yet-implemented CloudPanel production profile were approved; superseded by D-064 on 2026-07-31 |')
         ->toContain('| D-042 (v1) | SUPERSEDED | The Docker development profile published the development HTTP port only on host loopback; superseded by D-042 on 2026-07-18 |')
         ->toContain('| D-042 | APPROVED | The Docker development profile is defined by `docker/compose.dev.yml`, a project-owned PHP 8.3 development image, bind-mounted source code, persistent default SQLite state, optional isolated Selenium browser testing, optional real MySQL/MariaDB compatibility-test services, and HTTP publication on all host IPv4 interfaces |')
-        ->toContain('### D-042 — Docker development profile')
-        ->toContain('| D-063 | APPROVED |')
+        ->toContain('docker/compose.dev.yml');
+
+    expect($deploymentAdr)
+        ->toContain('| D-019 (v1) | SUPERSEDED |')
+        ->toContain('| D-019 | SUPERSEDED | Docker Compose development and a future, not-yet-implemented CloudPanel production profile were approved; superseded by D-064 on 2026-07-31 |')
         ->toContain('| D-064 | APPROVED |')
-        ->toContain('| D-065 | APPROVED |')
-        ->toContain('| D-066 | APPROVED |')
-        ->toContain('| D-067 | APPROVED |')
         ->toContain('| D-068 | APPROVED |')
         ->toContain('| D-069 | APPROVED |')
         ->toContain('| D-070 | APPROVED |')
-        ->toContain('traditional PHP host')
-        ->toContain('docker/compose.dev.yml');
+        ->toContain('traditional PHP hosting');
 
-    $markdownFiles = collect(File::allFiles(base_path()))
-        ->reject(fn (SplFileInfo $file): bool => str_contains($file->getPathname(), DIRECTORY_SEPARATOR.'vendor'.DIRECTORY_SEPARATOR))
-        ->filter(fn (SplFileInfo $file): bool => strtolower($file->getExtension()) === 'md')
-        ->map(fn (SplFileInfo $file): string => $file->getRelativePathname())
-        ->sort()
-        ->values()
-        ->all();
+    expect($databaseAdr)->toContain('| D-063 | APPROVED |');
+    expect($securityAdr)->toContain('| D-065 | APPROVED |');
+    expect($backupAdr)->toContain('| D-066 | APPROVED |');
+    expect($verificationAdr)->toContain('| D-067 | APPROVED |');
 
-    expect($markdownFiles)->toBe([
-        'AGENTS.md',
-        'docs/cloudpanel-acceptance-checklist.md',
-        'docs/cloudpanel-installation.md',
-        'docs/cpanel-installation.md',
-        'docs/hosting-installation.md',
-        'plan.md',
-    ]);
+    $requiredDocumentation = [
+        'docs/index.md',
+        'docs/adr/README.md',
+        'docs/adr/0002-runtime-and-dependencies.md',
+        'docs/adr/0003-domain-data-and-import.md',
+        'docs/adr/0006-storage-deletion-and-backup.md',
+        'docs/adr/0007-security-and-installation-state.md',
+        'docs/adr/0008-testing-and-verification.md',
+        'docs/adr/0009-deployment-and-installer.md',
+        'docs/how-to/development-and-verification.md',
+        'docs/how-to/hosting-installation.md',
+        'docs/how-to/cpanel-installation.md',
+        'docs/how-to/cloudpanel-installation.md',
+        'docs/how-to/cloudpanel-acceptance-checklist.md',
+    ];
+
+    foreach ($requiredDocumentation as $documentationPath) {
+        expect(base_path($documentationPath))->toBeFile();
+    }
+
     expect(base_path('scripts/cloudpanel'))->not->toBeDirectory();
 });
 
