@@ -186,7 +186,7 @@ install \
   /home/bydot-assestme/bin/deploy-assestme
 ```
 
-Lo script installato è `/home/bydot-assestme/bin/deploy-assestme`. Usa il lock `/home/bydot-assestme/.dploy/github-actions-deploy.lock`, pertanto due deploy GitHub non possono sovrapporsi nemmeno oltre alla concorrenza del workflow. Dopo `dploy deploy develop` controlla `current`, `artisan` e `public/index.php`, esegue `php8.3 artisan about` e stampa nei log SSH la release, il commit e il subject effettivamente pubblicati.
+Lo script installato è `/home/bydot-assestme/bin/deploy-assestme`. Usa il lock `/home/bydot-assestme/.dploy/github-actions-deploy.lock`, pertanto due deploy GitHub non possono sovrapporsi nemmeno oltre alla concorrenza del workflow. Dopo `dploy deploy develop` controlla `current`, `artisan` e `public/index.php`, esegue `php8.3 artisan about` e stampa nei log SSH la release effettivamente pubblicata. Le release dploy non conservano `.git`; il deploy non ricava né dichiara un commit da quella directory.
 
 ### Creare e limitare la chiave SSH dedicata
 

@@ -11,8 +11,8 @@
 ## CloudPanel CI deployment discoveries
 
 - The sole GitHub Actions workflow is `.github/workflows/quality.yml`. Its `publish-develop-release` job is the existing terminal develop job and requires `quality`, `database-compatibility`, `cloudpanel-release`, and `clean-checkout-bootstrap`.
-- The local Git executable resolves to `/usr/bin/git`; the restricted CloudPanel deployment script uses that absolute path when it reports the commit from the release selected by dploy.
-- No repository-side server credentials, SSH keys, host fingerprints, or CloudPanel secrets were available during this change. The external setup and a live deploy are therefore NOT VERIFIED.
+- CloudPanel dploy releases do not retain a `.git` directory. The restricted deployment script therefore reports the verified release path but does not derive or declare a commit from the release directory.
+- On 2026-08-02, the dedicated restricted SSH key, server-side command, and five repository secrets were configured. A direct forced-command deployment activated the release and passed `artisan about`; the GitHub workflow run was cancelled before its deployment job to avoid a duplicate deployment while the obsolete Git metadata check was removed.
 
 ## Update rule
 

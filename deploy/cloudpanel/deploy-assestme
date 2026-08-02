@@ -32,9 +32,4 @@ test -f "$CURRENT_RELEASE/public/index.php"
     --no-ansi \
     >/dev/null
 
-DEPLOYED_COMMIT="$(/usr/bin/git -C "$CURRENT_RELEASE" rev-parse HEAD)"
-DEPLOYED_SUBJECT="$(/usr/bin/git -C "$CURRENT_RELEASE" log -1 --format='%s')"
-
 printf 'Deployed release: %s\n' "$CURRENT_RELEASE"
-printf 'Deployed commit: %s\n' "$DEPLOYED_COMMIT"
-printf 'Commit subject: %s\n' "$DEPLOYED_SUBJECT"

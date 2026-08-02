@@ -626,9 +626,9 @@ it('defines a locked forced-command CloudPanel deploy script with explicit failu
         ->toContain('test -f "$CURRENT_RELEASE/public/index.php"')
         ->toContain('/usr/bin/php8.3')
         ->toContain('about')
-        ->toContain('/usr/bin/git -C "$CURRENT_RELEASE" rev-parse HEAD')
         ->toContain('Deployed release: %s')
-        ->toContain('Deployed commit: %s')
+        ->not->toContain('/usr/bin/git')
+        ->not->toContain('Deployed commit: %s')
         ->not->toContain('sudo')
         ->not->toContain('|| true');
 });
