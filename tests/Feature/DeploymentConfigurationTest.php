@@ -91,6 +91,9 @@ it('defines the authoritative minimal Docker development topology semantically',
         ->and($app['environment']['ASSESTME_UID'])->toBe('${UID:-}')
         ->and($app['environment']['ASSESTME_GID'])->toBe('${GID:-}')
         ->and($app['environment']['DUSK_BROWSER_HOST'])->toBe('assestme-app')
+        ->and($app['environment']['GIT_CONFIG_COUNT'])->toBe('1')
+        ->and($app['environment']['GIT_CONFIG_KEY_0'])->toBe('safe.directory')
+        ->and($app['environment']['GIT_CONFIG_VALUE_0'])->toBe('/workspace')
         ->and($app['networks']['default']['aliases'])->toBe(['assestme-app'])
         ->and($app['environment']['XDEBUG_MODE'])->toBe('${XDEBUG_MODE:-off}')
         ->and($app['extra_hosts'])->toContain('host.docker.internal:host-gateway')
@@ -258,6 +261,14 @@ it('records the superseded installation history and approved Docker and hosted p
     }
 
     expect(base_path('scripts/cloudpanel'))->not->toBeDirectory();
+});
+
+it('normalizes blank optional Google credentials from a clean Compose checkout', function (): void {
+    $services = (string) file_get_contents(base_path('config/services.php'));
+
+    expect($services)
+        ->toContain("'client_id' => env('GOOGLE_CLIENT_ID') ?: null")
+        ->toContain("'client_secret' => env('GOOGLE_CLIENT_SECRET') ?: null");
 });
 
 it('rejects the complete gate before work begins outside the marked Compose runtime', function (): void {

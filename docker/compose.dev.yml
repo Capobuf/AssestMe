@@ -23,6 +23,9 @@ services:
       DUSK_DRIVER_URL: http://selenium:4444
       DUSK_READY_HOST: 127.0.0.1
       DUSK_SERVER_BIND: 0.0.0.0
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: safe.directory
+      GIT_CONFIG_VALUE_0: /workspace
       LARAVEL_PDF_DRIVER: weasyprint
       LARAVEL_PDF_WEASYPRINT_BINARY: /usr/bin/weasyprint
       XDEBUG_MODE: "${XDEBUG_MODE:-off}"
