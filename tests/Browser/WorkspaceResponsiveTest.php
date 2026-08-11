@@ -26,6 +26,13 @@ final class WorkspaceResponsiveTest extends DuskTestCase
 {
     use DatabaseTruncation;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(DatabaseSeeder::class);
+    }
+
     public function test_workspace_uses_only_split_and_sequential_geometry_at_required_viewports(): void
     {
         [$administrator, $assessment, $firstFinding] = $this->responsiveFixture();
@@ -576,7 +583,6 @@ final class WorkspaceResponsiveTest extends DuskTestCase
 
     public function test_dirty_selection_autosave_and_version_conflict_use_the_signed_workspace_protocol(): void
     {
-        $this->seed(DatabaseSeeder::class);
         $administrator = User::factory()->create();
         $assessment = Assessment::factory()->create(['title' => 'Workspace persistence browser']);
         $findings = Finding::factory()->count(2)->for($assessment)->sequence(

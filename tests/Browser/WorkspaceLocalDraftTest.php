@@ -11,6 +11,7 @@ use App\Models\Category;
 use App\Models\Finding;
 use App\Models\PriorityLevel;
 use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Laravel\Dusk\Browser;
 use PHPUnit\Framework\Assert;
@@ -19,6 +20,13 @@ use Tests\DuskTestCase;
 final class WorkspaceLocalDraftTest extends DuskTestCase
 {
     use DatabaseTruncation;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(DatabaseSeeder::class);
+    }
 
     public function test_local_finding_draft_survives_reload_and_is_removed_after_confirmed_save(): void
     {
