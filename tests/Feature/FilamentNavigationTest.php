@@ -6,6 +6,7 @@ use App\Filament\Clusters\AssetCluster;
 use App\Filament\Clusters\SettingsCluster;
 use App\Filament\Pages\BackupSettingsPage;
 use App\Filament\Pages\DiagnosticsPage;
+use App\Filament\Pages\FattureInCloudSettingsPage;
 use App\Filament\Pages\GeneralSettingsPage;
 use App\Filament\Pages\GoogleDriveSettingsPage;
 use App\Filament\Pages\ReportSettingsPage;
@@ -38,6 +39,7 @@ it('discovers native clusters and assigns each clustered component exactly once'
             ReportSettingsPage::class,
             BackupSettingsPage::class,
             GoogleDriveSettingsPage::class,
+            FattureInCloudSettingsPage::class,
             DiagnosticsPage::class,
             FindingTemplateResource::class,
             CategoryResource::class,
@@ -50,6 +52,7 @@ it('discovers native clusters and assigns each clustered component exactly once'
         ->and(ReportSettingsPage::getCluster())->toBe(SettingsCluster::class)
         ->and(BackupSettingsPage::getCluster())->toBe(SettingsCluster::class)
         ->and(GoogleDriveSettingsPage::getCluster())->toBe(SettingsCluster::class)
+        ->and(FattureInCloudSettingsPage::getCluster())->toBe(SettingsCluster::class)
         ->and(DiagnosticsPage::getCluster())->toBe(SettingsCluster::class);
 });
 
@@ -91,6 +94,7 @@ it('uses clustered URLs route names and ordered native subnavigation', function 
         ->and(GeneralSettingsPage::getUrl())->toEndWith('/admin/settings/general-settings-page')
         ->and(ReportSettingsPage::getUrl())->toEndWith('/admin/settings/report-settings-page')
         ->and(BackupSettingsPage::getUrl())->toEndWith('/admin/settings/backup-settings-page')
+        ->and(FattureInCloudSettingsPage::getUrl())->toEndWith('/admin/settings/fatture-in-cloud-settings-page')
         ->and(DiagnosticsPage::getUrl())->toEndWith('/admin/settings/diagnostics')
         ->and(FindingTemplateResource::getUrl('index'))->toEndWith('/admin/settings/finding-templates')
         ->and(CategoryResource::getUrl('index'))->toEndWith('/admin/settings/categories')
@@ -110,6 +114,7 @@ it('uses clustered URLs route names and ordered native subnavigation', function 
             'Google Drive',
             'Template',
             'Diagnostica',
+            'Fatture in Cloud',
             'Categorie',
             'Matrice priorità',
             'Livelli di impegno',
@@ -132,6 +137,7 @@ it('requires authentication for every relocated navigation destination', functio
     'report settings' => fn (): string => ReportSettingsPage::getUrl(),
     'backup settings' => fn (): string => BackupSettingsPage::getUrl(),
     'Google Drive settings' => fn (): string => GoogleDriveSettingsPage::getUrl(),
+    'Fatture in Cloud settings' => fn (): string => FattureInCloudSettingsPage::getUrl(),
     'diagnostics' => fn (): string => DiagnosticsPage::getUrl(),
     'templates' => fn (): string => FindingTemplateResource::getUrl('index'),
     'categories' => fn (): string => CategoryResource::getUrl('index'),

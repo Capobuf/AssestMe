@@ -110,8 +110,33 @@ Settings cover the approved product behavior only, including:
 - risk profiles and effort levels;
 - report branding, title, legends, consultant identity, signature text, footer, and freeze behavior;
 - backup presentation and diagnostics.
+- optional Fatture in Cloud OAuth client credentials, encrypted access/refresh credentials, the
+  single provider company identity, and one enabled provider VAT-type default.
 
-Settings snapshots used for generated reports are immutable. No VAT calculation settings, handwritten-signature upload, roles, portals, or audit-log settings are added.
+The Fatture in Cloud client secret is write-only; a blank save retains it. Changing either effective
+OAuth client credential clears the connection. A successful callback must expose exactly one company.
+Local disconnect clears local credentials and tells the administrator how to revoke provider access;
+no provider revocation endpoint is invented.
+
+Settings snapshots used for generated reports are immutable. No VAT calculation settings,
+handwritten-signature upload, roles, portals, or audit-log settings are added.
+
+## Fatture in Cloud boundary
+
+- The only commercial persistence is an opaque nullable Fatture in Cloud company/client mapping on
+  `Client`; it is revalidated against the live provider before use.
+- Fiscal-code/VAT-number lookup is exact after deterministic normalization. Names are never used for
+  fuzzy automatic matching; multiple exact candidates require an explicit choice.
+- Products and enabled VAT types are live read-only references. Product code/identity and a VAT-type
+  identifier can seed an editable transient row, but AssestMe neither writes provider catalogs nor
+  calculates VAT.
+- Groups, free rows, Finding assignments, prior-version reconstruction, prices, quantities,
+  discounts, remote quote IDs, and provider links remain transient and are not stored locally.
+- A Finding reference is exactly `F-` plus its six-digit local ID. A quote marker is exactly
+  `[ASSESTME assessment=<id> version=<positive-int>]`; only anchored, exact markers establish remote
+  version lineage.
+- One manual group maps to one provider row. Findings may occur in zero, one, or multiple groups;
+  AssestMe performs no automatic grouping.
 
 ## Generated files
 

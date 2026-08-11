@@ -167,3 +167,55 @@
 ## Update rule
 
 Record only factual work performed, the exact affected area, commands run, and results. Progress entries do not create or modify product requirements.
+
+- 2026-08-11: Started Spec Kit feature `004-fatture-in-cloud-quotes` on `develop` from HEAD
+  `653be43f743ac483ce047e0e18aeb0dc4388daa6`. Preflight found a clean working tree, PHP
+  8.3.6, and healthy normative Compose services. The provider contract was checked against the
+  official Fatture in Cloud API v2 documentation and OpenAPI repository at
+  `2be805afd6667b00b4f1d09b6833472e8eb09d7c`; specification iteration 1 passed all 16 quality
+  checks with no unresolved clarification.
+- 2026-08-11: Provider research corrected the disconnect contract before planning: the current FIC
+  OAuth and OpenAPI sources expose authorization-code exchange and refresh at `/oauth/token` but no
+  remote revocation endpoint. Disconnect will therefore erase all local authorization and explain
+  provider-side revocation instead of inventing an API call.
+- 2026-08-11: V1 completed the optional authenticated Fatture in Cloud Settings slice: encrypted
+  write-only OAuth credentials and token rotation, exact state/callback/scopes, exactly-one-company
+  adoption, live enabled VAT default, verification/reconnect, and local disconnect. D-014 v2,
+  D-039 v2, and D-075 record the narrow transient remote-quote boundary. Focused Pint passed on 13
+  files, PHPStan passed on 10 application paths, and
+  `FattureInCloudConnectionTest` passed 10 tests with 77 assertions in the normative app container.
+- 2026-08-11: V2 added the portable opaque Client mapping, live mapping validation, paginated exact
+  VAT-number/tax-code resolution without name matching, explicit duplicate choice, provider client
+  creation, draft-only composer route, and the Workspace pre-action persistence guard. Focused Pint
+  and application PHPStan passed; all FIC suites passed 17 tests with 99 assertions.
+- 2026-08-11: V3 completed the transient manual composer, exact Finding references/markers,
+  repeated cross-group assignments, free rows, row ordering, and compatible exact-price suggestions.
+  V4 added paginated read-only products, editable product suggestions, and enabled live VAT choices.
+  Their focused logic/component checks passed 6 tests with 24 assertions; PHPStan passed.
+- 2026-08-11: V5 completed paginated exact-marker discovery, greatest-version selection, typed detail
+  reconstruction, exact current-Assessment `F-xxxxxx` reconciliation, and unmatched-row UI. Its
+  focused suite passed 3 tests with 12 assertions and PHPStan passed across 21 FIC application files.
+- 2026-08-11: V6 completed live client/Finding/product/VAT validation, one-item-per-row quote
+  creation, single-flight UI, bounded 401/429/ordinary errors, and exact-marker reconciliation after
+  ambiguous POST transport failure without blind retry. Creation/component coverage passed 10 tests
+  with 31 assertions. The first focused Dusk run exposed a selector mismatch and the second exposed
+  the wrong Filament Section slot; after both focused fixes, the isolated fake-provider journey
+  passed 1 browser test with 6 assertions, including dirty Finding persistence and real-shaped remote
+  document ID/link confirmation.
+- 2026-08-11: Real-provider diagnosis for LP Distribuzione replaced invalid free-text and rejected
+  compound client filters with separate exact `vat_number`/`tax_code` queries, added the required
+  read scopes and an authorization-scope version guard, and proved one unique live VAT match without
+  creating or editing provider data. The focused FIC suite passed 42 tests with 193 assertions.
+- 2026-08-11: Repaired the quote-composer presentation after browser inspection proved that custom
+  utility classes were absent from the shipped Filament stylesheet and raw `fi-input` elements had
+  no supported wrapper. The composer now uses application-owned responsive layout classes and native
+  Filament input, select, checkbox, and icon-button components. Desktop light/dark and 390 px browser
+  checks showed structured grids, no horizontal overflow, and no browser errors; the isolated FIC
+  Dusk journey passed 1 test with 8 assertions, including computed-layout regression assertions.
+- 2026-08-11: Diagnosed the first live quote rejection without retrying the creating POST; an exact
+  marker lookup confirmed no remote document was created. Quote creation now repeats the live
+  client's name and available fiscal identifiers beside its provider ID, as required by the provider
+  document contract. The corrected payload passed the provider's non-creating totals validation with
+  HTTP 200 and no invalid fields. Ordinary 4xx rejections now expose a corrective local message and
+  log only bounded status/code/field-path metadata. Focused Pint and PHPStan passed, and all FIC
+  feature tests passed 39 tests with 186 assertions.

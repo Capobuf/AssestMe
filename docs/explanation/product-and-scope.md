@@ -20,17 +20,22 @@ The administrator can:
 8. define multiple remediation solutions;
 9. select one recommended solution and, for resolved Findings, one implemented solution;
 10. evaluate priority manually or through a consequence × likelihood matrix;
-11. record implementation effort and indicative economic estimates without creating a quotation;
+11. record implementation effort and indicative economic estimates;
 12. attach evidence as approved files or links;
 13. generate a configurable professional PDF;
 14. generate a complete textual XLSX export;
 15. archive or permanently delete data according to the global deletion policy.
 
+When the optional Fatture in Cloud connection is configured, an editable Assessment may also open a
+transient Italian quote composer and create the resulting quote directly in the single connected
+provider company. AssestMe does not persist the composed rows, remote quote history, totals, or a
+commercial document snapshot.
+
 ## Explicit exclusions
 
 AssestMe is not:
 
-- a quotation or invoicing system;
+- a local quotation or invoicing system;
 - a project-management system;
 - a vulnerability scanner;
 - a CMDB requiring complete asset registration;
@@ -60,8 +65,10 @@ There is no public API, MCP server, Jira integration, runZero integration, or sc
 
 ## Economic boundary
 
-- Values are indicative estimates, not quotations.
-- VAT treatment, rates, taxable amounts, tax amounts, and fiscal calculations are not modeled.
+- Assessment values remain indicative estimates. A quote exists only when explicitly composed and
+  created in Fatture in Cloud.
+- Current provider VAT types may be referenced transiently on remote quote rows. VAT treatment,
+  taxable amounts, tax amounts, and fiscal calculations are not modeled or persisted by AssestMe.
 - PDF and XLSX each contain the fixed VAT-excluded note exactly once.
 - VAT numbers remain anagraphic identifiers.
 

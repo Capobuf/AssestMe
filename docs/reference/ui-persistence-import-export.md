@@ -76,6 +76,32 @@ use the separate save-as-new lineage action.
 
 A Finding save carries its pending file and URL Evidence in the signed payload hash. Finding, solutions, associations, Evidence rows, idempotency response, and one assessment-version increment commit as one aggregate. Prepared private files are compensated when persistence fails; pending uploads are removed only after success.
 
+## Fatture in Cloud quote composer
+
+`Crea preventivo` is available only for an editable Assessment and uses the same pre-action save
+gate as the other Workspace-dependent actions. The composer opens only after the authoritative
+Assessment and selected-Finding state has been persisted successfully.
+
+The composer is a transient work area. Manual groups, free rows, repeated Finding assignments,
+catalog selections, prior-version rows, provider document IDs, and success/error state are not
+stored in AssestMe. The only provider-specific domain persistence is the exact client mapping for
+the connected company; OAuth/company/default-VAT settings remain encrypted or typed application
+settings as applicable.
+
+One manual group or free row produces exactly one provider quote item. Finding references use the
+exact `F-xxxxxx` token and remain part of the item description. Products and enabled VAT types are
+read live as optional suggestions; every commercial value remains editable and AssestMe neither
+calculates tax nor writes provider catalogs.
+
+Previous-version reuse accepts only the greatest unambiguous exact AssestMe marker for the current
+Assessment. Rows with references that cannot be matched exactly to current Findings are preserved
+and visibly marked instead of being guessed or discarded.
+
+Submission is single-flight. The UI keeps all transient input on ordinary, rate-limit, or ambiguous
+transport failure and reports success only from a provider response or an exact unique post-failure
+marker reconciliation. A provider document ID and safe provider link are shown only after that
+confirmed success.
+
 ## Local IndexedDB recovery
 
 - Existing assessment and Finding forms keep durable local drafts in an application-owned IndexedDB store.

@@ -81,3 +81,26 @@
 ## Update rule
 
 Add only reproducible observations discovered during implementation or verification. Do not turn a discovery into an accepted decision without explicit approval and an ADR update.
+
+## Fatture in Cloud quote discoveries
+
+- The official API v2 contract at OpenAPI commit `2be805afd6667b00b4f1d09b6833472e8eb09d7c`
+  exposes Authorization Code exchange/refresh and the required company, VAT, client, product, and
+  issued-document methods, but no OAuth revocation endpoint. Local disconnect must erase local
+  tokens and explain provider-side authorization removal instead of fabricating a remote call.
+- The official generated PHP SDK would add a large generated model/API surface over Guzzle for the
+  same narrow endpoints. Laravel HTTP already provides the repository's proportional `Http::fake`
+  boundary, so the SDK adds no required provider capability for this feature.
+- The live client endpoint accepts one exact fiscal-identifier condition but returned `403` for a
+  parenthesized disjunction that combined otherwise accepted fields. Separate exact requests followed
+  by local normalized deduplication preserve strict matching and work with the live provider.
+- Filament's shipped theme does not guarantee arbitrary utility classes referenced only by a custom
+  Blade page, and `fi-input` is intended to be rendered inside `fi-input-wrp`. Application-owned CSS
+  plus native input components avoid an undeclared frontend build. Custom Filament app assets also
+  need a content-derived app version; the default Filament package version can otherwise leave a
+  browser on a stale published stylesheet after application CSS changes.
+- Fatture in Cloud does not hydrate an issued document's `entity` from an existing client ID. A
+  linked quote must repeat the live client's display details alongside `entity.id`; the live
+  non-creating `/issued_documents/totals` check accepted the corrected quote payload with status 200.
+  Provider rejection logs can retain the HTTP status, bounded error code, and validation field paths
+  without retaining provider messages, fiscal identifiers, commercial values, or credentials.

@@ -17,6 +17,7 @@ use App\Models\RiskProfile;
 use App\Models\Site;
 use App\Policies\SingletonAdministratorPolicy;
 use App\Support\CanaryClusterRequester;
+use App\Support\FattureInCloudDuskFake;
 use Baspa\FilamentCanary\Sweep\Requester;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -31,6 +32,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if ($this->app->environment('testing') && config('fatture-in-cloud.dusk_fake') === true) {
+            app(FattureInCloudDuskFake::class)->install();
+        }
+
         if ($this->app->environment('testing') && interface_exists(Requester::class)) {
             $this->app->bind(Requester::class, CanaryClusterRequester::class);
         }

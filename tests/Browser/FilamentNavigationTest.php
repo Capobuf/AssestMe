@@ -99,6 +99,7 @@ final class FilamentNavigationTest extends DuskTestCase
                 'Google Drive',
                 'Template',
                 'Diagnostica',
+                'Fatture in Cloud',
                 'Categorie',
                 'Matrice priorità',
                 'Livelli di impegno',
@@ -183,8 +184,13 @@ final class FilamentNavigationTest extends DuskTestCase
             ));
             Assert::assertSame([], $severeLogs, 'The navigation and workspace flow contains severe console errors.');
 
-            $browser->click('.fi-no-notification-close-btn')
-                ->waitUntilMissing('.fi-no-notification');
+            $browser->script(<<<'JS'
+                document.querySelectorAll('.fi-no-notification-close-btn')
+                    .forEach((button) => button.click());
+                JS);
+            $browser->waitUntil(<<<'JS'
+                return document.querySelectorAll('.fi-no-notification').length === 0;
+                JS);
             $browser->click('.fi-user-menu-trigger')
                 ->waitForText(__('filament-panels::layout.actions.logout.label'))
                 ->press(__('filament-panels::layout.actions.logout.label'))

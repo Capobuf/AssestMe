@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\DownloadBackupController;
 use App\Http\Controllers\DownloadEvidenceController;
 use App\Http\Controllers\DownloadGeneratedReportController;
+use App\Http\Controllers\FattureInCloud\FattureInCloudOAuthController;
 use App\Http\Controllers\GoogleDrive\GoogleDriveOAuthController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\Installation\InstallationController;
@@ -55,6 +56,15 @@ Route::prefix('/admin/settings/google-drive')
     ->middleware('auth')
     ->name('google-drive.oauth.')
     ->controller(GoogleDriveOAuthController::class)
+    ->group(function (): void {
+        Route::get('/connect', 'redirect')->name('redirect');
+        Route::get('/callback', 'callback')->name('callback');
+    });
+
+Route::prefix('/admin/settings/fatture-in-cloud')
+    ->middleware('auth')
+    ->name('fatture-in-cloud.oauth.')
+    ->controller(FattureInCloudOAuthController::class)
     ->group(function (): void {
         Route::get('/connect', 'redirect')->name('redirect');
         Route::get('/callback', 'callback')->name('callback');

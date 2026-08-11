@@ -1917,3 +1917,249 @@
         white-space: normal;
     }
 }
+
+.assestme-fic-composer {
+    --assestme-fic-border: rgb(19 19 19 / 12%);
+    --assestme-fic-surface: #FFFFFF;
+    --assestme-fic-surface-muted: #F7F7F7;
+    --assestme-fic-text-muted: rgb(19 19 19 / 62%);
+    display: grid;
+    min-width: 0;
+    gap: 1.5rem;
+}
+
+.dark .assestme-fic-composer {
+    --assestme-fic-border: rgb(255 255 255 / 12%);
+    --assestme-fic-surface: #131313;
+    --assestme-fic-surface-muted: #181818;
+    --assestme-fic-text-muted: rgb(255 255 255 / 62%);
+}
+
+.assestme-fic-composer__workspace {
+    display: grid;
+    min-width: 0;
+    align-items: start;
+    gap: 1.5rem;
+    grid-template-columns: minmax(17rem, 0.8fr) minmax(0, 2.2fr);
+}
+
+.assestme-fic-composer__context,
+.assestme-fic-composer__rows-panel {
+    min-width: 0;
+}
+
+.assestme-fic-composer__message,
+.assestme-fic-composer__findings,
+.assestme-fic-composer__rows {
+    display: grid;
+    min-width: 0;
+    gap: 0.875rem;
+}
+
+.assestme-fic-composer__actions,
+.assestme-fic-composer__row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.assestme-fic-composer__candidate {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.875rem;
+    border: 1px solid var(--assestme-fic-border);
+    border-radius: 0.75rem;
+    background: var(--assestme-fic-surface-muted);
+}
+
+.assestme-fic-composer__muted,
+.assestme-fic-composer__finding-problem {
+    color: var(--assestme-fic-text-muted);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.assestme-fic-composer__finding {
+    min-width: 0;
+    padding: 0.875rem;
+    border: 1px solid var(--assestme-fic-border);
+    border-radius: 0.75rem;
+    background: var(--assestme-fic-surface-muted);
+}
+
+.assestme-fic-composer__finding strong {
+    display: block;
+    line-height: 1.4;
+}
+
+.assestme-fic-composer__finding-problem {
+    margin-top: 0.35rem;
+}
+
+.assestme-fic-composer__solution {
+    margin-top: 0.65rem;
+    font-size: 0.8125rem;
+}
+
+.assestme-fic-composer__solution summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.assestme-fic-composer__solution p {
+    margin-top: 0.35rem;
+    color: var(--assestme-fic-text-muted);
+    line-height: 1.5;
+}
+
+.assestme-fic-composer__row {
+    display: grid;
+    min-width: 0;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--assestme-fic-border);
+    border-radius: 0.75rem;
+    background: var(--assestme-fic-surface-muted);
+}
+
+.assestme-fic-composer__row-header {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.assestme-fic-composer__row-actions {
+    flex: 0 0 auto;
+}
+
+.assestme-fic-composer__field-grid {
+    display: grid;
+    min-width: 0;
+    gap: 0.875rem;
+}
+
+.assestme-fic-composer__field-grid--single {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.assestme-fic-composer__field-grid--commercial {
+    grid-template-columns: repeat(4, minmax(7rem, 1fr));
+}
+
+.assestme-fic-composer__field-grid--catalog {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.assestme-fic-composer__field {
+    display: grid;
+    min-width: 0;
+    align-content: start;
+    gap: 0.375rem;
+}
+
+.assestme-fic-composer__field > span,
+.assestme-fic-composer__assignments legend {
+    color: var(--assestme-fic-text-muted);
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.assestme-fic-composer__field .fi-input-wrp {
+    width: 100%;
+}
+
+.assestme-fic-composer__textarea {
+    display: block;
+    width: 100%;
+    min-height: 5.5rem;
+    resize: vertical;
+    padding: 0.625rem 0.75rem;
+    background: transparent;
+    outline: none;
+    line-height: 1.5;
+}
+
+.assestme-fic-composer__textarea:focus-visible {
+    outline: none;
+}
+
+.assestme-fic-composer__assignments {
+    display: grid;
+    min-width: 0;
+    gap: 0.625rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--assestme-fic-border);
+}
+
+.assestme-fic-composer__assignments legend {
+    margin-bottom: 0.25rem;
+}
+
+.assestme-fic-composer__choice {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 0.625rem;
+    line-height: 1.4;
+}
+
+.assestme-fic-composer__choice .fi-checkbox-input {
+    flex: 0 0 auto;
+    margin-top: 0.15rem;
+}
+
+.assestme-fic-composer__choice--solution {
+    color: var(--assestme-fic-text-muted);
+    font-size: 0.8125rem;
+}
+
+.assestme-fic-composer__solutions {
+    display: grid;
+    gap: 0.5rem;
+    margin-inline-start: 1.75rem;
+}
+
+.assestme-fic-composer__warning {
+    color: var(--warning-700, #A16207);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.dark .assestme-fic-composer__warning {
+    color: var(--warning-300, #FCD34D);
+}
+
+@media (max-width: 64rem) {
+    .assestme-fic-composer__workspace {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 52rem) {
+    .assestme-fic-composer__field-grid--commercial,
+    .assestme-fic-composer__field-grid--catalog {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 40rem) {
+    .assestme-fic-composer {
+        gap: 1rem;
+    }
+
+    .assestme-fic-composer__field-grid--commercial,
+    .assestme-fic-composer__field-grid--catalog {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .assestme-fic-composer__candidate,
+    .assestme-fic-composer__row-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

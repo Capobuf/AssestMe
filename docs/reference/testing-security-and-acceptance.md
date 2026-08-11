@@ -96,6 +96,25 @@ The OAuth callback journey was not independently observed and the complete manua
 remains `NOT VERIFIED`; this bounded evidence does not claim Shared Drive support or exhaustive
 provider acceptance.
 
+For the optional Fatture in Cloud quote integration:
+
+- OAuth authorization is stateful and requests exactly
+  `entity.clients:a products:r settings:r issued_documents.quotes:a`;
+- the client secret, access token, and refresh token are encrypted and are never rendered, logged,
+  or included in notifications; a blank secret save retains the effective value;
+- the callback URI is generated from the authenticated named callback route and shown read-only;
+- callback adoption requires exactly one provider company and the configured VAT default must be an
+  enabled type returned live for that company;
+- one controlled token refresh is allowed after an unauthorized API response; rotated refresh tokens
+  replace the encrypted prior value;
+- 401, 403, 429, invalid JSON, timeout, and provider failures become bounded actionable Italian
+  states, without raw provider bodies or secrets;
+- local disconnect clears connection state and explains separate provider-side revocation because
+  the verified v2 contract exposes no revocation endpoint;
+- provider behavior is covered with Laravel HTTP fakes; automated tests never require credentials or
+  contact the live provider. Real OAuth/provider acceptance remains `NOT VERIFIED` until executed and
+  recorded explicitly.
+
 ## Installer acceptance
 
 The installer performs real deterministic probes for:

@@ -41,6 +41,7 @@ use App\Models\Assessment;
 use App\Models\Finding;
 use App\Models\FindingTemplate;
 use App\Services\Templates\FindRelatedFindingTemplates;
+use App\Settings\FattureInCloudSettings;
 use App\Settings\GeneralSettings;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -733,6 +734,17 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
     protected function getHeaderActions(): array
     {
         return [
+            Action::make('create_fatture_in_cloud_quote')
+                ->label(__('assestme.fatture_in_cloud.composer.action'))
+                ->icon('heroicon-o-document-currency-euro')
+                ->visible(fn (): bool => ! $this->isWorkspaceReadOnly())
+                ->disabled(fn (): bool => ! $this->fattureInCloudReady())
+                ->tooltip(fn (): ?string => $this->fattureInCloudReady()
+                    ? null
+                    : __('assestme.fatture_in_cloud.composer.not_ready'))
+                ->action(function (): void {
+                    $this->openFattureInCloudQuoteComposer();
+                }),
             Action::make('complete')
                 ->label(__('assestme.workspace.complete'))
                 ->icon('heroicon-o-check-circle')
@@ -796,6 +808,27 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
                     'data-dusk' => 'export-menu',
                 ]),
         ];
+    }
+
+    public function openFattureInCloudQuoteComposer(): void
+    {
+        if ($this->isWorkspaceReadOnly() || ! $this->fattureInCloudReady()
+            || ! $this->persistCurrentWorkspaceStateBeforeAction()) {
+            return;
+        }
+
+        $this->redirect(AssessmentResource::getUrl('create-fatture-in-cloud-quote', [
+            'record' => $this->assessmentRecord(),
+        ]), navigate: false);
+    }
+
+    private function fattureInCloudReady(): bool
+    {
+        $settings = app(FattureInCloudSettings::class);
+
+        return is_string($settings->company_id) && $settings->company_id !== ''
+            && is_string($settings->encrypted_refresh_token) && $settings->encrypted_refresh_token !== ''
+            && is_string($settings->default_vat_type_id) && $settings->default_vat_type_id !== '';
     }
 
     public function deleteGeneratedReportAction(): Action

@@ -16,6 +16,7 @@ use Filament\PanelProvider;
 use Filament\Support\Assets\Css;
 use Filament\Support\Assets\Js;
 use Filament\Support\Colors\Color;
+use Filament\Support\Facades\FilamentAsset;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -59,6 +60,8 @@ class AdminPanelProvider extends PanelProvider
 
     public function panel(Panel $panel): Panel
     {
+        FilamentAsset::appVersion($this->applicationAssetVersion());
+
         return $panel
             ->default()
             ->id('admin')
@@ -110,5 +113,19 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
+    }
+
+    private function applicationAssetVersion(): string
+    {
+        $hashes = array_map(
+            static fn (string $path): string => hash_file('sha256', $path) ?: '',
+            [
+                resource_path('css/assestme-workspace.css'),
+                resource_path('js/assestme-workspace.js'),
+                resource_path('js/assestme-workspace-drafts.js'),
+            ],
+        );
+
+        return substr(hash('sha256', implode('|', $hashes)), 0, 16);
     }
 }

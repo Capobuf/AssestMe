@@ -46,6 +46,7 @@ jobs:
           docker compose -f docker/compose.dev.yml --profile browser exec -T \
             -e ASSESTME_TEST_ROOT=/tmp/assestme-ci-dusk \
             -e ASSESTME_TEST_ISOLATED=1 \
+            -e ASSESTME_FIC_DUSK_FAKE=1 \
             app scripts/dusk-isolated.sh
 
       - name: Stop pinned browser-test infrastructure
@@ -187,6 +188,7 @@ jobs:
             "$client_root/mysql" --version
             echo "ASSESTME_DB_DUMP_BINARY=$client_root/mysqldump" >> "$GITHUB_ENV"
             echo "ASSESTME_DB_RESTORE_BINARY=$client_root/mysql" >> "$GITHUB_ENV"
+            echo "$client_root" >> "$GITHUB_PATH"
           else
             /usr/bin/mariadb-dump --version
             /usr/bin/mariadb --version

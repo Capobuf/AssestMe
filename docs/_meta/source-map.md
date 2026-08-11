@@ -31,7 +31,7 @@ This table maps every top-level section of the former specification 2.7 to its c
 
 ## Decision coverage
 
-D-001 through D-070 are assigned exactly once in `docs/adr/README.md`. Superseded historical versions are retained alongside the applicable base decision.
+D-001 through D-075 are assigned exactly once in `docs/adr/README.md`. Superseded historical versions are retained alongside the applicable base decision.
 
 ## Raw historical recovery
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Assessments;
 
 use App\Filament\Resources\Assessments\Pages\CreateAssessment;
+use App\Filament\Resources\Assessments\Pages\CreateFattureInCloudQuote;
 use App\Filament\Resources\Assessments\Pages\EditAssessment;
 use App\Filament\Resources\Assessments\Pages\ListAssessments;
 use App\Filament\Resources\Assessments\Pages\WorkspaceAssessment;
@@ -66,6 +67,7 @@ class AssessmentResource extends Resource
             'create' => CreateAssessment::route('/create'),
             'edit' => EditAssessment::route('/{record}/edit'),
             'workspace' => WorkspaceAssessment::route('/{record}/workspace'),
+            'create-fatture-in-cloud-quote' => CreateFattureInCloudQuote::route('/{record}/preventivo-fatture-in-cloud'),
         ];
     }
 
