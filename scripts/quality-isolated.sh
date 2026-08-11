@@ -17,6 +17,16 @@ vendor/bin/pint --test
 vendor/bin/phpstan analyse --memory-limit=1G
 php artisan migrate:fresh --seed --force
 php artisan test
+
+# RefreshDatabase deliberately leaves the shared test database at its clean
+# schema baseline. Rebuild a representative installed state before Canary
+# sweeps pages whose forms depend on seeded domain configuration.
+php artisan migrate:fresh --seed --force
+export DEV_ADMIN_PASSWORD="$(php -r 'echo "Verify!".bin2hex(random_bytes(16))."aA1";')"
+php artisan assestme:create-admin --from-env >/dev/null
+unset DEV_ADMIN_PASSWORD
+php artisan assestme:installation:lock --force >/dev/null
+
 php artisan canary:check --strict
 composer audit --locked --no-interaction
 

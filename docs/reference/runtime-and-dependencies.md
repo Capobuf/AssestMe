@@ -33,7 +33,22 @@ Database-specific extension:
 - Opis JSON Schema for template validation.
 - Laravel Dusk for browser tests.
 
-`composer.lock` is the authoritative exact dependency inventory. Vendor code is never edited. A fork requires explicit approval.
+Optional Google Drive readable synchronization retains the locked versions of Laravel Socialite,
+Yaza Laravel Google Drive Storage v5, Revolution Laravel Google Sheets, and Google PHP Client intact.
+AssestMe uses the public Google Drive client directly for exact-parent-ID mutations and Revolution's
+public API for Sheet values. The administrator
+configures only the OAuth client ID and encrypted write-only client secret from the native Google
+Drive Settings page; AssestMe calculates and displays the callback URI read-only. Optional
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` values are defaults only and are not installation requirements.
+The integration is inactive unless effective application configuration, one connected user account,
+and the application-created My Drive root are present. It adds no browser selector, API key, project
+number, Node.js, Redis, queue-worker, service-account,
+or production cloud dependency to installations that do not enable it.
+
+`composer.lock` is the authoritative exact dependency inventory. Vendor and transitive dependency
+code is never edited, patched, monkey-patched, copied for modification, or replaced by a fork.
+Application integration uses public package APIs through AssestMe-owned services; no runtime logic
+depends on a dependency's display-path implementation.
 
 ## Prohibited runtime requirements
 
@@ -47,6 +62,10 @@ Normal application operation must not require:
 - Composer on the production host.
 
 The optional Selenium service is isolated Dusk infrastructure only.
+
+The external-cloud prohibition applies to required normal operation. The explicitly optional
+Google Drive readable copy is an output integration: local saves, PDF/XLSX generation, private
+storage, backup, restore, and source-of-truth behavior remain fully local and independent.
 
 ## Development environment
 

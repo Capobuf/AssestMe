@@ -65,6 +65,33 @@ These checks are `NOT VERIFIED` until executed on a reference installation and s
 - Untrusted HTML is not rendered.
 - No secrets, passwords, cookies, or `.env` contents are placed in acceptance evidence.
 
+For the optional Google Drive output integration:
+
+- OAuth is stateful and requests offline consent;
+- `drive.file` is the sole Drive data scope; `openid` and `email` are identity scopes used to show
+  the connected account;
+- only client ID and client secret are configurable in the native Settings page; the secret is
+  encrypted and write-only, while a blank value retains the current effective secret;
+- the callback URI is calculated from the named AssestMe route, displayed read-only, and copyable;
+- changing the effective OAuth client ID or client secret disables synchronization and clears the
+  prior connection/root;
+- the refresh credential is encrypted in the dedicated settings group and is never sent to the
+  browser, logs, notifications, command output, or persisted sync errors;
+- after OAuth, AssestMe creates a new `AssestMe` folder directly in My Drive and persists its
+  Google-returned ID; it neither searches for nor adopts a same-name folder;
+- no browser selector, browser access-token endpoint, API key, or project number is used;
+- provider failures are converted to bounded actionable Italian messages;
+- application locks use the configured file cache, and assessments are processed in chunks of at
+  most 50;
+- automated tests replace the Google boundary and make no real Google request.
+
+Stored client and refresh secrets are never rendered. On 2026-08-11 the administrator reported a
+successful real OAuth connection, and an AssestMe forced run against that connected account completed
+3 of 3 assessments through real Drive and Sheets APIs after the exact-parent and dense-row fixes.
+The OAuth callback journey was not independently observed and the complete manual lifecycle checklist
+remains `NOT VERIFIED`; this bounded evidence does not claim Shared Drive support or exhaustive
+provider acceptance.
+
 ## Installer acceptance
 
 The installer performs real deterministic probes for:

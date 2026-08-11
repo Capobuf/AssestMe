@@ -16,9 +16,16 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $external_key
  * @property string $title
  * @property string $description
+ * @property string|null $comparison_notes
  * @property int|null $effort_level_id
+ * @property string|null $effort_notes
  * @property EstimateType $estimate_type
+ * @property string|null $amount_min
+ * @property string|null $amount_max
+ * @property string|null $currency_code
  * @property BillingFrequency $billing_frequency
+ * @property string|null $custom_billing_frequency
+ * @property string|null $estimate_notes
  * @property int $sort_order
  * @property-read Finding $finding
  * @property-read EffortLevel|null $effortLevel

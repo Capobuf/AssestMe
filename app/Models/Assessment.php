@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -33,6 +34,7 @@ use Illuminate\Support\Collection;
  * @property-read Client $client
  * @property-read Collection<int, Site> $sites
  * @property-read Collection<int, GeneratedReport> $generatedReports
+ * @property-read AssessmentGoogleDriveSync|null $googleDriveSync
  */
 class Assessment extends Model
 {
@@ -80,6 +82,12 @@ class Assessment extends Model
     public function generatedReports(): HasMany
     {
         return $this->hasMany(GeneratedReport::class);
+    }
+
+    /** @return HasOne<AssessmentGoogleDriveSync, $this> */
+    public function googleDriveSync(): HasOne
+    {
+        return $this->hasOne(AssessmentGoogleDriveSync::class);
     }
 
     /** @return array<string, string> */

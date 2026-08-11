@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $file_path
  * @property string|null $url
  * @property string|null $original_filename
+ * @property string|null $caption
+ * @property string|null $internal_notes
  * @property string|null $mime_type
  * @property int|null $size_bytes
  * @property string|null $sha256

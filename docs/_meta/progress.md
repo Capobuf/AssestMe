@@ -2,6 +2,64 @@
 
 ## Current state
 
+- 2026-08-11: Started the Filament-native main-navigation move from the desktop sidebar
+  to top navigation on `develop` at `63052396b0e7271f572346040d2847f498bb8b77`;
+  the existing dirty assessment-integrity and Google Drive sync work is preserved.
+- 2026-08-11: Enabled native `Panel::topNavigation()` without sidebar options, custom
+  shell code, CSS, JavaScript, or plugins. Focused navigation tests passed (15 tests,
+  69 assertions), the navigation Dusk journey passed (1 test, 63 assertions), and
+  isolated responsive geometry and scroll tests passed (2 tests, 168 assertions)
+  across 2560/1920/1440/1280/1024/390-pixel viewports.
+- 2026-08-11: Started the optional one-way Google Drive readable-sync vertical slice on
+  `develop` at `63052396b0e7271f572346040d2847f498bb8b77`. Preflight confirmed the
+  existing dirty assessment-integrity work is preserved, Spec Kit 0.16.1 is available,
+  and the new feature uses `specs/002-google-drive-readable-sync`.
+- 2026-08-11: Completed the initial Google Drive readable-sync application slice through OAuth,
+  encrypted settings, remote-root handling, deterministic four-tab snapshot, verified evidence and
+  generated-report copies, non-destructive ID-prefix reconciliation, per-assessment success/error
+  state, 50-record chunks, file-cache locking, hourly Europe/Rome scheduling, CLI `--force`, and
+  aggregate Filament status. `php artisan test tests/Feature/GoogleDrive` passed 36 tests and 194
+  assertions with the one real-PDF independence scenario skipped because this host has no
+  executable `/usr/bin/weasyprint`; focused Pint passed and focused application PHPStan reported no
+  errors. This root/configuration design was superseded by the later addendum. Real Google OAuth,
+  Drive, and Sheets remain NOT VERIFIED.
+- 2026-08-11: Reopened Google Drive US1 after frontend review showed that absent environment values
+  ended at an unavailable message. Added the convergence tasks for a UI-managed application setup;
+  implementation added a native Filament configuration form, encrypted write-only values, optional
+  environment defaults, safe reconnection on OAuth configuration changes, and a route-derived
+  return to the real Filament page. This interim configuration was superseded by the addendum below.
+- 2026-08-11: Applied the Google Drive addendum and replaced the earlier selector design. Spec Kit
+  artifacts passed a read-only consistency analysis after removing selector tasks. The Settings page
+  now embeds the six-step Google Cloud guide, persists only OAuth client ID/encrypted secret, derives
+  a read-only copyable callback, creates a new `My Drive/AssestMe` root after OAuth, and exposes a
+  connected-without-root retry state. Selector scripts/routes/controllers and key/project settings
+  were removed. `php artisan test tests/Feature/GoogleDrive --stop-on-failure` passed 49 tests with
+  290 assertions; the host-only real-PDF scenario skipped for the documented WeasyPrint prerequisite.
+  Long/final verification and real Google OAuth/Drive/Sheets acceptance remain pending.
+- 2026-08-11: Corrected real-provider findings after an administrator connected Google. Opaque parent
+  IDs are now sent directly to the public Drive API for folders, native Sheets, and files instead of
+  being interpreted as display paths; Sheet null cells are normalized to dense rows; successful root
+  creation enables automatic sync by default; and the connected Settings state uses native Filament
+  information/action components. A real forced run against the connected account completed with
+  `Valutati: 3; Saltati: 0; Sincronizzati: 3; Non riusciti: 0`. The earlier ID-named folder and any
+  orphaned remote objects were deliberately not deleted because the non-deletion contract remains in force.
+- 2026-08-11: Completed the Google Drive correction on branch `develop` at HEAD
+  `4ff675f944d484e291844628dd5b7e3ac1e2c1a9` while preserving the pre-existing shared dirty worktree.
+  Focused Google feature coverage passed 53 tests with 306 assertions; the isolated connected and
+  disconnected Settings browser journeys passed 2 tests with 22 assertions; focused Pint, application
+  PHPStan, Composer validation, vendor-integrity, and diff-whitespace checks passed. The single final
+  Docker `scripts/verify.sh` invocation passed: Pint 461 files, PHPStan 358 files, 540 application tests
+  with 4,845 assertions, 36 strict Canary routes, the 50-Finding benchmark, storage audit with zero
+  anomalies, diagnostics, Composer audit with no advisories, and 21 Dusk tests with 726 assertions.
+  Real Drive/Sheets evidence remains bounded to the connected-account forced run (3 of 3 assessments);
+  the administrator reported OAuth connection success, but the callback journey and complete manual
+  provider lifecycle were not independently observed and remain `NOT VERIFIED`.
+- 2026-08-11: A post-gate non-secret status check found the development database disconnected from
+  Google (`account`, refresh credential, and root absent) while its OAuth client configuration,
+  3 local assessments, and 3 successful per-assessment sync states remain present. No secret was
+  logged or recoverable, so connection was not fabricated or bypassed: the administrator must use
+  the normal interactive `Collega account Google` action once more. The successful callback will
+  create the corrected managed root and enable automatic synchronization by default.
 - 2026-08-11: Started the dedicated `codex/fix-p0-p1-assessment-integrity` change set
   from baseline `63052396b0e7271f572346040d2847f498bb8b77`; initialized official Spec Kit
   0.16.1 with Codex skills and one vertical three-story feature at

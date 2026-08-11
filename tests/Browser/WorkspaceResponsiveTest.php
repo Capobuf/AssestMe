@@ -65,7 +65,7 @@ final class WorkspaceResponsiveTest extends DuskTestCase
             Assert::assertStringContainsString('informazioni mancanti', (string) $rowPresentation[9]['completion']);
 
             $measurements = [];
-            foreach ([[2560, 1440], [1920, 1080], [1440, 900], [1280, 800], [390, 844]] as [$width, $height]) {
+            foreach ([[2560, 1440], [1920, 1080], [1440, 900], [1280, 800], [1024, 800], [390, 844]] as [$width, $height]) {
                 self::resizeViewport($browser, $width, $height);
                 $measurements["{$width}x{$height}"] = self::measureWorkspace($browser);
 
@@ -79,7 +79,7 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 Assert::assertSame('static', $measurements["{$width}x{$height}"]['form']['position']);
             }
 
-            foreach (['2560x1440', '1920x1080', '1440x900'] as $viewport) {
+            foreach (['2560x1440', '1920x1080', '1440x900', '1280x800'] as $viewport) {
                 $geometry = $measurements[$viewport];
                 Assert::assertSame('flex', $geometry['list']['display']);
                 Assert::assertSame('grid', $geometry['form']['display']);
@@ -111,7 +111,7 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 Assert::assertSame('true', $geometry['selected']);
             }
 
-            foreach (['1280x800', '390x844'] as $viewport) {
+            foreach (['1024x800', '390x844'] as $viewport) {
                 $geometry = $measurements[$viewport];
                 Assert::assertSame('none', $geometry['list']['display']);
                 Assert::assertSame('grid', $geometry['form']['display']);
@@ -189,7 +189,7 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 json_encode($measurements, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR),
             );
 
-            self::resizeViewport($browser, 1280, 800);
+            self::resizeViewport($browser, 1024, 800);
             $browser->click('[data-dusk="finding-close"]')->waitUntilMissing('[data-assestme-finding-inspector]');
             Assert::assertSame('flex', $browser->script(
                 "return getComputedStyle(document.querySelector('.assestme-findings-list')).display",
@@ -319,6 +319,15 @@ final class WorkspaceResponsiveTest extends DuskTestCase
 
         $this->browse(function (Browser $browser) use ($administrator, $assessment, $firstFinding): void {
             $browser->loginAs($administrator)
+                ->visit('/admin')
+                ->script(<<<'JS'
+                    window.__assestmeDraftDatabaseReset = 'pending';
+                    const request = indexedDB.deleteDatabase('assestme-workspace');
+                    request.onsuccess = () => window.__assestmeDraftDatabaseReset = 'complete';
+                    request.onerror = () => window.__assestmeDraftDatabaseReset = 'failed';
+                    request.onblocked = () => window.__assestmeDraftDatabaseReset = 'blocked';
+                    JS);
+            $browser->waitUntil("return window.__assestmeDraftDatabaseReset === 'complete'")
                 ->visit("/admin/assessments/{$assessment->getKey()}/workspace?finding={$firstFinding->getKey()}")
                 ->waitFor('[data-dusk="finding-estimate-type"] select')
                 ->waitUntil('return document.documentElement.dataset.assestmeWorkspaceAsset === "loaded"');
@@ -344,13 +353,12 @@ final class WorkspaceResponsiveTest extends DuskTestCase
             )[0];
             Assert::assertEqualsWithDelta($desktopBefore, $desktopAfter, 2);
 
-            self::resizeViewport($browser, 1280, 800);
+            self::resizeViewport($browser, 1024, 800);
             $narrowBefore = $browser->script(<<<'JS'
-                const form = document.querySelector('.assestme-workbench-form');
                 const field = document.querySelector('[data-dusk="finding-estimate-type"]');
-                form.scrollTop += field.getBoundingClientRect().top - form.getBoundingClientRect().top - 120;
+                window.scrollTo(0, field.getBoundingClientRect().top + window.scrollY - 120);
 
-                return form.scrollTop;
+                return window.scrollY;
                 JS)[0];
             Assert::assertGreaterThan(0, $narrowBefore);
 
@@ -361,7 +369,7 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                     JS)
                 ->pause(250);
             $narrowAfter = $browser->script(
-                "return document.querySelector('.assestme-workbench-form').scrollTop",
+                'return window.scrollY',
             )[0];
             Assert::assertEqualsWithDelta($narrowBefore, $narrowAfter, 2);
 

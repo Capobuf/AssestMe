@@ -28,6 +28,39 @@
 - The bundled baseline contained eight templates. The reviewed thematic catalogue produces 221 templates in 17 existing categories, preserves all eight old IDs, adds no normative claim, and round trips deterministically after repeated seed execution.
 - Dusk `DatabaseTruncation` removes seeded domain rows before an isolated test method; browser tests that render active-profile options must seed the domain fixture in that method. This is test isolation behavior, not an application fallback.
 
+## Google Drive readable-sync discoveries
+
+- Socialite's Google provider requires `openid` and `email` identity scopes to return the connected
+  account email; `drive.file` remains the sole Drive data scope.
+- Yaza Laravel Google Drive Storage v5 registers the `google` Flysystem driver dynamically, so the
+  integration can construct a parent-rooted disk at execution time from the transient access token
+  without adding a permanent filesystem disk or exposing credentials in configuration output.
+- Revolution Laravel Google Sheets accepts an application-owned transient Google client. Its sheet
+  value operations preserve additional tabs when the application ensures only its four named tabs
+  and clears only `A:Z` on those tabs.
+- The host runtime used for focused feature tests has no executable `/usr/bin/weasyprint`; the
+  dedicated local-independence test is present but skips there and must execute in the maintained
+  Docker runtime before its real PDF portion can be claimed.
+- The initial Filament page treated missing `GOOGLE_*` values as a terminal unavailable state. A
+  native Settings form can instead persist the same application values with encrypted write-only
+  secrets; one resolver keeps optional environment values as defaults for existing deployments.
+- Filament derives this page URL as `/admin/settings/google-drive-settings-page`; OAuth completion
+  now resolves that route from the page class instead of returning to the former hard-coded 404.
+- Google documents `drive.file` as a non-sensitive per-file scope and supports Drive operations on
+  app-created objects; creating the root with `parents: ['root']` returns the authoritative My Drive
+  folder ID without requiring list/search access or ambiguous same-name adoption.
+- Current Google Auth Platform documentation separates Branding, Audience, Data Access, and Clients.
+  External apps in Testing require listed test users, and authorizations using non-identity scopes,
+  including offline refresh tokens, expire after seven days.
+- Filament 5 native `Section`, `Callout`, `Action`, and copyable disabled `TextInput` components cover
+  the embedded guide and calculated callback without custom frontend components or JavaScript.
+- Yaza's parent-rooted disk builder treats its `folder` setting as a display path in the installed
+  adapter configuration. Passing an opaque Google folder ID there created a same-named folder instead
+  of placing content beneath that ID; exact-parent creation now uses the public Drive client directly.
+- Google client model serialization removes null entries from Sheet value rows. Remaining numeric
+  keys can then become a JSON object rejected by the values API, so null and absent cells must be
+  normalized to explicit empty strings before submission.
+
 ## Update rule
 
 Add only reproducible observations discovered during implementation or verification. Do not turn a discovery into an accepted decision without explicit approval and an ADR update.

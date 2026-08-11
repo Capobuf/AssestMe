@@ -61,6 +61,48 @@ The report remains entrepreneur-oriented while retaining required technical info
 
 PhpSpreadsheet generates the complete textual assessment export. The dedicated exporter is independent from generic Filament table export plugins and follows the same normalized content and VAT-note requirements.
 
+## Optional Google Drive readable copy
+
+Google Drive is a one-way, non-restorable continuity copy, never a database, editing surface,
+backup source, or import origin. The managed hierarchy is:
+
+Its OAuth client ID and encrypted write-only secret are configured from the native Settings page,
+with optional environment defaults. The page calculates the callback URI and embeds the complete
+Google Cloud setup guide. Incomplete configuration keeps the guide/form available and does not
+affect local report/evidence behavior. A successful first connection creates a new application-owned
+`My Drive/AssestMe` root and stores its returned ID without same-name lookup or adoption.
+Every descendant folder, native Sheet, evidence file, and generated report is created with the exact
+managed parent ID through the public Drive API; an opaque ID is never treated as a folder name.
+Automatic synchronization becomes active as soon as root creation succeeds and remains toggleable.
+
+```text
+My Drive/AssestMe/
+  C-000001 - <company>/
+    A-000012 - YYYY-MM-DD - <assessment>/
+      Findings - A-000012
+      Documenti/
+      Evidenze/
+```
+
+The native Sheet owns only the managed ranges in `Assessment`, `Findings`, `Soluzioni`, and
+`Evidenze`; each synchronization clears and rewrites those ranges from canonical local data,
+freezes table headers, and preserves additional tabs. File evidence is copied unchanged to
+`Evidenze`; URL evidence remains a URL row. Every immutable existing GeneratedReport PDF/XLSX is
+copied unchanged to `Documenti`. Required local bytes must exist and match stored size plus SHA-256
+before the first remote mutation for that assessment.
+Null or absent Sheet cells are written as explicit empty cells so Google receives dense value rows
+and retains their intended column positions.
+
+Managed objects are rediscovered inside the expected parent by zero-padded local-ID prefix. Zero
+matches creates, one match reuses and may rename, and multiple matches fail explicitly. No remote
+object is automatically deleted: stale managed copies, the managed root after disconnect,
+additional tabs, and unrelated files remain untouched.
+
+The canonical assessment hash includes the application-owned root and every projected local relation,
+evidence record, and generated report. Volatile synchronization time and returned remote links are
+excluded. Normal execution skips an equal hash before contacting Google; forced execution bypasses
+only this comparison.
+
 ## Deletion and staged recovery
 
 Filesystem deletion is recoverable staging, not a false SQL/filesystem atomicity claim.

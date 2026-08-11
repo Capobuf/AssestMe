@@ -50,29 +50,37 @@ final class FilamentNavigationTest extends DuskTestCase
             $browser->loginAs($administrator)
                 ->resize(1440, 900)
                 ->visit('/admin')
-                ->waitFor('.fi-sidebar');
+                ->waitFor('.fi-topbar-nav-groups');
 
+            Assert::assertSame(
+                ['Dashboard', 'Assessment', 'Aziende', 'Impostazioni'],
+                self::topLevelNavigationLabels($browser),
+            );
+            Assert::assertNotContains('Tag', self::topLevelNavigationLabels($browser));
+            Assert::assertTrue($browser->element('.fi-user-menu-trigger')?->isDisplayed() ?? false);
+            self::assertDesktopTopNavigationLayout($browser);
+
+            $browser->click(self::topNavigationLink(ClientResource::getUrl('index')))
+                ->waitForText('Aziende');
+            $browser->assertPathIs(self::path(ClientResource::getUrl('index')));
+
+            self::resizeViewport($browser, 768, 900);
+            self::openResponsiveNavigation($browser);
             Assert::assertSame(
                 ['Dashboard', 'Assessment', 'Aziende', 'Impostazioni'],
                 self::topLevelSidebarLabels($browser),
             );
-            Assert::assertNotContains('Tag', self::allSidebarLabels($browser));
-
-            $browser->click(self::sidebarLink(ClientResource::getUrl('index')))
-                ->waitForText('Aziende');
             Assert::assertSame(['Sedi', 'Asset'], self::companyChildLabels($browser));
-            $browser->assertPathIs(self::path(ClientResource::getUrl('index')));
-
             $browser->click(self::sidebarLink(SiteResource::getUrl('index')))
                 ->waitForText('Sedi')
                 ->assertPathIs(self::path(SiteResource::getUrl('index')));
+            self::openResponsiveNavigation($browser);
             Assert::assertSame(['Sedi', 'Asset'], self::companyChildLabels($browser));
 
             $browser->click(self::sidebarLink(AssetCluster::getUrl()))
                 ->waitForText('Asset navigazione')
                 ->assertPathIs(self::path(AssetResource::getUrl('index')));
             Assert::assertSame(['Asset', 'Tipologie asset'], self::subNavigationLabels($browser));
-            Assert::assertSame(['Sedi', 'Asset'], self::companyChildLabels($browser));
 
             $browser->visit(AssetResource::getUrl('create'))
                 ->waitForText('Annulla')
@@ -80,13 +88,15 @@ final class FilamentNavigationTest extends DuskTestCase
                 ->waitForLocation(self::path(AssetResource::getUrl('index')))
                 ->assertPathIs(self::path(AssetResource::getUrl('index')));
 
-            $browser->click(self::sidebarLink(SettingsCluster::getUrl()))
+            self::resizeViewport($browser, 1440, 900);
+            $browser->click(self::topNavigationLink(SettingsCluster::getUrl()))
                 ->waitForText('Impostazioni generali')
                 ->assertPathIs(self::path(GeneralSettingsPage::getUrl()));
             Assert::assertSame([
                 'Generale',
                 'Report',
                 'Backup',
+                'Google Drive',
                 'Template',
                 'Diagnostica',
                 'Categorie',
@@ -95,7 +105,7 @@ final class FilamentNavigationTest extends DuskTestCase
             ], self::subNavigationLabels($browser));
             Assert::assertSame(
                 ['Dashboard', 'Assessment', 'Aziende', 'Impostazioni'],
-                self::topLevelSidebarLabels($browser),
+                self::topLevelNavigationLabels($browser),
             );
 
             $browser->click(sprintf('.fi-page-sub-navigation-tabs a[href="%s"]', BackupSettingsPage::getUrl()))
@@ -109,11 +119,18 @@ final class FilamentNavigationTest extends DuskTestCase
                 ->assertSee('Comandi')
                 ->assertSee('Garanzie del ripristino')
                 ->press('Chiudi');
-            $browser->resize(390, 844)->pause(250);
+            self::resizeViewport($browser, 390, 844);
+            self::openResponsiveNavigation($browser);
+            Assert::assertSame(
+                ['Dashboard', 'Assessment', 'Aziende', 'Impostazioni'],
+                self::topLevelSidebarLabels($browser),
+            );
+            self::closeResponsiveNavigation($browser);
             Assert::assertLessThanOrEqual(1, (int) $browser->script(
                 'return document.documentElement.scrollWidth - document.documentElement.clientWidth;',
             )[0], 'The backup page overflows horizontally on a narrow viewport.');
-            $browser->resize(1440, 900);
+            self::assertResponsiveContentBelowTopbar($browser);
+            self::resizeViewport($browser, 1440, 900);
 
             $workspaceUrl = AssessmentResource::getUrl('workspace', [
                 'record' => $assessment,
@@ -122,6 +139,13 @@ final class FilamentNavigationTest extends DuskTestCase
             $browser->visit($workspaceUrl)
                 ->waitFor('[data-assestme-finding-inspector]')
                 ->waitUntil('return document.documentElement.dataset.assestmeWorkspaceAsset === "loaded"');
+            self::assertDesktopTopNavigationLayout($browser);
+            Assert::assertGreaterThanOrEqual(1360, (float) $browser->script(
+                'return document.querySelector(".assestme-findings-workspace").getBoundingClientRect().width;',
+            )[0], 'The workspace does not use the horizontal space released by the desktop sidebar.');
+            Assert::assertLessThanOrEqual(1, (int) $browser->script(
+                'return document.documentElement.scrollWidth - document.documentElement.clientWidth;',
+            )[0], 'The workspace overflows horizontally after enabling top navigation.');
 
             Assert::assertFalse(self::assetSelectorState($browser)['present']);
 
@@ -147,7 +171,22 @@ final class FilamentNavigationTest extends DuskTestCase
                 static fn (array $entry): bool => ($entry['level'] ?? '') === 'SEVERE',
             ));
             Assert::assertSame([], $severeLogs, 'The navigation and workspace flow contains severe console errors.');
+
+            $browser->click('.fi-user-menu-trigger')
+                ->waitForText(__('filament-panels::layout.actions.logout.label'))
+                ->press(__('filament-panels::layout.actions.logout.label'))
+                ->waitForLocation('/admin/login')
+                ->assertPathIs('/admin/login');
         });
+    }
+
+    /** @return list<string> */
+    private static function topLevelNavigationLabels(Browser $browser): array
+    {
+        return $browser->script(<<<'JS'
+            return Array.from(document.querySelectorAll('.fi-topbar-nav-groups > .fi-topbar-item .fi-topbar-item-label'))
+                .map((label) => label.textContent.trim());
+            JS)[0];
     }
 
     /** @return list<string> */
@@ -155,15 +194,6 @@ final class FilamentNavigationTest extends DuskTestCase
     {
         return $browser->script(<<<'JS'
             return Array.from(document.querySelectorAll('.fi-sidebar-group-items > .fi-sidebar-item > .fi-sidebar-item-btn > .fi-sidebar-item-label'))
-                .map((label) => label.textContent.trim());
-            JS)[0];
-    }
-
-    /** @return list<string> */
-    private static function allSidebarLabels(Browser $browser): array
-    {
-        return $browser->script(<<<'JS'
-            return Array.from(document.querySelectorAll('.fi-sidebar .fi-sidebar-item-label'))
                 .map((label) => label.textContent.trim());
             JS)[0];
     }
@@ -218,8 +248,89 @@ final class FilamentNavigationTest extends DuskTestCase
         return (string) parse_url($url, PHP_URL_PATH);
     }
 
+    private static function topNavigationLink(string $url): string
+    {
+        return sprintf('.fi-topbar-nav-groups a[href="%s"]', $url);
+    }
+
     private static function sidebarLink(string $url): string
     {
         return sprintf('.fi-sidebar a[href="%s"]', $url);
+    }
+
+    private static function openResponsiveNavigation(Browser $browser): void
+    {
+        $browser->click('.fi-topbar-open-sidebar-btn')
+            ->waitUntil('return document.querySelector(".fi-sidebar").classList.contains("fi-sidebar-open")');
+    }
+
+    private static function closeResponsiveNavigation(Browser $browser): void
+    {
+        $browser->script('document.querySelector(".fi-sidebar-close-overlay").click();');
+        $browser->waitUntil('return ! document.querySelector(".fi-sidebar").classList.contains("fi-sidebar-open")');
+    }
+
+    private static function assertDesktopTopNavigationLayout(Browser $browser): void
+    {
+        $layout = $browser->script(<<<'JS'
+            const sidebar = document.querySelector('.fi-sidebar');
+            const main = document.querySelector('.fi-main-ctn');
+            const topbar = document.querySelector('.fi-topbar');
+            const navigation = document.querySelector('.fi-topbar-nav-groups');
+
+            return {
+                bodyHasTopNavigation: document.body.classList.contains('fi-body-has-top-navigation'),
+                viewportWidth: document.documentElement.clientWidth,
+                sidebarRight: sidebar.getBoundingClientRect().right,
+                mainLeft: main.getBoundingClientRect().left,
+                mainWidth: main.getBoundingClientRect().width,
+                navigationTop: navigation.getBoundingClientRect().top,
+                navigationBottom: navigation.getBoundingClientRect().bottom,
+                topbarTop: topbar.getBoundingClientRect().top,
+                topbarBottom: topbar.getBoundingClientRect().bottom,
+                navigationOverflow: navigation.scrollWidth - navigation.clientWidth,
+            };
+            JS)[0];
+
+        Assert::assertTrue($layout['bodyHasTopNavigation']);
+        Assert::assertLessThanOrEqual(1, (float) $layout['sidebarRight'], 'The desktop sidebar remains visible.');
+        Assert::assertLessThanOrEqual(1, (float) $layout['mainLeft'], 'The main content retains a sidebar offset.');
+        Assert::assertGreaterThanOrEqual((float) $layout['viewportWidth'] - 1, (float) $layout['mainWidth']);
+        Assert::assertGreaterThanOrEqual((float) $layout['topbarTop'], (float) $layout['navigationTop']);
+        Assert::assertLessThanOrEqual((float) $layout['topbarBottom'], (float) $layout['navigationBottom']);
+        Assert::assertLessThanOrEqual(1, (float) $layout['navigationOverflow'], 'The desktop top navigation overflows.');
+    }
+
+    private static function assertResponsiveContentBelowTopbar(Browser $browser): void
+    {
+        $browser->script('window.scrollTo(0, 0);');
+        $browser->pause(100);
+
+        $layout = $browser->script(<<<'JS'
+            const topbar = document.querySelector('.fi-topbar');
+            const main = document.querySelector('.fi-main');
+
+            return {
+                topbarBottom: topbar.getBoundingClientRect().bottom,
+                mainTop: main.getBoundingClientRect().top,
+            };
+            JS)[0];
+
+        Assert::assertGreaterThanOrEqual(
+            (float) $layout['topbarBottom'],
+            (float) $layout['mainTop'],
+            'Responsive content renders below the native topbar.',
+        );
+    }
+
+    private static function resizeViewport(Browser $browser, int $width, int $height): void
+    {
+        $browser->resize($width, $height);
+
+        $dimensions = $browser->script('return [window.innerWidth, window.innerHeight];');
+        $browser->resize(
+            $width + ($width - (int) $dimensions[0][0]),
+            $height + ($height - (int) $dimensions[0][1]),
+        )->pause(150);
     }
 }

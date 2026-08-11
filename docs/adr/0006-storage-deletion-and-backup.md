@@ -19,6 +19,7 @@ Defines explicit failure, policy-aware deletion, staged recovery, multi-driver b
 | D-061 | SUPERSEDED | The native Settings-cluster backup page and CLI-only restore boundary remain, but its SQLite-only archive contract is superseded by D-066 on 2026-07-31 |
 | D-066 (v1) | SUPERSEDED | Server database dump and restore executables were configured during installation; superseded by D-066 on 2026-08-01 |
 | D-066 | APPROVED | Backups use a driver-aware schema-v2 manifest and operation-time automatic client discovery; SQLite backup remains mandatory, while missing MySQL/MariaDB clients do not block installation but make SQL backup/restore unavailable with actionable errors; restore remains maintenance-mode CLI-only with a required safety backup and best-effort compensation |
+| D-072 | APPROVED | Google Drive is an optional one-way, non-destructive readable output only: AssestMe remains the sole source of truth; administrators configure only OAuth client ID/secret from native Settings, use a calculated callback and embedded setup guide, and AssestMe creates a dedicated My Drive root without Google Picker or same-name adoption; synchronization uses stateful user OAuth with `drive.file` as the only Drive data scope, deterministic ID-addressed folders and four-tab native Sheets, verified immutable file copies, hash-based skip, file-cache locking, public dependency APIs, and no vendor edit/fork/patch, import, remote deletion, service account, worker, or fallback |
 
 ## Consequences
 

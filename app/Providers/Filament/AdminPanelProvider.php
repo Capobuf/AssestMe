@@ -71,6 +71,7 @@ class AdminPanelProvider extends PanelProvider
                     ->recoveryCodeCount(8),
             ])
             ->brandName(__('assestme.app.name'))
+            ->topNavigation()
             ->darkMode()
             ->assets([
                 Css::make('assestme-workspace', resource_path('css/assestme-workspace.css')),

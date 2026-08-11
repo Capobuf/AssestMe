@@ -7,6 +7,7 @@ use App\Filament\Clusters\SettingsCluster;
 use App\Filament\Pages\BackupSettingsPage;
 use App\Filament\Pages\DiagnosticsPage;
 use App\Filament\Pages\GeneralSettingsPage;
+use App\Filament\Pages\GoogleDriveSettingsPage;
 use App\Filament\Pages\ReportSettingsPage;
 use App\Filament\Resources\Assets\AssetResource;
 use App\Filament\Resources\AssetTypes\AssetTypeResource;
@@ -24,7 +25,10 @@ use Filament\Pages\Enums\SubNavigationPosition;
 it('discovers native clusters and assigns each clustered component exactly once', function (): void {
     $panel = Filament::getPanel('admin');
 
-    expect($panel->getClusters())->toContain(AssetCluster::class, SettingsCluster::class)
+    expect($panel->hasTopNavigation())->toBeTrue()
+        ->and($panel->isSidebarCollapsibleOnDesktop())->toBeFalse()
+        ->and($panel->isSidebarFullyCollapsibleOnDesktop())->toBeFalse()
+        ->and($panel->getClusters())->toContain(AssetCluster::class, SettingsCluster::class)
         ->and($panel->getClusteredComponents(AssetCluster::class))->toEqualCanonicalizing([
             AssetResource::class,
             AssetTypeResource::class,
@@ -33,6 +37,7 @@ it('discovers native clusters and assigns each clustered component exactly once'
             GeneralSettingsPage::class,
             ReportSettingsPage::class,
             BackupSettingsPage::class,
+            GoogleDriveSettingsPage::class,
             DiagnosticsPage::class,
             FindingTemplateResource::class,
             CategoryResource::class,
@@ -44,6 +49,7 @@ it('discovers native clusters and assigns each clustered component exactly once'
         ->and(GeneralSettingsPage::getCluster())->toBe(SettingsCluster::class)
         ->and(ReportSettingsPage::getCluster())->toBe(SettingsCluster::class)
         ->and(BackupSettingsPage::getCluster())->toBe(SettingsCluster::class)
+        ->and(GoogleDriveSettingsPage::getCluster())->toBe(SettingsCluster::class)
         ->and(DiagnosticsPage::getCluster())->toBe(SettingsCluster::class);
 });
 
@@ -101,6 +107,7 @@ it('uses clustered URLs route names and ordered native subnavigation', function 
             'Generale',
             'Report',
             'Backup',
+            'Google Drive',
             'Template',
             'Diagnostica',
             'Categorie',
@@ -124,6 +131,7 @@ it('requires authentication for every relocated navigation destination', functio
     'general settings' => fn (): string => GeneralSettingsPage::getUrl(),
     'report settings' => fn (): string => ReportSettingsPage::getUrl(),
     'backup settings' => fn (): string => BackupSettingsPage::getUrl(),
+    'Google Drive settings' => fn (): string => GoogleDriveSettingsPage::getUrl(),
     'diagnostics' => fn (): string => DiagnosticsPage::getUrl(),
     'templates' => fn (): string => FindingTemplateResource::getUrl('index'),
     'categories' => fn (): string => CategoryResource::getUrl('index'),

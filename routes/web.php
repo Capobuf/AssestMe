@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\DownloadBackupController;
 use App\Http\Controllers\DownloadEvidenceController;
 use App\Http\Controllers\DownloadGeneratedReportController;
+use App\Http\Controllers\GoogleDrive\GoogleDriveOAuthController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\Installation\InstallationController;
 use App\Http\Controllers\ReportSettingsPreviewController;
@@ -49,3 +50,12 @@ Route::get('/admin/settings/backups/{archive}/download', DownloadBackupControlle
 Route::get('/admin/settings/report/preview/{token}', ReportSettingsPreviewController::class)
     ->middleware('auth')
     ->name('report-settings.preview');
+
+Route::prefix('/admin/settings/google-drive')
+    ->middleware('auth')
+    ->name('google-drive.oauth.')
+    ->controller(GoogleDriveOAuthController::class)
+    ->group(function (): void {
+        Route::get('/connect', 'redirect')->name('redirect');
+        Route::get('/callback', 'callback')->name('callback');
+    });

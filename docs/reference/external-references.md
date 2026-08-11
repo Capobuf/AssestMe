@@ -51,6 +51,21 @@ Use primary documentation and installed-version Laravel Boost search. External r
 - Larastan: https://github.com/larastan/larastan
 - Pest: https://pestphp.com/docs
 - PDF parser used by tests: https://github.com/smalot/pdfparser
+- Laravel Socialite: https://laravel.com/docs/13.x/socialite
+- Yaza Laravel Google Drive Storage: https://github.com/yaza-putu/laravel-google-drive-storage
+- Revolution Laravel Google Sheets: https://github.com/kawax/laravel-google-sheets
+
+## Optional Google Drive integration
+
+- OAuth 2.0 for web-server applications: https://developers.google.com/identity/protocols/oauth2/web-server
+- Enable Google Workspace APIs: https://developers.google.com/workspace/guides/enable-apis
+- Drive `drive.file` scope: https://developers.google.com/workspace/drive/api/guides/api-specific-auth
+- Drive files and folders: https://developers.google.com/workspace/drive/api/guides/about-files
+- Google Sheets values: https://developers.google.com/workspace/sheets/api/guides/values
+- Google Auth Platform Branding: https://support.google.com/cloud/answer/15549049
+- Google Auth Platform Audience: https://support.google.com/cloud/answer/15549945
+- Google Auth Platform Data Access: https://support.google.com/cloud/answer/15549135
+- Google OAuth Clients: https://support.google.com/cloud/answer/15549257
 
 ## Agentic development and standards
 

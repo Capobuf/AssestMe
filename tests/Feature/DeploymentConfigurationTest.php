@@ -310,14 +310,23 @@ it('runs each expensive gate once and reuses only exact fingerprint receipts', f
     $browser = (string) file_get_contents(base_path('scripts/dusk-isolated.sh'));
     $verify = (string) file_get_contents(base_path('scripts/verify.sh'));
     $workflow = (string) file_get_contents(base_path('.github/workflows/quality.yml'));
+    $testPosition = strpos($quality, 'php artisan test');
+    $canarySetupPosition = strrpos($quality, 'php artisan migrate:fresh --seed --force');
+    $canaryPosition = strpos($quality, 'php artisan canary:check --strict');
 
     expect($quality)
         ->toContain('vendor/bin/pint --test')
         ->toContain('vendor/bin/phpstan analyse --memory-limit=1G')
         ->toContain('php artisan test')
         ->toContain('php artisan canary:check --strict')
+        ->toContain('php artisan assestme:create-admin --from-env >/dev/null')
+        ->toContain('php artisan assestme:installation:lock --force >/dev/null')
         ->toContain('composer audit --locked --no-interaction')
         ->toContain('assestme_write_gate_receipt quality')
+        ->and(substr_count($quality, 'php artisan migrate:fresh --seed --force'))->toBe(2)
+        ->and($testPosition)->toBeInt()
+        ->and($canarySetupPosition)->toBeInt()->toBeGreaterThan($testPosition)
+        ->and($canaryPosition)->toBeInt()->toBeGreaterThan($canarySetupPosition)
         ->and($verify)
         ->toContain('assestme_gate_receipt_matches quality')
         ->toContain('assestme_gate_receipt_matches browser')

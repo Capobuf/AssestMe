@@ -22,6 +22,11 @@ Schedule::command('assestme:integrity-check')
     ->timezone('Europe/Rome')
     ->withoutOverlapping();
 
+Schedule::command('assestme:google-drive-sync')
+    ->hourly()
+    ->timezone('Europe/Rome')
+    ->withoutOverlapping();
+
 Schedule::call(fn (): int => app(PurgeExpiredWorkspaceSaveRequests::class)())
     ->name('assestme:purge-workspace-save-requests')
     ->hourly()
