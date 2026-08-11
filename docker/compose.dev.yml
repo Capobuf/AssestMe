@@ -16,6 +16,7 @@ services:
       APP_URL: http://127.0.0.1:8000
       ASSESTME_GID: "${GID:-}"
       ASSESTME_BACKUP_ROOT: /workspace/backups
+      ASSESTME_VERIFY_RUNTIME: docker-compose-dev
       ASSESTME_UID: "${UID:-}"
       DB_DATABASE: /workspace/database/database.sqlite
       DUSK_BROWSER_HOST: assestme-app

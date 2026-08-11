@@ -58,6 +58,22 @@ A stale version produces an explicit conflict. Repeated delivery of the same req
 
 Before selection changes, tab changes, close, new/copy/duplicate/delete/reorder, completion, PDF, or XLSX, the server persists the dirty current form. The dependent action runs only after an explicit successful result. Finding and assessment forms keep independent dirty/error state.
 
+The same pre-action save rule applies before creating, exactly linking, or updating a Finding
+Template from a Finding. These operations are atomic with lineage/fingerprint changes, solution-key
+realignment, and one coherent assessment-version increment. Completed or archived assessments hide
+and reject them until reopening.
+
+The Finding `⋮` menu offers `Salva come template` without a source, and `Aggiorna template di
+origine` plus `Salva come nuovo template` with a live non-deleted source. Exact duplicate previews
+offer linking instead of duplicate creation; possible similarities show no more than three
+review-only candidates and allow explicit save-as-new. Source updates show a compact reusable-field
+and solution summary and state that existing assessment Findings are not changed.
+
+The update guard compares the locked current source fingerprint with the Finding's known state. A
+mismatch, unverifiable legacy lineage, or deleted source produces an explicit no-overwrite result;
+there is no merge or force-overwrite action. Users can cancel, open the template when reachable, or
+use the separate save-as-new lineage action.
+
 A Finding save carries its pending file and URL Evidence in the signed payload hash. Finding, solutions, associations, Evidence rows, idempotency response, and one assessment-version increment commit as one aggregate. Prepared private files are compensated when persistence fails; pending uploads are removed only after success.
 
 ## Local IndexedDB recovery
@@ -81,6 +97,8 @@ Completion validates the same scope, solution, risk, and evidence contracts used
 - Use transactions for authoritative changes.
 - Report validation and collision failures precisely.
 - Export a deterministic round-trippable representation.
+- An explicit `replace` import can still replace locally improved baseline template content; this
+  workflow does not add template origin metadata or modify import conflict semantics.
 
 ## XLSX export
 

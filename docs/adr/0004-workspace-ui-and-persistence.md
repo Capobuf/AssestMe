@@ -28,6 +28,7 @@ Defines the Finding workbench, navigation, responsive modes, save protocol, life
 | D-057 (v2) | APPROVED | Filament 5 native clusters and parent items define the hierarchical sidebar; Tag is removed from v1; Finding assets are optional for every scope, with a conditional but non-required selector for `selected_assets`; and implementation verification is proportional while `scripts/verify.sh` remains the complete authoritative gate |
 | D-058 | APPROVED | The compact Finding navigator retains expandable icon search but removes its unusable filter control, places icon-only native reorder beside search, and keeps Finding titles visible during reorder; the non-functional summary preview tab is removed, contextual properties use compact collapsible sections with reliable internal scrolling, and generated-file history receives an aligned responsive tabular presentation |
 | D-062 | APPROVED | Existing assessment and Finding forms use an application-owned IndexedDB draft store for durable local recovery; server persistence remains authoritative, signed, explicit, optimistic-locked, and idempotent |
+| D-073 | APPROVED | A Finding linked to a FindingTemplate retains a canonical SHA-256 fingerprint of the reusable source-template content it knows; an explicit Workspace-to-template update is allowed only when the locked current template fingerprint matches that known state, with no implicit merge or force overwrite |
 
 ## Consequences
 

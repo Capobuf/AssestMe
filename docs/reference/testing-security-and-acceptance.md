@@ -15,8 +15,12 @@ After a failure, rerun the failing test or command first. Broaden only when the 
 ## Complete gate
 
 ```bash
-scripts/verify.sh
+docker compose -f docker/compose.dev.yml exec -T app scripts/verify.sh
 ```
+
+The aggregate gate is fail-closed outside the marked `app` service from
+`docker/compose.dev.yml`. Host execution is not a supported verification path and is rejected before
+Composer, database, storage, benchmark, or browser work begins.
 
 The aggregate gate executes each expensive gate at most once and covers:
 

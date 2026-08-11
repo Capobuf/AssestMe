@@ -13,7 +13,9 @@ use App\Actions\Assessments\DuplicateFinding;
 use App\Actions\Assessments\ReopenAssessment;
 use App\Actions\Assessments\ReorderFindings;
 use App\Actions\Assessments\SaveAssessmentWorkspace;
+use App\Actions\Assessments\SaveFindingAsTemplate;
 use App\Actions\Assessments\SaveFindingDetails;
+use App\Actions\Assessments\UpdateTemplateFromFinding;
 use App\Actions\Evidence\InspectEvidenceUpload;
 use App\Actions\Reports\DeleteGeneratedReport;
 use App\Actions\Reports\GenerateAssessmentPdf;
@@ -24,6 +26,7 @@ use App\Data\Assessments\ReorderFindingsData;
 use App\Data\Assessments\WorkspaceSaveData;
 use App\Data\Evidence\PendingEvidenceFileData;
 use App\Data\Evidence\PendingEvidenceUrlData;
+use App\Data\Templates\FindingTemplateSyncResult;
 use App\Enums\AssessmentStatus;
 use App\Enums\DeletionOperationStatus;
 use App\Enums\ScopeType;
@@ -33,9 +36,11 @@ use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Resources\Assessments\Schemas\AssessmentWorkspaceForm;
 use App\Filament\Resources\Assessments\Schemas\FindingEditorSchema;
 use App\Filament\Resources\Assessments\Tables\AssessmentFindingsTable;
+use App\Filament\Resources\FindingTemplates\FindingTemplateResource;
 use App\Models\Assessment;
 use App\Models\Finding;
 use App\Models\FindingTemplate;
+use App\Services\Templates\FindRelatedFindingTemplates;
 use App\Settings\GeneralSettings;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -56,6 +61,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 use Livewire\Attributes\Url;
 use Throwable;
 
@@ -103,6 +109,9 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
 
     /** @var array<string, mixed> */
     public array $findingData = [];
+
+    /** @var array<string, mixed> */
+    public array $templateLearningPreview = [];
 
     #[Url(as: 'finding', history: true)]
     public ?int $selectedFindingId = null;
@@ -152,7 +161,7 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
     {
         return Finding::query()
             ->where('assessment_id', $this->assessmentRecord()->getKey())
-            ->with(['category', 'priorityLevel', 'sites', 'assets', 'solutions:id,finding_id'])
+            ->with(['category', 'priorityLevel', 'sites', 'assets', 'solutions:id,finding_id', 'sourceTemplate'])
             ->withCount(['solutions', 'evidences'])
             ->orderBy('sort_order');
     }
@@ -401,6 +410,140 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
         Notification::make()->success()->title(__('assestme.workspace.list.deleted'))->send();
     }
 
+    public function prepareSaveFindingAsTemplate(int $findingId): bool
+    {
+        if ($this->isWorkspaceReadOnly() || ! $this->persistCurrentWorkspaceStateBeforeAction()) {
+            return false;
+        }
+
+        try {
+            $finding = $this->assessmentRecord()->findings()->with('solutions')->findOrFail($findingId);
+            $related = app(FindRelatedFindingTemplates::class)->forFinding($finding);
+            $mode = $related['exact'] instanceof FindingTemplate
+                ? 'exact'
+                : ($related['similar'] === [] ? 'new' : 'similar');
+            $candidates = $related['exact'] instanceof FindingTemplate
+                ? [$this->templateCandidate($related['exact'])]
+                : array_map(
+                    fn (array $candidate): array => $this->templateCandidate($candidate['template']),
+                    $related['similar'],
+                );
+
+            $this->templateLearningPreview = [
+                'mode' => $mode,
+                'finding_id' => $findingId,
+                'new_lineage' => $finding->source_template_id !== null,
+                'priority_override' => $finding->priority_is_overridden,
+                'candidates' => $candidates,
+            ];
+
+            return true;
+        } catch (Throwable $exception) {
+            $this->reportTemplateLearningFailure($exception);
+
+            return false;
+        }
+    }
+
+    public function applySaveFindingAsTemplate(int $findingId): void
+    {
+        try {
+            $finding = $this->assessmentRecord()->findings()->findOrFail($findingId);
+            if (($this->templateLearningPreview['mode'] ?? null) === 'exact') {
+                $candidateId = (int) ($this->templateLearningPreview['candidates'][0]['id'] ?? 0);
+                $template = FindingTemplate::query()->findOrFail($candidateId);
+                $result = app(SaveFindingAsTemplate::class)->linkExact($finding, $template, $this->expectedVersion);
+            } else {
+                $result = app(SaveFindingAsTemplate::class)->create($finding, $this->expectedVersion);
+            }
+
+            $this->acceptTemplateLearningResult($result);
+        } catch (Throwable $exception) {
+            $this->reportTemplateLearningFailure($exception);
+        }
+    }
+
+    public function prepareUpdateSourceTemplate(int $findingId): bool
+    {
+        if ($this->isWorkspaceReadOnly() || ! $this->persistCurrentWorkspaceStateBeforeAction()) {
+            return false;
+        }
+
+        $template = null;
+        try {
+            $finding = $this->assessmentRecord()->findings()->with('solutions')->findOrFail($findingId);
+            $template = FindingTemplate::query()->with(['category', 'solutions'])->findOrFail($finding->source_template_id);
+            $this->templateLearningPreview = [
+                'mode' => 'update',
+                'finding_id' => $findingId,
+                'priority_override' => $finding->priority_is_overridden,
+                'candidates' => [$this->templateCandidate($template)],
+                'diff' => app(UpdateTemplateFromFinding::class)->preview($finding),
+            ];
+
+            return true;
+        } catch (ValidationException $exception) {
+            $message = collect($exception->errors())->flatten()->first()
+                ?? __('assestme.template_learning.errors.operation_failed');
+            $notification = Notification::make()
+                ->danger()
+                ->title($message);
+            if ($template instanceof FindingTemplate) {
+                $notification->actions([
+                    Action::make('open_template')
+                        ->label(__('assestme.template_learning.actions.open_template'))
+                        ->url(FindingTemplateResource::getUrl('edit', ['record' => $template]))
+                        ->openUrlInNewTab(),
+                ]);
+            }
+            $notification->persistent()->send();
+
+            return false;
+        } catch (Throwable $exception) {
+            $this->reportTemplateLearningFailure($exception);
+
+            return false;
+        }
+    }
+
+    public function applyUpdateSourceTemplate(int $findingId): void
+    {
+        try {
+            $finding = $this->assessmentRecord()->findings()->findOrFail($findingId);
+            $result = app(UpdateTemplateFromFinding::class)->handle($finding, $this->expectedVersion);
+            $this->acceptTemplateLearningResult($result);
+        } catch (Throwable $exception) {
+            $this->reportTemplateLearningFailure($exception);
+        }
+    }
+
+    public function templateLearningPreviewView(): View
+    {
+        return view('filament.resources.assessments.template-learning-preview', [
+            'preview' => $this->templateLearningPreview,
+        ]);
+    }
+
+    public function templateLearningHeading(): string
+    {
+        return __('assestme.template_learning.headings.'.match ($this->templateLearningPreview['mode'] ?? 'new') {
+            'exact' => 'exact',
+            'similar' => 'similar',
+            'update' => 'update',
+            default => ($this->templateLearningPreview['new_lineage'] ?? false) ? 'save_new' : 'save',
+        });
+    }
+
+    public function templateLearningSubmitLabel(): string
+    {
+        return __('assestme.template_learning.actions.'.match ($this->templateLearningPreview['mode'] ?? 'new') {
+            'exact' => 'link_exact',
+            'similar' => 'save_anyway',
+            'update' => 'update_source',
+            default => ($this->templateLearningPreview['new_lineage'] ?? false) ? 'save_new' : 'save',
+        });
+    }
+
     /** @param array<int|string> $order */
     public function reorderTable(array $order, int|string|null $draggedRecordKey = null): void
     {
@@ -562,7 +705,7 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
         }
 
         return $this->assessmentRecord()->findings()
-            ->with(['category', 'priorityLevel', 'consequenceLevel', 'likelihoodLevel', 'solutions', 'evidences', 'sites', 'assets'])
+            ->with(['category', 'priorityLevel', 'consequenceLevel', 'likelihoodLevel', 'solutions', 'evidences', 'sites', 'assets', 'sourceTemplate'])
             ->find($this->selectedFindingId);
     }
 
@@ -879,6 +1022,54 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
     {
         $this->totalFindingsCount = null;
         $this->reportFindingsCount = null;
+    }
+
+    /** @return array{id:int,title:string,category:string,disabled:bool,url:string} */
+    private function templateCandidate(FindingTemplate $template): array
+    {
+        $template->loadMissing('category');
+
+        return [
+            'id' => (int) $template->getKey(),
+            'title' => $template->title,
+            'category' => $template->category->name,
+            'disabled' => ! $template->is_enabled,
+            'url' => FindingTemplateResource::getUrl('edit', ['record' => $template]),
+        ];
+    }
+
+    private function acceptTemplateLearningResult(FindingTemplateSyncResult $result): void
+    {
+        $this->expectedVersion = $result->appliedVersion;
+        $this->assessmentRecord()->setAttribute('lock_version', $result->appliedVersion);
+        if ($this->selectedFindingId === (int) $result->finding->getKey()) {
+            $this->loadSelectedFinding((int) $result->finding->getKey());
+        }
+        $this->templateLearningPreview = [];
+        Notification::make()
+            ->success()
+            ->title(__('assestme.template_learning.outcomes.'.$result->outcome))
+            ->send();
+    }
+
+    private function reportTemplateLearningFailure(Throwable $exception): void
+    {
+        if ($exception instanceof AssessmentVersionConflict) {
+            $this->findingSaveStatus = self::STATUS_CONFLICT;
+            $this->saveStatus = self::STATUS_CONFLICT;
+            $message = __('assestme.workspace.errors.conflict');
+        } elseif ($exception instanceof ValidationException) {
+            $message = collect($exception->errors())->flatten()->first()
+                ?? __('assestme.template_learning.errors.operation_failed');
+        } else {
+            $message = __('assestme.template_learning.errors.operation_failed');
+            Log::error('Finding template learning operation failed.', [
+                'assessment_id' => $this->assessmentRecord()->getKey(),
+                'exception' => $exception,
+            ]);
+        }
+
+        Notification::make()->danger()->title($message)->persistent()->send();
     }
 
     private function reportSaveFailure(Throwable $exception): void

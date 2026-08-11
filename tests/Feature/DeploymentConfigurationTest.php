@@ -87,6 +87,7 @@ it('defines the authoritative minimal Docker development topology semantically',
         ->and($app['environment']['DB_DATABASE'])->toBe('/workspace/database/database.sqlite')
         ->and($app['environment']['LARAVEL_PDF_WEASYPRINT_BINARY'])->toBe('/usr/bin/weasyprint')
         ->and($app['environment']['ASSESTME_BACKUP_ROOT'])->toBe('/workspace/backups')
+        ->and($app['environment']['ASSESTME_VERIFY_RUNTIME'])->toBe('docker-compose-dev')
         ->and($app['environment']['ASSESTME_UID'])->toBe('${UID:-}')
         ->and($app['environment']['ASSESTME_GID'])->toBe('${GID:-}')
         ->and($app['environment']['DUSK_BROWSER_HOST'])->toBe('assestme-app')
@@ -232,7 +233,9 @@ it('records the superseded installation history and approved Docker and hosted p
     expect($databaseAdr)->toContain('| D-063 | APPROVED |');
     expect($securityAdr)->toContain('| D-065 | APPROVED |');
     expect($backupAdr)->toContain('| D-066 | APPROVED |');
-    expect($verificationAdr)->toContain('| D-067 | APPROVED |');
+    expect($verificationAdr)
+        ->toContain('| D-067 | APPROVED |')
+        ->toContain('| D-074 | APPROVED |');
 
     $requiredDocumentation = [
         'docs/index.md',
@@ -255,6 +258,22 @@ it('records the superseded installation history and approved Docker and hosted p
     }
 
     expect(base_path('scripts/cloudpanel'))->not->toBeDirectory();
+});
+
+it('rejects the complete gate before work begins outside the marked Compose runtime', function (): void {
+    $process = new Process([
+        'env',
+        '-u',
+        'ASSESTME_VERIFY_RUNTIME',
+        'bash',
+        base_path('scripts/verify.sh'),
+    ], base_path());
+    $process->run();
+
+    expect($process->isSuccessful())->toBeFalse()
+        ->and($process->getOutput())->toBe('')
+        ->and($process->getErrorOutput())
+        ->toContain('must run inside the app service from docker/compose.dev.yml');
 });
 
 it('uses capability-based preflight and rejects an incomplete project root', function (): void {
@@ -383,6 +402,7 @@ it('runs each expensive gate once and reuses only exact fingerprint receipts', f
         ->and($canarySetupPosition)->toBeInt()->toBeGreaterThan($testPosition)
         ->and($canaryPosition)->toBeInt()->toBeGreaterThan($canarySetupPosition)
         ->and($verify)
+        ->toContain('[[ -f /.dockerenv && "${ASSESTME_VERIFY_RUNTIME:-}" == "docker-compose-dev" ]]')
         ->toContain('assestme_gate_receipt_matches quality')
         ->toContain('assestme_gate_receipt_matches browser')
         ->not->toContain('vendor/bin/pint --test')
@@ -394,7 +414,8 @@ it('runs each expensive gate once and reuses only exact fingerprint receipts', f
         ->toContain('if [[ $# -eq 0 ]]')
         ->toContain('assestme_write_gate_receipt browser')
         ->and($workflow)
-        ->toContain('run: RUN_DUSK=0 scripts/verify.sh')
+        ->toContain('-e RUN_DUSK=0 app scripts/verify.sh')
+        ->not->toContain('run: RUN_DUSK=0 scripts/verify.sh')
         ->not->toContain('composer validate --strict')
         ->not->toContain('composer audit --locked');
 

@@ -97,6 +97,54 @@ final class AssessmentFindingsTable
                         ->action(function (Finding $record) use ($page): void {
                             $page->duplicateFinding((int) $record->getKey());
                         }),
+                    Action::make('save_as_template')
+                        ->label(__('assestme.template_learning.actions.save'))
+                        ->icon('heroicon-o-bookmark-square')
+                        ->extraAttributes(['data-dusk' => 'save-finding-as-template'])
+                        ->visible(fn (Finding $record): bool => ! $page->isWorkspaceReadOnly() && $record->source_template_id === null)
+                        ->mountUsing(function (Action $action, Finding $record) use ($page): void {
+                            if (! $page->prepareSaveFindingAsTemplate((int) $record->getKey())) {
+                                $action->cancel();
+                            }
+                        })
+                        ->modalHeading(fn (): string => $page->templateLearningHeading())
+                        ->modalContent(fn () => $page->templateLearningPreviewView())
+                        ->modalSubmitActionLabel(fn (): string => $page->templateLearningSubmitLabel())
+                        ->action(function (Finding $record) use ($page): void {
+                            $page->applySaveFindingAsTemplate((int) $record->getKey());
+                        }),
+                    Action::make('update_source_template')
+                        ->label(__('assestme.template_learning.actions.update_source'))
+                        ->icon('heroicon-o-arrow-path')
+                        ->extraAttributes(['data-dusk' => 'update-source-template'])
+                        ->visible(fn (Finding $record): bool => ! $page->isWorkspaceReadOnly() && $record->sourceTemplate instanceof FindingTemplate)
+                        ->mountUsing(function (Action $action, Finding $record) use ($page): void {
+                            if (! $page->prepareUpdateSourceTemplate((int) $record->getKey())) {
+                                $action->cancel();
+                            }
+                        })
+                        ->modalHeading(fn (): string => $page->templateLearningHeading())
+                        ->modalContent(fn () => $page->templateLearningPreviewView())
+                        ->modalSubmitActionLabel(fn (): string => $page->templateLearningSubmitLabel())
+                        ->action(function (Finding $record) use ($page): void {
+                            $page->applyUpdateSourceTemplate((int) $record->getKey());
+                        }),
+                    Action::make('save_as_new_template')
+                        ->label(__('assestme.template_learning.actions.save_new'))
+                        ->icon('heroicon-o-document-duplicate')
+                        ->extraAttributes(['data-dusk' => 'save-finding-as-new-template'])
+                        ->visible(fn (Finding $record): bool => ! $page->isWorkspaceReadOnly() && $record->source_template_id !== null)
+                        ->mountUsing(function (Action $action, Finding $record) use ($page): void {
+                            if (! $page->prepareSaveFindingAsTemplate((int) $record->getKey())) {
+                                $action->cancel();
+                            }
+                        })
+                        ->modalHeading(fn (): string => $page->templateLearningHeading())
+                        ->modalContent(fn () => $page->templateLearningPreviewView())
+                        ->modalSubmitActionLabel(fn (): string => $page->templateLearningSubmitLabel())
+                        ->action(function (Finding $record) use ($page): void {
+                            $page->applySaveFindingAsTemplate((int) $record->getKey());
+                        }),
                     Action::make('delete')
                         ->label(__('filament-actions::delete.single.label'))
                         ->icon('heroicon-o-trash')

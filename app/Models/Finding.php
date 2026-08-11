@@ -20,6 +20,7 @@ use Illuminate\Support\Collection;
  * @property string|null $title
  * @property int $assessment_id
  * @property int|null $source_template_id
+ * @property string|null $source_template_fingerprint
  * @property int|null $category_id
  * @property string|null $problem
  * @property string|null $entrepreneur_notes
@@ -62,6 +63,7 @@ class Finding extends Model
     protected $fillable = [
         'assessment_id',
         'source_template_id',
+        'source_template_fingerprint',
         'title',
         'category_id',
         'problem',

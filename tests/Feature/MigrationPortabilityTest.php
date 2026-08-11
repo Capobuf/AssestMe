@@ -19,6 +19,15 @@ it('keeps the assessment workspace migration independent from physical column or
     expect($migration)->not->toContain('->after(');
 });
 
+it('keeps the Finding template lineage migration portable across supported databases', function (): void {
+    $migration = File::get(database_path('migrations/2026_08_11_000021_add_source_template_fingerprint_to_findings_table.php'));
+
+    expect($migration)
+        ->toContain("->char('source_template_fingerprint', 64)->nullable()")
+        ->not->toContain('->after(')
+        ->not->toContain('DB::statement');
+});
+
 it('can resume and rerun every settings migration without overwriting existing values', function (): void {
     $encode = static fn (bool|int|string|null $value): string => json_encode($value, JSON_THROW_ON_ERROR);
     $runSettingsMigrations = static function (): void {

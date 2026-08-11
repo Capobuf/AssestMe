@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Templates;
 
 use App\Actions\Risk\CalculateFindingPriority;
+use App\Data\Templates\SavedFindingTemplate;
 use App\Enums\BillingFrequency;
 use App\Enums\EstimateType;
 use App\Enums\ScopeType;
@@ -27,6 +28,12 @@ final class SaveFindingTemplate
 
     /** @param array<string, mixed> $data */
     public function handle(?FindingTemplate $template, array $data): FindingTemplate
+    {
+        return $this->handleWithSolutionIds($template, $data)->template;
+    }
+
+    /** @param array<string, mixed> $data */
+    public function handleWithSolutionIds(?FindingTemplate $template, array $data): SavedFindingTemplate
     {
         $data = $this->withStableExternalIds($template, $data);
         $solutionCount = count(is_array($data['solutions'] ?? null) ? $data['solutions'] : []);
@@ -68,7 +75,7 @@ final class SaveFindingTemplate
 
         $this->validateAggregate($template, $validated);
 
-        return DB::transaction(function () use ($template, $validated): FindingTemplate {
+        $record = DB::transaction(function () use ($template, $validated): FindingTemplate {
             $record = $template ?? new FindingTemplate;
             $record->fill(collect($validated)->except('solutions')->all());
             $record->save();
@@ -94,6 +101,14 @@ final class SaveFindingTemplate
 
             return $record->refresh();
         });
+
+        return new SavedFindingTemplate(
+            template: $record,
+            solutionExternalIds: array_values(array_map(
+                static fn (array $row): string => (string) $row['external_id'],
+                $validated['solutions'],
+            )),
+        );
     }
 
     /**

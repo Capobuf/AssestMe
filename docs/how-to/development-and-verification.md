@@ -40,10 +40,12 @@ Rerun the failed test or command before running a broader gate.
 ## Complete verification
 
 ```bash
-scripts/verify.sh
+docker compose -f docker/compose.dev.yml exec -T app scripts/verify.sh
 ```
 
 Run the complete gate at coherent change-set completion, before merging to `main`, at milestone completion, after dependency/runtime/test-infrastructure changes, or when explicitly requested.
+`scripts/verify.sh` fails before any check or mutation when invoked on the host or outside the marked
+`app` service from `docker/compose.dev.yml`.
 
 ## Production release
 

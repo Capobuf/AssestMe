@@ -28,29 +28,13 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          coverage: none
-          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sockets, sqlite3, xml, zip
-          ini-values: memory_limit=512M
-          tools: composer:v2
-
-      - name: Install WeasyPrint runtime
-        run: sudo apt-get update && sudo apt-get install --yes poppler-utils weasyprint
-
-      - name: Install locked dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-
-      - name: Prepare application assets
-        run: php artisan filament:assets
-
-      - name: Run isolated quality gates
-        run: RUN_DUSK=0 scripts/verify.sh
-
-      - name: Start pinned browser-test infrastructure
+      - name: Start pinned verification and browser-test infrastructure
         run: docker compose -f docker/compose.dev.yml --profile browser up --build --detach --wait app selenium
+
+      - name: Run isolated quality gates in the normative runtime
+        run: >-
+          docker compose -f docker/compose.dev.yml --profile browser exec -T
+          -e RUN_DUSK=0 app scripts/verify.sh
 
       - name: Prepare inspectable browser-test root
         run: |

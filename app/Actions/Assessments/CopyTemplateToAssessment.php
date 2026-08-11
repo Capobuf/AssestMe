@@ -11,13 +11,17 @@ use App\Models\Finding;
 use App\Models\FindingSolution;
 use App\Models\FindingTemplate;
 use App\Services\Reporting\EditorialLimits;
+use App\Services\Templates\FindingTemplateContent;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class CopyTemplateToAssessment
 {
-    public function __construct(private readonly IncrementAssessmentVersion $incrementAssessmentVersion) {}
+    public function __construct(
+        private readonly IncrementAssessmentVersion $incrementAssessmentVersion,
+        private readonly FindingTemplateContent $templateContent,
+    ) {}
 
     public function __invoke(Assessment $assessment, FindingTemplate $template): Finding
     {
@@ -67,6 +71,7 @@ final class CopyTemplateToAssessment
 
                 $finding = $persistedAssessment->findings()->create([
                     'source_template_id' => $template->getKey(),
+                    'source_template_fingerprint' => $this->templateContent->fingerprint($template),
                     'title' => $template->title,
                     'category_id' => $template->category_id,
                     'problem' => $template->problem,

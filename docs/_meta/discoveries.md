@@ -61,6 +61,23 @@
   keys can then become a JSON object rejected by the values API, so null and absent cells must be
   normalized to explicit empty strings before submission.
 
+## Finding template learning discoveries
+
+- The ADR index still described D-001 through D-070 even though accepted D-071 and D-072 already
+  existed in their thematic ADRs. Adding the approved fingerprint contract as D-073 required only
+  synchronizing that index and coverage statement; no historical decision was rewritten.
+- Comparing all 221 bundled templates with the selected same-category lexical score at 0.86 yielded
+  five related candidate pairs and zero clearly anomalous false positives on manual review. A 0.96
+  cross-category normalized-title gate yielded zero pairs; lower same-category thresholds increased
+  warnings to six pairs at 0.84, eight at 0.82, and twelve at 0.72.
+- `SaveFindingTemplate` already generated all template and solution external IDs before validation.
+  Returning those assigned IDs from the same authoritative path was sufficient for deterministic
+  Finding-key realignment; no second slug/collision implementation was needed.
+- A direct host `scripts/verify.sh` run reached the expensive suite before exposing that the host had
+  no `/usr/bin/weasyprint`, while the maintained Compose app runtime passed the same 144 previously
+  failing backup, benchmark, diagnostic, PDF, XLSX, and installer tests. An explicit Compose marker
+  plus a `/.dockerenv` guard now turns this accidental unsupported path into an immediate refusal.
+
 ## Update rule
 
 Add only reproducible observations discovered during implementation or verification. Do not turn a discovery into an accepted decision without explicit approval and an ADR update.

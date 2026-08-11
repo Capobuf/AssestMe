@@ -133,6 +133,37 @@
   `FilamentNavigationTest` browser journey passed 1 test with 66 assertions, including the rendered
   expanded state of all five sections.
 
+- 2026-08-11: Started Spec Kit feature `003-learn-finding-templates` on `develop` from HEAD
+  `1ba329470f151cb0adf7a0a12c84be1c3487dc15`. The scoped preflight confirmed PHP 8.3.6,
+  Laravel 13.19.0, Filament 5.6.8, Livewire 4.3.3, and preserved the pre-existing uncommitted
+  contextual-properties changes while beginning the Finding-to-template learning vertical slice.
+
+- 2026-08-11: Implemented the Finding-template learning domain and Workspace slice through a
+  forward-only lineage fingerprint migration, canonical/semantic projection, exact and conservative
+  similar detection, authoritative external-ID mapping, atomic create/link/full-replacement actions,
+  stale/legacy/deleted/read-only guards, localized compact Filament previews, and D-073. Focused
+  dedicated coverage passed 14 tests with 71 assertions; the two focused Workspace action tests
+  passed with 30 assertions. Full focused suites and the authoritative final gate remain pending.
+
+- 2026-08-11: Hardened the complete verification entry point after a direct host invocation exposed
+  the host's missing executable `/usr/bin/weasyprint`. `scripts/verify.sh` now rejects host and
+  unmarked-container execution before Composer or application work; `docker/compose.dev.yml`, CI,
+  AGENTS.md, canonical verification docs, and D-074 use the same marked `app` service invocation.
+  The host-refusal proof returned exit 1 in 0.1 seconds, and the focused Docker deployment contract
+  passed 19 tests with 350 assertions.
+
+- 2026-08-11: The single authoritative final invocation
+  `docker compose -f docker/compose.dev.yml exec -T app scripts/verify.sh` completed with exit 0.
+  Composer validation and audit, Pint over 469 files, PHPStan over 365 files, 566 application tests
+  with 5,030 assertions, 36 strict Canary routes, diagnostics, the isolated 50-Finding benchmark,
+  and storage audit with zero anomalies passed. The same gate also completed a real credential-form
+  administrator login and browser acceptance through 21 Dusk tests with 729 assertions.
+
+- 2026-08-11: Final feature audit completed all 38 Spec Kit tasks. The clean whitespace check,
+  acceptance-scenario review, migration/lineage guard coverage, and CI/runtime contract review found
+  no remaining local defect. The authorized publication scope also includes the inherited
+  contextual-properties default-open implementation and its browser regression coverage.
+
 ## Update rule
 
 Record only factual work performed, the exact affected area, commands run, and results. Progress entries do not create or modify product requirements.

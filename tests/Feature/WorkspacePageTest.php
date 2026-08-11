@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Assessments\CopyTemplateToAssessment;
+use App\Actions\Assessments\UpdateTemplateFromFinding;
 use App\Enums\FindingStatus;
 use App\Enums\ScopeType;
 use App\Filament\Resources\Assessments\AssessmentResource;
@@ -546,6 +547,100 @@ it('exposes one native reorder mode and one visible row action menu', function (
         ->assertTableActionDoesNotExist('move_down', record: $finding)
         ->assertSeeHtml('assestme-finding-row__open-action')
         ->assertSeeHtml('data-dusk="finding-actions"');
+});
+
+it('shows template learning actions only for the applicable lineage and draft state', function (): void {
+    $this->seed(MilestoneTwoSeeder::class);
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $manual = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $linked = app(CopyTemplateToAssessment::class)($assessment, FindingTemplate::query()->firstOrFail());
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->assertTableActionVisible('save_as_template', $manual)
+        ->assertTableActionHidden('save_as_new_template', $manual)
+        ->assertTableActionHidden('update_source_template', $manual)
+        ->assertTableActionHidden('save_as_template', $linked)
+        ->assertTableActionVisible('save_as_new_template', $linked)
+        ->assertTableActionVisible('update_source_template', $linked);
+
+    $template = $linked->sourceTemplate;
+    $template?->delete();
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->assertTableActionVisible('save_as_new_template', $linked->fresh())
+        ->assertTableActionHidden('update_source_template', $linked->fresh());
+
+    $assessment->update(['status' => 'completed']);
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->assertTableActionHidden('save_as_template', $manual)
+        ->assertTableActionHidden('save_as_new_template', $linked->fresh())
+        ->assertTableActionHidden('update_source_template', $linked->fresh());
+});
+
+it('persists the current Finding before previewing and applying a template learning action', function (): void {
+    $this->seed(MilestoneTwoSeeder::class);
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = app(CopyTemplateToAssessment::class)($assessment, FindingTemplate::query()->firstOrFail());
+    $finding->update(['source_template_id' => null, 'source_template_fingerprint' => null]);
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->set('findingData.title', 'Finding persistito prima del nuovo template')
+        ->mountTableAction('save_as_template', $finding)
+        ->assertActionMounted(TestAction::make('save_as_template')->table($finding))
+        ->assertSet('templateLearningPreview.finding_id', $finding->id)
+        ->callMountedTableAction()
+        ->assertHasNoErrors();
+
+    expect($finding->fresh()->title)->toBe('Finding persistito prima del nuovo template')
+        ->and($finding->fresh()->source_template_id)->not->toBeNull()
+        ->and($finding->fresh()->source_template_fingerprint)->toMatch('/^[a-f0-9]{64}$/');
+});
+
+it('cancels template learning when the required pre-action Finding save fails', function (): void {
+    $this->seed(MilestoneTwoSeeder::class);
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = app(CopyTemplateToAssessment::class)($assessment, FindingTemplate::query()->firstOrFail());
+    $finding->update(['source_template_id' => null, 'source_template_fingerprint' => null]);
+    $templateCount = FindingTemplate::query()->count();
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->set('findingData.title', 'Titolo che non deve arrivare al template')
+        ->set('findingData.scope_type', ScopeType::SelectedSites->value)
+        ->set('findingData.site_ids', [])
+        ->mountTableAction('save_as_template', $finding)
+        ->assertActionNotMounted()
+        ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
+        ->assertHasErrors(['findingData.scope']);
+
+    expect(FindingTemplate::query()->count())->toBe($templateCount)
+        ->and($finding->fresh()->source_template_id)->toBeNull()
+        ->and($finding->fresh()->title)->not->toBe('Titolo che non deve arrivare al template');
+});
+
+it('blocks a stale source update before confirmation and reports the fingerprint conflict', function (): void {
+    $this->seed(MilestoneTwoSeeder::class);
+    $administrator = User::factory()->create();
+    $template = FindingTemplate::query()->firstOrFail();
+    $first = app(CopyTemplateToAssessment::class)(Assessment::factory()->create(), $template);
+    $secondAssessment = Assessment::factory()->create();
+    $second = app(CopyTemplateToAssessment::class)($secondAssessment, $template);
+    $first->update(['problem' => 'Aggiornamento concorrente dal primo assessment.']);
+    app(UpdateTemplateFromFinding::class)->handle($first, 1);
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $secondAssessment->getRouteKey()])
+        ->mountTableAction('update_source_template', $second)
+        ->assertActionNotMounted()
+        ->assertNotified(__('assestme.template_learning.errors.fingerprint_conflict'));
+
+    expect($template->fresh()->problem)->toBe('Aggiornamento concorrente dal primo assessment.');
 });
 
 it('keeps navigator search without cramped filters or relationship query growth', function (): void {

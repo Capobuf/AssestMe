@@ -121,6 +121,7 @@ it('persists blank findings immediately and copies detached template snapshots',
     $finding = app(CopyTemplateToAssessment::class)($assessment, $template);
 
     expect($finding->source_template_id)->toBe($template->id)
+        ->and($finding->source_template_fingerprint)->toMatch('/^[a-f0-9]{64}$/')
         ->and($finding->title)->toBe($originalTitle)
         ->and($finding->solutions)->toHaveCount($template->solutions->count())
         ->and($finding->recommendedSolution)->not->toBeNull()
@@ -141,6 +142,8 @@ it('duplicates the complete editable finding aggregate without resolution state'
     $copy = app(DuplicateFinding::class)($source);
 
     expect($copy->id)->not->toBe($source->id)
+        ->and($copy->source_template_id)->toBe($source->source_template_id)
+        ->and($copy->source_template_fingerprint)->toBe($source->source_template_fingerprint)
         ->and($copy->status)->toBe(FindingStatus::Open)
         ->and($copy->resolution_notes)->toBeNull()
         ->and($copy->resolved_at)->toBeNull()

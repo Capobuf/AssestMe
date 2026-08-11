@@ -10,6 +10,9 @@ info() {
     printf 'INFO: %s\n' "$*"
 }
 
+[[ -f /.dockerenv && "${ASSESTME_VERIFY_RUNTIME:-}" == "docker-compose-dev" ]] || fail \
+    "scripts/verify.sh must run inside the app service from docker/compose.dev.yml: docker compose -f docker/compose.dev.yml exec -T app scripts/verify.sh"
+
 project_dir="${1:-$PWD}"
 cd "$project_dir"
 

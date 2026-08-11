@@ -27,6 +27,14 @@ it('creates a complete template and its recommended solution through the applica
         ->and($template->solutions()->firstOrFail()->is_recommended)->toBeTrue();
 });
 
+it('returns authoritative ordered solution identifiers without changing the existing save contract', function (): void {
+    $saved = app(SaveFindingTemplate::class)->handleWithSolutionIds(null, findingTemplateData());
+
+    expect($saved->template)->toBeInstanceOf(FindingTemplate::class)
+        ->and($saved->solutionExternalIds)->toBe(['soluzione-raccomandata'])
+        ->and($saved->template->solutions()->pluck('external_id')->all())->toBe($saved->solutionExternalIds);
+});
+
 it('generates collision-safe stable external identifiers and rejects later mutations', function (): void {
     $first = app(SaveFindingTemplate::class)->handle(null, findingTemplateData());
     $second = app(SaveFindingTemplate::class)->handle(null, findingTemplateData());
