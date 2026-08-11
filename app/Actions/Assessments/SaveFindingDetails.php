@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Actions\Assessments;
 
+use App\Actions\Evidence\PrepareEvidenceFiles;
 use App\Data\Assessments\FindingSaveData;
 use App\Data\Assessments\FindingSaveResult;
+use App\Data\Evidence\PendingEvidenceFileData;
+use App\Data\Evidence\PreparedEvidenceFileData;
 use App\Enums\AssessmentStatus;
 use App\Enums\BillingFrequency;
 use App\Enums\EstimateType;
+use App\Enums\EvidenceType;
 use App\Enums\FindingStatus;
 use App\Enums\ScopeType;
 use App\Exceptions\AssessmentVersionConflict;
@@ -20,17 +24,24 @@ use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
 use App\Models\WorkspaceSaveRequest;
 use App\Services\Reporting\EditorialLimits;
+use App\Services\Risk\ActiveRiskProfileResolver;
 use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 final class SaveFindingDetails
 {
-    public function __construct(private readonly IncrementAssessmentVersion $incrementAssessmentVersion) {}
+    public function __construct(
+        private readonly IncrementAssessmentVersion $incrementAssessmentVersion,
+        private readonly PrepareEvidenceFiles $prepareEvidenceFiles,
+        private readonly ActiveRiskProfileResolver $activeRiskProfileResolver,
+    ) {}
 
     /**
      * @throws IdempotencyKeyMismatch
@@ -46,13 +57,35 @@ final class SaveFindingDetails
             return $replay;
         }
 
-        return Cache::lock("assessment:{$finding->assessment_id}:save", 10)->block(
-            5,
-            fn (): FindingSaveResult => DB::transaction(
-                fn (): FindingSaveResult => $this->persistRequest($finding, $request),
-                attempts: 1,
-            ),
-        );
+        $current = Finding::query()
+            ->with(['assessment.client', 'sites', 'assets', 'solutions', 'evidences'])
+            ->findOrFail($finding->getKey());
+        if ($current->assessment->status !== AssessmentStatus::Draft) {
+            throw ValidationException::withMessages(['assessment' => __('assestme.assessments.errors.read_only')]);
+        }
+        $validated = $this->validatePayload(Arr::except($request->payload, '_evidence'));
+        $this->validateOwnershipAndAggregate($current, $validated);
+        $this->validateEvidenceEnvelope($request);
+        $preparedFiles = $this->prepareEvidenceFiles->handle($current, $request->evidenceFiles);
+
+        try {
+            $result = Cache::lock("assessment:{$finding->assessment_id}:save", 10)->block(
+                5,
+                fn (): FindingSaveResult => DB::transaction(
+                    fn (): FindingSaveResult => $this->persistRequest($finding, $request, $preparedFiles),
+                    attempts: 1,
+                ),
+            );
+            if ($result->idempotentReplay) {
+                $this->prepareEvidenceFiles->compensate($preparedFiles, $current, $request->requestId);
+            }
+
+            return $result;
+        } catch (Throwable $exception) {
+            $this->prepareEvidenceFiles->compensate($preparedFiles, $current, $request->requestId);
+
+            throw $exception;
+        }
     }
 
     private function validateEnvelope(Finding $finding, FindingSaveData $request): void
@@ -105,6 +138,7 @@ final class SaveFindingDetails
             finding: $saved,
             appliedVersion: (int) $stored->applied_version,
             idempotentReplay: true,
+            evidenceIds: array_values(array_map('intval', (array) ($response['evidence_ids'] ?? []))),
         );
     }
 
@@ -160,8 +194,12 @@ final class SaveFindingDetails
         return $validated;
     }
 
-    private function persistRequest(Finding $finding, FindingSaveData $request): FindingSaveResult
-    {
+    /** @param list<PreparedEvidenceFileData> $preparedFiles */
+    private function persistRequest(
+        Finding $finding,
+        FindingSaveData $request,
+        array $preparedFiles,
+    ): FindingSaveResult {
         if ($replay = $this->findReplay($finding, $request)) {
             return $replay;
         }
@@ -175,9 +213,10 @@ final class SaveFindingDetails
             throw ValidationException::withMessages(['assessment' => __('assestme.assessments.errors.read_only')]);
         }
 
-        $validated = $this->validatePayload($request->payload);
+        $validated = $this->validatePayload(Arr::except($request->payload, '_evidence'));
         $this->validateOwnershipAndAggregate($current, $validated);
         $saved = $this->persistAggregate($current, $validated);
+        $evidenceIds = $this->persistEvidence($saved, $preparedFiles, $request);
         $appliedVersion = ($this->incrementAssessmentVersion)($current->assessment, $request->expectedVersion);
 
         WorkspaceSaveRequest::query()->create([
@@ -189,12 +228,94 @@ final class SaveFindingDetails
             'response' => [
                 'operation' => 'save_finding',
                 'finding_id' => (int) $saved->getKey(),
+                'evidence_ids' => $evidenceIds,
                 'applied_version' => $appliedVersion,
             ],
             'created_at' => now(),
         ]);
 
-        return new FindingSaveResult($saved, $appliedVersion);
+        return new FindingSaveResult($saved, $appliedVersion, evidenceIds: $evidenceIds);
+    }
+
+    private function validateEvidenceEnvelope(FindingSaveData $request): void
+    {
+        $expected = [
+            'files' => array_map(
+                static fn (PendingEvidenceFileData $file): array => $file->normalizedPayload(),
+                $request->evidenceFiles,
+            ),
+            'url' => $request->evidenceUrl?->normalizedPayload(),
+        ];
+        $actual = $request->payload['_evidence'] ?? ['files' => [], 'url' => null];
+        if ($actual !== $expected) {
+            throw ValidationException::withMessages([
+                'payload_sha256' => __('assestme.workspace.errors.payload_hash'),
+            ]);
+        }
+
+        if ($request->evidenceUrl === null) {
+            return;
+        }
+
+        Validator::make($request->evidenceUrl->normalizedPayload(), [
+            'title' => ['required', 'string', 'max:255'],
+            'url' => ['required', 'url:http,https', 'max:2048'],
+            'caption' => ['nullable', 'string', 'max:20000'],
+            'internal_notes' => ['nullable', 'string', 'max:20000'],
+            'include_in_report' => ['required', 'boolean'],
+        ])->validate();
+
+        $parts = parse_url($request->evidenceUrl->url);
+        if ($parts === false || isset($parts['user']) || isset($parts['pass'])) {
+            throw ValidationException::withMessages(['evidence.url' => __('assestme.evidence.errors.url_credentials')]);
+        }
+    }
+
+    /**
+     * @param  list<PreparedEvidenceFileData>  $preparedFiles
+     * @return list<int>
+     */
+    private function persistEvidence(
+        Finding $finding,
+        array $preparedFiles,
+        FindingSaveData $request,
+    ): array {
+        $evidenceIds = [];
+        $sortOrder = (int) $finding->evidences()->max('sort_order');
+
+        foreach ($preparedFiles as $prepared) {
+            $pending = $prepared->pending;
+            $evidence = $finding->evidences()->create([
+                'type' => EvidenceType::File,
+                'title' => $pending->title,
+                'file_path' => $prepared->finalPath,
+                'original_filename' => $pending->file->getClientOriginalName(),
+                'caption' => $pending->caption,
+                'internal_notes' => $pending->internalNotes,
+                'include_in_report' => $pending->includeInReport,
+                'mime_type' => $pending->mimeType,
+                'size_bytes' => $pending->sizeBytes,
+                'sha256' => $pending->sha256,
+                'sort_order' => ++$sortOrder,
+            ]);
+            $evidenceIds[] = (int) $evidence->getKey();
+        }
+
+        if ($request->evidenceUrl !== null) {
+            $url = $request->evidenceUrl;
+            $evidence = $finding->evidences()->create([
+                'type' => EvidenceType::Url,
+                'title' => $url->title,
+                'url' => $url->url,
+                'caption' => $url->caption,
+                'internal_notes' => $url->internalNotes,
+                'include_in_report' => $url->includeInReport,
+                'sort_order' => ++$sortOrder,
+            ]);
+            $evidenceIds[] = (int) $evidence->getKey();
+        }
+
+        return $evidenceIds;
     }
 
     /** @param array<string, mixed> $validated */
@@ -291,6 +412,20 @@ final class SaveFindingDetails
 
         if ($validated['priority_is_overridden'] && blank($validated['priority_rationale'] ?? null)) {
             throw ValidationException::withMessages(['priority_rationale' => __('assestme.findings.errors.override_reason_required')]);
+        }
+
+        $submittedClassification = [
+            'consequence' => isset($validated['consequence_level_id']) ? (int) $validated['consequence_level_id'] : null,
+            'likelihood' => isset($validated['likelihood_level_id']) ? (int) $validated['likelihood_level_id'] : null,
+            'priority' => isset($validated['priority_level_id']) ? (int) $validated['priority_level_id'] : null,
+        ];
+        $persistedClassification = [
+            'consequence' => $finding->consequence_level_id === null ? null : (int) $finding->consequence_level_id,
+            'likelihood' => $finding->likelihood_level_id === null ? null : (int) $finding->likelihood_level_id,
+            'priority' => $finding->priority_level_id === null ? null : (int) $finding->priority_level_id,
+        ];
+        if ($submittedClassification !== $persistedClassification) {
+            $this->activeRiskProfileResolver->assertSelectableClassification($submittedClassification, 'priority_level_id');
         }
 
         $profileIds = collect([

@@ -54,10 +54,14 @@ Validation, completion, and report generation use the same scope rule. No UI-onl
 - Persisted integer IDs are stable identities; labels, colors, order, or enabled state do not replace records.
 - Referenced levels are disabled rather than deleted.
 - The risk editor persists exactly sixteen same-profile combinations.
+- `active_risk_profile_id` is the operational source for new Finding/template classifications and imports; `is_default` is descriptive and does not switch operational behavior.
+- The active profile must exist and remain enabled. Historical IDs from another or disabled profile are retained and may accompany unrelated edits; a deliberate reclassification must use enabled levels entirely from the active profile.
+- Urgent Findings are those assigned to the highest two `sort_order` levels of their own profile, including historical profiles. A single-level profile contributes that one level.
 
 ## Finding templates and JSON
 
-- JSON Schema v1 is the canonical interchange contract.
+- JSON Schema v2 is the canonical export/interchange contract; schema v1 remains accepted for import.
+- V2 risk values are nullable stable technical codes. Structural validation checks their shape; preview and import resolve them against the enabled active profile and reject unknown, disabled, cross-profile, or matrix-incoherent classifications with template context.
 - Template and solution `external_id` values are stable lowercase identifiers.
 - Manual creation generates deterministic IDs from titles, adding `-2`, `-3`, and later numeric suffixes for collisions.
 - Existing IDs are immutable; title changes do not regenerate them.
@@ -65,6 +69,7 @@ Validation, completion, and report generation use the same scope rule. No UI-onl
 - Updating an existing imported template is a full replacement of import-managed fields and solutions inside one transaction.
 - No implicit merge behavior may be invented.
 - Import failures are reported with row/item context and do not produce partial fake success.
+- The bundled Italian MSP baseline is a deterministic schema-v2 library of 221 independent templates across the approved operational categories; its eight previously distributed template IDs remain unchanged.
 
 ## Settings
 

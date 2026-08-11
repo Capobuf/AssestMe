@@ -7,6 +7,7 @@ namespace App\Filament\Widgets;
 use App\Enums\FindingStatus;
 use App\Filament\Resources\Assessments\Pages\WorkspaceAssessment;
 use App\Models\Finding;
+use App\Services\Risk\UrgentPriorityResolver;
 use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -27,7 +28,7 @@ final class UrgentFindings extends TableWidget
                 ->with(['assessment.client', 'priorityLevel'])
                 ->where('include_in_report', true)
                 ->where('status', FindingStatus::Open)
-                ->whereHas('priorityLevel', fn (Builder $query): Builder => $query->whereIn('code', ['high', 'critical']))
+                ->whereIn('priority_level_id', app(UrgentPriorityResolver::class)->ids())
                 ->latest('updated_at')
                 ->limit(5))
             ->columns([

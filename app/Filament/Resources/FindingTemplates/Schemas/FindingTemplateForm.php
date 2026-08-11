@@ -8,11 +8,9 @@ use App\Enums\BillingFrequency;
 use App\Enums\EstimateType;
 use App\Enums\ScopeType;
 use App\Models\Category;
-use App\Models\ConsequenceLevel;
 use App\Models\EffortLevel;
-use App\Models\LikelihoodLevel;
-use App\Models\PriorityLevel;
 use App\Services\Reporting\EditorialLimits;
+use App\Services\Risk\ActiveRiskProfileResolver;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -42,9 +40,9 @@ final class FindingTemplateForm
             Section::make(__('assestme.templates.sections.defaults'))->schema([
                 Select::make('default_scope_type')->label(__('assestme.templates.fields.scope'))->options(self::scopeOptions())->required(),
                 Textarea::make('default_scope_description')->label(__('assestme.templates.fields.scope_description'))->rows(3)->maxLength(20000)->columnSpanFull(),
-                Select::make('default_consequence_level_id')->label(__('assestme.templates.fields.consequence'))->options(fn (): array => ConsequenceLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())->searchable(),
-                Select::make('default_likelihood_level_id')->label(__('assestme.templates.fields.likelihood'))->options(fn (): array => LikelihoodLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())->searchable(),
-                Select::make('default_priority_level_id')->label(__('assestme.findings.fields.priority'))->options(fn (): array => PriorityLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())->searchable(),
+                Select::make('default_consequence_level_id')->label(__('assestme.templates.fields.consequence'))->options(fn (Get $get): array => app(ActiveRiskProfileResolver::class)->consequenceOptions(self::nullableId($get('default_consequence_level_id'))))->searchable(),
+                Select::make('default_likelihood_level_id')->label(__('assestme.templates.fields.likelihood'))->options(fn (Get $get): array => app(ActiveRiskProfileResolver::class)->likelihoodOptions(self::nullableId($get('default_likelihood_level_id'))))->searchable(),
+                Select::make('default_priority_level_id')->label(__('assestme.findings.fields.priority'))->options(fn (Get $get): array => app(ActiveRiskProfileResolver::class)->priorityOptions(self::nullableId($get('default_priority_level_id'))))->searchable(),
                 Textarea::make('priority_rationale')->label(__('assestme.templates.fields.priority_rationale'))->rows(3)->maxLength(20000)->columnSpanFull(),
             ])->columns(['default' => 1, 'md' => 2])->columnSpanFull(),
             Section::make(__('assestme.templates.sections.solutions'))->schema([
@@ -118,5 +116,10 @@ final class FindingTemplateForm
         return __('assestme.common.characters_remaining', [
             'count' => max(0, $limit - mb_strlen((string) $state)),
         ]);
+    }
+
+    private static function nullableId(mixed $value): ?int
+    {
+        return is_numeric($value) ? (int) $value : null;
     }
 }

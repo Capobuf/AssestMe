@@ -10,6 +10,7 @@ use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Support\DeleteAccordingToPolicyAction;
 use App\Filament\Support\StandardTableEnhancements;
 use App\Models\Assessment;
+use App\Services\Risk\UrgentPriorityResolver;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\EditAction;
@@ -64,7 +65,7 @@ class AssessmentsTable
                             'urgent' => $query->whereHas('findings', fn (Builder $findings): Builder => $findings
                                 ->where('status', FindingStatus::Open)
                                 ->where('include_in_report', true)
-                                ->whereHas('priorityLevel', fn (Builder $priority): Builder => $priority->whereIn('code', ['high', 'critical']))),
+                                ->whereIn('priority_level_id', app(UrgentPriorityResolver::class)->ids())),
                             default => $query,
                         };
                     }),

@@ -19,6 +19,15 @@
 - On 2026-08-02, the isolated full Dusk suite stopped in `ApprovedUxQaTest` before completing because the required `/usr/bin/weasyprint` binary was not executable. This is an environment prerequisite failure outside the two Dusk determinism tests; no renderer fallback was introduced.
 - The Docker development runtime supplies the required executable `/usr/bin/weasyprint` (version 57.2) and Selenium Chromium. It reproduces the CI browser path while retaining isolated Dusk database and storage roots.
 
+## Assessment integrity discoveries
+
+- Workspace selection and dependent public actions previously had multiple mutation paths with no shared explicit pre-action save result; one server-side gate now covers them without adding a JavaScript orchestrator.
+- The prior Finding editor stored each pending Evidence item through a separate versioned action. The existing signed Finding request can carry the normalized batch and idempotency response, so no new persistence table or library was required.
+- `GeneralSettings::active_risk_profile_id` already existed, while editor options, imports, and urgency queries bypassed it. `is_default` remains independent and no existing Finding IDs require migration.
+- The former schema hardcoded the default profile's risk codes. Keeping it as `finding-template-v1.schema.json` permits unchanged legacy validation while the canonical v2 schema accepts technical-code shape and leaves database semantics to one application path.
+- The bundled baseline contained eight templates. The reviewed thematic catalogue produces 221 templates in 17 existing categories, preserves all eight old IDs, adds no normative claim, and round trips deterministically after repeated seed execution.
+- Dusk `DatabaseTruncation` removes seeded domain rows before an isolated test method; browser tests that render active-profile options must seed the domain fixture in that method. This is test isolation behavior, not an application fallback.
+
 ## Update rule
 
 Add only reproducible observations discovered during implementation or verification. Do not turn a discovery into an accepted decision without explicit approval and an ADR update.

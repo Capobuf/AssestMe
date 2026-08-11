@@ -26,6 +26,7 @@ use App\Models\RiskMatrixEntry;
 use App\Services\Reporting\BuildReportLogos;
 use App\Services\Reporting\FindingPagePlanner;
 use App\Services\Reporting\ResolveReportTitle;
+use App\Services\Risk\ActiveRiskProfileResolver;
 use App\Settings\GeneralSettings;
 use App\Settings\ReportSettings;
 use Illuminate\Database\Eloquent\Collection;
@@ -46,6 +47,7 @@ final class BuildAssessmentSnapshot
         private readonly FindingPagePlanner $pagePlanner,
         private readonly BuildReportLogos $buildReportLogos,
         private readonly ResolveReportTitle $resolveReportTitle,
+        private readonly ActiveRiskProfileResolver $activeRiskProfileResolver,
     ) {}
 
     public function __invoke(
@@ -343,12 +345,8 @@ final class BuildAssessmentSnapshot
     /** @return list<ReportPriorityData> */
     private function priorityLegend(): array
     {
-        if ($this->generalSettings->active_risk_profile_id === null) {
-            return [];
-        }
-
         return PriorityLevel::query()
-            ->where('risk_profile_id', $this->generalSettings->active_risk_profile_id)
+            ->where('risk_profile_id', $this->activeRiskProfileResolver->resolve()->getKey())
             ->orderBy('sort_order')
             ->get()
             ->map(static fn (PriorityLevel $level): ReportPriorityData => new ReportPriorityData(

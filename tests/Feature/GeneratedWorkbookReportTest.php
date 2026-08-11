@@ -37,6 +37,21 @@ beforeEach(function (): void {
     Storage::fake('local');
 });
 
+it('persists the selected finding before generating the workbook snapshot', function (): void {
+    [$assessment, $finding] = createWorkbookReadyAssessment();
+    $this->actingAs(User::factory()->create());
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->getKey())
+        ->set('findingData.title', 'Titolo persistito nel foglio XLSX')
+        ->callAction(TestAction::make('download_xlsx'), ['include_excluded_findings' => false])
+        ->assertHasNoErrors();
+
+    $report = GeneratedReport::query()->where('format', GeneratedReportFormat::Xlsx)->sole();
+    expect($report->payload_snapshot['findings'][0]['title'])->toBe('Titolo persistito nel foglio XLSX')
+        ->and(Storage::disk('local')->exists($report->file_path))->toBeTrue();
+});
+
 it('persists and downloads complete immutable three-sheet workbook versions', function (): void {
     [$assessment, $finding] = createWorkbookReadyAssessment();
     $client = $assessment->client;

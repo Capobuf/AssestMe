@@ -15,8 +15,8 @@ Defines the Finding workbench, navigation, responsive modes, save protocol, life
 | D-008 (v1) | SUPERSEDED | Advance Table Repeater was the selected assessment-grid component; superseded by D-008 on 2026-07-13 |
 | D-008 (v2) | SUPERSEDED | The assessment workspace used only the native Filament 5 table Repeater; superseded by D-008 on 2026-07-18 |
 | D-008 | APPROVED | The Finding workspace uses a Filament Table structured list with a single-record lateral inspector; native Repeaters remain permitted for bounded child collections such as Finding solutions |
-| D-016 | APPROVED | Autosave plus explicit draft save, both using the same persistence layer |
-| D-020 | APPROVED | Optimistic locking and idempotent workspace-save requests |
+| D-016 | APPROVED | Autosave and explicit draft save use the same persistence layer; every dependent Workspace navigation, mutation, completion, and generation action first persists the dirty current context and stops when that save fails |
+| D-020 | APPROVED | Optimistic locking and idempotent workspace-save requests cover Finding aggregates, Evidence created with that Finding save, and reorder payloads; replay returns the original applied version without a second mutation |
 | D-021 | APPROVED | Completed assessments are read-only until explicitly reopened |
 | D-044 | APPROVED | Assessment creation proposes a reusable automatically generated but user-editable title, exposes only organization/site/custom assessment scopes, filters one or more sites by company, and makes the Workspace the primary post-create and list-row destination |
 | D-046 | APPROVED | The dashboard separates four compact clickable operational KPIs, the latest five assessments, urgent findings, and a compact application-status section for backup, database integrity, and unresolved cleanup operations |

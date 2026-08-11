@@ -2,6 +2,17 @@
 
 ## Current state
 
+- 2026-08-11: Started the dedicated `codex/fix-p0-p1-assessment-integrity` change set
+  from baseline `63052396b0e7271f572346040d2847f498bb8b77`; initialized official Spec Kit
+  0.16.1 with Codex skills and one vertical three-story feature at
+  `specs/001-assessment-integrity`. No application code has been changed yet.
+- 2026-08-11: Phase 1 implemented one server-side pre-action persistence gate, atomic/idempotent Finding plus Evidence saves with compensation, and signed idempotent reorder. Focused Workspace/Persistence/Evidence/Architecture tests passed: 99 tests, 1,379 assertions.
+- 2026-08-11: Phase 2 made the enabled `active_risk_profile_id` authoritative for new classifications and v1/v2 imports, retained historical IDs, replaced urgency code hardcodes with per-profile top-two ordering, preserved schema v1, and made schema v2 canonical for export. Custom-profile, schema, import/export, template, risk, dashboard, Workspace, and persistence focused suites passed after their test fixtures seeded the required active profile.
+- 2026-08-11: Phase 3 replaced the eight-template demo with a schema-v2 MSP library of 221 templates across 17 existing categories. `SeedDataTest` passed 3 tests and 26 assertions, including two seeds and byte-identical deterministic export; the eight distributed external IDs remain present.
+- 2026-08-11: Docker/Selenium Dusk proof `test_dirty_selection_autosave_and_version_conflict_use_the_signed_workspace_protocol` passed 1 test and 7 assertions, demonstrating edit → row click → server save → next selection plus conflict behavior.
+- 2026-08-11: Final affected-suite preflight passed Pint, PHPStan across 336 files, 157 host tests with 1,728 assertions apart from the expected host-only non-executable WeasyPrint prerequisite, and 67 Docker report tests with 787 assertions using the production renderer.
+- 2026-08-11: Docker acceptance passed a real credential-form administrator login and native Workspace journey (1 Dusk test, 61 assertions), the isolated 50-Finding application benchmark generated PDF/XLSX within every limit, and an isolated valid single-administrator installation completed backup creation, verification, restore diagnostics, and before/after marker verification.
+- 2026-08-11: The one permitted `scripts/verify.sh` invocation passed Composer validation, Pint, PHPStan and 484 tests with 4,465 assertions before stopping on two failures: the Finding-template Canary fixture lacked seeded active-risk configuration, and an unrelated uncommitted Google Drive settings migration in the shared workspace was not rerunnable. The affected Canary test passed after seeding canonical domain configuration; the Google Drive slice is excluded from this change set and was not modified here.
 - Documentation migration package prepared from AssestMe specification 2.7.
 - Product, architecture, runtime, domain, UI/persistence, reporting/files, testing/security, hosting, and accepted decisions are mapped to canonical pages.
 - D-001 through D-070 are represented exactly once across thematic ADRs.

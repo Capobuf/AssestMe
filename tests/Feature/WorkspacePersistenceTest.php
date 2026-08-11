@@ -8,6 +8,7 @@ use App\Actions\Assessments\ReorderFindings;
 use App\Actions\Assessments\SaveAssessmentWorkspace;
 use App\Actions\Assessments\SaveFindingDetails;
 use App\Data\Assessments\FindingSaveData;
+use App\Data\Assessments\ReorderFindingsData;
 use App\Data\Assessments\WorkspaceSaveData;
 use App\Enums\ScopeType;
 use App\Exceptions\AssessmentVersionConflict;
@@ -57,6 +58,21 @@ function findingSaveRequest(Assessment $assessment, array $payload, ?string $req
         tabId: (string) Str::uuid(),
         payload: $payload,
         payloadSha256: FindingSaveData::hashPayload($payload),
+    );
+}
+
+/** @param list<int> $ids */
+function reorderFindingsRequest(
+    Assessment $assessment,
+    array $ids,
+    ?string $requestId = null,
+    ?int $expectedVersion = null,
+): ReorderFindingsData {
+    return new ReorderFindingsData(
+        requestId: $requestId ?? (string) Str::uuid(),
+        expectedVersion: $expectedVersion ?? (int) $assessment->lock_version,
+        orderedFindingIds: $ids,
+        payloadSha256: ReorderFindingsData::hashPayload($ids),
     );
 }
 
@@ -247,10 +263,60 @@ it('reorders the complete finding set deterministically and increments version',
     $first = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
     $second = Finding::factory()->for($assessment)->create(['sort_order' => 2]);
 
-    $version = app(ReorderFindings::class)($assessment, [$second->id, $first->id]);
+    $version = app(ReorderFindings::class)(
+        $assessment,
+        reorderFindingsRequest($assessment, [$second->id, $first->id]),
+    );
 
     expect($version)->toBe(1)
-        ->and($assessment->fresh()->findings->pluck('id')->all())->toBe([$second->id, $first->id]);
+        ->and($assessment->fresh()->findings->pluck('id')->all())->toBe([$second->id, $first->id])
+        ->and(WorkspaceSaveRequest::query()->sole()->response['operation'])->toBe('reorder_findings');
+});
+
+it('replays the same reorder request without another version increment', function (): void {
+    $assessment = Assessment::factory()->create();
+    $first = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $second = Finding::factory()->for($assessment)->create(['sort_order' => 2]);
+    $request = reorderFindingsRequest($assessment, [$second->id, $first->id]);
+
+    $firstVersion = app(ReorderFindings::class)($assessment, $request);
+    $replayedVersion = app(ReorderFindings::class)($assessment->fresh(), $request);
+
+    expect($firstVersion)->toBe(1)
+        ->and($replayedVersion)->toBe(1)
+        ->and($assessment->fresh()->lock_version)->toBe(1)
+        ->and(WorkspaceSaveRequest::query()->count())->toBe(1);
+});
+
+it('rejects a reused reorder request id with different order', function (): void {
+    $assessment = Assessment::factory()->create();
+    $first = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $second = Finding::factory()->for($assessment)->create(['sort_order' => 2]);
+    $requestId = (string) Str::uuid();
+
+    app(ReorderFindings::class)(
+        $assessment,
+        reorderFindingsRequest($assessment, [$second->id, $first->id], $requestId),
+    );
+
+    expect(fn () => app(ReorderFindings::class)(
+        $assessment->fresh(),
+        reorderFindingsRequest($assessment->fresh(), [$first->id, $second->id], $requestId),
+    ))->toThrow(IdempotencyKeyMismatch::class)
+        ->and($assessment->fresh()->lock_version)->toBe(1);
+});
+
+it('rejects stale reorder versions without changing order', function (): void {
+    $assessment = Assessment::factory()->create(['lock_version' => 1]);
+    $first = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $second = Finding::factory()->for($assessment)->create(['sort_order' => 2]);
+
+    expect(fn () => app(ReorderFindings::class)(
+        $assessment,
+        reorderFindingsRequest($assessment, [$second->id, $first->id], expectedVersion: 0),
+    ))->toThrow(AssessmentVersionConflict::class)
+        ->and($assessment->fresh()->findings->pluck('id')->all())->toBe([$first->id, $second->id])
+        ->and(WorkspaceSaveRequest::query()->count())->toBe(0);
 });
 
 it('rejects an incomplete reorder set without partial updates or version change', function (): void {
@@ -258,8 +324,25 @@ it('rejects an incomplete reorder set without partial updates or version change'
     $first = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
     $second = Finding::factory()->for($assessment)->create(['sort_order' => 2]);
 
-    expect(fn () => app(ReorderFindings::class)($assessment, [$second->id]))
+    expect(fn () => app(ReorderFindings::class)(
+        $assessment,
+        reorderFindingsRequest($assessment, [$second->id]),
+    ))
         ->toThrow(ValidationException::class)
+        ->and($assessment->fresh()->findings->pluck('id')->all())->toBe([$first->id, $second->id])
+        ->and($assessment->fresh()->lock_version)->toBe(0);
+});
+
+it('rejects reorder ids owned by another assessment', function (): void {
+    $assessment = Assessment::factory()->create();
+    $first = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $second = Finding::factory()->for($assessment)->create(['sort_order' => 2]);
+    $foreign = Finding::factory()->for(Assessment::factory()->create())->create();
+
+    expect(fn () => app(ReorderFindings::class)(
+        $assessment,
+        reorderFindingsRequest($assessment, [$second->id, $foreign->id]),
+    ))->toThrow(ValidationException::class)
         ->and($assessment->fresh()->findings->pluck('id')->all())->toBe([$first->id, $second->id])
         ->and($assessment->fresh()->lock_version)->toBe(0);
 });

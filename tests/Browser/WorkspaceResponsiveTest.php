@@ -574,8 +574,9 @@ final class WorkspaceResponsiveTest extends DuskTestCase
         });
     }
 
-    public function test_dirty_selection_save_next_and_version_conflict_use_the_signed_workspace_protocol(): void
+    public function test_dirty_selection_autosave_and_version_conflict_use_the_signed_workspace_protocol(): void
     {
+        $this->seed(DatabaseSeeder::class);
         $administrator = User::factory()->create();
         $assessment = Assessment::factory()->create(['title' => 'Workspace persistence browser']);
         $findings = Finding::factory()->count(2)->for($assessment)->sequence(
@@ -594,10 +595,8 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 ->type('[data-dusk="finding-editor-title"]', 'Finding modificato e salvato')
                 ->waitUntil('return document.querySelector("[data-assestme-save-status]").dataset.status === "unsaved"')
                 ->click('.assestme-finding-row + .assestme-finding-row')
-                ->pause(300)
-                ->assertAttribute('.assestme-findings-workspace', 'data-selected-finding', (string) $first->getKey())
-                ->click('[data-dusk="save-finding-next"]')
                 ->waitUntil("return document.querySelector('.assestme-findings-workspace').dataset.selectedFinding === '{$second->getKey()}'")
+                ->waitUntil('return document.querySelector("[data-assestme-save-status]").dataset.status === "saved"')
                 ->assertInputValue('[data-dusk="finding-editor-title"]', 'Finding persistence second');
 
             Assert::assertSame('Finding modificato e salvato', $first->fresh()->title);

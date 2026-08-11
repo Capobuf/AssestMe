@@ -11,6 +11,7 @@ use App\Actions\Assessments\SaveFindingDetails;
 use App\Actions\Reports\GenerateAssessmentPdf;
 use App\Actions\Reports\GenerateAssessmentWorkbook;
 use App\Data\Assessments\FindingSaveData;
+use App\Data\Assessments\ReorderFindingsData;
 use App\Data\Assessments\WorkspaceSaveData;
 use App\Enums\FindingStatus;
 use App\Filament\Resources\Assessments\Schemas\FindingEditorSchema;
@@ -111,7 +112,13 @@ final class BenchmarkCommand extends Command
 
             $reorderedIds = $assessment->findings()->pluck('id')->reverse()->values()->all();
             [$reorderSeconds] = $this->measure(function () use ($assessment, $reorderedIds): void {
-                app(ReorderFindings::class)($assessment->fresh(), $reorderedIds);
+                $persisted = $assessment->fresh();
+                app(ReorderFindings::class)($persisted, new ReorderFindingsData(
+                    requestId: (string) Str::uuid(),
+                    expectedVersion: (int) $persisted->lock_version,
+                    orderedFindingIds: $reorderedIds,
+                    payloadSha256: ReorderFindingsData::hashPayload($reorderedIds),
+                ));
             });
 
             [$pdfSeconds] = $this->measure(function () use ($assessment): void {

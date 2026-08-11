@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Templates;
 
+use App\Actions\Risk\CalculateFindingPriority;
 use App\Enums\BillingFrequency;
 use App\Enums\EstimateType;
 use App\Enums\ScopeType;
@@ -13,6 +14,7 @@ use App\Models\FindingTemplateSolution;
 use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
 use App\Services\Reporting\EditorialLimits;
+use App\Services\Risk\ActiveRiskProfileResolver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -21,6 +23,8 @@ use Illuminate\Validation\ValidationException;
 
 final class SaveFindingTemplate
 {
+    public function __construct(private readonly ActiveRiskProfileResolver $activeRiskProfileResolver) {}
+
     /** @param array<string, mixed> $data */
     public function handle(?FindingTemplate $template, array $data): FindingTemplate
     {
@@ -206,6 +210,34 @@ final class SaveFindingTemplate
         ])->filter()->unique();
         if ($profileIds->count() > 1) {
             throw ValidationException::withMessages(['default_priority_level_id' => __('assestme.templates.errors.risk_profile')]);
+        }
+
+        $submittedClassification = [
+            'consequence' => isset($validated['default_consequence_level_id']) ? (int) $validated['default_consequence_level_id'] : null,
+            'likelihood' => isset($validated['default_likelihood_level_id']) ? (int) $validated['default_likelihood_level_id'] : null,
+            'priority' => isset($validated['default_priority_level_id']) ? (int) $validated['default_priority_level_id'] : null,
+        ];
+        $persistedClassification = [
+            'consequence' => $template?->default_consequence_level_id === null ? null : (int) $template->default_consequence_level_id,
+            'likelihood' => $template?->default_likelihood_level_id === null ? null : (int) $template->default_likelihood_level_id,
+            'priority' => $template?->default_priority_level_id === null ? null : (int) $template->default_priority_level_id,
+        ];
+        if ($submittedClassification !== $persistedClassification) {
+            $this->activeRiskProfileResolver->assertSelectableClassification($submittedClassification, 'default_priority_level_id');
+            if (! in_array(null, $submittedClassification, true)) {
+                $calculated = app(CalculateFindingPriority::class)(
+                    ConsequenceLevel::query()->findOrFail($submittedClassification['consequence']),
+                    LikelihoodLevel::query()->findOrFail($submittedClassification['likelihood']),
+                );
+                if ((int) $calculated->getKey() !== $submittedClassification['priority']) {
+                    throw ValidationException::withMessages([
+                        'default_priority_level_id' => __('assestme.templates.errors.risk_matrix_mismatch', [
+                            'index' => 0,
+                            'external_id' => $template->external_id ?? (string) $validated['external_id'],
+                        ]),
+                    ]);
+                }
+            }
         }
 
         foreach ($validated['solutions'] as $index => $solution) {

@@ -16,10 +16,18 @@ use App\Models\FindingTemplate;
 use App\Models\User;
 use App\Models\WorkspaceSaveRequest;
 use Database\Seeders\DatabaseSeeder;
+use Database\Seeders\MilestoneOneSeeder;
+use Database\Seeders\MilestoneTwoSeeder;
+use Filament\Actions\Testing\TestAction;
 use Filament\Forms\Components\Repeater;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
+
+beforeEach(function (): void {
+    $this->seed(MilestoneOneSeeder::class);
+});
 
 it('creates an assessment through the Filament resource', function (): void {
     $administrator = User::factory()->create();
@@ -308,6 +316,215 @@ it('keeps an invalid contextual scope visible without persisting partial workben
     expect($persisted->title)->toBe('Finding invariato')
         ->and($persisted->scope_type)->toBe(ScopeType::Organization)
         ->and($assessment->fresh()->lock_version)->toBe(0);
+});
+
+it('saves the current finding before creating and selecting a blank finding', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $current = Finding::factory()->for($assessment)->create([
+        'title' => 'Titolo persistito prima della modifica',
+        'sort_order' => 1,
+    ]);
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $current->id)
+        ->set('findingData.title', 'Titolo salvato prima del nuovo Finding')
+        ->call('createBlankFinding')
+        ->assertHasNoErrors()
+        ->assertSet('saveStatus', WorkspaceAssessment::STATUS_SAVED)
+        ->assertSet('selectedFindingId', fn (?int $id): bool => $id !== null && $id !== $current->id);
+
+    expect($current->fresh()->title)->toBe('Titolo salvato prima del nuovo Finding')
+        ->and($assessment->findings()->count())->toBe(2)
+        ->and($assessment->fresh()->lock_version)->toBe(2);
+});
+
+it('does not create a blank finding when the current finding fails pre action validation', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $current = Finding::factory()->for($assessment)->create([
+        'title' => 'Finding da mantenere',
+        'scope_type' => ScopeType::Organization,
+        'sort_order' => 1,
+    ]);
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $current->id)
+        ->set('findingData.title', 'Modifica non persistibile')
+        ->set('findingData.scope_type', ScopeType::SelectedAssets->value)
+        ->set('findingData.asset_ids', [])
+        ->call('createBlankFinding')
+        ->assertSet('selectedFindingId', $current->id)
+        ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
+        ->assertHasErrors(['findingData.scope']);
+
+    expect($assessment->findings()->count())->toBe(1)
+        ->and($current->fresh()->title)->toBe('Finding da mantenere')
+        ->and($assessment->fresh()->lock_version)->toBe(0);
+});
+
+it('retains pending evidence when finding validation fails', function (): void {
+    Storage::fake('local');
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $current = Finding::factory()->for($assessment)->create([
+        'scope_type' => ScopeType::Organization,
+        'sort_order' => 1,
+    ]);
+    $pendingPath = 'pending-evidence/retained.png';
+    Storage::disk('local')->put($pendingPath, (string) file_get_contents(base_path('fixtures/evidence/valid-small.png')));
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $current->id)
+        ->set('findingData.evidence_uploads', ['retained' => $pendingPath])
+        ->set('findingData.evidence_original_names', ['retained' => 'retained.png'])
+        ->set('findingData.scope_type', ScopeType::SelectedAssets->value)
+        ->set('findingData.asset_ids', [])
+        ->call('saveFinding')
+        ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
+        ->assertHasErrors(['findingData.scope']);
+
+    Storage::disk('local')->assertExists($pendingPath);
+    expect($current->evidences()->count())->toBe(0)
+        ->and($assessment->fresh()->lock_version)->toBe(0);
+});
+
+it('saves the current finding before selecting another finding', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $current = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $next = Finding::factory()->for($assessment)->create(['sort_order' => 2]);
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $current->id)
+        ->set('findingData.title', 'Persistito prima della selezione')
+        ->call('selectFinding', $next->id)
+        ->assertHasNoErrors()
+        ->assertSet('selectedFindingId', $next->id)
+        ->assertSet('findingData.title', $next->title)
+        ->assertSet('saveStatus', WorkspaceAssessment::STATUS_SAVED);
+
+    expect($current->fresh()->title)->toBe('Persistito prima della selezione')
+        ->and($assessment->fresh()->lock_version)->toBe(1);
+});
+
+it('saves the current finding before previous next close and tab navigation', function (): void {
+    $administrator = User::factory()->create();
+    $this->actingAs($administrator);
+
+    $assessment = Assessment::factory()->create();
+    $first = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $middle = Finding::factory()->for($assessment)->create(['sort_order' => 2]);
+    $last = Finding::factory()->for($assessment)->create(['sort_order' => 3]);
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $middle->id)
+        ->set('findingData.title', 'Persistito prima di precedente')
+        ->call('selectPreviousFinding')
+        ->assertSet('selectedFindingId', $first->id);
+    expect($middle->fresh()->title)->toBe('Persistito prima di precedente');
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $middle->id)
+        ->set('findingData.title', 'Persistito prima di successivo')
+        ->call('selectNextFinding')
+        ->assertSet('selectedFindingId', $last->id);
+    expect($middle->fresh()->title)->toBe('Persistito prima di successivo');
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $middle->id)
+        ->set('findingData.title', 'Persistito prima della chiusura')
+        ->call('closeInspector')
+        ->assertSet('selectedFindingId', null);
+    expect($middle->fresh()->title)->toBe('Persistito prima della chiusura');
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $middle->id)
+        ->set('findingData.title', 'Persistito prima del cambio tab')
+        ->call('setWorkspaceTab', 'assessment-details')
+        ->assertSet('activeWorkspaceTab', 'assessment-details');
+    expect($middle->fresh()->title)->toBe('Persistito prima del cambio tab');
+});
+
+it('saves the current finding before template copy duplication and deletion mutations', function (): void {
+    $this->seed(MilestoneTwoSeeder::class);
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $current = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $template = FindingTemplate::query()->firstOrFail();
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $current->id)
+        ->set('findingData.title', 'Salvato prima della copia template')
+        ->call('createFromTemplate', $template->id)
+        ->assertHasNoErrors();
+    expect($current->fresh()->title)->toBe('Salvato prima della copia template')
+        ->and($assessment->findings()->count())->toBe(2);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $current->id)
+        ->set('findingData.title', 'Salvato prima della duplicazione')
+        ->call('duplicateFinding', $current->id)
+        ->assertHasNoErrors();
+    expect($current->fresh()->title)->toBe('Salvato prima della duplicazione')
+        ->and($assessment->findings()->count())->toBe(3);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $current->id)
+        ->set('findingData.title', 'Salvato prima della cancellazione')
+        ->call('deleteFinding', $current->id)
+        ->assertHasNoErrors();
+    expect($current->fresh()->trashed())->toBeTrue()
+        ->and($current->fresh()->title)->toBe('Salvato prima della cancellazione')
+        ->and($assessment->findings()->count())->toBe(2);
+});
+
+it('persists the selected finding before completing the assessment', function (): void {
+    $this->seed(MilestoneTwoSeeder::class);
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = app(CopyTemplateToAssessment::class)(
+        $assessment,
+        FindingTemplate::query()->where('default_scope_type', ScopeType::Organization->value)->firstOrFail(),
+    );
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->set('findingData.title', 'Persistito prima del completamento')
+        ->callAction(TestAction::make('complete'))
+        ->assertHasNoErrors();
+
+    expect($finding->fresh()->title)->toBe('Persistito prima del completamento')
+        ->and($assessment->fresh()->status->value)->toBe('completed');
+});
+
+it('does not complete the assessment when the selected finding pre action save fails', function (): void {
+    $this->seed(MilestoneTwoSeeder::class);
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = app(CopyTemplateToAssessment::class)(
+        $assessment,
+        FindingTemplate::query()->where('default_scope_type', ScopeType::Organization->value)->firstOrFail(),
+    );
+    $originalTitle = $finding->title;
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->set('findingData.title', 'Titolo che non deve essere salvato')
+        ->set('findingData.scope_type', ScopeType::SelectedAssets->value)
+        ->set('findingData.asset_ids', [])
+        ->callAction(TestAction::make('complete'))
+        ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
+        ->assertHasErrors(['findingData.scope']);
+
+    expect($finding->fresh()->title)->toBe($originalTitle)
+        ->and($assessment->fresh()->status->value)->toBe('draft');
 });
 
 it('exposes one native reorder mode and one visible row action menu', function (): void {

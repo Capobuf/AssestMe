@@ -9,6 +9,7 @@ use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
 use App\Models\RiskMatrixEntry;
 use App\Models\RiskProfile;
+use App\Settings\GeneralSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -17,6 +18,8 @@ use Illuminate\Validation\ValidationException;
 
 final class SaveRiskProfileConfiguration
 {
+    public function __construct(private readonly GeneralSettings $settings) {}
+
     /**
      * The matrix is saved as one aggregate so a profile can never expose a partially
      * updated classification model to assessment calculations.
@@ -103,6 +106,12 @@ final class SaveRiskProfileConfiguration
 
         if ($profile?->is_default === true && ! (bool) $validated['is_default']) {
             throw ValidationException::withMessages(['is_default' => __('assestme.risk.errors.choose_replacement_default')]);
+        }
+
+        if ($profile !== null
+            && (int) $this->settings->active_risk_profile_id === (int) $profile->getKey()
+            && ! (bool) $validated['is_enabled']) {
+            throw ValidationException::withMessages(['is_enabled' => __('assestme.risk.errors.active_must_be_enabled')]);
         }
 
         return DB::transaction(function () use ($profile, $validated): RiskProfile {

@@ -21,7 +21,9 @@ composer.lock
 phpstan.neon
 pint.json
 schemas/finding-template.schema.json
+schemas/finding-template-v1.schema.json
 templates/base-findings.it.json
+scripts/build-base-findings.php
 resources/lang/it/
 resources/views/reports/assessment.blade.php
 resources/views/reports/partials/

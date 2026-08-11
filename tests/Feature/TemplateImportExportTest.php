@@ -23,6 +23,7 @@ it('imports every valid template atomically and exports a data-equivalent docume
         ->and(FindingTemplate::query()->whereHas('solutions', fn ($query) => $query->where('is_recommended', true))->count())->toBe(5);
 
     $export = app(ExportFindingTemplates::class)();
+    expect(json_decode($export, true, flags: JSON_THROW_ON_ERROR)['schema_version'])->toBe(2);
     $roundTrip = app(ImportFindingTemplates::class)($export, 'replace');
 
     expect($roundTrip)->toBe(['created' => 0, 'replaced' => 5, 'skipped' => 0])
@@ -63,6 +64,22 @@ it('rejects the removed tags property under schema version one', function (): vo
         true,
         flags: JSON_THROW_ON_ERROR,
     );
+    $payload['templates'][0]['tags'] = ['legacy'];
+
+    expect(fn () => app(ImportFindingTemplates::class)(
+        json_encode($payload, JSON_THROW_ON_ERROR),
+        'replace',
+    ))->toThrow(ValidationException::class)
+        ->and(FindingTemplate::query()->count())->toBe(0);
+});
+
+it('rejects the removed tags property under canonical schema version two', function (): void {
+    $payload = json_decode(
+        (string) file_get_contents(base_path('fixtures/imports/valid-all-branches.json')),
+        true,
+        flags: JSON_THROW_ON_ERROR,
+    );
+    $payload['schema_version'] = 2;
     $payload['templates'][0]['tags'] = ['legacy'];
 
     expect(fn () => app(ImportFindingTemplates::class)(

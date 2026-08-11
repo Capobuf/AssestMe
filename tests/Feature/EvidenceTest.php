@@ -2,18 +2,25 @@
 
 declare(strict_types=1);
 
+use App\Actions\Assessments\SaveFindingDetails;
 use App\Actions\Evidence\DeleteEvidence;
+use App\Actions\Evidence\InspectEvidenceUpload;
 use App\Actions\Evidence\StoreEvidence;
 use App\Actions\Storage\AuditPrivateStorage;
+use App\Data\Assessments\FindingSaveData;
+use App\Data\Evidence\PendingEvidenceFileData;
 use App\Enums\AssessmentStatus;
 use App\Enums\EvidenceType;
+use App\Exceptions\IdempotencyKeyMismatch;
 use App\Models\Evidence;
 use App\Models\Finding;
 use App\Models\User;
+use App\Models\WorkspaceSaveRequest;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 beforeEach(function (): void {
@@ -199,6 +206,116 @@ it('reports missing corrupt and orphan evidence without deleting it', function (
     $this->artisan('assestme:storage:audit')->assertFailed();
 });
 
+it('saves two evidence files in one idempotent finding operation and increments one version', function (): void {
+    $finding = Finding::factory()->create(['title' => 'Finding prima del batch']);
+    $requestId = (string) Str::uuid();
+    $files = [
+        app(InspectEvidenceUpload::class)->handle(UploadedFile::fake()->image('prima.png', 20, 20)),
+        app(InspectEvidenceUpload::class)->handle(UploadedFile::fake()->image('seconda.png', 21, 21)),
+    ];
+    $request = aggregateEvidenceSaveRequest($finding, $files, $requestId, 'Finding salvato con due evidenze');
+
+    $result = app(SaveFindingDetails::class)($finding, $request);
+    $replay = app(SaveFindingDetails::class)($finding, $request);
+
+    expect($result->appliedVersion)->toBe(1)
+        ->and($result->evidenceIds)->toHaveCount(2)
+        ->and($replay->idempotentReplay)->toBeTrue()
+        ->and($replay->evidenceIds)->toBe($result->evidenceIds)
+        ->and($finding->evidences()->count())->toBe(2)
+        ->and($finding->assessment->fresh()->lock_version)->toBe(1)
+        ->and(WorkspaceSaveRequest::query()->count())->toBe(1)
+        ->and(Storage::disk('local')->allFiles())->toHaveCount(2);
+});
+
+it('rejects duplicate files inside one finding save before writing or mutating', function (): void {
+    $finding = Finding::factory()->create(['title' => 'Finding invariato']);
+    $upload = UploadedFile::fake()->image('contenuto.png', 22, 22);
+    $files = [
+        app(InspectEvidenceUpload::class)->handle($upload),
+        app(InspectEvidenceUpload::class)->handle(new UploadedFile(
+            $upload->getRealPath(),
+            'duplicato.png',
+            'image/png',
+            null,
+            true,
+        )),
+    ];
+
+    expect(fn () => app(SaveFindingDetails::class)(
+        $finding,
+        aggregateEvidenceSaveRequest($finding, $files, (string) Str::uuid(), 'Titolo da non salvare'),
+    ))->toThrow(ValidationException::class)
+        ->and($finding->fresh()->title)->toBe('Finding invariato')
+        ->and($finding->evidences()->count())->toBe(0)
+        ->and($finding->assessment->fresh()->lock_version)->toBe(0)
+        ->and(Storage::disk('local')->allFiles())->toBeEmpty();
+});
+
+it('rejects an invalid second upload before any aggregate write or finding mutation', function (): void {
+    $finding = Finding::factory()->create(['title' => 'Finding invariato']);
+    $files = [app(InspectEvidenceUpload::class)->handle(UploadedFile::fake()->image('prima.png', 20, 20))];
+    $invalid = UploadedFile::fake()->createWithContent('seconda.exe', 'not an approved format');
+
+    expect(fn () => $files[] = app(InspectEvidenceUpload::class)->handle($invalid))
+        ->toThrow(ValidationException::class)
+        ->and($finding->fresh()->title)->toBe('Finding invariato')
+        ->and($finding->evidences()->count())->toBe(0)
+        ->and($finding->assessment->fresh()->lock_version)->toBe(0)
+        ->and(Storage::disk('local')->allFiles())->toBeEmpty();
+});
+
+it('reports a disappeared prepared source without persistence success', function (): void {
+    $finding = Finding::factory()->create(['title' => 'Finding invariato']);
+    $upload = UploadedFile::fake()->image('temporanea.png', 20, 20);
+    $pending = app(InspectEvidenceUpload::class)->handle($upload);
+    unlink($upload->getRealPath());
+
+    expect(fn () => app(SaveFindingDetails::class)(
+        $finding,
+        aggregateEvidenceSaveRequest($finding, [$pending], (string) Str::uuid(), 'Titolo non persistito'),
+    ))->toThrow(RuntimeException::class)
+        ->and($finding->fresh()->title)->toBe('Finding invariato')
+        ->and($finding->evidences()->count())->toBe(0)
+        ->and($finding->assessment->fresh()->lock_version)->toBe(0)
+        ->and(WorkspaceSaveRequest::query()->count())->toBe(0);
+});
+
+it('compensates every prepared batch file when evidence database persistence fails', function (): void {
+    $finding = Finding::factory()->create(['title' => 'Finding invariato']);
+    $files = [
+        app(InspectEvidenceUpload::class)->handle(UploadedFile::fake()->image('prima.png', 23, 23)),
+        app(InspectEvidenceUpload::class)->handle(UploadedFile::fake()->image('seconda.png', 24, 24)),
+    ];
+    Event::listen('eloquent.creating: '.Evidence::class, static function (): never {
+        throw new RuntimeException('Forced aggregate evidence persistence failure.');
+    });
+
+    expect(fn () => app(SaveFindingDetails::class)(
+        $finding,
+        aggregateEvidenceSaveRequest($finding, $files, (string) Str::uuid(), 'Titolo da non salvare'),
+    ))->toThrow(RuntimeException::class)
+        ->and($finding->fresh()->title)->toBe('Finding invariato')
+        ->and($finding->evidences()->count())->toBe(0)
+        ->and($finding->assessment->fresh()->lock_version)->toBe(0)
+        ->and(WorkspaceSaveRequest::query()->count())->toBe(0)
+        ->and(Storage::disk('local')->allFiles())->toBeEmpty();
+});
+
+it('rejects reuse of one finding request id with a different aggregate payload', function (): void {
+    $finding = Finding::factory()->create();
+    $requestId = (string) Str::uuid();
+    $first = aggregateEvidenceSaveRequest($finding, [], $requestId, 'Prima versione');
+    app(SaveFindingDetails::class)($finding, $first);
+    $different = aggregateEvidenceSaveRequest($finding->fresh(), [], $requestId, 'Payload differente');
+
+    expect(fn () => app(SaveFindingDetails::class)($finding->fresh(), $different))
+        ->toThrow(IdempotencyKeyMismatch::class)
+        ->and($finding->fresh()->title)->toBe('Prima versione')
+        ->and($finding->assessment->fresh()->lock_version)->toBe(1)
+        ->and(WorkspaceSaveRequest::query()->count())->toBe(1);
+});
+
 function evidenceFixtureDirectory(): string
 {
     return storage_path('framework/testing/evidence-formats');
@@ -217,4 +334,45 @@ function evidenceUpload(string $extension): UploadedFile
     }
 
     return new UploadedFile($path, "evidence.{$extension}", null, null, true);
+}
+
+/**
+ * @param  list<PendingEvidenceFileData>  $files
+ */
+function aggregateEvidenceSaveRequest(
+    Finding $finding,
+    array $files,
+    string $requestId,
+    string $title,
+): FindingSaveData {
+    $findingPayload = [
+        'title' => $title,
+        'problem' => $finding->problem,
+        'entrepreneur_notes' => $finding->entrepreneur_notes,
+        'technical_notes' => $finding->technical_notes,
+        'category_id' => $finding->category_id,
+        'scope_type' => $finding->scope_type?->value ?? 'organization',
+        'scope_description' => $finding->scope_description,
+        'site_ids' => [],
+        'asset_ids' => [],
+        'consequence_level_id' => $finding->consequence_level_id,
+        'likelihood_level_id' => $finding->likelihood_level_id,
+        'priority_level_id' => $finding->priority_level_id,
+        'priority_is_overridden' => (bool) $finding->priority_is_overridden,
+        'priority_rationale' => $finding->priority_rationale,
+        'status' => $finding->status?->value ?? 'open',
+        'include_in_report' => (bool) ($finding->include_in_report ?? true),
+        'resolution_notes' => $finding->resolution_notes,
+        'solutions' => [],
+    ];
+    $payload = FindingSaveData::aggregatePayload($findingPayload, $files, null);
+
+    return new FindingSaveData(
+        requestId: $requestId,
+        expectedVersion: (int) $finding->assessment->lock_version,
+        tabId: (string) Str::uuid(),
+        payload: $payload,
+        payloadSha256: FindingSaveData::hashPayload($payload),
+        evidenceFiles: $files,
+    );
 }

@@ -238,21 +238,40 @@ it('persists immutable versioned PDF snapshots and downloads the authoritative f
 });
 
 it('generates one authoritative PDF and redirects the Filament action to its authenticated download', function (): void {
-    [$assessment] = createPdfReadyAssessment();
+    [$assessment, $finding] = createPdfReadyAssessment();
     $this->actingAs(User::factory()->create());
 
     $component = Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
-        ->callAction(TestAction::make('download_pdf'));
+        ->call('selectFinding', $finding->getKey())
+        ->set('findingData.title', 'Titolo persistito nel PDF')
+        ->callAction(TestAction::make('download_pdf'))
+        ->assertSet('saveStatus', WorkspaceAssessment::STATUS_SAVED)
+        ->assertHasNoErrors();
 
     $report = GeneratedReport::query()->sole();
     $component->assertRedirect(route('generated-reports.download', $report));
     expect($report->version)->toBe(1)
+        ->and($report->payload_snapshot['findings'][0]['title'])->toBe('Titolo persistito nel PDF')
         ->and(Storage::disk('local')->exists($report->file_path))->toBeTrue()
         ->and(hash_file('sha256', Storage::disk('local')->path($report->file_path)))->toBe($report->file_sha256);
 
     Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
         ->call('setWorkspaceTab', 'generated-files')
         ->assertSee($report->file_name);
+});
+
+it('does not generate a PDF when the selected finding pre action save fails', function (): void {
+    [$assessment, $finding] = createPdfReadyAssessment();
+    $this->actingAs(User::factory()->create());
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->getKey())
+        ->set('findingData.scope_type', ScopeType::SelectedAssets->value)
+        ->set('findingData.asset_ids', [])
+        ->callAction(TestAction::make('download_pdf'));
+
+    expect(GeneratedReport::query()->count())->toBe(0)
+        ->and(Storage::disk('local')->allFiles('reports'))->toBe([]);
 });
 
 it('rejects PDF generation only when selected asset scope has no asset', function (): void {

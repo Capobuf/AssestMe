@@ -9,6 +9,7 @@ use App\Enums\FindingStatus;
 use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Models\Assessment;
 use App\Models\Finding;
+use App\Services\Risk\UrgentPriorityResolver;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -49,7 +50,7 @@ final class AssessmentStatsOverview extends StatsOverviewWidget
                 Finding::query()
                     ->where('include_in_report', true)
                     ->where('status', FindingStatus::Open)
-                    ->whereHas('priorityLevel', fn ($query) => $query->whereIn('code', ['high', 'critical']))
+                    ->whereIn('priority_level_id', app(UrgentPriorityResolver::class)->ids())
                     ->count(),
             )
                 ->description(__('assestme.dashboard.urgent_findings_help'))

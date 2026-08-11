@@ -20,6 +20,7 @@ The dashboard separates:
 - compact application status for backup, database integrity, and unresolved cleanup.
 
 Severity uses text or an icon in addition to color. Status messaging must not claim an application block that is not enforced.
+Urgency is profile-relative: the two highest persisted priority levels of each Finding's own profile are used, without technical-code or numeric-score hardcodes.
 
 ## Finding workspace
 
@@ -52,6 +53,10 @@ The UI exposes saving, saved, unsaved, offline, validation error, server error, 
 
 A stale version produces an explicit conflict. Repeated delivery of the same request UUID returns the original result rather than applying the mutation twice.
 
+Before selection changes, tab changes, close, new/copy/duplicate/delete/reorder, completion, PDF, or XLSX, the server persists the dirty current form. The dependent action runs only after an explicit successful result. Finding and assessment forms keep independent dirty/error state.
+
+A Finding save carries its pending file and URL Evidence in the signed payload hash. Finding, solutions, associations, Evidence rows, idempotency response, and one assessment-version increment commit as one aggregate. Prepared private files are compensated when persistence fails; pending uploads are removed only after success.
+
 ## Local IndexedDB recovery
 
 - Existing assessment and Finding forms keep durable local drafts in an application-owned IndexedDB store.
@@ -66,7 +71,8 @@ Completion validates the same scope, solution, risk, and evidence contracts used
 
 ## Template import/export
 
-- Validate the whole document against the canonical schema.
+- Accept and structurally validate schema v1 and v2; export schema v2 only.
+- Resolve v2 risk codes against the enabled active profile during both preview and import, including matrix-coherence validation.
 - Preserve stable external IDs.
 - Apply full replacement semantics for matching imported templates.
 - Use transactions for authoritative changes.

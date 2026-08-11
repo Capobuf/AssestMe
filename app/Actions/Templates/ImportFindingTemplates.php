@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace App\Actions\Templates;
 
 use App\Actions\Categories\SaveCategory;
+use App\Actions\Risk\CalculateFindingPriority;
 use App\Models\Category;
+use App\Models\ConsequenceLevel;
 use App\Models\EffortLevel;
 use App\Models\FindingTemplate;
 use App\Models\FindingTemplateSolution;
+use App\Models\LikelihoodLevel;
 use App\Models\RiskProfile;
 use App\Services\Reporting\EditorialLimits;
+use App\Services\Risk\ActiveRiskProfileResolver;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use JsonException;
@@ -19,6 +23,8 @@ use Opis\JsonSchema\Validator;
 
 final class ImportFindingTemplates
 {
+    public function __construct(private readonly ActiveRiskProfileResolver $activeRiskProfileResolver) {}
+
     /** @return array{created:int,replaced:int,skipped:int} */
     public function __invoke(string $json, string $conflictMode): array
     {
@@ -31,7 +37,8 @@ final class ImportFindingTemplates
         return DB::transaction(function () use ($document, $conflictMode): array {
             $result = ['created' => 0, 'replaced' => 0, 'skipped' => 0];
 
-            foreach ($document['templates'] as $row) {
+            $profile = $this->activeRiskProfileResolver->resolve();
+            foreach ($document['templates'] as $index => $row) {
                 $externalId = (string) $row['external_id'];
                 $template = FindingTemplate::withTrashed()->where('external_id', $externalId)->first();
 
@@ -44,8 +51,6 @@ final class ImportFindingTemplates
                 $created = $template === null;
                 $template ??= new FindingTemplate;
                 $category = $this->resolveCategory((string) $row['category']);
-                $profile = RiskProfile::query()->where('is_default', true)->where('is_enabled', true)->firstOrFail();
-
                 $template->fill([
                     'external_id' => $externalId,
                     'title' => $row['title'],
@@ -55,9 +60,9 @@ final class ImportFindingTemplates
                     'technical_notes' => $row['technical_notes'],
                     'default_scope_type' => $row['default_scope_type'],
                     'default_scope_description' => $row['default_scope_description'],
-                    'default_consequence_level_id' => $this->levelId($profile, 'consequenceLevels', $row['consequence']),
-                    'default_likelihood_level_id' => $this->levelId($profile, 'likelihoodLevels', $row['likelihood']),
-                    'default_priority_level_id' => $this->levelId($profile, 'priorityLevels', $row['priority']),
+                    'default_consequence_level_id' => $this->levelId($profile, 'consequence', $row['consequence'], $index, $externalId),
+                    'default_likelihood_level_id' => $this->levelId($profile, 'likelihood', $row['likelihood'], $index, $externalId),
+                    'default_priority_level_id' => $this->levelId($profile, 'priority', $row['priority'], $index, $externalId),
                     'priority_rationale' => $row['priority_rationale'],
                     'is_enabled' => $row['active'],
                 ]);
@@ -162,8 +167,16 @@ final class ImportFindingTemplates
             throw ValidationException::withMessages(['file' => __('assestme.templates.errors.invalid_json')]);
         }
 
-        $schema = json_decode((string) file_get_contents(base_path('schemas/finding-template.schema.json')));
-        if (! (new Validator)->validate($object, $schema)->isValid() || ! is_array($document)) {
+        $schemaVersion = is_array($document) && is_int($document['schema_version'] ?? null)
+            ? $document['schema_version']
+            : 0;
+        $schemaPath = match ($schemaVersion) {
+            1 => base_path('schemas/finding-template-v1.schema.json'),
+            2 => base_path('schemas/finding-template.schema.json'),
+            default => null,
+        };
+        $schema = $schemaPath === null ? null : json_decode((string) file_get_contents($schemaPath));
+        if ($schema === null || ! (new Validator)->validate($object, $schema)->isValid() || ! is_array($document)) {
             throw ValidationException::withMessages(['file' => __('assestme.templates.errors.invalid_schema')]);
         }
 
@@ -201,6 +214,8 @@ final class ImportFindingTemplates
                     ]);
                 }
             }
+
+            $this->validateRiskSemantics($template, $index);
         }
 
         return $document;
@@ -221,16 +236,62 @@ final class ImportFindingTemplates
         return mb_strtolower(Normalizer::normalize(trim($name), Normalizer::FORM_C) ?: trim($name));
     }
 
-    private function levelId(RiskProfile $profile, string $relation, mixed $code): ?int
-    {
+    private function levelId(
+        RiskProfile $profile,
+        string $field,
+        mixed $code,
+        int $index,
+        string $externalId,
+    ): ?int {
         if ($code === null) {
             return null;
         }
 
-        /** @var int $id */
-        $id = $profile->{$relation}()->where('code', $code)->value('id');
+        $id = match ($field) {
+            'consequence' => $profile->consequenceLevels()->where('is_enabled', true)->where('code', $code)->value('id'),
+            'likelihood' => $profile->likelihoodLevels()->where('is_enabled', true)->where('code', $code)->value('id'),
+            'priority' => $profile->priorityLevels()->where('is_enabled', true)->where('code', $code)->value('id'),
+            default => null,
+        };
+        if (! is_numeric($id)) {
+            throw ValidationException::withMessages([
+                "templates.{$index}.{$field}" => __('assestme.templates.errors.risk_code_not_found', [
+                    'index' => $index,
+                    'external_id' => $externalId,
+                    'field' => $field,
+                    'code' => (string) $code,
+                ]),
+            ]);
+        }
 
-        return $id;
+        return (int) $id;
+    }
+
+    /** @param array<string, mixed> $template */
+    private function validateRiskSemantics(array $template, int $index): void
+    {
+        $profile = $this->activeRiskProfileResolver->resolve();
+        $externalId = (string) $template['external_id'];
+        $consequenceId = $this->levelId($profile, 'consequence', $template['consequence'], $index, $externalId);
+        $likelihoodId = $this->levelId($profile, 'likelihood', $template['likelihood'], $index, $externalId);
+        $priorityId = $this->levelId($profile, 'priority', $template['priority'], $index, $externalId);
+
+        if ($consequenceId === null || $likelihoodId === null || $priorityId === null) {
+            return;
+        }
+
+        $calculated = app(CalculateFindingPriority::class)(
+            ConsequenceLevel::query()->findOrFail($consequenceId),
+            LikelihoodLevel::query()->findOrFail($likelihoodId),
+        );
+        if ((int) $calculated->getKey() !== $priorityId) {
+            throw ValidationException::withMessages([
+                "templates.{$index}.priority" => __('assestme.templates.errors.risk_matrix_mismatch', [
+                    'index' => $index,
+                    'external_id' => $externalId,
+                ]),
+            ]);
+        }
     }
 
     /** @param list<array<string, mixed>> $rows */

@@ -52,7 +52,7 @@ final class ExportFindingTemplates
             ])->all();
 
         return json_encode(
-            ['schema_version' => 1, 'templates' => $templates],
+            ['schema_version' => 2, 'templates' => $templates],
             JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
         )."\n";
     }

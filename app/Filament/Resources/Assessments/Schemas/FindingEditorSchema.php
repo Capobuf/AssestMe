@@ -11,13 +11,11 @@ use App\Enums\ScopeType;
 use App\Filament\Resources\Assessments\Pages\WorkspaceAssessment;
 use App\Models\Asset;
 use App\Models\Category;
-use App\Models\ConsequenceLevel;
 use App\Models\EffortLevel;
 use App\Models\Finding;
 use App\Models\FindingSolution;
-use App\Models\LikelihoodLevel;
-use App\Models\PriorityLevel;
 use App\Services\Reporting\EditorialLimits;
+use App\Services\Risk\ActiveRiskProfileResolver;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
@@ -317,11 +315,11 @@ final class FindingEditorSchema
                     ->schema([
                         Select::make('consequence_level_id')
                             ->label(__('assestme.templates.fields.consequence'))
-                            ->options(fn (): array => ConsequenceLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())
+                            ->options(fn (Get $get): array => app(ActiveRiskProfileResolver::class)->consequenceOptions(self::nullableId($get('consequence_level_id'))))
                             ->disabled(self::isReadOnly(...)),
                         Select::make('likelihood_level_id')
                             ->label(__('assestme.templates.fields.likelihood'))
-                            ->options(fn (): array => LikelihoodLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())
+                            ->options(fn (Get $get): array => app(ActiveRiskProfileResolver::class)->likelihoodOptions(self::nullableId($get('likelihood_level_id'))))
                             ->disabled(self::isReadOnly(...)),
                         Toggle::make('priority_is_overridden')
                             ->label(__('assestme.findings.fields.priority_override'))
@@ -329,7 +327,7 @@ final class FindingEditorSchema
                             ->disabled(self::isReadOnly(...)),
                         Select::make('priority_level_id')
                             ->label(__('assestme.findings.fields.priority'))
-                            ->options(fn (): array => PriorityLevel::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('label', 'id')->all())
+                            ->options(fn (Get $get): array => app(ActiveRiskProfileResolver::class)->priorityOptions(self::nullableId($get('priority_level_id'))))
                             ->disabled(self::isReadOnly(...)),
                         Textarea::make('priority_rationale')
                             ->label(__('assestme.templates.fields.priority_rationale'))
@@ -407,5 +405,10 @@ final class FindingEditorSchema
         return __('assestme.common.characters_remaining', [
             'count' => max(0, $limit - mb_strlen((string) $state)),
         ]);
+    }
+
+    private static function nullableId(mixed $value): ?int
+    {
+        return is_numeric($value) ? (int) $value : null;
     }
 }

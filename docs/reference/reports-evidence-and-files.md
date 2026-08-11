@@ -11,6 +11,7 @@ Evidence is private and belongs to the applicable Finding/assessment context.
 - SHA-256 is stored and verified where the contract requires it.
 - Report generation does not omit failed or unreadable evidence silently.
 - Evidence presentation keeps title, image, and caption as a logical page-safe block where applicable.
+- Evidence submitted from the Finding editor is part of the signed Finding aggregate: all files are inspected before final writes, batch duplicates and aggregate limits fail the whole request, database failure compensates prepared files, and one successful request increments the assessment version once.
 
 ## PDF renderer
 

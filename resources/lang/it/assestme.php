@@ -332,12 +332,14 @@ return [
         'errors' => [
             'conflict_mode' => 'Seleziona una modalità di conflitto valida.',
             'invalid_json' => 'Il file non contiene JSON UTF-8 valido.',
-            'invalid_schema' => 'Il file non rispetta lo schema template versione 1.',
+            'invalid_schema' => 'Il file non rispetta uno schema template supportato.',
             'duplicate_template' => 'Il file contiene ID esterni di template duplicati.',
             'duplicate_solution' => 'Un template contiene ID esterni di soluzione duplicati.',
             'invalid_range' => 'Il valore massimo della stima deve essere maggiore o uguale al minimo.',
             'recommended_count' => 'Ogni template deve avere esattamente una soluzione raccomandata.',
             'risk_profile' => 'Conseguenza, probabilità e priorità devono appartenere allo stesso profilo di rischio.',
+            'risk_code_not_found' => 'Template :index (:external_id): il campo :field usa il codice rischio non disponibile “:code”.',
+            'risk_matrix_mismatch' => 'Template :index (:external_id): la priorità non coincide con la matrice per conseguenza e probabilità.',
             'monetary_amount' => 'Una stima monetaria richiede importo minimo e valuta.',
             'non_monetary_amount' => 'Una stima non monetaria non può contenere importi o valuta.',
             'exact_max' => 'Una stima esatta non può contenere un importo massimo.',
@@ -380,6 +382,7 @@ return [
         'disabled_suffix' => '(disabilitata)',
         'errors' => [
             'default_must_be_enabled' => 'Il profilo predefinito deve essere abilitato.',
+            'active_must_be_enabled' => 'Il profilo di rischio attivo deve restare abilitato.',
             'choose_replacement_default' => 'Imposta prima un altro profilo come predefinito.',
             'invalid_matrix' => 'La matrice deve contenere una sola priorità valida per ciascuna combinazione conseguenza/probabilità.',
             'foreign_consequence' => 'La conseguenza selezionata non appartiene a questo profilo di rischio.',
