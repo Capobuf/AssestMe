@@ -281,7 +281,6 @@ final class MilestoneZeroTest extends DuskTestCase
 
             $browser->click('.assestme-finding-row:first-of-type')
                 ->waitFor('[data-assestme-finding-inspector]')
-                ->click('.assestme-workbench-properties .fi-section:first-of-type .fi-section-header')
                 ->select('[data-dusk="finding-property-status"] select', 'planned');
             $browser->click('[data-dusk="finding-property-report"]')
                 ->waitUntil(<<<'JS'

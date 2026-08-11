@@ -90,7 +90,6 @@ final class WorkspaceLocalDraftTest extends DuskTestCase
                 ->type('[data-dusk="finding-solution-title"]', 'Soluzione conservata')
                 ->type('[data-dusk="finding-solution-description"]', 'Descrizione della soluzione locale')
                 ->select('[data-dusk="finding-estimate-type"] select', EstimateType::NotApplicable->value)
-                ->click('.assestme-workbench-properties .fi-section:first-of-type .fi-section-header')
                 ->click('[data-dusk="finding-property-report"]');
 
             $browser->script(<<<'JS'
@@ -172,7 +171,6 @@ final class WorkspaceLocalDraftTest extends DuskTestCase
                     return document.querySelector('[data-dusk="finding-solution-title"]')?.value
                         === 'Soluzione conservata';
                     JS)
-                ->click('.assestme-workbench-properties .fi-section:first-of-type .fi-section-header')
                 ->waitUntil(<<<'JS'
                     return document.querySelector('[data-dusk="finding-property-report"]')
                         ?.getAttribute('aria-checked') === 'false';

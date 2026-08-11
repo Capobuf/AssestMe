@@ -140,23 +140,18 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 JS)[0];
             Assert::assertSame(
                 [
-                    ['expanded' => 'false', 'heading' => 'Stato e Report'],
-                    ['expanded' => 'false', 'heading' => 'Classificazione'],
-                    ['expanded' => 'false', 'heading' => 'Si applica a'],
-                    ['expanded' => 'false', 'heading' => 'Rischio'],
-                    ['expanded' => 'false', 'heading' => 'Risoluzione'],
+                    ['expanded' => 'true', 'heading' => 'Stato e Report'],
+                    ['expanded' => 'true', 'heading' => 'Classificazione'],
+                    ['expanded' => 'true', 'heading' => 'Si applica a'],
+                    ['expanded' => 'true', 'heading' => 'Rischio'],
+                    ['expanded' => 'true', 'heading' => 'Risoluzione'],
                 ],
                 $propertySections,
             );
             self::resizeViewport($browser, 1440, 900);
             $browser->script(<<<'JS'
                 const body = document.querySelector('.assestme-workbench-properties__body');
-                for (const label of ['Rischio', 'Risoluzione']) {
-                    Array.from(body.querySelectorAll('.fi-section-header-heading'))
-                        .find((heading) => heading.textContent.trim() === label)
-                        .closest('.fi-section-header')
-                        .click();
-                }
+                body.scrollTop = body.scrollHeight;
                 JS);
             $browser->pause(600);
             $propertiesScroll = $browser->script(<<<'JS'

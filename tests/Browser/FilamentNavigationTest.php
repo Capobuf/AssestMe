@@ -146,6 +146,13 @@ final class FilamentNavigationTest extends DuskTestCase
             Assert::assertLessThanOrEqual(1, (int) $browser->script(
                 'return document.documentElement.scrollWidth - document.documentElement.clientWidth;',
             )[0], 'The workspace overflows horizontally after enabling top navigation.');
+            $browser->waitUntil(<<<'JS'
+                return Array.from(document.querySelectorAll('[data-assestme-workbench-properties] .assestme-workbench-section--properties .fi-section-content-ctn'))
+                    .every((section) => section.getAttribute('aria-expanded') === 'true');
+                JS);
+            Assert::assertSame(5, (int) $browser->script(<<<'JS'
+                return document.querySelectorAll('[data-assestme-workbench-properties] .assestme-workbench-section--properties .fi-section-content-ctn[aria-expanded="true"]').length;
+                JS)[0], 'Every lateral Finding property section should be open by default.');
 
             Assert::assertFalse(self::assetSelectorState($browser)['present']);
 

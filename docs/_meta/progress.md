@@ -128,6 +128,11 @@
 - Physical Edge, Firefox, iOS Safari, and Android Chrome checklist: NOT VERIFIED.
 - Global final product acceptance: open.
 
+- 2026-08-11: Completed the Finding contextual-properties default-state adjustment. The five lateral
+  sections remain collapsible but now render open initially. Focused Pint passed, and the isolated
+  `FilamentNavigationTest` browser journey passed 1 test with 66 assertions, including the rendered
+  expanded state of all five sections.
+
 ## Update rule
 
 Record only factual work performed, the exact affected area, commands run, and results. Progress entries do not create or modify product requirements.

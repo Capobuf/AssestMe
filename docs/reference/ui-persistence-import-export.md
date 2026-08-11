@@ -38,6 +38,7 @@ Responsive behavior has two intentional modes:
 - sequential navigator/editor behavior below that threshold.
 
 Contextual properties remain reachable on narrow containers. Mobile supports essential vertical editing and evidence capture but does not claim desktop workbench parity.
+The five contextual-property sections beside the selected Finding are collapsible and open by default; users may close them individually when they need a more compact inspector.
 
 Finding asset selection is optional for every scope. Selecting `selected_assets` reveals the asset selector but does not make it required, including for Findings copied from imported templates. Submitting that selector empty is a successful save, not a validation-error state.
 
