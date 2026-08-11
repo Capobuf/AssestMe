@@ -8,7 +8,8 @@ AssestMe is one application instance with one administrator and multiple custome
 
 - Companies own sites, assets, assessments, and related data.
 - Sites and assets selected by an assessment or Finding must belong to the same company.
-- Asset registration is optional except for Findings explicitly scoped as `selected_assets`.
+- Asset registration and Finding asset association are optional for every Finding scope.
+- When assets are selected, they must belong to the assessment company.
 - Asset types are managed under the company/asset navigation hierarchy.
 
 ## Assessments
@@ -34,6 +35,7 @@ Supported Finding scopes include:
 - custom description.
 
 Validation, completion, and report generation use the same scope rule. No UI-only exception may create a different server contract.
+The `selected_assets` scope may be saved, completed, and reported without an asset association. This also applies when the Finding was copied from an imported template.
 
 ## Solutions
 
@@ -66,6 +68,7 @@ Validation, completion, and report generation use the same scope rule. No UI-onl
 - Manual creation generates deterministic IDs from titles, adding `-2`, `-3`, and later numeric suffixes for collisions.
 - Existing IDs are immutable; title changes do not regenerate them.
 - Imports preserve supplied IDs.
+- A template imported with `default_scope_type` set to `selected_assets` does not create an asset requirement when copied to an assessment.
 - Updating an existing imported template is a full replacement of import-managed fields and solutions inside one transaction.
 - No implicit merge behavior may be invented.
 - Import failures are reported with row/item context and do not produce partial fake success.

@@ -140,7 +140,7 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 JS)[0];
             Assert::assertSame(
                 [
-                    ['expanded' => 'false', 'heading' => 'Stato e report'],
+                    ['expanded' => 'false', 'heading' => 'Stato e Report'],
                     ['expanded' => 'false', 'heading' => 'Classificazione'],
                     ['expanded' => 'false', 'heading' => 'Si applica a'],
                     ['expanded' => 'false', 'heading' => 'Rischio'],
@@ -264,7 +264,7 @@ final class WorkspaceResponsiveTest extends DuskTestCase
 
             $browser->script(<<<'JS'
                 const root = document.querySelector('.assestme-findings-workspace').closest('[wire\\:id]');
-                Livewire.find(root.getAttribute('wire:id')).$set('findingData.scope_type', 'selected_assets');
+                Livewire.find(root.getAttribute('wire:id')).$set('findingData.scope_type', 'custom');
                 JS);
             $browser->pause(250)->click('[data-dusk="save-finding"]')
                 ->waitUntil('return document.querySelector("[data-assestme-save-status]").dataset.status === "error"');

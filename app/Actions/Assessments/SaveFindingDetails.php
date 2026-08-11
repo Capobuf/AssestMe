@@ -406,7 +406,6 @@ final class SaveFindingDetails
         app(ValidateFindingScopeSelection::class)(
             $scope,
             count($siteIds),
-            count($assetIds),
             isset($validated['scope_description']) ? (string) $validated['scope_description'] : null,
         );
 

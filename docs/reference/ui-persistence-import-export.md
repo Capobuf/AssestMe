@@ -39,6 +39,8 @@ Responsive behavior has two intentional modes:
 
 Contextual properties remain reachable on narrow containers. Mobile supports essential vertical editing and evidence capture but does not claim desktop workbench parity.
 
+Finding asset selection is optional for every scope. Selecting `selected_assets` reveals the asset selector but does not make it required, including for Findings copied from imported templates.
+
 ## Save protocol
 
 Autosave and explicit save call the same authoritative server action.
@@ -67,7 +69,7 @@ A Finding save carries its pending file and URL Evidence in the signed payload h
 
 ## Completion and reopening
 
-Completion validates the same scope, solution, risk, and evidence contracts used by save/report generation. Completed or archived records are read-only until an explicit reopening action succeeds.
+Completion validates the same scope, solution, risk, and evidence contracts used by save/report generation. Asset association remains optional for every Finding scope. Completed or archived records are read-only until an explicit reopening action succeeds.
 
 ## Template import/export
 

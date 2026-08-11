@@ -195,7 +195,9 @@ it('selects one persisted finding and loads its complete inspector state', funct
         ->assertHasNoErrors()
         ->assertSet('selectedFindingId', $finding->id)
         ->assertSet('findingData.title', $finding->title)
-        ->assertSee(__('assestme.workspace.inspector.description'));
+        ->assertSee(__('assestme.workspace.inspector.description'))
+        ->assertSee('Stato e Report')
+        ->assertSee('Spiegazione del Problema');
 });
 
 it('limits the finding solution repeater to three items with clear guidance', function (): void {
@@ -305,8 +307,8 @@ it('keeps an invalid contextual scope visible without persisting partial workben
     Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
         ->call('selectFinding', $finding->id)
         ->set('findingData.title', 'Modifica non persistita')
-        ->set('findingData.scope_type', ScopeType::SelectedAssets->value)
-        ->set('findingData.asset_ids', [])
+        ->set('findingData.scope_type', ScopeType::SelectedSites->value)
+        ->set('findingData.site_ids', [])
         ->call('saveFinding')
         ->assertSet('findingData.title', 'Modifica non persistita')
         ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
@@ -353,8 +355,8 @@ it('does not create a blank finding when the current finding fails pre action va
     Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
         ->call('selectFinding', $current->id)
         ->set('findingData.title', 'Modifica non persistibile')
-        ->set('findingData.scope_type', ScopeType::SelectedAssets->value)
-        ->set('findingData.asset_ids', [])
+        ->set('findingData.scope_type', ScopeType::SelectedSites->value)
+        ->set('findingData.site_ids', [])
         ->call('createBlankFinding')
         ->assertSet('selectedFindingId', $current->id)
         ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
@@ -381,8 +383,8 @@ it('retains pending evidence when finding validation fails', function (): void {
         ->call('selectFinding', $current->id)
         ->set('findingData.evidence_uploads', ['retained' => $pendingPath])
         ->set('findingData.evidence_original_names', ['retained' => 'retained.png'])
-        ->set('findingData.scope_type', ScopeType::SelectedAssets->value)
-        ->set('findingData.asset_ids', [])
+        ->set('findingData.scope_type', ScopeType::SelectedSites->value)
+        ->set('findingData.site_ids', [])
         ->call('saveFinding')
         ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
         ->assertHasErrors(['findingData.scope']);
@@ -517,8 +519,8 @@ it('does not complete the assessment when the selected finding pre action save f
     Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
         ->call('selectFinding', $finding->id)
         ->set('findingData.title', 'Titolo che non deve essere salvato')
-        ->set('findingData.scope_type', ScopeType::SelectedAssets->value)
-        ->set('findingData.asset_ids', [])
+        ->set('findingData.scope_type', ScopeType::SelectedSites->value)
+        ->set('findingData.site_ids', [])
         ->callAction(TestAction::make('complete'))
         ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
         ->assertHasErrors(['findingData.scope']);

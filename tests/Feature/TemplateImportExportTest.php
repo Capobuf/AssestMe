@@ -2,8 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Actions\Assessments\AssessFindingCompleteness;
+use App\Actions\Assessments\CompleteAssessment;
+use App\Actions\Assessments\CopyTemplateToAssessment;
 use App\Actions\Templates\ExportFindingTemplates;
 use App\Actions\Templates\ImportFindingTemplates;
+use App\Enums\AssessmentStatus;
+use App\Enums\ScopeType;
+use App\Models\Assessment;
 use App\Models\FindingTemplate;
 use App\Models\FindingTemplateSolution;
 use Database\Seeders\MilestoneOneSeeder;
@@ -29,6 +35,28 @@ it('imports every valid template atomically and exports a data-equivalent docume
     expect($roundTrip)->toBe(['created' => 0, 'replaced' => 5, 'skipped' => 0])
         ->and(json_decode(app(ExportFindingTemplates::class)(), true, flags: JSON_THROW_ON_ERROR))
         ->toBe(json_decode($export, true, flags: JSON_THROW_ON_ERROR));
+});
+
+it('keeps assets optional for a finding copied from an imported selected asset template', function (): void {
+    $json = (string) file_get_contents(base_path('fixtures/imports/valid-all-branches.json'));
+    app(ImportFindingTemplates::class)($json, 'replace');
+    $template = FindingTemplate::query()
+        ->where('external_id', 'fixture.non-monetary')
+        ->sole();
+    $assessment = Assessment::factory()->create();
+
+    $finding = app(CopyTemplateToAssessment::class)($assessment, $template);
+    $incompleteIds = app(AssessFindingCompleteness::class)
+        ->applyIncompleteFilter($assessment->findings()->getQuery())
+        ->pluck('id')
+        ->all();
+    $completed = app(CompleteAssessment::class)($assessment->fresh());
+
+    expect($finding->scope_type)->toBe(ScopeType::SelectedAssets)
+        ->and($finding->assets)->toHaveCount(0)
+        ->and(app(AssessFindingCompleteness::class)($finding))->toBe([])
+        ->and($incompleteIds)->toBe([])
+        ->and($completed->status)->toBe(AssessmentStatus::Completed);
 });
 
 it('previews conflicts and skips existing templates without changing them', function (): void {

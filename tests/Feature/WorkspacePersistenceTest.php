@@ -223,12 +223,29 @@ it('keeps data and version unchanged after finding validation failure', function
     $assessment = Assessment::factory()->create();
     $finding = Finding::factory()->for($assessment)->create(['title' => 'Originale']);
     $payload = minimalFindingPayload($finding);
-    $payload['scope_type'] = 'selected_assets';
+    $payload['scope_type'] = 'custom';
+    $payload['scope_description'] = null;
 
     expect(fn () => app(SaveFindingDetails::class)($finding, findingSaveRequest($assessment, $payload)))
         ->toThrow(ValidationException::class)
         ->and($finding->fresh()->title)->toBe('Originale')
         ->and($assessment->fresh()->lock_version)->toBe(0);
+});
+
+it('saves selected asset scope without an asset association', function (): void {
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create();
+    $payload = minimalFindingPayload($finding);
+    $payload['scope_type'] = ScopeType::SelectedAssets->value;
+
+    $saved = app(SaveFindingDetails::class)(
+        $finding,
+        findingSaveRequest($assessment, $payload),
+    )->finding;
+
+    expect($saved->scope_type)->toBe(ScopeType::SelectedAssets)
+        ->and($saved->assets)->toHaveCount(0)
+        ->and($assessment->fresh()->lock_version)->toBe(1);
 });
 
 it('rejects a fourth finding solution server side without changing the aggregate', function (): void {

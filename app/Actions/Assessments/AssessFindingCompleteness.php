@@ -16,7 +16,7 @@ final readonly class AssessFindingCompleteness
     /** @return list<string> */
     public function __invoke(Finding $finding): array
     {
-        $finding->loadMissing(['solutions', 'sites', 'assets']);
+        $finding->loadMissing(['solutions', 'sites']);
 
         return $this->completionValidator->findingErrors($finding);
     }
@@ -43,10 +43,6 @@ final readonly class AssessFindingCompleteness
                     ->orWhere(function (Builder $query): void {
                         $query->where('scope_type', ScopeType::SelectedSites)
                             ->whereDoesntHave('sites');
-                    })
-                    ->orWhere(function (Builder $query): void {
-                        $query->where('scope_type', ScopeType::SelectedAssets)
-                            ->whereDoesntHave('assets');
                     })
                     ->orWhere(function (Builder $query): void {
                         $query->whereIn('scope_type', [ScopeType::Network, ScopeType::Custom])

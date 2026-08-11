@@ -368,7 +368,7 @@ it('saves the row slide-over aggregate and rejects cross-client scope relations'
         ->toThrow(ValidationException::class);
 });
 
-it('requires assets only for the explicitly selected asset scope', function (): void {
+it('keeps asset associations optional for every finding scope', function (): void {
     $assessment = Assessment::factory()->create();
     $finding = app(CopyTemplateToAssessment::class)($assessment, FindingTemplate::query()->firstOrFail());
     $site = Site::factory()->for($assessment->client)->create();
@@ -376,6 +376,7 @@ it('requires assets only for the explicitly selected asset scope', function (): 
     foreach ([
         [ScopeType::Organization, null, [], []],
         [ScopeType::SelectedSites, null, [$site->id], []],
+        [ScopeType::SelectedAssets, null, [], []],
         [ScopeType::Network, 'Rete perimetrale', [], []],
         [ScopeType::Custom, 'Ambito personalizzato', [], []],
     ] as [$scope, $description, $siteIds, $assetIds]) {
@@ -410,10 +411,6 @@ it('requires assets only for the explicitly selected asset scope', function (): 
     $payload['scope_type'] = ScopeType::SelectedAssets->value;
     $payload['scope_description'] = null;
     $payload['site_ids'] = [];
-    $payload['asset_ids'] = [];
-    expect(fn () => saveFindingAggregate($finding->fresh(), $payload))
-        ->toThrow(ValidationException::class);
-
     $payload['asset_ids'] = [$asset->id];
     $saved = saveFindingAggregate($finding->fresh(), $payload);
     expect($saved->assets)->toHaveCount(1);
@@ -422,14 +419,13 @@ it('requires assets only for the explicitly selected asset scope', function (): 
 it('applies the same optional asset rule to completeness completion reports and incomplete filtering', function (): void {
     $assessment = Assessment::factory()->create();
     $site = Site::factory()->for($assessment->client)->create();
-    $asset = Asset::factory()->for($assessment->client)->create();
     $template = FindingTemplate::query()->firstOrFail();
     $findings = [];
 
     foreach ([
         [ScopeType::Organization, null, [], []],
         [ScopeType::SelectedSites, null, [$site->id], []],
-        [ScopeType::SelectedAssets, null, [], [$asset->id]],
+        [ScopeType::SelectedAssets, null, [], []],
         [ScopeType::Network, 'Rete perimetrale', [], []],
         [ScopeType::Custom, 'Ambito personalizzato', [], []],
     ] as [$scope, $description, $siteIds, $assetIds]) {

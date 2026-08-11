@@ -302,7 +302,6 @@ final class FindingEditorSchema
                             ->multiple()
                             ->searchable()
                             ->visible(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedAssets->value)
-                            ->required(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedAssets->value)
                             ->disabled(self::isReadOnly(...)),
                     ]),
                 Section::make(__('assestme.workspace.properties.risk'))

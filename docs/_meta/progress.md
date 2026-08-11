@@ -2,6 +2,25 @@
 
 ## Current state
 
+- 2026-08-11: Started the explicitly approved Finding-scope revision on `develop`:
+  asset association becomes optional for every Finding scope, including Findings
+  copied from imported templates, and the requested Finding labels adopt `Stato e
+  Report` / `Spiegazione del Problema` capitalization. Application, canonical
+  contract, ADR, and focused success/failure coverage are in scope.
+- 2026-08-11: Completed the optional Finding-asset revision across the Filament field,
+  signed save validation, completeness/completion, incomplete filtering, report
+  snapshots, imported-template copies, canonical contracts, and superseding ADR
+  entries. Focused Pint passed; Workspace persistence, domain, template import/export,
+  and Workspace page suites passed 71 tests before the broader command reached an
+  unrelated local PDF-driver assertion (`dompdf` configured instead of required
+  WeasyPrint); the two affected PDF scenarios then passed 2 tests with 7 assertions,
+  focused PHPStan reported no errors, and isolated `WorkspaceResponsiveTest` passed
+  5 Dusk tests with 193 assertions.
+- 2026-08-11: Removed the stale local-only `LARAVEL_PDF_DRIVER=dompdf` override by
+  restoring the required `weasyprint` value in the ignored `.env`; no Dompdf package
+  is installed or required by Composer. After clearing configuration cache, the
+  renderer contract test passed 1 test with 5 assertions. This host still has no
+  executable `/usr/bin/weasyprint`, so real PDF generation was not re-claimed here.
 - 2026-08-11: Started the GitHub Actions Node.js 20 deprecation cleanup on `develop`
   at `706c12ecc8cf0b8041d6455c31b4891e0249708a`. The failing `main` run was traced
   to newly published Composer advisories in the locked dependency graph, while the

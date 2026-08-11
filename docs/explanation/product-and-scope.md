@@ -67,4 +67,4 @@ There is no public API, MCP server, Jira integration, runZero integration, or sc
 
 ## Asset boundary
 
-Asset registration is generally optional. A Finding scoped explicitly as `selected_assets` requires at least one same-company asset. Other scopes do not acquire an implicit asset requirement.
+Asset registration and Finding asset association are optional for every Finding scope, including `selected_assets` and Findings copied from imported templates. Any selected asset must still belong to the assessment company.

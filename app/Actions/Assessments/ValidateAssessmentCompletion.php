@@ -23,7 +23,6 @@ final class ValidateAssessmentCompletion
             'findings.recommendedSolution',
             'findings.implementedSolution',
             'findings.sites',
-            'findings.assets',
         ]);
 
         /** @var array<string, list<string>> $errors */
@@ -76,7 +75,6 @@ final class ValidateAssessmentCompletion
         array_push($messages, ...$this->validateScope->messages(
             $finding->scope_type,
             $finding->sites->count(),
-            $finding->assets->count(),
             $finding->scope_description,
         ));
         if ($finding->status === FindingStatus::Resolved

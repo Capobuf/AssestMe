@@ -266,21 +266,23 @@ it('does not generate a PDF when the selected finding pre action save fails', fu
 
     Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
         ->call('selectFinding', $finding->getKey())
-        ->set('findingData.scope_type', ScopeType::SelectedAssets->value)
-        ->set('findingData.asset_ids', [])
+        ->set('findingData.scope_type', ScopeType::Custom->value)
+        ->set('findingData.scope_description', null)
         ->callAction(TestAction::make('download_pdf'));
 
     expect(GeneratedReport::query()->count())->toBe(0)
         ->and(Storage::disk('local')->allFiles('reports'))->toBe([]);
 });
 
-it('rejects PDF generation only when selected asset scope has no asset', function (): void {
+it('builds the report snapshot when selected asset scope has no asset', function (): void {
     [$assessment, $finding] = createPdfReadyAssessment();
     $finding->update(['scope_type' => ScopeType::SelectedAssets, 'scope_description' => null]);
 
-    expect(fn () => app(GenerateAssessmentPdf::class)($assessment->fresh()))
-        ->toThrow(ValidationException::class)
-        ->and(GeneratedReport::query()->count())->toBe(0);
+    $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh())->toArray();
+
+    expect($snapshot['findings'])->toHaveCount(1)
+        ->and($snapshot['findings'][0]['scope_type'])->toBe(ScopeType::SelectedAssets->value)
+        ->and($snapshot['findings'][0]['assets'])->toBe([]);
 });
 
 it('applies cover title company address and optional priority legend presentation settings', function (): void {
