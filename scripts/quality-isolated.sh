@@ -11,7 +11,14 @@ assestme_clear_gate_receipt quality "$project_dir"
 quality_fingerprint="$(assestme_gate_fingerprint quality "$project_dir")"
 
 assestme_begin_isolated_environment quality
-trap assestme_end_isolated_environment EXIT
+
+cleanup_quality_environment() {
+    assestme_cleanup_isolated_environment_file
+    assestme_end_isolated_environment
+}
+
+trap cleanup_quality_environment EXIT
+assestme_prepare_isolated_environment_file "$PWD"
 
 vendor/bin/pint --test
 vendor/bin/phpstan analyse --memory-limit=1G

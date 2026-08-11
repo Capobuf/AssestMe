@@ -305,6 +305,59 @@ BASH;
         ->and($process->getOutput())->toBe('it|it|Europe/Rome');
 });
 
+it('uses a private disposable environment placeholder in clean quality checkouts', function (): void {
+    $testRoot = sys_get_temp_dir().'/assestme-environment-placeholder-'.bin2hex(random_bytes(8));
+    File::ensureDirectoryExists($testRoot);
+
+    try {
+        $createCommand = <<<'BASH'
+source scripts/isolated-environment.sh
+assestme_prepare_isolated_environment_file "$1"
+printf '%s|%s|%s|' "$ASSESTME_ISOLATED_ENV_OWNS_FILE" "$(stat -c '%a' "$1/.env")" "$(stat -c '%s' "$1/.env")"
+assestme_cleanup_isolated_environment_file
+[[ ! -e "$1/.env" ]]
+BASH;
+        $createProcess = new Process(['bash', '-c', $createCommand, 'bash', $testRoot], base_path());
+        $createProcess->run();
+
+        expect($createProcess->isSuccessful())->toBeTrue($createProcess->getErrorOutput())
+            ->and($createProcess->getOutput())->toBe('1|600|0|');
+
+        File::put($testRoot.'/.env', "APP_NAME=Existing\n");
+
+        $preserveCommand = <<<'BASH'
+source scripts/isolated-environment.sh
+assestme_prepare_isolated_environment_file "$1"
+printf '%s|' "$ASSESTME_ISOLATED_ENV_OWNS_FILE"
+assestme_cleanup_isolated_environment_file
+cat "$1/.env"
+BASH;
+        $preserveProcess = new Process(['bash', '-c', $preserveCommand, 'bash', $testRoot], base_path());
+        $preserveProcess->run();
+
+        expect($preserveProcess->isSuccessful())->toBeTrue($preserveProcess->getErrorOutput())
+            ->and($preserveProcess->getOutput())->toBe("0|APP_NAME=Existing\n");
+
+        File::delete($testRoot.'/.env');
+        File::ensureDirectoryExists($testRoot.'/.env');
+
+        $invalidProcess = new Process([
+            'bash',
+            '-c',
+            'source scripts/isolated-environment.sh; assestme_prepare_isolated_environment_file "$1"',
+            'bash',
+            $testRoot,
+        ], base_path());
+        $invalidProcess->run();
+
+        expect($invalidProcess->isSuccessful())->toBeFalse()
+            ->and($invalidProcess->getErrorOutput())
+            ->toContain('The existing isolated environment file must be a readable file');
+    } finally {
+        File::deleteDirectory($testRoot);
+    }
+});
+
 it('runs each expensive gate once and reuses only exact fingerprint receipts', function (): void {
     $quality = (string) file_get_contents(base_path('scripts/quality-isolated.sh'));
     $browser = (string) file_get_contents(base_path('scripts/dusk-isolated.sh'));
@@ -317,6 +370,8 @@ it('runs each expensive gate once and reuses only exact fingerprint receipts', f
     expect($quality)
         ->toContain('vendor/bin/pint --test')
         ->toContain('vendor/bin/phpstan analyse --memory-limit=1G')
+        ->toContain('assestme_prepare_isolated_environment_file "$PWD"')
+        ->toContain('assestme_cleanup_isolated_environment_file')
         ->toContain('php artisan test')
         ->toContain('php artisan canary:check --strict')
         ->toContain('php artisan assestme:create-admin --from-env >/dev/null')
@@ -556,7 +611,12 @@ it('publishes the validated rolling develop prerelease only after every quality 
         ])
         ->and($workflowSource)->toContain('name: assestme-ci-release')
         ->toContain('path: ${{ runner.temp }}/release/assestme-ci.zip')
-        ->toContain('uses: actions/download-artifact@v4')
+        ->toContain('uses: actions/checkout@v5')
+        ->toContain('uses: actions/download-artifact@v7')
+        ->toContain('uses: actions/upload-artifact@v6')
+        ->not->toContain('uses: actions/checkout@v4')
+        ->not->toContain('uses: actions/download-artifact@v4')
+        ->not->toContain('uses: actions/upload-artifact@v4')
         ->toContain('assestme-develop.zip')
         ->toContain("release_tag='develop-latest'")
         ->toContain("release_title='AssestMe develop — ultima build valida'")
@@ -566,7 +626,7 @@ it('publishes the validated rolling develop prerelease only after every quality 
         ->not->toContain($externalChecksumSuffix)
         ->and($cloudPanel['steps'])->toContain([
             'name' => 'Upload validated installable release',
-            'uses' => 'actions/upload-artifact@v4',
+            'uses' => 'actions/upload-artifact@v6',
             'with' => [
                 'name' => 'assestme-ci-release',
                 'path' => '${{ runner.temp }}/release/assestme-ci.zip',

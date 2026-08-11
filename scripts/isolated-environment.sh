@@ -59,6 +59,45 @@ assestme_begin_isolated_environment() {
     export SESSION_DRIVER=file
 }
 
+assestme_prepare_isolated_environment_file() {
+    local project_dir="${1:-$PWD}"
+    local environment_file="$project_dir/.env"
+
+    ASSESTME_ISOLATED_ENV_FILE="$environment_file"
+    ASSESTME_ISOLATED_ENV_OWNS_FILE=0
+
+    if [[ -e "$environment_file" || -L "$environment_file" ]]; then
+        if [[ ! -f "$environment_file" || ! -r "$environment_file" ]]; then
+            printf 'ERROR: The existing isolated environment file must be a readable file: %s\n' "$environment_file" >&2
+            return 1
+        fi
+
+        return 0
+    fi
+
+    if ! (umask 077; set -o noclobber; : > "$environment_file") 2>/dev/null; then
+        printf 'ERROR: The isolated environment placeholder could not be created: %s\n' "$environment_file" >&2
+        return 1
+    fi
+
+    ASSESTME_ISOLATED_ENV_OWNS_FILE=1
+}
+
+assestme_cleanup_isolated_environment_file() {
+    if [[ "${ASSESTME_ISOLATED_ENV_OWNS_FILE:-0}" == "1" \
+        && -n "${ASSESTME_ISOLATED_ENV_FILE:-}" \
+        && -f "$ASSESTME_ISOLATED_ENV_FILE" \
+        && ! -L "$ASSESTME_ISOLATED_ENV_FILE" ]]; then
+        if [[ ! -s "$ASSESTME_ISOLATED_ENV_FILE" ]]; then
+            rm -f -- "$ASSESTME_ISOLATED_ENV_FILE"
+        else
+            printf 'WARNING: The isolated environment placeholder changed during verification and was preserved: %s\n' "$ASSESTME_ISOLATED_ENV_FILE" >&2
+        fi
+    fi
+
+    unset ASSESTME_ISOLATED_ENV_FILE ASSESTME_ISOLATED_ENV_OWNS_FILE
+}
+
 assestme_end_isolated_environment() {
     if [[ "${ASSESTME_KEEP_TEST_ROOT:-0}" != "1" \
         && "${ASSESTME_ISOLATED_ENV_OWNS_ROOT:-0}" == "1" \

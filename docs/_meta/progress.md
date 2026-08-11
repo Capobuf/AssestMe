@@ -2,6 +2,15 @@
 
 ## Current state
 
+- 2026-08-11: Started the GitHub Actions Node.js 20 deprecation cleanup on `develop`
+  at `706c12ecc8cf0b8041d6455c31b4891e0249708a`. The failing `main` run was traced
+  to newly published Composer advisories in the locked dependency graph, while the
+  two concurrent `develop` runs were monitored separately for their application and
+  installer failures. The workflow action runtime refresh is limited to the first
+  Node.js 24 majors: checkout v5, upload-artifact v6, and download-artifact v7. The
+  follow-up quality cleanup creates a private empty `.env` only for a clean isolated
+  checkout and removes only the unchanged placeholder owned by that gate, preventing
+  PHPUnit from repeating the same missing-environment-file warning for every test.
 - 2026-08-11: Started the Filament-native main-navigation move from the desktop sidebar
   to top navigation on `develop` at `63052396b0e7271f572346040d2847f498bb8b77`;
   the existing dirty assessment-integrity and Google Drive sync work is preserved.

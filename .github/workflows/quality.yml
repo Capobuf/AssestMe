@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -78,7 +78,7 @@ jobs:
 
       - name: Upload failure artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: assestme-failure-artifacts
           path: |
@@ -148,7 +148,7 @@ jobs:
           --health-retries=30
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -221,7 +221,7 @@ jobs:
       APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -295,7 +295,7 @@ jobs:
           php artisan assestme:diagnose --json
 
       - name: Upload validated installable release
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: assestme-ci-release
           path: ${{ runner.temp }}/release/assestme-ci.zip
@@ -318,7 +318,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -363,12 +363,12 @@ jobs:
 
     steps:
       - name: Check out validated commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 1
 
       - name: Download validated release artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: assestme-ci-release
           path: dist
