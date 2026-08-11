@@ -161,10 +161,14 @@ final class FilamentNavigationTest extends DuskTestCase
             self::setScope($browser, 'selected_assets');
             $assetSelector = self::assetSelectorState($browser);
             Assert::assertTrue($assetSelector['present']);
-            Assert::assertTrue($assetSelector['required']);
+            Assert::assertFalse($assetSelector['required']);
 
             $browser->click('[data-dusk="save-finding"]')
-                ->waitUntil('return document.querySelector("[data-assestme-save-status]").dataset.status === "error"');
+                ->waitUntil('return document.querySelector("[data-assestme-save-status]").dataset.status === "saved"');
+
+            $persistedFinding = $finding->fresh();
+            Assert::assertSame('selected_assets', $persistedFinding->scope_type->value);
+            Assert::assertSame(0, $persistedFinding->assets()->count());
 
             $severeLogs = array_values(array_filter(
                 $browser->driver->manage()->getLog('browser'),
@@ -172,6 +176,8 @@ final class FilamentNavigationTest extends DuskTestCase
             ));
             Assert::assertSame([], $severeLogs, 'The navigation and workspace flow contains severe console errors.');
 
+            $browser->click('.fi-no-notification-close-btn')
+                ->waitUntilMissing('.fi-no-notification');
             $browser->click('.fi-user-menu-trigger')
                 ->waitForText(__('filament-panels::layout.actions.logout.label'))
                 ->press(__('filament-panels::layout.actions.logout.label'))

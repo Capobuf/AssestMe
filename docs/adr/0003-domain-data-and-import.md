@@ -30,6 +30,7 @@ Defines stable domain identities, risk ownership, scope validation, import seman
 
 ## Consequences
 
+- D-045 v2 is an intentional reversal of D-045 v1 following explicit approval on 2026-08-11: zero asset associations are valid for `selected_assets`, including after template import/copy. The superseded minimum-one-asset rule must not remain in validation, completeness, report generation, or tests.
 - The listed decisions remain normative with their recorded status.
 - `SUPERSEDED` entries remain historical evidence and must not be reactivated implicitly.
 - Detailed application contracts live in the reference pages linked from [the documentation index](../index.md); those pages may clarify implementation but may not contradict these decisions.

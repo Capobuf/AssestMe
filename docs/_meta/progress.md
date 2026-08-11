@@ -2,6 +2,18 @@
 
 ## Current state
 
+- 2026-08-11: Investigated Quality run `31506605494` for commit `5b520aa`.
+  All 543 feature tests passed with 4,869 assertions; the sole quality-job failure
+  was the stale `FilamentNavigationTest` expectation that `selected_assets` remained
+  required and an empty selection produced a save error. The accepted D-045 v2 rule
+  instead requires a visible non-required selector and a successful empty save, so
+  the browser regression and revision evidence are being aligned with that explicit
+  change of decision.
+- 2026-08-11: Corrected the stale navigation regression to assert a visible optional
+  asset selector, successful save, persisted `selected_assets` scope, and zero asset
+  associations; the success notification is closed explicitly before logout. Focused
+  Pint passed and isolated `FilamentNavigationTest` passed 1 Dusk test with 65
+  assertions. No application fallback or behavior change was required.
 - 2026-08-11: Started the explicitly approved Finding-scope revision on `develop`:
   asset association becomes optional for every Finding scope, including Findings
   copied from imported templates, and the requested Finding labels adopt `Stato e

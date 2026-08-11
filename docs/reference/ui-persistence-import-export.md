@@ -39,7 +39,7 @@ Responsive behavior has two intentional modes:
 
 Contextual properties remain reachable on narrow containers. Mobile supports essential vertical editing and evidence capture but does not claim desktop workbench parity.
 
-Finding asset selection is optional for every scope. Selecting `selected_assets` reveals the asset selector but does not make it required, including for Findings copied from imported templates.
+Finding asset selection is optional for every scope. Selecting `selected_assets` reveals the asset selector but does not make it required, including for Findings copied from imported templates. Submitting that selector empty is a successful save, not a validation-error state.
 
 ## Save protocol
 
