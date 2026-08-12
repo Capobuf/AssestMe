@@ -453,3 +453,16 @@ Record only factual work performed, the exact affected area, commands run, and r
   `20260720.247.2`, PHP 8.3.33, and Laravel 13.19.0. The earlier workflow did not emit its SQLite
   runtime and did not use the current `strace` harness, so the available metadata does not identify
   a changed runtime component or establish that tracing caused the signal.
+- 2026-08-12: Started the requested deterministic Dusk-only repair for `MilestoneZeroTest` and
+  `WorkspaceResponsiveTest`. Scope is limited to observable Livewire/save-version synchronization
+  and explicit row-menu closure before the delete-action check; application behavior, workspace
+  geometry/CSS, dropdown teleport configuration, and the `Nuovo finding` menu remain unchanged.
+- 2026-08-12: Completed the deterministic Dusk-only repair. The requested Livewire boolean and
+  applied-version waits in `MilestoneZeroTest` were already present at the verified `develop` HEAD
+  and passed without a production change. The Finding row-menu test now sends one Escape key to
+  the still-open last-visible trigger, waits until every dropdown panel is hidden, then waits for a
+  visible first-row panel containing the delete action before opening the confirmation modal.
+  Focused Pint passed; isolated `MilestoneZeroTest` passed 3 tests with 80 assertions;
+  `WorkspaceResponsiveTest` passed 5 tests with 193 assertions; and the complete CI-equivalent
+  browser suite passed 23 tests with 785 assertions. No application, CSS, geometry, teleport, or
+  `Nuovo finding` behavior changed.
