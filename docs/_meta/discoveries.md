@@ -153,3 +153,7 @@ Add only reproducible observations discovered during implementation or verificat
 - The hosted Ubuntu runner does not guarantee `rg`. Preflight checks that do not need ripgrep
   semantics use recursive extended `grep`, while the required process evidence remains explicitly
   guarded by `command -v ss` and `command -v strace`.
+- `artisan serve --no-reload` can terminate its supervisor while the PHP built-in listener remains
+  alive and is reparented to PID 1. Cleanup must therefore authorize the recorded listener by exact
+  current socket ownership as well as the originally observed parent relationship; waiting for
+  `strace` while that traced listener remains alive does not complete.

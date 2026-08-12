@@ -421,3 +421,8 @@ Record only factual work performed, the exact affected area, commands run, and r
   declaring it. Replaced that preflight-only search with portable recursive extended `grep` and
   added a workflow contract assertion. This was a harness correction only; the run produced no
   application termination evidence and did not change installer behavior.
+- 2026-08-12: A container reproduction of the published historical harness completed installation
+  but exposed a cleanup-only wait: after the Artisan supervisor stopped, its still-listening PHP
+  child was reparented to PID 1, so the stale-parent safety check did not terminate it and `strace`
+  could not finish. Cleanup now accepts the exact PID still returned as owner of the requested port,
+  preserving the PID safety boundary without adding a timeout, retry, or server restart.

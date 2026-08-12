@@ -57,6 +57,8 @@ it('installs the extracted release with production-safe configuration checks', f
         ->toContain('RELEASE_PDO_DRIVERS')
         ->toContain('RELEASE_SQLITE_RUNTIME')
         ->toContain('RELEASE_LARAVEL_FRAMEWORK')
+        ->toContain('observed_listener="$(port_listener_pid)"')
+        ->toContain('"$observed_listener" = "$listener_pid"')
         ->toContain('diagnose_server_snapshot BEFORE_FINALIZE')
         ->toContain('diagnose_server_snapshot AFTER_FAILURE_DELAY')
         ->toContain('-u APP_ENV')

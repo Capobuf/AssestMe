@@ -207,6 +207,7 @@ diagnose_server_failure() {
 
 cleanup() {
     local script_exit_code="$?"
+    local observed_listener=''
     local tracer_children=''
     set +e
 
@@ -224,10 +225,13 @@ cleanup() {
         fi
     fi
 
-    if [[ -n "$listener_pid" \
-        && "$(process_status "$listener_pid")" = alive \
-        && "$(ps -o ppid= -p "$listener_pid" 2>/dev/null | awk '{$1=$1; print}')" = "$supervisor_pid" ]]; then
-        kill "$listener_pid" >/dev/null 2>&1 || true
+    if [[ -n "$listener_pid" && "$(process_status "$listener_pid")" = alive ]]; then
+        observed_listener="$(port_listener_pid)"
+
+        if [[ "$observed_listener" = "$listener_pid" \
+            || "$(ps -o ppid= -p "$listener_pid" 2>/dev/null | awk '{$1=$1; print}')" = "$supervisor_pid" ]]; then
+            kill "$listener_pid" >/dev/null 2>&1 || true
+        fi
     fi
 
     if [[ -n "$tracer_pid" ]]; then
