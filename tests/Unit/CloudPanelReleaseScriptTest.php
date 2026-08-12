@@ -77,6 +77,8 @@ it('runs equivalent HTTP and browser installer paths with fail-closed server dia
     $projectPath = dirname(__DIR__, 2);
     $workflow = file_get_contents($projectPath.'/.github/workflows/quality.yml');
     $browserTest = file_get_contents($projectPath.'/tests/Browser/CloudPanelInstallationTest.php');
+    $duskStepPosition = strpos($workflow, 'id: release-dusk');
+    $directStepPosition = strpos($workflow, 'id: current-direct-http-smoke');
 
     expect($workflow)
         ->toContain('c8bfab866bed902b606dc75c1685cdcbf4c64c79')
@@ -89,6 +91,7 @@ it('runs equivalent HTTP and browser installer paths with fail-closed server dia
         ->toContain('CURRENT_HTTP_SMOKE_RESULT')
         ->toContain('CURRENT_HTTP_REPEAT_RESULT')
         ->toContain('CURRENT_DIRECT_HTTP_SMOKE_RESULT')
+        ->toContain("steps.release-dusk.outcome == 'failure'")
         ->toContain('RELEASE_DUSK_RESULT')
         ->toContain('grep -R -E -q "name=')
         ->toContain('RELEASE_SERVER_SUPERVISOR_STATUS')
@@ -97,6 +100,9 @@ it('runs equivalent HTTP and browser installer paths with fail-closed server dia
         ->toContain('RELEASE_SERVER_PORT_8123_LISTEN')
         ->toContain('LAST_FINALIZE_MARKER')
         ->toContain('| Check | Known-good c8bfab8 | Current develop |');
+    expect($duskStepPosition)->toBeInt()
+        ->and($directStepPosition)->toBeInt()
+        ->and($directStepPosition)->toBeGreaterThan($duskStepPosition);
     expect($browserTest)
         ->toContain('[data-dusk="installation-complete"]')
         ->toContain('Installer finalization lost the release HTTP server.');

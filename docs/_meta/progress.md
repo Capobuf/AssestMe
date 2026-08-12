@@ -435,3 +435,10 @@ Record only factual work performed, the exact affected area, commands run, and r
   complete normative gate then passed 622 application tests with 5,462 assertions, 38/38 strict
   Canary routes, diagnostics, benchmark and storage checks, and 23 Dusk tests with 785 assertions.
   No application behavior or timeout changed.
+- 2026-08-12: The next GitHub run completed the pure-HTTP historical comparison with `c8bfab8`
+  PASS and current PASS on all three fresh extractions, while the independent current Dusk
+  extraction again terminated its listener with `139/SIGSEGV`. Because that failure occurred after
+  the direct-server condition had already been evaluated, moved the existing single direct-server
+  experiment after Dusk and included the failed Dusk outcome in its condition. This is diagnostic
+  harness ordering only; no application, timeout, retry, restart, probe, migration, or finalization
+  behavior changed.

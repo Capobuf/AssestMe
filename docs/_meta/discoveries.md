@@ -162,3 +162,7 @@ Add only reproducible observations discovered during implementation or verificat
   release attempt; another independent current attempt completed. Current Dusk also recorded the
   same signal. The historical application-regression hypothesis is therefore rejected, while the
   native failure is intermittent and still requires the direct-server isolation result.
+- A later same-run comparison passed the pure HTTP path for historical `c8bfab8` and all three
+  fresh current extractions, then reproduced `139/SIGSEGV` only in the separate Dusk extraction.
+  A conditional isolation step must therefore be evaluated after all Artisan-backed observations;
+  evaluating it before Dusk can skip the experiment despite a later qualifying hard termination.

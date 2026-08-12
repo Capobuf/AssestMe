@@ -397,29 +397,6 @@ jobs:
           echo "CURRENT_HTTP_REPEAT_RESULT=$repeated_result"
           test "$repeated_result" = PASS
 
-      - name: Compare current with the Laravel-derived direct PHP server
-        id: current-direct-http-smoke
-        if: steps.known-good-http-smoke.outputs.result == 'FAIL' || steps.current-http-smoke.outputs.result == 'FAIL' || steps.current-http-repeat.outputs.result == 'INTERMITTENT'
-        continue-on-error: true
-        run: |
-          extraction_root="${RUNNER_TEMP}/http-current-direct"
-          mkdir "$extraction_root"
-          unzip -q "${RUNNER_TEMP}/release/assestme-ci.zip" -d "$extraction_root"
-          set +e
-          scripts/ci-install-release-sqlite.sh "$extraction_root/assestme" 8128 current-direct direct \
-            2>&1 | tee "${RUNNER_TEMP}/current-http-direct.log"
-          smoke_exit_code="${PIPESTATUS[0]}"
-          set -e
-          if [[ "$smoke_exit_code" -eq 0 ]]; then
-            echo 'result=PASS' >> "$GITHUB_OUTPUT"
-            echo 'CURRENT_DIRECT_HTTP_SMOKE_RESULT=PASS'
-          else
-            echo 'result=FAIL' >> "$GITHUB_OUTPUT"
-            echo 'CURRENT_DIRECT_HTTP_SMOKE_RESULT=FAIL'
-            echo "CURRENT_DIRECT_HTTP_SMOKE_EXIT_CODE=$smoke_exit_code"
-            exit "$smoke_exit_code"
-          fi
-
       - name: Build the first known-failing boundary release
         if: steps.known-good-http-smoke.outputs.result == 'PASS' && steps.current-http-smoke.outputs.result == 'FAIL'
         env:
@@ -647,6 +624,29 @@ jobs:
             php artisan schedule:run
           env -u DB_CONNECTION -u DB_DATABASE -u ASSESTME_BACKUP_ROOT \
             php artisan assestme:diagnose --json
+
+      - name: Compare current with the Laravel-derived direct PHP server
+        id: current-direct-http-smoke
+        if: steps.known-good-http-smoke.outputs.result == 'FAIL' || steps.current-http-smoke.outputs.result == 'FAIL' || steps.current-http-repeat.outputs.result == 'INTERMITTENT' || steps.release-dusk.outcome == 'failure'
+        continue-on-error: true
+        run: |
+          extraction_root="${RUNNER_TEMP}/http-current-direct"
+          mkdir "$extraction_root"
+          unzip -q "${RUNNER_TEMP}/release/assestme-ci.zip" -d "$extraction_root"
+          set +e
+          scripts/ci-install-release-sqlite.sh "$extraction_root/assestme" 8128 current-direct direct \
+            2>&1 | tee "${RUNNER_TEMP}/current-http-direct.log"
+          smoke_exit_code="${PIPESTATUS[0]}"
+          set -e
+          if [[ "$smoke_exit_code" -eq 0 ]]; then
+            echo 'result=PASS' >> "$GITHUB_OUTPUT"
+            echo 'CURRENT_DIRECT_HTTP_SMOKE_RESULT=PASS'
+          else
+            echo 'result=FAIL' >> "$GITHUB_OUTPUT"
+            echo 'CURRENT_DIRECT_HTTP_SMOKE_RESULT=FAIL'
+            echo "CURRENT_DIRECT_HTTP_SMOKE_EXIT_CODE=$smoke_exit_code"
+            exit "$smoke_exit_code"
+          fi
 
       - name: Summarize the historical HTTP comparison
         if: always()
