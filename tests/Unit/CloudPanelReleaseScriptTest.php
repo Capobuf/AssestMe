@@ -91,6 +91,7 @@ it('runs equivalent HTTP and browser installer paths with fail-closed server dia
         ->toContain('CURRENT_HTTP_SMOKE_RESULT')
         ->toContain('CURRENT_HTTP_REPEAT_RESULT')
         ->toContain('CURRENT_DIRECT_HTTP_SMOKE_RESULT')
+        ->toContain("-name 'current-http-[123].log'")
         ->toContain("steps.release-dusk.outcome == 'failure'")
         ->toContain('RELEASE_DUSK_RESULT')
         ->toContain('grep -R -E -q "name=')

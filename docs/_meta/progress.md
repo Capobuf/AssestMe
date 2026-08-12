@@ -442,3 +442,14 @@ Record only factual work performed, the exact affected area, commands run, and r
   experiment after Dusk and included the failed Dusk outcome in its condition. This is diagnostic
   harness ordering only; no application, timeout, retry, restart, probe, migration, or finalization
   behavior changed.
+- 2026-08-12: Run `31629742339` recorded `c8bfab8`, current HTTP, current Dusk, and the current
+  Laravel-derived direct PHP server all terminating with confirmed `SIGSEGV`/exit 139. The direct
+  listener was PID 6622 and failed at `installer.finalize.database_probe.begin`, with no Artisan
+  supervisor present. Restricted the A/B summary log selector to numbered current HTTP attempts so
+  the separately reported direct experiment cannot replace the current A/B column. No application
+  fix was applied; the exact native crash cause remains undetermined.
+- 2026-08-12: Compared the previously successful historical run `31521249959` with diagnostic run
+  `31629742339`. Both report Actions runner 2.336.0, Ubuntu 24.04 image
+  `20260720.247.2`, PHP 8.3.33, and Laravel 13.19.0. The earlier workflow did not emit its SQLite
+  runtime and did not use the current `strace` harness, so the available metadata does not identify
+  a changed runtime component or establish that tracing caused the signal.

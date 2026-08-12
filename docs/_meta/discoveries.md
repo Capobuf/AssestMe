@@ -166,3 +166,12 @@ Add only reproducible observations discovered during implementation or verificat
   fresh current extractions, then reproduced `139/SIGSEGV` only in the separate Dusk extraction.
   A conditional isolation step must therefore be evaluated after all Artisan-backed observations;
   evaluating it before Dusk can skip the experiment despite a later qualifying hard termination.
+- The equivalent direct PHP built-in server, using the router path derived from Laravel and no
+  Artisan supervisor, also exited 139 through confirmed `SIGSEGV` on the same runner and current
+  release. This rejects an `artisan serve`-specific termination mechanism. A broad numbered-log
+  selector must exclude the separately named direct log or the A/B table can report isolation data
+  in the current HTTP column.
+- The historically successful `c8bfab8` run and the same-commit diagnostic failure report the same
+  Actions runner version, Ubuntu image version, PHP 8.3.33, and Laravel 13.19.0. The historical run
+  did not emit the SQLite runtime and predates the process-tracing harness; the recorded version
+  comparison therefore neither identifies a changed runtime component nor proves a tracing effect.

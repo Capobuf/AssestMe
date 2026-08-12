@@ -665,8 +665,8 @@ jobs:
           }
 
           current_log="${RUNNER_TEMP}/current-http-1.log"
-          if compgen -G "${RUNNER_TEMP}/current-http-*.log" >/dev/null; then
-            current_log="$(find "${RUNNER_TEMP}" -maxdepth 1 -name 'current-http-*.log' -print | sort -V | tail -n 1)"
+          if compgen -G "${RUNNER_TEMP}/current-http-[123].log" >/dev/null; then
+            current_log="$(find "${RUNNER_TEMP}" -maxdepth 1 -name 'current-http-[123].log' -print | sort -V | tail -n 1)"
           fi
 
           current_result="$CURRENT_INITIAL_RESULT"
