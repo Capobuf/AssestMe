@@ -67,18 +67,43 @@ final class FattureInCloudQuoteTest extends DuskTestCase
                 ]), PHP_URL_PATH))
                 ->waitFor('[data-dusk="fic-client-resolved"]')
                 ->assertSee('Cliente browser FIC')
-                ->press('Aggiungi gruppo')
+                ->assertSee('Cliente Trovato')
+                ->assertSee('Crea Preventivo - Fatture in Cloud')
+                ->assertSeeIn('.fi-breadcrumbs', 'Preventivo - Fatture in Cloud')
+                ->assertScript("parseFloat(getComputedStyle(document.querySelector('.assestme-fic-composer__client-icon')).width) >= 44", true)
+                ->assertPresent('[data-dusk="fic-findings-panel"]')
+                ->assertMissing('.assestme-fic-composer__search > span')
+                ->assertAttribute('[data-dusk="fic-finding-search"]', 'placeholder', 'Cerca nei Finding...')
+                ->assertPresent('[data-dusk="fic-rows-panel"]')
+                ->assertPresent('[data-dusk="fic-summary-panel"]')
+                ->assertScript("getComputedStyle(document.querySelector('.assestme-fic-composer__workspace')).gridTemplateColumns.split(' ').length", 3)
+                ->press('Aggiungi Riga da Finding')
                 ->waitFor('[data-dusk="fic-row-title-0"]')
-                ->assertScript("getComputedStyle(document.querySelector('.assestme-fic-composer__workspace')).display", 'grid')
+                ->assertSee('Riga da Finding')
                 ->assertScript("document.querySelector('[data-dusk=\"fic-row-title-0\"]').closest('.fi-input-wrp') !== null")
+                ->assertScript("getComputedStyle(document.querySelector('[data-dusk=\"fic-commercial-fields-0\"]')).gridTemplateColumns.split(' ').length", 5)
                 ->check('[data-dusk="fic-row-finding-0-'.$finding->getKey().'"]')
+                ->waitUntil("document.querySelector('[data-dusk=\"fic-summary-linked-findings\"]').textContent.trim() === '1 / 1'")
+                ->waitUntil("document.querySelector('[data-dusk=\"fic-row-title-0\"]').value === 'Finding salvato prima del preventivo'")
+                ->assertValue('[data-dusk="fic-row-description-0"]', "Problema verificabile nel preventivo\n\nRiferimenti AssestMe: ".sprintf('F-%06d', $finding->getKey()))
                 ->type('[data-dusk="fic-row-title-0"]', 'Intervento browser')
                 ->type('[data-dusk="fic-row-description-0"]', 'Descrizione commerciale browser')
                 ->type('[data-dusk="fic-row-price-0"]', '150')
-                ->press('Crea preventivo in Fatture in Cloud')
+                ->waitUntil("document.querySelector('[data-dusk=\"fic-summary-net-total\"]').textContent.trim() === '€ 150,00'")
+                ->press('Crea Preventivo')
                 ->waitForText('Preventivo creato correttamente')
                 ->assertSee('ID documento: 901')
-                ->assertSeeLink('Apri preventivo');
+                ->assertSeeLink('Apri in Fatture in Cloud');
+
+            $browser->script("document.documentElement.classList.remove('dark')");
+            $browser
+                ->assertScript("getComputedStyle(document.querySelector('.assestme-fic-composer')).getPropertyValue('--assestme-fic-surface').trim()", '#FFFFFF')
+                ->script("document.documentElement.classList.add('dark')");
+            $browser
+                ->assertScript("getComputedStyle(document.querySelector('.assestme-fic-composer')).getPropertyValue('--assestme-fic-surface').trim()", '#131313')
+                ->resize(390, 844)
+                ->pause(250)
+                ->assertScript('document.documentElement.scrollWidth <= document.documentElement.clientWidth', true);
 
             $severe = array_values(array_filter(
                 $browser->driver->manage()->getLog('browser'),

@@ -31,5 +31,8 @@
 
 ## Notes
 
+- 2026-08-12 annotated-composer delta: FR-040–FR-047 and SC-012 were checked against the existing scope and remain complete with no clarification markers. The refinement adds no implementation leakage to the stakeholder requirements and preserves the feature's explicit persistence/provider boundaries.
+
 - Validation iteration 1 passed all 16 items; no clarification marker or placeholder remains.
 - The repository resolves the conditional clarification named in the request: completed and archived Assessments are read-only until explicitly reopened, so the quote action is hidden and rejected.
+- 2026-08-12 UI-refinement delta validation passed all 16 items: it adds testable hierarchy, terminology, transient-state, CTA, responsive, and accessibility requirements without changing V1–V6 scope or introducing clarification markers.

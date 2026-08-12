@@ -14,6 +14,8 @@
 - The integration is optional. Installation, bootstrap, assessments, reports, backups, and diagnostics work without provider credentials or connectivity.
 - Local persistence is limited to integration configuration/connection, the single FIC company and default VAT identity, and exact AssestMe Client-to-FIC Client mappings. Quote compositions, catalogs, versions, totals, and created quotes are never persisted locally.
 - Grouping is always manual. No estimate type, including `bundled`, creates a group automatically.
+- The transient internal `group` concept remains unchanged, but the composer presents it only as `Riga da finding`; `free` is presented as `Riga libera`.
+- Quote composition has no local draft state or save action. Its only final commercial action is `Crea preventivo in Fatture in Cloud`.
 - All new user-facing content is Italian. No English locale, switcher, parallel translations, or new localization architecture is introduced.
 - Secrets and refresh credentials are encrypted and write-only and never appear in browser state, logs, notifications, command output, or saved provider errors.
 - Opening the composer from a dirty Workspace uses the same signed, optimistic-locked, idempotent save protocol as other dependent Workspace actions and stops on any non-success result.
@@ -172,6 +174,21 @@ The administrator validates the composition and creates a real FIC quote, receiv
 - **FR-030**: Ambiguous outcomes MUST reconcile through the exact submitted marker; exactly one match is success, while zero/multiple remain unresolved.
 - **FR-031**: Every new user-facing string MUST be Italian using existing conventions, without another locale or localization architecture.
 - **FR-032**: The optional integration MUST NOT require credentials, network, or provider availability for installation, bootstrap, diagnostics, ordinary work, reports, backups, or release validation.
+- **FR-033**: On wide screens the composer MUST use a three-area workbench with compact Finding/solution context, a dominant row editor, and a narrow transient summary; intermediate and narrow layouts MUST deliberately reflow without horizontal composer scrolling.
+- **FR-034**: User-facing controls and row headers MUST use `Riga da Finding` and `Riga Libera`, MUST NOT present the internal `group` term, and MUST provide transient Finding search over reference, title, and Problem for the 50-Finding target.
+- **FR-035**: The resolved-client and previous-version controls MUST remain compact while preserving exact-client selection/creation, retry, `Carica precedente`, `Parti da zero`, and unmatched-row behavior.
+- **FR-036**: The optional FIC product control MUST precede the editable title, description, quantity, measure, net unit price, discount, and VAT controls so that applying suggestions does not follow manual entry of the values it may replace.
+- **FR-037**: The summary MUST expose only values derived from transient state: total rows, Finding rows, free rows, unique linked Findings over total Findings, and `Totale netto righe` calculated as net unit price × quantity × (1 − discount/100). The total is display-only, VAT-excluded, never persisted or authoritative, and unavailable rather than invented while row arithmetic is invalid. The summary MUST NOT present a persisted or commercial `Bozza` state.
+- **FR-038**: The only final commercial action MUST be `Crea preventivo in Fatture in Cloud`; no local save or draft action MAY exist, and confirmed success MUST replace submission with the real document identifier and provider link when available.
+- **FR-039**: The refined composer MUST preserve all existing loading, failure, ambiguous-outcome, and success states with accessible text in both light and dark modes; state MUST NOT be communicated by color alone.
+- **FR-040**: The page title MUST use `Crea Preventivo - Fatture in Cloud`; its breadcrumb MUST end with `Preventivo - Fatture in Cloud`; visible section headings MUST use `Cliente`, `Preventivo`, and `Riepilogo`; row/add controls and summary labels MUST use the explicitly approved capitalization.
+- **FR-041**: A resolved client MUST be presented with a prominent client icon, its exact provider name, and the accessible `Cliente Trovato` status in one compact block.
+- **FR-042**: Finding search MUST have no redundant visible label, MUST retain an accessible name, and MUST use `Cerca nei Finding...` as its placeholder.
+- **FR-043**: At the approved wide breakpoint, quantity, editable measure, net unit price, percentage discount, and VAT MUST fit on one deliberate row with widths proportional to their expected content. Measure and net-price controls MUST expose fixed `U.M.` and `€` suffixes respectively.
+- **FR-044**: Editable measure suggestions MUST be derived from the measures returned by the live read-only product catalog. The administrator MUST still be able to enter a custom measure, and no standalone provider endpoint or local measure catalog MAY be invented.
+- **FR-045**: When exactly one Finding is assigned to a Finding row, the editable title and description MUST be prefilled from that Finding's title and Problem, and the exact Finding reference MUST be visible in the description. With multiple Findings the title MUST remain blank and the description MUST retain sorted unique references; all prefilled content remains editable.
+- **FR-046**: Displayed row prices and the transient VAT-excluded total MUST use the fixed euro indicator requested for this composer, while provider-side currency and fiscal authority remain unchanged.
+- **FR-047**: The final submission button MUST use `Crea Preventivo`; this copy change MUST NOT alter validation, single-flight behavior, the provider request, or confirmed-success handling.
 
 ### Key Entities
 
@@ -203,6 +220,9 @@ The administrator validates the composition and creates a real FIC quote, receiv
 - **SC-007**: Ordinary failure produces zero success confirmations; ambiguous results succeed only after exactly one exact-marker match.
 - **SC-008**: After abandon or success, local persistence contains no quote draft/row/total/catalog/version/created-quote history.
 - **SC-009**: Normal browser coverage adds at most one happy-path journey unless a second critical UI regression cannot be proven below browser level.
+- **SC-010**: At the approved wide-browser breakpoint, the Finding context, dominant row editor, and summary are simultaneously visible in three columns; the same composer remains usable without horizontal scrolling in its narrow sequential layout.
+- **SC-011**: In UI regression tests, `Riga da Finding`, `Riga Libera`, and the exact transient net total are present where applicable, while `Aggiungi gruppo`, `Salva bozza`, a quote-level `Bozza` state, and VAT calculations occur zero times.
+- **SC-012**: At 1440 CSS pixels the five commercial controls occupy exactly one row, selecting one Finding prepopulates both editable text fields and its exact reference, and the 390-pixel layout introduces zero horizontal document overflow.
 
 ## Assumptions
 

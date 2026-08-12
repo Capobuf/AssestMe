@@ -6,7 +6,7 @@
 
 ## Summary
 
-Add an optional, Italian-only Fatture in Cloud API v2 integration that lets the singleton administrator securely connect exactly one provider company, enter a transient quote composer through the authoritative Workspace save guard, resolve the Assessment company to an exact FIC client, manually map Findings into commercial rows, optionally use live products/VAT types, load an exact previous remote version, and create/reconcile one real remote quote. Only connection settings and the local Client-to-FIC Client mapping persist; the full commercial composition remains Livewire state and FIC remains authoritative.
+Add an optional, Italian-only Fatture in Cloud API v2 integration that lets the singleton administrator securely connect exactly one provider company, enter a transient quote composer through the authoritative Workspace save guard, resolve the Assessment company to an exact FIC client, manually map Findings into commercial rows, optionally use live products/VAT types, load an exact previous remote version, and create/reconcile one real remote quote. Refine the existing composer into a responsive three-area workbench that presents internal groups as Finding rows, keeps products before editable suggestions, and derives a compact transient summary. Only connection settings and the local Client-to-FIC Client mapping persist; the full commercial composition remains Livewire state and FIC remains authoritative.
 
 ## Technical Context
 
@@ -114,6 +114,14 @@ List quote documents through official pagination, parse only the full case-sensi
 ### V6 — Create/reconcile quote
 
 Validate the current live client/VAT/product/Finding state and map one composer row to one FIC `items_list` item. Create type `quote` with exact marker in `subject`, Italian `visible_subject`, resolved entity, and supported row fields. Use a single-flight page flag, explicit ordinary/auth/rate-limit failure states, one token refresh/retry after 401, and exact-marker reconciliation only for an ambiguous connection failure after POST. Report success only with the real provider ID and returned URL when present; persist no quote history. Add compact fake-provider success/error/ambiguous tests and one Dusk happy path spanning dirty Workspace to success.
+
+### V6a — Refine composer UI
+
+Keep all V2–V6 behavior and transient state unchanged while reorganizing the composer into client/previous context above a responsive `Finding e soluzioni | Righe del preventivo | Riepilogo` workbench. Present internal `group` rows as `Riga da finding`, add transient Finding search, derived counts, and a pure display-only VAT-excluded net-row total, place the existing on-demand product control first, keep Problem/solutions and Finding assignments reachable, and retain one final create action with the existing failure, ambiguous-outcome, and confirmed-success states. Use existing Livewire, Filament, translation, and CSS primitives only; add no persistence, provider behavior, dependency, or frontend build step.
+
+### V6b — Apply annotated composer details
+
+Apply the approved headings, capitalization, breadcrumb, prominent client identity, placeholder-only accessible Finding search, and proportional five-control commercial row. Reuse the live read-only product response as the source of editable measure suggestions because its detailed representation already contains `measure`; do not invent a provider endpoint or local catalog. On explicit Finding assignment, prefill editable title and Problem only for a single Finding, keep exact references visible in the row description, and leave the multi-Finding title blank. Display requested euro suffixes without introducing tax computation, currency persistence, or provider request changes.
 
 ### V7 — Convergence and regression
 

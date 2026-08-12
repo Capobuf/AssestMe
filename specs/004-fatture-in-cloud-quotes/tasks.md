@@ -116,19 +116,35 @@ No horizontal foundation is created. Each shared class, migration, route, transl
 
 ---
 
-## Phase 9: Convergence and regression (V7)
+## Phase 9: Composer UI refinement (V6a)
+
+**Purpose**: Apply the approved UI hierarchy and terminology to the existing transient composer without changing provider behavior or persistence.
+
+- [X] T032 Refine the existing Spec Kit artifacts, focused component/pure-total assertions, composer Blade/Livewire/CSS/Italian copy, and the single FIC Dusk journey for the responsive three-area workbench, transient Finding search/counts/VAT-excluded net total, `Riga da finding` terminology, product-first field order, preserved previous/error/success states, and absence of local draft semantics; run focused Pint, PHPStan, FIC tests, and Dusk and record exact evidence
+
+---
+
+## Phase 10: Annotated composer details (V6b)
+
+**Purpose**: Apply the approved browser annotations without changing persistence or provider-write behavior.
+
+- [X] T033 Update the existing feature 004 artifacts, Italian copy, breadcrumb/client/search presentation, proportional five-field row, euro/unit suffixes, live-product-derived editable measure suggestions, deterministic single-Finding title/Problem prefill with visible references, focused component/pure tests, and the existing Dusk journey; verify desktop/mobile layout and record exact evidence
+
+---
+
+## Phase 11: Convergence and regression (V7)
 
 **Purpose**: Remove regressions and prove current CI equivalence; this phase does not recover tests deliberately omitted from V1–V6.
 
-- [ ] T032 Audit `app/`, `database/`, `resources/`, and `tests/` diffs for hidden commercial persistence, automatic grouping, invented endpoints, generic fake/provider infrastructure, untranslated strings, raw secret/error exposure, TODO/placeholders, and unconnected slice artifacts; correct each finding in its owning file
-- [ ] T033 Consolidate only canonical decisions and evidence in `docs/explanation/product-and-scope.md`, `docs/reference/domain-and-application-contracts.md`, `docs/reference/ui-persistence-import-export.md`, `docs/reference/testing-security-and-acceptance.md`, `docs/_meta/discoveries.md`, and `docs/_meta/progress.md` without duplicating the feature spec
-- [ ] T034 Run final working-tree review, `git diff --check`, touched-file Pint, application PHPStan, all focused FIC tests, and affected Workspace/settings/migration/deployment tests; fix and rerun failures
-- [ ] T035 Re-read `.github/workflows/quality.yml` then reproduce `quality` with `RUN_DUSK=0 scripts/verify.sh` followed by the workflow's isolated complete Dusk command; fix and rerun the affected full job equivalent
-- [ ] T036 Reproduce every current `database-compatibility` matrix entry and its configured migration/seed/capability/full-suite/integrity/diagnostics/dump-restore steps using disposable Docker services; fix and rerun affected entries
-- [ ] T037 Reproduce `cloudpanel-release`: build archive, verify manifest/content/secrets, extract, complete SQLite installer/browser check, run scheduler and diagnostics, and verify optional FIC configuration never blocks install
-- [ ] T038 Reproduce `clean-checkout-bootstrap` from a disposable clean checkout and verify diagnostics/singleton/canonical seed counts with no FIC credential/network requirement
-- [ ] T039 Statically validate GitHub-only publish/deploy steps and execute applicable local release/deploy script gates without publishing a release or deploying; record GitHub-specific operations as `NOT_RUN locally`
-- [ ] T040 Write the exact final preflight/spec/slice/provider/test/CI/failure/status evidence in `docs/_meta/progress.md`, `docs/_meta/discoveries.md`, and `docs/_meta/final-outcome.md`, marking every unexecuted real-provider/manual environment check `NOT VERIFIED`
+- [ ] T034 Audit `app/`, `database/`, `resources/`, and `tests/` diffs for hidden commercial persistence, automatic grouping, invented endpoints, generic fake/provider infrastructure, untranslated strings, raw secret/error exposure, TODO/placeholders, and unconnected slice artifacts; correct each finding in its owning file
+- [ ] T035 Consolidate only canonical decisions and evidence in `docs/explanation/product-and-scope.md`, `docs/reference/domain-and-application-contracts.md`, `docs/reference/ui-persistence-import-export.md`, `docs/reference/testing-security-and-acceptance.md`, `docs/_meta/discoveries.md`, and `docs/_meta/progress.md` without duplicating the feature spec
+- [ ] T036 Run final working-tree review, `git diff --check`, touched-file Pint, application PHPStan, all focused FIC tests, and affected Workspace/settings/migration/deployment tests; fix and rerun failures
+- [ ] T037 Re-read `.github/workflows/quality.yml` then reproduce `quality` with `RUN_DUSK=0 scripts/verify.sh` followed by the workflow's isolated complete Dusk command; fix and rerun the affected full job equivalent
+- [ ] T038 Reproduce every current `database-compatibility` matrix entry and its configured migration/seed/capability/full-suite/integrity/diagnostics/dump-restore steps using disposable Docker services; fix and rerun affected entries
+- [ ] T039 Reproduce `cloudpanel-release`: build archive, verify manifest/content/secrets, extract, complete SQLite installer/browser check, run scheduler and diagnostics, and verify optional FIC configuration never blocks install
+- [ ] T040 Reproduce `clean-checkout-bootstrap` from a disposable clean checkout and verify diagnostics/singleton/canonical seed counts with no FIC credential/network requirement
+- [ ] T041 Statically validate GitHub-only publish/deploy steps and execute applicable local release/deploy script gates without publishing a release or deploying; record GitHub-specific operations as `NOT_RUN locally`
+- [ ] T042 Write the exact final preflight/spec/slice/provider/test/CI/failure/status evidence in `docs/_meta/progress.md`, `docs/_meta/discoveries.md`, and `docs/_meta/final-outcome.md`, marking every unexecuted real-provider/manual environment check `NOT VERIFIED`
 
 ---
 
@@ -142,7 +158,9 @@ T001 preflight
         -> US4/V4 live product/VAT enrichment
           -> US5/V5 remote previous version
             -> US6/V6 create/reconcile
-              -> V7 convergence/current CI equivalence
+              -> V6a composer UI refinement
+                -> V6b annotated composer details
+                -> V7 convergence/current CI equivalence
 ```
 
 - US1 is the MVP and must converge before US2.
@@ -151,7 +169,7 @@ T001 preflight
 - US4 enriches the converged US3 row state.
 - US5 reconstructs the same converged row state from remote detail.
 - US6 consumes all earlier slices and cannot start while any prior checkpoint is incomplete.
-- V7 begins only after all six story-specific focused suites are green.
+- V6a begins only after all six story-specific focused suites are green; V6b applies the approved annotations after V6a; V7 begins after both focused composer refinement evidence sets are green.
 
 ## Parallel opportunities
 
@@ -160,7 +178,7 @@ Parallel work is deliberately narrow because the user requires slice convergence
 - In US1, T003 can proceed beside the initial T002 test fixture design; T004–T008 then converge sequentially.
 - In US3, pure-logic tests T015 can be written independently before T016/T017 integration.
 - Documentation research and non-overlapping Italian copy may be drafted in parallel only within the active slice, never by starting another story.
-- Final CI matrix entries may run independently only after T035 passes and only if they use isolated databases/storage.
+- Final CI matrix entries may run independently only after T037 passes and only if they use isolated databases/storage.
 
 ## Implementation strategy
 
@@ -174,11 +192,11 @@ For each next story: write the compact decision-focused test surface, add minimu
 
 ### Definition of completion
 
-- All T001–T040 are checked with factual evidence.
+- All T001–T042 are checked with factual evidence.
 - Each story checkpoint is independently demonstrable.
 - Current locally executable CI job equivalents are green.
 - GitHub-only publication/deployment and real FIC/manual acceptance are accurately `NOT_RUN`/`NOT VERIFIED` unless evidence exists.
 
 ## Format validation
 
-All 40 tasks use the required checkbox + sequential `Txxx` identifier format. Story-phase tasks carry `[US1]`–`[US6]`; `[P]` appears only where files and prerequisites permit work in parallel.
+All 42 tasks use the required checkbox + sequential `Txxx` identifier format. Story-phase tasks carry `[US1]`–`[US6]`; `[P]` appears only where files and prerequisites permit work in parallel.

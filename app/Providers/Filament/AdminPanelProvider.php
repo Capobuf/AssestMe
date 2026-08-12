@@ -74,6 +74,10 @@ class AdminPanelProvider extends PanelProvider
                     ->recoveryCodeCount(8),
             ])
             ->brandName(__('assestme.app.name'))
+            ->brandLogo(asset('images/brand/assestme-logo-black.svg'))
+            ->darkModeBrandLogo(asset('images/brand/assestme-logo-white.svg'))
+            ->brandLogoHeight('2.25rem')
+            ->favicon(asset('images/brand/assestme-logo-black.svg'))
             ->topNavigation()
             ->darkMode()
             ->assets([

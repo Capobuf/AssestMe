@@ -168,6 +168,44 @@
 
 Record only factual work performed, the exact affected area, commands run, and results. Progress entries do not create or modify product requirements.
 
+- 2026-08-12: Started the approved feature 004 composer UI refinement on `develop` at HEAD
+  `d02539c4acd7beb258d5177af434070704d016ad`. Preflight confirmed PHP 8.3.6, Composer
+  2.7.1, the locked Laravel/Filament/Livewire stack, and pre-existing unrelated branding changes in
+  the working tree. Relevant Accepted ADRs and the canonical UI/transient-composer contract were
+  compatible with the requested three-area workbench; the minimal Spec Kit delta was recorded in
+  the existing `specs/004-fatture-in-cloud-quotes/` artifacts. Focused implementation evidence is
+  pending.
+
+- 2026-08-12: Completed feature 004 composer UI refinement without provider-payload or commercial
+  persistence changes. The page now uses the responsive three-area Finding/composer/summary
+  workbench, `Riga da finding`/`Riga libera` terminology, compact client/previous-version context,
+  transient Finding search and linked counts, product-first editable rows, collapsible Problem/
+  solution context and Finding assignments, one final create CTA, and a pure display-only
+  VAT-excluded net-row total. Browser feedback exposed a lower legacy CSS rule that kept the summary
+  below the editor and numeric-string checkbox hydration that left the derived linked count stale;
+  both were corrected and covered. Focused Pint passed on five files, PHPStan passed on both changed
+  application classes, all FIC unit/feature tests passed 46 tests with 221 assertions, and the
+  isolated FIC Dusk journey passed 1 test with 15 assertions across desktop three-column geometry,
+  transient total/count updates, light/dark variables, confirmed provider ID/link, and 390 px no-
+  overflow behavior. The final normative `scripts/verify.sh` invocation exited 0: Composer validation
+  and audit, Pint on 509 files, PHPStan on 395 files, 615 application tests with 5,359 assertions,
+  strict Canary on 38 routes, diagnostics, the 50-Finding benchmark, real PDF/XLSX, backup/restore,
+  zero-anomaly storage audit, and 22 Dusk tests with 748 assertions all passed.
+
+- 2026-08-12: Started application-branding integration from the two supplied root SVG variants.
+  Preflight confirmed the SVGs are valid two-color vector artwork: the Black variant is suitable for
+  light surfaces and the White variant for dark surfaces. The affected surfaces are the Filament
+  panel/login and the dark installer header; focused contrast, asset, and rendering checks are pending.
+- 2026-08-12: Completed contrast-aware application branding and centered desktop top navigation
+  without vendor changes. The responsive SVG assets use cropped view boxes, Filament switches the
+  Black/White variants for light/dark themes, the installer uses the White variant on its dark header,
+  and the release-root proof includes both files. Focused Pint and PHPStan passed; 35 PHP tests passed
+  with 255 assertions; light/dark browser inspection confirmed the expected visible 56.27 × 36 px
+  logo with no page errors; and the isolated navigation Dusk test passed on its required rerun with
+  70 assertions after the live UI review exposed and removed Filament's residual 8 px block margin,
+  including exact horizontal and vertical centering plus unchanged responsive navigation. The
+  complete gate is pending.
+
 - 2026-08-11: Started Spec Kit feature `004-fatture-in-cloud-quotes` on `develop` from HEAD
   `653be43f743ac483ce047e0e18aeb0dc4388daa6`. Preflight found a clean working tree, PHP
   8.3.6, and healthy normative Compose services. The provider contract was checked against the
@@ -219,3 +257,23 @@ Record only factual work performed, the exact affected area, commands run, and r
   HTTP 200 and no invalid fields. Ordinary 4xx rejections now expose a corrective local message and
   log only bounded status/code/field-path metadata. Focused Pint and PHPStan passed, and all FIC
   feature tests passed 39 tests with 186 assertions.
+- 2026-08-12: Started the second focused refinement of the feature 004 Fatture in Cloud composer
+  from browser annotations on `develop` at `d02539c4acd7beb258d5177af434070704d016ad`. Scope is
+  limited to transient composer copy/layout, resolved-client presentation, provider-derived editable
+  measure suggestions, and deterministic single-Finding title/description prefilling; no provider
+  write contract, persistence, migration, or dependency change is authorized.
+- 2026-08-12: Completed feature 004 annotated composer refinement T033. The page now uses the
+  approved title/breadcrumb/section/summary/action copy, a prominent resolved-client icon, accessible
+  placeholder-only Finding search, a proportional five-control commercial row at 1440 px, `U.M.`/
+  `€` suffixes, and editable measure suggestions derived from the existing detailed product list.
+  Selecting exactly one Finding prefills editable title and Problem plus its exact visible reference;
+  multiple Findings leave the title blank and retain sorted references, while removing all Findings
+  clears generated content. Focused Pint passed on 5 files; focused PHPStan passed on 2 application
+  files; all FIC unit/feature tests passed 46 tests with 238 assertions; isolated FIC Dusk passed 1
+  test with 25 assertions, including 3-column workspace, 5-column commercial row, title/description
+  prefill, prominent client icon, accessible search, light/dark, and 390 px no-overflow behavior.
+  The final normative `scripts/verify.sh` exited 0: Composer validation/audit, Pint on 509 files,
+  PHPStan on 395 files, 615 application tests with 5,376 assertions, strict Canary on 38 routes,
+  diagnostics, 50-Finding benchmark, real PDF/XLSX generation, backup/restore, storage audit, and 22
+  Dusk tests with 758 assertions all passed. Resource and published CSS are byte-identical; no
+  migration, dependency lock, commercial persistence, or provider-write payload changed.

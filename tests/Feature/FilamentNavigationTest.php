@@ -56,6 +56,18 @@ it('discovers native clusters and assigns each clustered component exactly once'
         ->and(DiagnosticsPage::getCluster())->toBe(SettingsCluster::class);
 });
 
+it('uses contrast-aware vector branding for the panel themes', function (): void {
+    $panel = Filament::getPanel('admin');
+
+    expect($panel->getBrandName())->toBe(__('assestme.app.name'))
+        ->and($panel->getBrandLogo())->toBe(asset('images/brand/assestme-logo-black.svg'))
+        ->and($panel->getDarkModeBrandLogo())->toBe(asset('images/brand/assestme-logo-white.svg'))
+        ->and($panel->getBrandLogoHeight())->toBe('2.25rem')
+        ->and($panel->getFavicon())->toBe(asset('images/brand/assestme-logo-black.svg'))
+        ->and(public_path('images/brand/assestme-logo-black.svg'))->toBeFile()
+        ->and(public_path('images/brand/assestme-logo-white.svg'))->toBeFile();
+});
+
 it('builds the approved hierarchy with native Filament navigation items', function (): void {
     $this->actingAs(User::factory()->create());
 

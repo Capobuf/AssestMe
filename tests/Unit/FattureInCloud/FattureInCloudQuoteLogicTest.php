@@ -32,7 +32,21 @@ it('suggests only a compatible sum of exact estimates', function (): void {
 
 it('adds sorted unique Finding references to one row description', function (): void {
     expect(FattureInCloudQuoteLogic::descriptionWithReferences('Intervento', [42, 3, 42]))
-        ->toBe("Intervento\n\nRiferimenti AssestMe: F-000003, F-000042");
+        ->toBe("Intervento\n\nRiferimenti AssestMe: F-000003, F-000042")
+        ->and(FattureInCloudQuoteLogic::descriptionWithReferences('', [3]))
+        ->toBe('Riferimenti AssestMe: F-000003')
+        ->and(FattureInCloudQuoteLogic::descriptionWithoutReferences('Riferimenti AssestMe: F-000003'))
+        ->toBe('');
+});
+
+it('derives only the transient VAT-excluded net row total', function (): void {
+    expect(FattureInCloudQuoteLogic::transientNetTotal([
+        ['net_price' => '100', 'quantity' => '2', 'discount' => '10', 'vat_type_id' => '22'],
+        ['net_price' => '25.50', 'quantity' => '1', 'discount' => '0', 'vat_type_id' => '0'],
+    ]))->toBe(205.5)
+        ->and(FattureInCloudQuoteLogic::transientNetTotal([
+            ['net_price' => '', 'quantity' => '1', 'discount' => '0'],
+        ]))->toBeNull();
 });
 
 function ficExactSolution(float $amount): FindingSolution

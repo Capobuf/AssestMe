@@ -150,6 +150,7 @@ function installationBootstrapCreateReleaseRoot(): string
     foreach ([
         $root.'/bootstrap/cache',
         $root.'/public/css',
+        $root.'/public/images/brand',
         $root.'/public/js',
         $root.'/storage/app/private',
         $root.'/storage/framework/cache/data',
@@ -176,6 +177,8 @@ function installationBootstrapCreateReleaseRoot(): string
         base_path('composer.lock') => $root.'/composer.lock',
         base_path('public/index.php') => $root.'/public/index.php',
         base_path('public/css/assestme-installer.css') => $root.'/public/css/assestme-installer.css',
+        base_path('public/images/brand/assestme-logo-black.svg') => $root.'/public/images/brand/assestme-logo-black.svg',
+        base_path('public/images/brand/assestme-logo-white.svg') => $root.'/public/images/brand/assestme-logo-white.svg',
         base_path('public/js/assestme-installer.js') => $root.'/public/js/assestme-installer.js',
     ] as $source => $destination) {
         if (! copy($source, $destination)) {
@@ -223,6 +226,8 @@ it('boots the real HTTP entry point without env or database and reuses one priva
 
     expect($root.'/.env')->not->toBeFile()
         ->and($keyPath)->not->toBeFile()
+        ->and($root.'/public/images/brand/assestme-logo-black.svg')->toBeFile()
+        ->and($root.'/public/images/brand/assestme-logo-white.svg')->toBeFile()
         ->and($root.'/database/database.sqlite')->not->toBeFile();
 
     $firstServer = installationBootstrapStartServer($root);

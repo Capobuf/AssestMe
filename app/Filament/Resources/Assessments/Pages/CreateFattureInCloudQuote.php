@@ -52,13 +52,15 @@ final class CreateFattureInCloudQuote extends ViewRecord
     /** @var list<array{id: int, reference: string, title: string, problem: string, solutions: list<array{id: int, title: string, description: string, estimate: string}>}> */
     public array $findings = [];
 
+    public string $findingSearch = '';
+
     /** @var list<array{id: string, kind: string, title: string, description: string, net_price: string, quantity: string, measure: string, discount: string, vat_type_id: string, product_id: string|null, product_code: string|null, finding_ids: list<int>, solution_ids: list<int>, unmatched: bool}> */
     public array $rows = [];
 
     /** @var list<array{id: string, label: string}> */
     public array $vatTypes = [];
 
-    /** @var list<array{id: string, label: string}> */
+    /** @var list<array{id: string, label: string, measure: string|null}> */
     public array $products = [];
 
     public bool $vatLoadFailed = false;
@@ -105,6 +107,11 @@ final class CreateFattureInCloudQuote extends ViewRecord
     public function getSubheading(): string
     {
         return $this->assessment()->title;
+    }
+
+    public function getBreadcrumb(): string
+    {
+        return __('assestme.fatture_in_cloud.composer.breadcrumb');
     }
 
     public function settingsUrl(): string
@@ -198,27 +205,127 @@ final class CreateFattureInCloudQuote extends ViewRecord
 
     public function suggestRowPrice(int $rowIndex): void
     {
-        if (! isset($this->rows[$rowIndex])) {
-            return;
-        }
-        $solutionIds = array_values(array_unique($this->rows[$rowIndex]['solution_ids']));
-        $findingIds = array_values(array_unique($this->rows[$rowIndex]['finding_ids']));
-        $solutions = FindingSolution::query()
-            ->whereIn('id', $solutionIds)
-            ->whereIn('finding_id', $findingIds)
-            ->get();
-        if ($solutions->count() !== count($solutionIds)) {
-            $this->priceSuggestionUnavailable();
-
-            return;
-        }
-        $suggestion = FattureInCloudQuoteLogic::compatibleExactSum($solutions->all());
+        $suggestion = $this->compatibleRowPrice($rowIndex);
         if ($suggestion === null) {
             $this->priceSuggestionUnavailable();
 
             return;
         }
         $this->rows[$rowIndex]['net_price'] = self::decimal($suggestion);
+    }
+
+    /** @return list<array{id: int, reference: string, title: string, problem: string, solutions: list<array{id: int, title: string, description: string, estimate: string}>}> */
+    public function filteredFindings(): array
+    {
+        $query = Str::lower(trim($this->findingSearch));
+        if ($query === '') {
+            return $this->findings;
+        }
+
+        return array_values(array_filter(
+            $this->findings,
+            static fn (array $finding): bool => Str::contains(Str::lower(implode("\n", [
+                $finding['reference'],
+                $finding['title'],
+                $finding['problem'],
+            ])), $query),
+        ));
+    }
+
+    public function isFindingLinked(int $findingId): bool
+    {
+        foreach (array_keys($this->rows) as $rowIndex) {
+            if ($this->rowIncludesFinding($rowIndex, $findingId)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function rowIncludesFinding(int $rowIndex, int $findingId): bool
+    {
+        return isset($this->rows[$rowIndex])
+            && in_array($findingId, array_map('intval', $this->rows[$rowIndex]['finding_ids']), true);
+    }
+
+    public function updateRowFinding(int $rowIndex, int $findingId, bool $selected): void
+    {
+        if (! isset($this->rows[$rowIndex]) || $this->rows[$rowIndex]['kind'] !== 'group'
+            || ! in_array($findingId, array_column($this->findings, 'id'), true)) {
+            return;
+        }
+
+        $findingIds = array_values(array_unique(array_map('intval', $this->rows[$rowIndex]['finding_ids'])));
+        if ($selected && ! in_array($findingId, $findingIds, true)) {
+            $findingIds[] = $findingId;
+        } elseif (! $selected) {
+            $findingIds = array_values(array_filter(
+                $findingIds,
+                static fn (int $candidate): bool => $candidate !== $findingId,
+            ));
+        }
+        sort($findingIds, SORT_NUMERIC);
+        $this->rows[$rowIndex]['finding_ids'] = $findingIds;
+        $this->prefillRowFromFindings($rowIndex);
+    }
+
+    /** @return list<string> */
+    public function productMeasures(): array
+    {
+        $measures = [];
+        foreach ($this->products as $product) {
+            if (is_string($product['measure']) && trim($product['measure']) !== '') {
+                $measure = trim($product['measure']);
+                $measures[$measure] = $measure;
+            }
+        }
+        sort($measures, SORT_NATURAL | SORT_FLAG_CASE);
+
+        return $measures;
+    }
+
+    /** @return array{total: int, finding_rows: int, free_rows: int, linked_findings: int, total_findings: int} */
+    public function rowSummary(): array
+    {
+        $findingRows = 0;
+        $freeRows = 0;
+        $linkedFindingIds = [];
+        $knownFindingIds = array_column($this->findings, 'id');
+
+        foreach ($this->rows as $row) {
+            if ($row['kind'] === 'group') {
+                $findingRows++;
+            } else {
+                $freeRows++;
+            }
+            foreach ($row['finding_ids'] as $findingId) {
+                $normalizedFindingId = (int) $findingId;
+                if (in_array($normalizedFindingId, $knownFindingIds, true)) {
+                    $linkedFindingIds[$normalizedFindingId] = true;
+                }
+            }
+        }
+
+        return [
+            'total' => count($this->rows),
+            'finding_rows' => $findingRows,
+            'free_rows' => $freeRows,
+            'linked_findings' => count($linkedFindingIds),
+            'total_findings' => count($this->findings),
+        ];
+    }
+
+    public function rowHasPriceSuggestion(int $rowIndex): bool
+    {
+        return $this->compatibleRowPrice($rowIndex) !== null;
+    }
+
+    public function formattedNetTotal(): string
+    {
+        $total = FattureInCloudQuoteLogic::transientNetTotal($this->rows);
+
+        return $total === null ? '—' : '€ '.number_format($total, 2, ',', '.');
     }
 
     public function searchProducts(string $query = ''): void
@@ -233,6 +340,7 @@ final class CreateFattureInCloudQuote extends ViewRecord
                 static fn (FattureInCloudProductData $product): array => [
                     'id' => $product->id,
                     'label' => trim(($product->code === null ? '' : $product->code.' — ').$product->name),
+                    'measure' => $product->measure,
                 ],
                 app(FattureInCloudApi::class)->products($companyId, trim($query)),
             );
@@ -452,11 +560,65 @@ final class CreateFattureInCloudQuote extends ViewRecord
         ];
     }
 
+    private function prefillRowFromFindings(int $rowIndex): void
+    {
+        $findingIds = $this->rows[$rowIndex]['finding_ids'];
+        $baseDescription = FattureInCloudQuoteLogic::descriptionWithoutReferences(
+            $this->rows[$rowIndex]['description'],
+        );
+
+        if (count($findingIds) === 1) {
+            $finding = collect($this->findings)->firstWhere('id', $findingIds[0]);
+            if (is_array($finding)) {
+                $this->rows[$rowIndex]['title'] = $finding['title'];
+                $this->rows[$rowIndex]['description'] = FattureInCloudQuoteLogic::descriptionWithReferences(
+                    $finding['problem'],
+                    $findingIds,
+                );
+            }
+
+            return;
+        }
+
+        $this->rows[$rowIndex]['title'] = '';
+        if (collect($this->findings)->contains(
+            static fn (array $finding): bool => $finding['problem'] === $baseDescription,
+        )) {
+            $baseDescription = '';
+        }
+        $this->rows[$rowIndex]['description'] = FattureInCloudQuoteLogic::descriptionWithReferences(
+            $baseDescription,
+            $findingIds,
+        );
+    }
+
     private function priceSuggestionUnavailable(): void
     {
         Notification::make()->warning()
             ->title(__('assestme.fatture_in_cloud.composer.price_suggestion_unavailable'))
             ->send();
+    }
+
+    private function compatibleRowPrice(int $rowIndex): ?float
+    {
+        if (! isset($this->rows[$rowIndex])) {
+            return null;
+        }
+
+        $solutionIds = array_values(array_unique($this->rows[$rowIndex]['solution_ids']));
+        if ($solutionIds === []) {
+            return null;
+        }
+        $findingIds = array_values(array_unique($this->rows[$rowIndex]['finding_ids']));
+        $solutions = FindingSolution::query()
+            ->whereIn('id', $solutionIds)
+            ->whereIn('finding_id', $findingIds)
+            ->get();
+        if ($solutions->count() !== count($solutionIds)) {
+            return null;
+        }
+
+        return FattureInCloudQuoteLogic::compatibleExactSum($solutions->all());
     }
 
     private static function decimal(float $value): string

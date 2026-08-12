@@ -73,15 +73,40 @@ final class FattureInCloudQuoteLogic
             return trim($description);
         }
 
-        return trim($description)."\n\nRiferimenti AssestMe: ".implode(', ', $references);
+        $referenceLine = 'Riferimenti AssestMe: '.implode(', ', $references);
+
+        return trim($description) === '' ? $referenceLine : trim($description)."\n\n".$referenceLine;
     }
 
     public static function descriptionWithoutReferences(string $description): string
     {
         return trim((string) preg_replace(
-            '/\n{2}Riferimenti AssestMe: F-[0-9]{6}(?:, F-[0-9]{6})*\s*\z/',
+            '/(?:\A|\n{2})Riferimenti AssestMe: F-[0-9]{6}(?:, F-[0-9]{6})*\s*\z/',
             '',
             $description,
         ));
+    }
+
+    /** @param list<array{net_price: string, quantity: string, discount: string}> $rows */
+    public static function transientNetTotal(array $rows): ?float
+    {
+        $total = 0.0;
+        foreach ($rows as $row) {
+            if (! is_numeric($row['net_price']) || ! is_numeric($row['quantity']) || ! is_numeric($row['discount'])) {
+                return null;
+            }
+
+            $netPrice = (float) $row['net_price'];
+            $quantity = (float) $row['quantity'];
+            $discount = (float) $row['discount'];
+            if (! is_finite($netPrice) || ! is_finite($quantity) || ! is_finite($discount)
+                || $netPrice < 0 || $quantity <= 0 || $discount < 0 || $discount > 100) {
+                return null;
+            }
+
+            $total += $netPrice * $quantity * (1 - ($discount / 100));
+        }
+
+        return is_finite($total) ? round($total, 2) : null;
     }
 }

@@ -305,8 +305,11 @@ final class FilamentNavigationTest extends DuskTestCase
                 mainWidth: main.getBoundingClientRect().width,
                 navigationTop: navigation.getBoundingClientRect().top,
                 navigationBottom: navigation.getBoundingClientRect().bottom,
+                navigationCenter: navigation.getBoundingClientRect().left + (navigation.getBoundingClientRect().width / 2),
+                navigationMiddle: navigation.getBoundingClientRect().top + (navigation.getBoundingClientRect().height / 2),
                 topbarTop: topbar.getBoundingClientRect().top,
                 topbarBottom: topbar.getBoundingClientRect().bottom,
+                topbarMiddle: topbar.getBoundingClientRect().top + (topbar.getBoundingClientRect().height / 2),
                 navigationOverflow: navigation.scrollWidth - navigation.clientWidth,
             };
             JS)[0];
@@ -317,6 +320,18 @@ final class FilamentNavigationTest extends DuskTestCase
         Assert::assertGreaterThanOrEqual((float) $layout['viewportWidth'] - 1, (float) $layout['mainWidth']);
         Assert::assertGreaterThanOrEqual((float) $layout['topbarTop'], (float) $layout['navigationTop']);
         Assert::assertLessThanOrEqual((float) $layout['topbarBottom'], (float) $layout['navigationBottom']);
+        Assert::assertEqualsWithDelta(
+            (float) $layout['viewportWidth'] / 2,
+            (float) $layout['navigationCenter'],
+            1,
+            'The desktop top navigation is not centered in the viewport.',
+        );
+        Assert::assertEqualsWithDelta(
+            (float) $layout['topbarMiddle'],
+            (float) $layout['navigationMiddle'],
+            1,
+            'The desktop top navigation is not vertically centered in the topbar.',
+        );
         Assert::assertLessThanOrEqual(1, (float) $layout['navigationOverflow'], 'The desktop top navigation overflows.');
     }
 

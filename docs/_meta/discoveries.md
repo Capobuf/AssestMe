@@ -104,3 +104,17 @@ Add only reproducible observations discovered during implementation or verificat
   non-creating `/issued_documents/totals` check accepted the corrected quote payload with status 200.
   Provider rejection logs can retain the HTTP status, bounded error code, and validation field paths
   without retaining provider messages, fiscal identifiers, commercial values, or credentials.
+- Livewire hydrates checkbox option values from the browser as numeric strings even when the initial
+  transient composer arrays contain integer Finding IDs. Derived UI indicators and counts therefore
+  normalize those IDs before strict membership checks; provider reconciliation and persisted data are
+  unchanged.
+- The original composer geometry rule appeared after the first refinement block in the application
+  stylesheet and won the CSS cascade, leaving the summary below the editor. The final authoritative
+  responsive rule now establishes three columns at the existing 64rem desktop boundary and the Dusk
+  regression assertion verifies the computed grid rather than relying on element presence alone.
+- The official detailed Fatture in Cloud product representation already includes `measure`; deriving
+  unique suggestions from the existing read-only product request supplies provider vocabulary while
+  keeping the input editable and avoids inventing a standalone measure endpoint or local catalog.
+- A reference-only row description has no leading commercial text. Reference normalization must
+  therefore recognize the reference block both at the beginning of the string and after a blank-line
+  separator, otherwise removing the final Finding can leave a stale reference behind.

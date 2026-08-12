@@ -44,6 +44,8 @@ afterEach(function (): void {
 it('exposes only the protected installer flow before the definitive lock', function (): void {
     $this->get('/install')
         ->assertOk()
+        ->assertSee('href="/images/brand/assestme-logo-black.svg"', false)
+        ->assertSee('src="/images/brand/assestme-logo-white.svg"', false)
         ->assertSee('Basic Authentication')
         ->assertSee('SQLite')
         ->assertSee('MySQL / MariaDB')

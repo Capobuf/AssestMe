@@ -1,3 +1,17 @@
+@media (min-width: 64rem) {
+    .fi-body-has-top-navigation .fi-topbar {
+        position: relative;
+    }
+
+    .fi-body-has-top-navigation .fi-topbar-nav-groups {
+        position: absolute;
+        inset-block-start: 50%;
+        inset-inline-start: 50%;
+        margin: 0;
+        transform: translate(-50%, -50%);
+    }
+}
+
 .assestme-workspace-context {
     --assestme-lime: #E1FB15;
     --assestme-green: #32D583;
@@ -1246,6 +1260,346 @@
     }
 }
 
+
+/* Fatture in Cloud composer workbench refinement. */
+.assestme-fic-composer {
+    overflow-x: clip;
+}
+
+.assestme-fic-composer__client-panel,
+.assestme-fic-composer__workspace > * {
+    min-width: 0;
+}
+
+.assestme-fic-composer__resolved-client {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+}
+
+.assestme-fic-composer__client-identity {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.assestme-fic-composer__client-icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 2.75rem;
+    color: var(--assestme-fic-text-muted);
+}
+
+.assestme-fic-composer__client-identity > strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 1rem;
+}
+
+.assestme-fic-composer__status,
+.assestme-fic-composer__finding-state,
+.assestme-fic-composer__warning,
+.assestme-fic-composer__catalog-warning {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.assestme-fic-composer__status svg,
+.assestme-fic-composer__finding-state svg,
+.assestme-fic-composer__warning svg,
+.assestme-fic-composer__catalog-warning svg {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 auto;
+}
+
+.assestme-fic-composer__status--success {
+    color: var(--success-700, #15803D);
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.dark .assestme-fic-composer__status--success {
+    color: var(--success-300, #86EFAC);
+}
+
+.assestme-fic-composer__candidate-identifiers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    margin-top: 0.25rem;
+    color: var(--assestme-fic-text-muted);
+    font-size: 0.8125rem;
+}
+
+.assestme-fic-composer__previous-notice {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--assestme-fic-border);
+}
+
+.assestme-fic-composer__previous-notice p {
+    margin-top: 0.2rem;
+    color: var(--assestme-fic-text-muted);
+    font-size: 0.8125rem;
+}
+
+.assestme-fic-composer__previous-notice--warning {
+    color: var(--warning-700, #A16207);
+}
+
+.dark .assestme-fic-composer__previous-notice--warning {
+    color: var(--warning-300, #FCD34D);
+}
+
+.assestme-fic-composer__catalog-warning {
+    padding: 0.75rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--warning-500, #F59E0B) 45%, transparent);
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, var(--warning-500, #F59E0B) 8%, var(--assestme-fic-surface));
+    color: var(--warning-700, #A16207);
+    font-size: 0.875rem;
+}
+
+.dark .assestme-fic-composer__catalog-warning {
+    color: var(--warning-300, #FCD34D);
+}
+
+.assestme-fic-composer__workspace {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.assestme-fic-composer__context {
+    order: 3;
+}
+
+.assestme-fic-composer__rows-panel {
+    order: 1;
+}
+
+.assestme-fic-composer__summary {
+    order: 2;
+}
+
+.assestme-fic-composer__count {
+    color: var(--assestme-fic-text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.assestme-fic-composer__search {
+    display: grid;
+    gap: 0.375rem;
+    margin-bottom: 0.875rem;
+}
+
+.assestme-fic-composer__search > span {
+    color: var(--assestme-fic-text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.assestme-fic-composer__finding {
+    display: grid;
+    gap: 0.625rem;
+}
+
+.assestme-fic-composer__finding-header {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.assestme-fic-composer__finding-state {
+    color: var(--assestme-fic-text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.assestme-fic-composer__finding-problem {
+    margin-top: 0;
+}
+
+.assestme-fic-composer__finding-problem > span,
+.assestme-fic-composer__solutions > strong {
+    display: block;
+    margin-bottom: 0.2rem;
+    color: var(--assestme-fic-text-muted);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+}
+
+.assestme-fic-composer__solution-list {
+    border-top: 1px solid var(--assestme-fic-border);
+    padding-top: 0.625rem;
+}
+
+.assestme-fic-composer__solution-list > summary,
+.assestme-fic-composer__assignments > summary {
+    cursor: pointer;
+    font-size: 0.8125rem;
+    font-weight: 700;
+}
+
+.assestme-fic-composer__solution-list > summary:focus-visible,
+.assestme-fic-composer__assignments > summary:focus-visible {
+    border-radius: 0.25rem;
+    outline: 2px solid var(--assestme-lime, #E1FB15);
+    outline-offset: 0.25rem;
+}
+
+.assestme-fic-composer__solution-list > div {
+    display: grid;
+    gap: 0.625rem;
+    margin-top: 0.625rem;
+}
+
+.assestme-fic-composer__solution {
+    margin-top: 0;
+}
+
+.assestme-fic-composer__solution > strong {
+    font-size: 0.8125rem;
+}
+
+.assestme-fic-composer__empty {
+    color: var(--assestme-fic-text-muted);
+    font-size: 0.875rem;
+}
+
+.assestme-fic-composer__row-identity {
+    display: grid;
+    min-width: 0;
+    gap: 0.15rem;
+}
+
+.assestme-fic-composer__row-identity > span {
+    color: var(--assestme-fic-text-muted);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+}
+
+.assestme-fic-composer__row-identity > small {
+    overflow-wrap: anywhere;
+    color: var(--assestme-fic-text-muted);
+}
+
+.assestme-fic-composer__field-grid--commercial {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.assestme-fic-composer__assignments {
+    display: block;
+}
+
+.assestme-fic-composer__assignment-content {
+    display: grid;
+    gap: 0.625rem;
+    margin-top: 0.75rem;
+}
+
+.assestme-fic-composer__solutions {
+    padding: 0.625rem 0.75rem;
+    border-left: 2px solid var(--assestme-fic-border);
+    background: color-mix(in srgb, var(--assestme-fic-surface) 45%, transparent);
+}
+
+.assestme-fic-composer__summary-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.assestme-fic-composer__summary-list > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.625rem;
+    border-bottom: 1px solid var(--assestme-fic-border);
+}
+
+.assestme-fic-composer__summary-list dt {
+    color: var(--assestme-fic-text-muted);
+    font-size: 0.8125rem;
+}
+
+.assestme-fic-composer__summary-list dd {
+    font-weight: 700;
+}
+
+.assestme-fic-composer__summary-list .assestme-fic-composer__summary-total {
+    align-items: flex-end;
+    padding: 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--assestme-lime, #E1FB15) 55%, var(--assestme-fic-border));
+    border-radius: 0.625rem;
+    background: color-mix(in srgb, var(--assestme-lime, #E1FB15) 7%, var(--assestme-fic-surface));
+}
+
+.assestme-fic-composer__summary-total dt,
+.assestme-fic-composer__summary-total small {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.assestme-fic-composer__summary-total small {
+    font-size: 0.6875rem;
+    font-weight: 500;
+}
+
+.assestme-fic-composer__summary-total dd {
+    font-size: 1.125rem;
+}
+
+.assestme-fic-composer__submit {
+    display: grid;
+    gap: 0.875rem;
+    margin-top: 1rem;
+}
+
+.assestme-fic-composer__submission-status {
+    padding: 0.75rem;
+    border-radius: 0.625rem;
+    background: var(--assestme-fic-surface-muted);
+    font-size: 0.875rem;
+    line-height: 1.45;
+}
+
+.assestme-fic-composer__success {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.assestme-fic-composer__submit-button {
+    width: 100%;
+    justify-content: center;
+}
+
+@media (max-width: 39.999rem) {
+    .assestme-fic-composer__resolved-client,
+    .assestme-fic-composer__previous-notice,
+    .assestme-fic-composer__candidate,
+    .assestme-fic-composer__row-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .assestme-fic-composer__previous-notice {
+        display: grid;
+    }
+}
 .assestme-generated-files-section {
     min-width: 0;
 }
@@ -1940,7 +2294,7 @@
     min-width: 0;
     align-items: start;
     gap: 1.5rem;
-    grid-template-columns: minmax(17rem, 0.8fr) minmax(0, 2.2fr);
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .assestme-fic-composer__context,
@@ -1996,11 +2350,11 @@
 }
 
 .assestme-fic-composer__finding-problem {
-    margin-top: 0.35rem;
+    margin-top: 0;
 }
 
 .assestme-fic-composer__solution {
-    margin-top: 0.65rem;
+    margin-top: 0;
     font-size: 0.8125rem;
 }
 
@@ -2048,7 +2402,7 @@
 }
 
 .assestme-fic-composer__field-grid--commercial {
-    grid-template-columns: repeat(4, minmax(7rem, 1fr));
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .assestme-fic-composer__field-grid--catalog {
@@ -2089,7 +2443,7 @@
 }
 
 .assestme-fic-composer__assignments {
-    display: grid;
+    display: block;
     min-width: 0;
     gap: 0.625rem;
     padding-top: 1rem;
@@ -2105,6 +2459,8 @@
     min-width: 0;
     align-items: flex-start;
     gap: 0.625rem;
+    font-family: inherit;
+    font-size: 0.875rem;
     line-height: 1.4;
 }
 
@@ -2121,7 +2477,7 @@
 .assestme-fic-composer__solutions {
     display: grid;
     gap: 0.5rem;
-    margin-inline-start: 1.75rem;
+    margin-inline-start: 0;
 }
 
 .assestme-fic-composer__warning {
@@ -2134,32 +2490,42 @@
     color: var(--warning-300, #FCD34D);
 }
 
-@media (max-width: 64rem) {
-    .assestme-fic-composer__workspace {
-        grid-template-columns: minmax(0, 1fr);
-    }
-}
-
-@media (max-width: 52rem) {
-    .assestme-fic-composer__field-grid--commercial,
-    .assestme-fic-composer__field-grid--catalog {
+@media (min-width: 40rem) {
+    .assestme-fic-composer__field-grid--commercial {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
-@media (max-width: 40rem) {
-    .assestme-fic-composer {
-        gap: 1rem;
+@media (min-width: 64rem) {
+    .assestme-fic-composer__workspace {
+        grid-template-columns: minmax(14rem, 0.78fr) minmax(28rem, 2.25fr) minmax(13rem, 0.72fr);
     }
 
-    .assestme-fic-composer__field-grid--commercial,
-    .assestme-fic-composer__field-grid--catalog {
-        grid-template-columns: minmax(0, 1fr);
+    .assestme-fic-composer__context,
+    .assestme-fic-composer__rows-panel,
+    .assestme-fic-composer__summary {
+        order: initial;
     }
 
-    .assestme-fic-composer__candidate,
-    .assestme-fic-composer__row-header {
-        align-items: flex-start;
-        flex-direction: column;
+    .assestme-fic-composer__summary {
+        position: sticky;
+        top: 5.5rem;
+        grid-column: auto;
+    }
+
+    .assestme-fic-composer__field-grid--commercial {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 80rem) {
+    .assestme-fic-composer__field-grid--commercial {
+        grid-template-columns:
+            minmax(4.75rem, 0.55fr)
+            minmax(6.75rem, 0.8fr)
+            minmax(7.5rem, 0.95fr)
+            minmax(7.75rem, 0.95fr)
+            minmax(10rem, 1.4fr);
+        gap: 0.625rem;
     }
 }

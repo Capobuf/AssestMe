@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow,noarchive">
     <title>{{ $title }} — AssestMe</title>
+    <link rel="icon" href="/images/brand/assestme-logo-black.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/css/assestme-installer.css">
 </head>
 <body>
     <header class="installer-header">
         <a class="installer-brand" href="/install" aria-label="AssestMe installer">
-            <span aria-hidden="true">A</span>
+            <img src="/images/brand/assestme-logo-white.svg" alt="" aria-hidden="true">
             <strong>AssestMe</strong>
         </a>
         <span class="installer-version">Versione {{ config('assestme.version') }}</span>

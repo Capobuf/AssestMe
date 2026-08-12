@@ -4,7 +4,7 @@ body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; }
 a { color: #176b3a; }
 .installer-header { min-height: 4rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem clamp(1rem, 4vw, 3rem); background: #111713; color: white; }
 .installer-brand { color: white; text-decoration: none; display: flex; align-items: center; gap: .7rem; font-size: 1.1rem; }
-.installer-brand span { width: 2rem; height: 2rem; display: grid; place-items: center; border-radius: .55rem; background: #b7f34b; color: #111713; font-weight: 900; }
+.installer-brand img { width: 2.25rem; height: 2.25rem; object-fit: contain; }
 .installer-version { color: #cbd4cd; font-size: .85rem; }
 .installer-shell { width: min(68rem, calc(100% - 2rem)); margin: clamp(1.25rem, 4vw, 3rem) auto; flex: 1; }
 .installer-steps { display: grid; grid-template-columns: repeat(5, 1fr); gap: .35rem; margin-bottom: 1rem; }

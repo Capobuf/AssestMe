@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\BillingFrequency;
+use App\Enums\EstimateType;
 use App\Filament\Resources\Assessments\Pages\CreateFattureInCloudQuote;
 use App\Models\Assessment;
 use App\Models\Finding;
@@ -44,6 +46,95 @@ it('starts with zero automatic rows and permits repeated manual Finding assignme
         ->and($assessment->refresh()->getChanges())->toBe([]);
 });
 
+it('renders the refined transient workbench terminology search summary and product-first order', function (): void {
+    ficComposerReadySettings();
+    $this->actingAs(User::factory()->create());
+    $assessment = Assessment::factory()->create();
+    $assessment->client->update([
+        'fatture_in_cloud_company_id' => '4321',
+        'fatture_in_cloud_client_id' => '91',
+    ]);
+    $firstFinding = Finding::factory()->create([
+        'assessment_id' => $assessment->getKey(),
+        'title' => 'Firewall perimetrale',
+        'problem' => 'Regole non revisionate',
+    ]);
+    $secondFinding = Finding::factory()->create([
+        'assessment_id' => $assessment->getKey(),
+        'title' => 'Backup immutabile',
+        'problem' => 'Ripristino non verificato',
+    ]);
+    $firstFinding->solutions()->create([
+        'title' => 'Revisione configurazione',
+        'description' => 'Configurazione proposta',
+        'estimate_type' => EstimateType::RequiresQuote,
+        'billing_frequency' => BillingFrequency::OneOff,
+        'sort_order' => 1,
+    ]);
+    Http::fake(['*/c/4321/entities/clients/91*' => Http::response(['data' => ficComposerClient(91)], 200)]);
+    $tablesBefore = Schema::getTableListing();
+
+    $component = Livewire::test(CreateFattureInCloudQuote::class, ['record' => $assessment->getRouteKey()])
+        ->assertSee('Crea Preventivo - Fatture in Cloud')
+        ->assertSee('Cliente Trovato')
+        ->assertSee('Finding e soluzioni')
+        ->assertSee('Cerca nei Finding...')
+        ->assertSee('Riepilogo')
+        ->assertDontSee('Aggiungi gruppo')
+        ->assertDontSee('Salva bozza')
+        ->assertDontSee('Stato preventivo: Bozza')
+        ->set('findingSearch', 'ripristino')
+        ->assertSee('Backup immutabile')
+        ->assertDontSee('Firewall perimetrale')
+        ->set('findingSearch', $firstFinding->getKey() < 1_000_000 ? sprintf('F-%06d', $firstFinding->getKey()) : 'F-'.$firstFinding->getKey())
+        ->assertSee('Firewall perimetrale')
+        ->assertDontSee('Backup immutabile')
+        ->set('findingSearch', '')
+        ->call('addGroup')
+        ->assertSee('Riga da Finding')
+        ->call('updateRowFinding', 0, $firstFinding->getKey(), true)
+        ->assertSet('rows.0.title', 'Firewall perimetrale')
+        ->assertSet('rows.0.description', "Regole non revisionate\n\nRiferimenti AssestMe: ".sprintf('F-%06d', $firstFinding->getKey()))
+        ->assertSee('Soluzioni / stime di riferimento')
+        ->assertSee('Revisione configurazione')
+        ->call('updateRowFinding', 0, $secondFinding->getKey(), true)
+        ->assertSet('rows.0.title', '')
+        ->assertSet('rows.0.description', 'Riferimenti AssestMe: '.implode(', ', [
+            sprintf('F-%06d', $firstFinding->getKey()),
+            sprintf('F-%06d', $secondFinding->getKey()),
+        ]))
+        ->call('updateRowFinding', 0, $secondFinding->getKey(), false)
+        ->assertSet('rows.0.title', 'Firewall perimetrale')
+        ->call('updateRowFinding', 0, $firstFinding->getKey(), false)
+        ->assertSet('rows.0.title', '')
+        ->assertSet('rows.0.description', '')
+        ->call('updateRowFinding', 0, $firstFinding->getKey(), true)
+        ->call('addFreeRow')
+        ->assertSee('Riga Libera')
+        ->set('rows.0.net_price', '100')
+        ->set('rows.0.quantity', '2')
+        ->set('rows.0.discount', '10')
+        ->set('rows.1.net_price', '25.50')
+        ->assertSee('€ 205,50');
+
+    expect($component->instance()->rowSummary())->toBe([
+        'total' => 2,
+        'finding_rows' => 1,
+        'free_rows' => 1,
+        'linked_findings' => 1,
+        'total_findings' => 2,
+    ]);
+
+    $html = $component->html();
+    expect(strpos($html, 'data-dusk="fic-row-product-0"'))
+        ->toBeLessThan(strpos($html, 'data-dusk="fic-row-title-0"'))
+        ->and($html)->toContain('U.M.')
+        ->and($component->instance()->getBreadcrumb())->toBe('Preventivo - Fatture in Cloud')
+        ->and(Schema::getTableListing())->toBe($tablesBefore)
+        ->and($assessment->refresh()->getChanges())->toBe([])
+        ->and($secondFinding->refresh()->getChanges())->toBe([]);
+});
+
 it('uses paginated read-only products and enabled live VAT types as editable suggestions', function (): void {
     ficComposerReadySettings();
     $this->actingAs(User::factory()->create());
@@ -80,6 +171,7 @@ it('uses paginated read-only products and enabled live VAT types as editable sug
                     'id' => $page === 1 ? 100 : 200,
                     'code' => 'SERV-'.$page,
                     'name' => 'Prodotto '.$page,
+                    'measure' => $page === 1 ? 'ore' : 'giornate',
                     'net_price' => 10 * $page,
                     'default_vat' => ['id' => 22],
                 ]],
@@ -96,10 +188,13 @@ it('uses paginated read-only products and enabled live VAT types as editable sug
         ->assertSet('rows.0.vat_type_id', '22')
         ->call('searchProducts', 'serv')
         ->assertCount('products', 2)
+        ->assertSee('ore')
+        ->assertSee('giornate')
         ->call('selectProduct', 0, '200')
         ->assertSet('rows.0.product_id', '200')
         ->assertSet('rows.0.product_code', 'SERV-200')
         ->assertSet('rows.0.net_price', '125.5')
+        ->assertSet('rows.0.measure', 'ore')
         ->set('rows.0.title', 'Titolo modificato')
         ->assertSet('rows.0.title', 'Titolo modificato');
 

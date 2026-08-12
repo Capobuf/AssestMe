@@ -92,6 +92,10 @@ One manual group or free row produces exactly one provider quote item. Finding r
 exact `F-xxxxxx` token and remain part of the item description. Products and enabled VAT types are
 read live as optional suggestions; every commercial value remains editable and AssestMe neither
 calculates tax nor writes provider catalogs.
+Measures returned by the live product list are offered as editable suggestions rather than a local
+catalog. Assigning exactly one Finding to a Finding row prefills its editable title and Problem while
+keeping the exact reference visible in the description; assigning multiple Findings leaves the title
+blank and retains their sorted unique references.
 
 Previous-version reuse accepts only the greatest unambiguous exact AssestMe marker for the current
 Assessment. Rows with references that cannot be matched exactly to current Findings are preserved
