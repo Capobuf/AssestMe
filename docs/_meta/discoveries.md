@@ -150,3 +150,6 @@ Add only reproducible observations discovered during implementation or verificat
   leaked from test ordering. Binding that test explicitly to `Tests\\TestCase` made both the
   isolated file and the complete 622-test application suite deterministic without changing
   `FinalizeInstallation`.
+- The hosted Ubuntu runner does not guarantee `rg`. Preflight checks that do not need ripgrep
+  semantics use recursive extended `grep`, while the required process evidence remains explicitly
+  guarded by `command -v ss` and `command -v strace`.

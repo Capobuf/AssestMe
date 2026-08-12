@@ -82,6 +82,7 @@ it('runs equivalent HTTP and browser installer paths with fail-closed server dia
         ->toContain('CURRENT_HTTP_SMOKE_RESULT')
         ->toContain('CURRENT_HTTP_REPEAT_RESULT')
         ->toContain('RELEASE_DUSK_RESULT')
+        ->toContain('grep -R -E -q "name=')
         ->toContain('RELEASE_SERVER_SUPERVISOR_STATUS')
         ->toContain('RELEASE_SERVER_LISTENER_STATUS')
         ->toContain('RELEASE_LISTENER_EXIT_CODE')

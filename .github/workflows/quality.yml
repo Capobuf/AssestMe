@@ -307,7 +307,7 @@ jobs:
             done < "$expected_routes"
 
             for field in application_url timezone backup_root database_driver sqlite_path name email password password_confirmation; do
-              rg -q "name=.[{(]?[[:space:]]*['\"]$field['\"]|name=['\"]$field['\"]" \
+              grep -R -E -q "name=['\"]${field}['\"]" \
                 "$release_path/resources/views/installation"
             done
           done

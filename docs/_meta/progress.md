@@ -416,3 +416,8 @@ Record only factual work performed, the exact affected area, commands run, and r
   normative gate passed 622 application tests with 5,456 assertions, 38/38 strict Canary routes,
   the 50-Finding benchmark, diagnostics, audit and storage checks, and 23 Dusk tests with 785
   assertions. The historical GitHub-run evidence remains pending; root cause is not yet determined.
+- 2026-08-12: The first published historical harness run stopped before either HTTP smoke because
+  the Ubuntu runner did not provide `rg`, which the form-contract preflight had used without
+  declaring it. Replaced that preflight-only search with portable recursive extended `grep` and
+  added a workflow contract assertion. This was a harness correction only; the run produced no
+  application termination evidence and did not change installer behavior.
