@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Filament\Clusters\AssetCluster;
+use App\Filament\Clusters\IntegrationsCluster;
 use App\Filament\Clusters\SettingsCluster;
 use App\Filament\Pages\BackupSettingsPage;
 use App\Filament\Pages\DiagnosticsPage;
@@ -22,6 +23,7 @@ use Filament\Facades\Filament;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
 use Filament\Pages\Enums\SubNavigationPosition;
+use Illuminate\Support\Facades\Route;
 
 it('discovers native clusters and assigns each clustered component exactly once', function (): void {
     $panel = Filament::getPanel('admin');
@@ -29,30 +31,34 @@ it('discovers native clusters and assigns each clustered component exactly once'
     expect($panel->hasTopNavigation())->toBeTrue()
         ->and($panel->isSidebarCollapsibleOnDesktop())->toBeFalse()
         ->and($panel->isSidebarFullyCollapsibleOnDesktop())->toBeFalse()
-        ->and($panel->getClusters())->toContain(AssetCluster::class, SettingsCluster::class)
+        ->and($panel->getClusters())->toContain(AssetCluster::class, IntegrationsCluster::class, SettingsCluster::class)
         ->and($panel->getClusteredComponents(AssetCluster::class))->toEqualCanonicalizing([
             AssetResource::class,
             AssetTypeResource::class,
         ])
-        ->and($panel->getClusteredComponents(SettingsCluster::class))->toEqualCanonicalizing([
+        ->and(SettingsCluster::getClusteredComponents())->toEqualCanonicalizing([
             GeneralSettingsPage::class,
             ReportSettingsPage::class,
             BackupSettingsPage::class,
-            GoogleDriveSettingsPage::class,
-            FattureInCloudSettingsPage::class,
+            IntegrationsCluster::class,
             DiagnosticsPage::class,
             FindingTemplateResource::class,
             CategoryResource::class,
             RiskProfileResource::class,
             EffortLevelResource::class,
         ])
+        ->and($panel->getClusteredComponents(IntegrationsCluster::class))->toEqualCanonicalizing([
+            FattureInCloudSettingsPage::class,
+            GoogleDriveSettingsPage::class,
+        ])
         ->and(AssetResource::getCluster())->toBe(AssetCluster::class)
         ->and(AssetTypeResource::getCluster())->toBe(AssetCluster::class)
         ->and(GeneralSettingsPage::getCluster())->toBe(SettingsCluster::class)
         ->and(ReportSettingsPage::getCluster())->toBe(SettingsCluster::class)
         ->and(BackupSettingsPage::getCluster())->toBe(SettingsCluster::class)
-        ->and(GoogleDriveSettingsPage::getCluster())->toBe(SettingsCluster::class)
-        ->and(FattureInCloudSettingsPage::getCluster())->toBe(SettingsCluster::class)
+        ->and(IntegrationsCluster::getCluster())->toBe(SettingsCluster::class)
+        ->and(GoogleDriveSettingsPage::getCluster())->toBe(IntegrationsCluster::class)
+        ->and(FattureInCloudSettingsPage::getCluster())->toBe(IntegrationsCluster::class)
         ->and(DiagnosticsPage::getCluster())->toBe(SettingsCluster::class);
 });
 
@@ -81,9 +87,8 @@ it('builds the approved hierarchy with native Filament navigation items', functi
     $settings = $items->first(
         static fn (NavigationItem $item): bool => $item->getLabel() === SettingsCluster::getNavigationLabel(),
     );
-
     expect($labels)->toContain('Dashboard', 'Assessment', 'Aziende', 'Impostazioni')
-        ->and($labels)->not->toContain('Sedi', 'Asset', 'Tipologie asset', 'Generale', 'Report', 'Template', 'Categorie', 'Matrice priorità', 'Livelli di impegno', 'Tag')
+        ->and($labels)->not->toContain('Sedi', 'Asset', 'Tipologie asset', 'Generale', 'Report', 'Template', 'Categorie', 'Matrice priorità', 'Livelli di impegno', 'Integrazioni', 'Fatture in Cloud', 'Google Drive', 'Tag')
         ->and($companies)->toBeInstanceOf(NavigationItem::class)
         ->and($companies->getUrl())->toBe(ClientResource::getUrl('index'))
         ->and(collect($companies->getChildItems())->map(
@@ -99,14 +104,18 @@ it('uses clustered URLs route names and ordered native subnavigation', function 
 
     expect(AssetCluster::getSubNavigationPosition())->toBe(SubNavigationPosition::Top)
         ->and(SettingsCluster::getSubNavigationPosition())->toBe(SubNavigationPosition::Top)
+        ->and(IntegrationsCluster::getSubNavigationPosition())->toBe(SubNavigationPosition::Start)
         ->and(AssetCluster::getUrl())->toEndWith('/admin/asset')
         ->and(AssetResource::getUrl('index'))->toEndWith('/admin/asset/assets')
         ->and(AssetTypeResource::getUrl('index'))->toEndWith('/admin/asset/asset-types')
         ->and(SettingsCluster::getUrl())->toEndWith('/admin/settings')
+        ->and(IntegrationsCluster::getUrl())->toBe(FattureInCloudSettingsPage::getUrl())
+        ->and(Route::has('filament.admin.integrations'))->toBeFalse()
         ->and(GeneralSettingsPage::getUrl())->toEndWith('/admin/settings/general-settings-page')
         ->and(ReportSettingsPage::getUrl())->toEndWith('/admin/settings/report-settings-page')
         ->and(BackupSettingsPage::getUrl())->toEndWith('/admin/settings/backup-settings-page')
-        ->and(FattureInCloudSettingsPage::getUrl())->toEndWith('/admin/settings/fatture-in-cloud-settings-page')
+        ->and(FattureInCloudSettingsPage::getUrl())->toEndWith('/admin/settings/integrations/fatture-in-cloud-settings-page')
+        ->and(GoogleDriveSettingsPage::getUrl())->toEndWith('/admin/settings/integrations/google-drive-settings-page')
         ->and(DiagnosticsPage::getUrl())->toEndWith('/admin/settings/diagnostics')
         ->and(FindingTemplateResource::getUrl('index'))->toEndWith('/admin/settings/finding-templates')
         ->and(CategoryResource::getUrl('index'))->toEndWith('/admin/settings/categories')
@@ -117,19 +126,23 @@ it('uses clustered URLs route names and ordered native subnavigation', function 
 
     $assetSubNavigation = app(AssetCluster::class)->getCachedSubNavigation();
     $settingsSubNavigation = app(SettingsCluster::class)->getCachedSubNavigation();
+    $integrationsSubNavigation = app(IntegrationsCluster::class)->getCachedSubNavigation();
 
     expect(navigationLabels($assetSubNavigation))->toBe(['Asset', 'Tipologie asset'])
         ->and(navigationLabels($settingsSubNavigation))->toBe([
             'Generale',
             'Report',
             'Backup',
-            'Google Drive',
+            'Integrazioni',
             'Template',
             'Diagnostica',
-            'Fatture in Cloud',
             'Categorie',
             'Matrice priorità',
             'Livelli di impegno',
+        ])
+        ->and(navigationLabels($integrationsSubNavigation))->toBe([
+            'Fatture in Cloud',
+            'Google Drive',
         ]);
 });
 
@@ -138,6 +151,7 @@ it('redirects each cluster entry to its first real destination', function (): vo
 
     $this->get(AssetCluster::getUrl())->assertRedirect(AssetResource::getUrl('index'));
     $this->get(SettingsCluster::getUrl())->assertRedirect(GeneralSettingsPage::getUrl());
+    expect(IntegrationsCluster::getUrl())->toBe(FattureInCloudSettingsPage::getUrl());
 });
 
 it('requires authentication for every relocated navigation destination', function (string $url): void {

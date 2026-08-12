@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Browser;
 
-use App\Actions\Operations\RecordOperationalCheck;
-use App\Enums\OperationalCheckStatus;
-use App\Enums\OperationalCheckType;
 use App\Filament\Pages\GeneralSettingsPage;
 use App\Filament\Pages\ReportSettingsPage;
+use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Resources\Assets\AssetResource;
 use App\Filament\Resources\AssetTypes\AssetTypeResource;
 use App\Filament\Resources\Categories\CategoryResource;
@@ -36,20 +34,15 @@ final class MilestoneOneFoundationTest extends DuskTestCase
 {
     use DatabaseTruncation;
 
-    public function test_dashboard_omits_the_account_card_and_aligns_application_status_responsively(): void
+    public function test_operational_dashboard_renders_hero_launchers_and_responsive_layout(): void
     {
         $this->seed(MilestoneOneSeeder::class);
         $administrator = User::factory()->create();
-        app(RecordOperationalCheck::class)(
-            OperationalCheckType::Backup,
-            OperationalCheckStatus::Failed,
-            'Responsive backup failure proof.',
-        );
-        app(RecordOperationalCheck::class)(
-            OperationalCheckType::DatabaseIntegrity,
-            OperationalCheckStatus::Failed,
-            'Responsive integrity failure proof.',
-        );
+        $client = Client::factory()->create(['trade_name' => 'Azienda Dashboard']);
+        Assessment::factory()->for($client)->create([
+            'title' => 'Assessment operativo dashboard',
+            'assessment_date' => '2026-08-12',
+        ]);
         $artifactRoot = base_path('storage/app/qa-artifacts');
         File::ensureDirectoryExists($artifactRoot);
 
@@ -57,98 +50,77 @@ final class MilestoneOneFoundationTest extends DuskTestCase
             $browser->resize(1440, 900)
                 ->loginAs($administrator)
                 ->visit('/admin')
-                ->waitForText('Assessment in bozza')
+                ->waitFor('[data-dusk="dashboard-hero"]')
+                ->waitForText('Riprendi il lavoro')
+                ->assertSee('Nuovo assessment')
+                ->assertSee('Aziende recenti')
+                ->assertSee('Ultimi assessment')
+                ->assertSee('Archivio AssestMe')
                 ->assertMissing('.fi-account-widget')
+                ->assertPresent("a[href='".AssessmentResource::getUrl('create')."']")
                 ->script("localStorage.setItem('theme', 'dark'); document.documentElement.classList.add('dark');");
-            $browser->script('window.scrollTo(0, document.documentElement.scrollHeight)');
-            $browser->waitFor('[data-dusk="application-status"]')
-                ->scrollIntoView('[data-dusk="application-status"]')
-                ->waitForText('Ultimo backup riuscito')
-                ->assertSee('L’ultimo tentativo non è riuscito; l’applicazione resta disponibile.')
-                ->assertSee('Integrità database')
-                ->assertSee('Esegui la diagnostica e verifica il problema segnalato.');
+            $browser->pause(250);
 
             $desktop = $browser->script(<<<'JS'
-                const container = document.querySelector('[data-dusk="application-status"]');
-                const table = container?.querySelector('table');
-                const rows = Array.from(container?.querySelectorAll('tbody tr') ?? []);
-                const headers = Array.from(container?.querySelectorAll('thead th') ?? []);
+                const hero = document.querySelector('[data-dusk="dashboard-hero"]');
+                const launchers = document.querySelector('.assestme-dashboard-launchers');
+                const primaryGrid = document.querySelector('.assestme-dashboard-primary-grid');
+                const archiveGrid = document.querySelector('.assestme-dashboard-archive__grid');
 
                 return {
-                    containerWidth: container?.clientWidth ?? 0,
-                    containerScrollWidth: container?.scrollWidth ?? 0,
-                    tableWidth: table?.getBoundingClientRect().width ?? 0,
-                    headerLabels: headers.map((header) => header.textContent?.trim()),
-                    rowCount: rows.length,
-                    rowDisplays: rows.map((row) => getComputedStyle(row).display),
-                    cellDisplays: rows.map((row) =>
-                        Array.from(row.children).map((cell) => getComputedStyle(cell).display)
-                    ),
-                    rowHeights: rows.map((row) => row.getBoundingClientRect().height),
+                    width: document.documentElement.clientWidth,
+                    scrollWidth: document.documentElement.scrollWidth,
+                    heroWidth: hero?.getBoundingClientRect().width ?? 0,
+                    launcherCount: launchers?.children.length ?? 0,
+                    launcherColumns: getComputedStyle(launchers).gridTemplateColumns.split(' ').length,
+                    primaryColumns: getComputedStyle(primaryGrid).gridTemplateColumns.split(' ').length,
+                    archiveCount: archiveGrid?.children.length ?? 0,
+                    archiveColumns: getComputedStyle(archiveGrid).gridTemplateColumns.split(' ').length,
                 };
                 JS)[0];
 
-            Assert::assertSame(
-                ['Controllo', 'Stato', 'Ultimo evento', 'Dettaglio'],
-                $desktop['headerLabels'] ?? [],
-            );
-            Assert::assertSame(3, $desktop['rowCount'] ?? 0);
-            Assert::assertLessThanOrEqual(
-                ($desktop['containerWidth'] ?? 0) + 1,
-                $desktop['containerScrollWidth'] ?? 0,
-            );
-            Assert::assertEqualsWithDelta(
-                $desktop['containerWidth'] ?? 0,
-                $desktop['tableWidth'] ?? 0,
-                1,
-            );
-            foreach ($desktop['rowDisplays'] ?? [] as $display) {
-                Assert::assertSame('table-row', $display);
-            }
-            foreach ($desktop['cellDisplays'] ?? [] as $displays) {
-                Assert::assertSame(['table-cell', 'table-cell', 'table-cell', 'table-cell'], $displays);
-            }
-            foreach ($desktop['rowHeights'] ?? [] as $height) {
-                Assert::assertGreaterThan(40, $height);
-            }
-            $browser->driver->takeScreenshot("{$artifactRoot}/dashboard-status-corrected-1440x900-dark.png");
+            Assert::assertLessThanOrEqual($desktop['width'] + 1, $desktop['scrollWidth']);
+            Assert::assertGreaterThan(900, $desktop['heroWidth']);
+            Assert::assertSame(4, $desktop['launcherCount']);
+            Assert::assertSame(4, $desktop['launcherColumns']);
+            Assert::assertSame(2, $desktop['primaryColumns']);
+            Assert::assertSame(4, $desktop['archiveCount']);
+            Assert::assertSame(4, $desktop['archiveColumns']);
+            $browser->driver->takeScreenshot("{$artifactRoot}/dashboard-operational-1440x900-dark.png");
 
             $browser->resize(390, 844)
                 ->visit('/admin')
-                ->waitForText('Assessment in bozza')
-                ->assertMissing('.fi-account-widget')
-                ->script('window.scrollTo(0, document.documentElement.scrollHeight)');
-            $browser->waitFor('[data-dusk="application-status"]')
-                ->scrollIntoView('[data-dusk="application-status"]')
-                ->waitForText('Ultimo backup riuscito');
+                ->waitFor('[data-dusk="dashboard-hero"]')
+                ->waitForText('Riprendi il lavoro')
+                ->assertSee('Nuovo assessment')
+                ->assertSee('Aziende recenti')
+                ->assertSee('Ultimi assessment')
+                ->assertSee('Archivio AssestMe')
+                ->assertPresent('[data-dusk="dashboard-archive"]')
+                ->pause(250);
 
-            $narrow = $browser->script(<<<'JS'
-                const container = document.querySelector('[data-dusk="application-status"]');
-                const rows = Array.from(container?.querySelectorAll('tbody tr') ?? []);
+            $mobile = $browser->script(<<<'JS'
+                const hero = document.querySelector('[data-dusk="dashboard-hero"]');
+                const launchers = document.querySelector('.assestme-dashboard-launchers');
+                const primaryGrid = document.querySelector('.assestme-dashboard-primary-grid');
+                const archiveGrid = document.querySelector('.assestme-dashboard-archive__grid');
 
                 return {
-                    containerWidth: container?.clientWidth ?? 0,
-                    containerScrollWidth: container?.scrollWidth ?? 0,
-                    rowCount: rows.length,
-                    rowDisplays: rows.map((row) => getComputedStyle(row).display),
-                    cellDisplays: rows.map((row) =>
-                        Array.from(row.children).map((cell) => getComputedStyle(cell).display)
-                    ),
+                    width: document.documentElement.clientWidth,
+                    scrollWidth: document.documentElement.scrollWidth,
+                    heroWidth: hero?.getBoundingClientRect().width ?? 0,
+                    launcherColumns: getComputedStyle(launchers).gridTemplateColumns.split(' ').length,
+                    primaryColumns: getComputedStyle(primaryGrid).gridTemplateColumns.split(' ').length,
+                    archiveColumns: getComputedStyle(archiveGrid).gridTemplateColumns.split(' ').length,
                 };
                 JS)[0];
 
-            Assert::assertSame(3, $narrow['rowCount'] ?? 0);
-            Assert::assertLessThanOrEqual(
-                ($narrow['containerWidth'] ?? 0) + 1,
-                $narrow['containerScrollWidth'] ?? 0,
-            );
-            foreach ($narrow['rowDisplays'] ?? [] as $display) {
-                Assert::assertSame('block', $display);
-            }
-            foreach ($narrow['cellDisplays'] ?? [] as $displays) {
-                Assert::assertSame(['grid', 'grid', 'grid', 'grid'], $displays);
-            }
-            $browser->driver->takeScreenshot("{$artifactRoot}/dashboard-status-corrected-390x844-dark.png");
+            Assert::assertLessThanOrEqual($mobile['width'] + 1, $mobile['scrollWidth']);
+            Assert::assertLessThanOrEqual($mobile['width'], $mobile['heroWidth'] + 1);
+            Assert::assertSame(1, $mobile['launcherColumns']);
+            Assert::assertSame(1, $mobile['primaryColumns']);
+            Assert::assertSame(1, $mobile['archiveColumns']);
+            $browser->driver->takeScreenshot("{$artifactRoot}/dashboard-operational-390x844-dark.png");
 
             $severeLogs = array_values(array_filter(
                 $browser->driver->manage()->getLog('browser'),
@@ -182,29 +154,15 @@ final class MilestoneOneFoundationTest extends DuskTestCase
             ->create(['name' => 'Asset prova browser']);
         Category::factory()->create(['name' => 'Categoria prova browser', 'sort_order' => 0]);
         Assessment::factory()->for($client)->create(['title' => 'Assessment dashboard browser']);
-        app(RecordOperationalCheck::class)(
-            OperationalCheckType::Backup,
-            OperationalCheckStatus::Failed,
-            'Browser backup failure proof.',
-        );
-        app(RecordOperationalCheck::class)(
-            OperationalCheckType::DatabaseIntegrity,
-            OperationalCheckStatus::Failed,
-            'Browser integrity failure proof.',
-        );
         $riskProfile = RiskProfile::query()->where('is_default', true)->firstOrFail();
         $effortLevel = EffortLevel::query()->where('code', 'low')->firstOrFail();
 
         $this->browse(function (Browser $browser) use ($administrator, $asset, $client, $effortLevel, $riskProfile, $site): void {
             $browser->loginAs($administrator)
                 ->visit('/admin')
-                ->waitForText('Assessment in bozza');
+                ->waitForText('Riprendi il lavoro');
             $browser->script('window.scrollTo(0, document.documentElement.scrollHeight)');
-            $browser->waitForText('Stato applicazione')
-                ->assertSee('L’ultimo tentativo non è riuscito; l’applicazione resta disponibile.')
-                ->assertSee('Integrità database')
-                ->assertSee('Esegui la diagnostica e verifica il problema segnalato.')
-                ->assertDontSee('risolvere il problema prima di continuare')
+            $browser->waitForText('Archivio AssestMe')
                 ->waitForText('Ultimi assessment')
                 ->waitForText('Cliente Browser')
                 ->visit(ClientResource::getUrl('index'))

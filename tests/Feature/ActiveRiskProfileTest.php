@@ -8,7 +8,6 @@ use App\Actions\Risk\SaveRiskProfileConfiguration;
 use App\Actions\Templates\ImportFindingTemplates;
 use App\Data\Assessments\FindingSaveData;
 use App\Filament\Resources\Assessments\Schemas\FindingEditorSchema;
-use App\Filament\Widgets\UrgentFindings;
 use App\Models\Assessment;
 use App\Models\ConsequenceLevel;
 use App\Models\Finding;
@@ -23,7 +22,6 @@ use App\Settings\GeneralSettings;
 use Database\Seeders\MilestoneOneSeeder;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Livewire\Livewire;
 
 beforeEach(function (): void {
     $this->seed(MilestoneOneSeeder::class);
@@ -156,11 +154,6 @@ it('derives urgent findings from the two highest levels of every profile without
         (int) $priorities[3]->getKey(),
     )->not->toContain((int) $priorities[0]->getKey(), (int) $priorities[1]->getKey());
 
-    Livewire::test(UrgentFindings::class)
-        ->assertSee('Finding urgent_now')
-        ->assertSee('Finding emergency')
-        ->assertDontSee('Finding watch')
-        ->assertDontSee('Finding attention');
 });
 
 function createCustomActiveRiskProfile(): RiskProfile

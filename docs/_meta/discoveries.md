@@ -49,8 +49,11 @@
 - The initial Filament page treated missing `GOOGLE_*` values as a terminal unavailable state. A
   native Settings form can instead persist the same application values with encrypted write-only
   secrets; one resolver keeps optional environment values as defaults for existing deployments.
-- Filament derives this page URL as `/admin/settings/google-drive-settings-page`; OAuth completion
+- Filament derives this page URL as `/admin/settings/integrations/google-drive-settings-page`; OAuth completion
   now resolves that route from the page class instead of returning to the former hard-coded 404.
+- Filament 5 discovers a cluster class in the cluster directory through both its `Cluster` and `Page`
+  passes. A nested cluster is consequently registered twice in the parent's raw component map; the
+  parent cluster must de-duplicate its effective component list to avoid duplicate navigation items.
 - Google documents `drive.file` as a non-sensitive per-file scope and supports Drive operations on
   app-created objects; creating the root with `parents: ['root']` returns the authoritative My Drive
   folder ID without requiring list/search access or ambiguous same-name adoption.

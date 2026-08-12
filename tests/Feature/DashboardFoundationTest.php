@@ -2,155 +2,202 @@
 
 declare(strict_types=1);
 
-use App\Actions\Operations\RecordOperationalCheck;
 use App\Enums\AssessmentStatus;
 use App\Enums\DeletionOperationStatus;
-use App\Enums\FindingStatus;
-use App\Enums\OperationalCheckStatus;
-use App\Enums\OperationalCheckType;
-use App\Filament\Pages\BackupSettingsPage;
-use App\Filament\Widgets\ApplicationStatus;
-use App\Filament\Widgets\AssessmentStatsOverview;
-use App\Filament\Widgets\LatestAssessments;
-use App\Filament\Widgets\UrgentFindings;
+use App\Filament\Pages\GeneralSettingsPage;
+use App\Filament\Resources\Assessments\AssessmentResource;
+use App\Filament\Resources\Assessments\Pages\WorkspaceAssessment;
+use App\Filament\Resources\Assets\AssetResource;
+use App\Filament\Resources\Clients\ClientResource;
+use App\Filament\Resources\FindingTemplates\FindingTemplateResource;
+use App\Filament\Resources\Sites\SiteResource;
+use App\Filament\Widgets\OperationalDashboard;
 use App\Models\Assessment;
+use App\Models\Asset;
 use App\Models\Client;
 use App\Models\DeletionOperation;
-use App\Models\Finding;
-use App\Models\PriorityLevel;
+use App\Models\FindingTemplate;
+use App\Models\Site;
 use App\Models\User;
 use App\Services\Backups\LatestBackupStatus;
 use Carbon\CarbonImmutable;
 use Database\Seeders\MilestoneOneSeeder;
 use Filament\Facades\Filament;
 use Filament\Widgets\AccountWidget;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Livewire\Livewire;
 
-it('shows actionable dashboard counts and only the latest five assessments', function (): void {
+it('requires authentication and renders the operational homepage with real launcher routes', function (): void {
+    $this->get('/admin')->assertRedirect('/admin/login');
+
+    $administrator = User::factory()->create();
+    $this->actingAs($administrator)
+        ->get('/admin')
+        ->assertOk()
+        ->assertSee(__('assestme.dashboard.resume.heading'))
+        ->assertSee(__('assestme.dashboard.quick_access'))
+        ->assertSee(AssessmentResource::getUrl('create'), false)
+        ->assertSee(ClientResource::getUrl('index'), false)
+        ->assertSee(AssessmentResource::getUrl('index'), false)
+        ->assertSee(GeneralSettingsPage::getUrl(), false);
+});
+
+it('shows useful empty states without inventing activity', function (): void {
+    $this->actingAs(User::factory()->create());
+
+    Livewire::test(OperationalDashboard::class)
+        ->assertSee(__('assestme.dashboard.resume.empty_title'))
+        ->assertSee(__('assestme.dashboard.resume.start_first'))
+        ->assertSee(__('assestme.dashboard.companies.empty_title'))
+        ->assertSee(__('assestme.dashboard.assessments.empty_title'))
+        ->assertSee(__('assestme.dashboard.archive.heading'))
+        ->assertViewHas('archiveItems', fn (array $items): bool => collect($items)->pluck('count')->all() === [0, 0, 0, 0])
+        ->assertSeeHtml('href="'.AssessmentResource::getUrl('create').'"')
+        ->assertSeeHtml('href="'.ClientResource::getUrl('create').'"')
+        ->assertSeeHtml('href="'.SiteResource::getUrl('index').'"')
+        ->assertSeeHtml('href="'.AssetResource::getUrl('index').'"')
+        ->assertSeeHtml('href="'.FindingTemplateResource::getUrl('index').'"');
+});
+
+it('resumes the most recently updated draft and otherwise falls back to the latest assessment', function (): void {
     $administrator = User::factory()->create();
     $this->actingAs($administrator);
-    $this->seed(MilestoneOneSeeder::class);
+    $olderDraft = Assessment::factory()->create([
+        'title' => 'Bozza precedente',
+        'assessment_date' => '2026-08-10',
+        'status' => AssessmentStatus::Draft,
+        'updated_at' => '2026-08-10 12:00:00',
+    ]);
+    $resumeDraft = Assessment::factory()->create([
+        'title' => 'Bozza da riprendere',
+        'assessment_date' => '2026-08-08',
+        'status' => AssessmentStatus::Draft,
+        'updated_at' => '2026-08-12 09:30:00',
+    ]);
+    Assessment::factory()->create([
+        'title' => 'Completato più recente per data',
+        'assessment_date' => '2026-08-12',
+        'status' => AssessmentStatus::Completed,
+        'updated_at' => '2026-08-12 11:00:00',
+    ]);
 
+    Livewire::test(OperationalDashboard::class)
+        ->assertViewHas('resumeAssessment', fn (?Assessment $assessment): bool => $assessment?->is($resumeDraft) === true)
+        ->assertSeeHtml('href="'.WorkspaceAssessment::getUrl(['record' => $resumeDraft]).'"');
+
+    $olderDraft->update(['status' => AssessmentStatus::Completed]);
+    $resumeDraft->update(['status' => AssessmentStatus::Completed]);
+    $latest = Assessment::query()->where('title', 'Completato più recente per data')->sole();
+
+    Livewire::test(OperationalDashboard::class)
+        ->assertViewHas('resumeAssessment', fn (?Assessment $assessment): bool => $assessment?->is($latest) === true);
+});
+
+it('orders recent companies by their latest real assessment and handles companies without one', function (): void {
+    $this->actingAs(User::factory()->create());
+    $withoutAssessment = Client::factory()->create([
+        'legal_name' => 'Azienda senza assessment S.r.l.',
+        'trade_name' => null,
+        'updated_at' => '2026-08-12 12:00:00',
+    ]);
+    $olderClient = Client::factory()->create(['trade_name' => 'Azienda precedente']);
+    Assessment::factory()->for($olderClient)->create([
+        'title' => 'Assessment precedente',
+        'assessment_date' => '2026-08-09',
+    ]);
+    $recentClient = Client::factory()->create(['trade_name' => 'Azienda recente']);
+    $latestAssessment = Assessment::factory()->for($recentClient)->create([
+        'title' => 'Assessment recente',
+        'assessment_date' => '2026-08-11',
+        'status' => AssessmentStatus::Completed,
+    ]);
+    Assessment::factory()->for($recentClient)->create([
+        'title' => 'Assessment storico stessa azienda',
+        'assessment_date' => '2026-08-01',
+    ]);
+
+    Livewire::test(OperationalDashboard::class)
+        ->assertViewHas('recentCompanies', function ($companies) use ($latestAssessment): bool {
+            return $companies->pluck('name')->all() === [
+                'Azienda recente',
+                'Azienda precedente',
+                'Azienda senza assessment S.r.l.',
+            ] && $companies->first()['latest_assessment']->is($latestAssessment);
+        })
+        ->assertSee('Azienda recente')
+        ->assertSee('Assessment recente')
+        ->assertSee(__('assestme.dashboard.companies.no_assessment'))
+        ->assertSeeHtml('href="'.ClientResource::getUrl('edit', ['record' => $withoutAssessment]).'"');
+});
+
+it('shows only the latest five assessments', function (): void {
+    $this->seed(MilestoneOneSeeder::class);
+    $this->actingAs(User::factory()->create());
     $assessments = Assessment::factory()->count(6)->sequence(
         fn ($sequence): array => [
             'title' => 'Assessment '.($sequence->index + 1),
             'status' => $sequence->index === 0 ? AssessmentStatus::Completed : AssessmentStatus::Draft,
             'assessment_date' => today()->subDays($sequence->index),
-            'updated_at' => now()->subMinutes($sequence->index),
         ],
     )->create();
     $assessments->each(function (Assessment $assessment, int $index): void {
         $assessment->client->update(['trade_name' => 'Azienda '.($index + 1)]);
     });
-
-    $assessment = Assessment::query()->latest('updated_at')->firstOrFail();
-    Finding::factory()->for($assessment)->create([
-        'status' => FindingStatus::Open,
-        'priority_level_id' => PriorityLevel::query()->where('code', 'critical')->value('id'),
-        'include_in_report' => true,
-    ]);
-    Finding::factory()->for($assessment)->create([
-        'status' => FindingStatus::Resolved,
-        'priority_level_id' => PriorityLevel::query()->where('code', 'high')->value('id'),
-        'include_in_report' => false,
-    ]);
-    DeletionOperation::query()->create([
-        'uuid' => fake()->uuid(),
-        'entity_type' => Assessment::class,
-        'entity_id' => $assessment->id,
-        'status' => DeletionOperationStatus::CleanupFailed,
-        'trash_path' => 'trash/test',
-        'manifest' => [],
-        'error_text' => 'Cleanup failed.',
-    ]);
-
-    Livewire::test(AssessmentStatsOverview::class)
-        ->assertSee(__('assestme.dashboard.draft_assessments'))
-        ->assertSee(__('assestme.dashboard.completed_assessments'))
-        ->assertSee(__('assestme.dashboard.open_findings'))
-        ->assertSee(__('assestme.dashboard.urgent_findings'))
-        ->assertDontSee(__('assestme.dashboard.cleanup_failures'));
-
-    Livewire::test(LatestAssessments::class)
+    Livewire::test(OperationalDashboard::class)
+        ->assertViewHas('latestAssessments', function ($latestAssessments): bool {
+            return $latestAssessments->pluck('client.trade_name')->all() === [
+                'Azienda 1',
+                'Azienda 2',
+                'Azienda 3',
+                'Azienda 4',
+                'Azienda 5',
+            ];
+        })
         ->assertSee('Azienda 1')
-        ->assertSee('Azienda 5')
-        ->assertDontSee('Azienda 6');
-
-    Livewire::test(UrgentFindings::class)
-        ->assertSee(__('assestme.dashboard.urgent_findings_list'))
-        ->assertSee($assessment->findings()->where('status', FindingStatus::Open)->sole()->title);
-
-    Livewire::test(ApplicationStatus::class)
-        ->assertSee(__('assestme.dashboard.application_status'))
-        ->assertSee(__('assestme.dashboard.cleanup_failures'))
-        ->assertSee(__('assestme.dashboard.cleanup_pending_count', ['count' => 1]))
-        ->assertSee(__('assestme.dashboard.check'))
-        ->assertSee(__('assestme.dashboard.condition'))
-        ->assertSee(__('assestme.dashboard.last_event'))
-        ->assertSee(__('assestme.dashboard.details'))
-        ->assertSeeHtml('class="assestme-application-status__table"')
-        ->assertSeeHtml('class="assestme-application-status__condition-content"')
-        ->assertSee(__('assestme.backups.actions.manage'))
-        ->assertSeeHtml('href="'.BackupSettingsPage::getUrl().'"');
+        ->assertSee('Azienda 5');
 });
 
-it('shows the legal company name in dashboard assessment tables when the trade name is absent', function (): void {
+it('shows real archive counts and links to every existing entity index', function (): void {
+    $this->actingAs(User::factory()->create());
+    $clients = Client::factory()->count(2)->create();
+    Site::factory()->count(3)->for($clients->first())->create();
+    Asset::factory()->count(4)->for($clients->first())->create();
+    FindingTemplate::factory()->count(5)->create();
+
+    Livewire::test(OperationalDashboard::class)
+        ->assertViewHas('archiveItems', function (array $items): bool {
+            return collect($items)->pluck('count')->all() === [2, 3, 4, 5];
+        })
+        ->assertSee(__('assestme.dashboard.archive.heading'))
+        ->assertSeeHtml('href="'.ClientResource::getUrl('index').'"')
+        ->assertSeeHtml('href="'.SiteResource::getUrl('index').'"')
+        ->assertSeeHtml('href="'.AssetResource::getUrl('index').'"')
+        ->assertSeeHtml('href="'.FindingTemplateResource::getUrl('index').'"');
+});
+
+it('loads bounded dashboard records without a query growing per row', function (): void {
     $this->seed(MilestoneOneSeeder::class);
-    $administrator = User::factory()->create();
-    $client = Client::factory()->create([
-        'legal_name' => 'Azienda Test S.r.l.',
-        'trade_name' => null,
-    ]);
-    $assessment = Assessment::factory()->for($client)->create([
-        'title' => 'Assessment dashboard senza nome commerciale',
-    ]);
-    Finding::factory()->for($assessment)->create([
-        'status' => FindingStatus::Open,
-        'priority_level_id' => PriorityLevel::query()->where('code', 'critical')->value('id'),
-        'include_in_report' => true,
-    ]);
-    $this->actingAs($administrator);
+    $this->actingAs(User::factory()->create());
+    Assessment::factory()->count(12)->create();
+    $selects = [];
+    DB::listen(static function ($query) use (&$selects): void {
+        if (str_starts_with(mb_strtolower(ltrim($query->sql)), 'select')) {
+            $selects[] = $query->sql;
+        }
+    });
 
-    expect($assessment->client_id)->toBe($client->id)
-        ->and($assessment->client->is($client))->toBeTrue()
-        ->and($assessment->client->displayName())->toBe('Azienda Test S.r.l.');
+    Livewire::test(OperationalDashboard::class);
 
-    Livewire::test(LatestAssessments::class)
-        ->assertCanSeeTableRecords([$assessment])
-        ->assertSee('Azienda Test S.r.l.');
-
-    Livewire::test(UrgentFindings::class)
-        ->assertSee('Azienda Test S.r.l.');
+    expect($selects)->not->toBeEmpty()
+        ->and(count($selects))->toBeLessThanOrEqual(16);
 });
 
-it('shows the trade company name in the latest assessments widget when available', function (): void {
-    $administrator = User::factory()->create();
-    $client = Client::factory()->create([
-        'legal_name' => 'Azienda Test S.r.l.',
-        'trade_name' => 'Azienda Test',
-    ]);
-    $assessment = Assessment::factory()->for($client)->create([
-        'title' => 'Assessment dashboard con nome commerciale',
-    ]);
-    $this->actingAs($administrator);
-
-    Livewire::test(LatestAssessments::class)
-        ->assertCanSeeTableRecords([$assessment])
-        ->assertSee('Azienda Test')
-        ->assertDontSee('Azienda Test S.r.l.');
-});
-
-it('does not register the account welcome widget on the dashboard', function (): void {
+it('registers only the operational dashboard widget and omits the account welcome card', function (): void {
     $widgets = array_values(Filament::getPanel('admin')->getWidgets());
 
     expect($widgets)
-        ->toContain(
-            AssessmentStatsOverview::class,
-            LatestAssessments::class,
-            UrgentFindings::class,
-            ApplicationStatus::class,
-        )
+        ->toContain(OperationalDashboard::class)
         ->not->toContain(AccountWidget::class);
 });
 
@@ -174,41 +221,6 @@ it('reports the newest managed backup without treating unrelated archives as suc
 
         expect($status)->toBeInstanceOf(CarbonImmutable::class)
             ->and($status?->getTimestamp())->toBe(200);
-    } finally {
-        File::deleteDirectory($root);
-    }
-});
-
-it('shows persisted backup and integrity failures without exposing technical error text', function (): void {
-    $administrator = User::factory()->create();
-    $this->actingAs($administrator);
-    $failedAt = CarbonImmutable::parse('2026-07-17 08:15:00', 'UTC');
-    $root = storage_path('framework/testing/dashboard-operations-'.bin2hex(random_bytes(6)));
-    File::ensureDirectoryExists($root);
-    config()->set('assestme.backup.private_storage_path', $root);
-
-    try {
-        $record = app(RecordOperationalCheck::class);
-        $record(
-            OperationalCheckType::Backup,
-            OperationalCheckStatus::Failed,
-            'Sensitive backup path failed.',
-            $failedAt,
-        );
-        $record(
-            OperationalCheckType::DatabaseIntegrity,
-            OperationalCheckStatus::Failed,
-            'database disk image is malformed',
-            $failedAt,
-        );
-
-        Livewire::test(ApplicationStatus::class)
-            ->assertSee(__('assestme.dashboard.backup_failed_short'))
-            ->assertSee(__('assestme.dashboard.database_integrity'))
-            ->assertSee('17/07/2026 10:15')
-            ->assertSee(__('assestme.dashboard.integrity_failure_help'))
-            ->assertDontSee('Sensitive backup path failed.')
-            ->assertDontSee('database disk image is malformed');
     } finally {
         File::deleteDirectory($root);
     }

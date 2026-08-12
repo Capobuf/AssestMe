@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
-use App\Filament\Clusters\SettingsCluster;
+use App\Filament\Clusters\IntegrationsCluster;
+use App\Filament\Pages\Concerns\HasParentSettingsNavigation;
 use App\Models\AssessmentGoogleDriveSync;
 use App\Services\GoogleDrive\GoogleDriveConfiguration;
 use App\Services\GoogleDrive\GoogleDriveSyncService;
@@ -27,11 +28,13 @@ use Throwable;
 
 final class GoogleDriveSettingsPage extends SettingsPage
 {
-    protected static ?string $cluster = SettingsCluster::class;
+    use HasParentSettingsNavigation;
+
+    protected static ?string $cluster = IntegrationsCluster::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCloudArrowUp;
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 2;
 
     protected static string $settings = GoogleDriveSettings::class;
 

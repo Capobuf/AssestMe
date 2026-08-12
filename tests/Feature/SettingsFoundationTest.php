@@ -157,6 +157,20 @@ it('persists validated general settings with the seeded active risk profile', fu
         ->and($settings->max_assessment_evidence_mb)->toBe(300);
 });
 
+it('shows the compact evidence file unit and the reduced default limits', function (): void {
+    $this->actingAs(User::factory()->create());
+
+    Livewire::test(GeneralSettingsPage::class)
+        ->assertSuccessful()
+        ->assertSee('Dimensione Massima File')
+        ->assertSee('Dimensione Massima Assessment')
+        ->assertSee('Mb')
+        ->assertFormSet([
+            'max_evidence_file_mb' => 5,
+            'max_assessment_evidence_mb' => 100,
+        ]);
+});
+
 it('rejects an assessment evidence limit below the single file limit', function (): void {
     $this->seed(MilestoneOneSeeder::class);
     $this->actingAs(User::factory()->create());
@@ -166,7 +180,7 @@ it('rejects an assessment evidence limit below the single file limit', function 
         ->call('save')
         ->assertHasFormErrors(['max_assessment_evidence_mb']);
 
-    expect(app(GeneralSettings::class)->max_assessment_evidence_mb)->toBe(250);
+    expect(app(GeneralSettings::class)->max_assessment_evidence_mb)->toBe(100);
 });
 
 it('normalizes report identity values without introducing VAT calculations', function (): void {

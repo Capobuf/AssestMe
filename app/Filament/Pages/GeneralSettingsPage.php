@@ -64,8 +64,8 @@ final class GeneralSettingsPage extends SettingsPage
                 ])->columns(2),
             Section::make(__('assestme.settings.general.evidence'))
                 ->schema([
-                    TextInput::make('max_evidence_file_mb')->label(__('assestme.settings.fields.max_evidence_file_mb'))->numeric()->minValue(1)->maxValue(25)->required(),
-                    TextInput::make('max_assessment_evidence_mb')->label(__('assestme.settings.fields.max_assessment_evidence_mb'))->numeric()->minValue(1)->maxValue(1000)->required(),
+                    TextInput::make('max_evidence_file_mb')->label(__('assestme.settings.fields.max_evidence_file_mb'))->suffix('Mb')->numeric()->minValue(1)->maxValue(25)->required(),
+                    TextInput::make('max_assessment_evidence_mb')->label(__('assestme.settings.fields.max_assessment_evidence_mb'))->suffix('Mb')->numeric()->minValue(1)->maxValue(1000)->required(),
                 ])->columns(2),
         ]);
     }

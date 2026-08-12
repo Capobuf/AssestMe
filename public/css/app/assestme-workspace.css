@@ -12,6 +12,177 @@
     }
 }
 
+.fi-page-sub-navigation-tabs {
+    flex-wrap: nowrap;
+    overflow: visible;
+}
+
+.assestme-settings-parent-navigation {
+    min-width: 0;
+}
+
+.assestme-diagnostics {
+    --assestme-diagnostics-border: rgb(19 19 19 / 10%);
+    --assestme-diagnostics-surface: #FFFFFF;
+    --assestme-diagnostics-surface-muted: #F7F7F7;
+    --assestme-diagnostics-text: rgb(19 19 19 / 94%);
+    --assestme-diagnostics-text-muted: rgb(19 19 19 / 62%);
+    display: grid;
+    min-width: 0;
+    gap: 1.5rem;
+}
+
+.dark .assestme-diagnostics {
+    --assestme-diagnostics-border: rgb(255 255 255 / 10%);
+    --assestme-diagnostics-surface: #131313;
+    --assestme-diagnostics-surface-muted: #181818;
+    --assestme-diagnostics-text: rgb(255 255 255 / 94%);
+    --assestme-diagnostics-text-muted: rgb(255 255 255 / 62%);
+}
+
+.assestme-diagnostics__summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.assestme-diagnostics__summary-item {
+    display: grid;
+    min-width: 0;
+    align-content: start;
+    gap: 0.25rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--assestme-diagnostics-border);
+    border-radius: 0.75rem;
+    background: var(--assestme-diagnostics-surface-muted);
+}
+
+.assestme-diagnostics__summary-item span {
+    color: var(--assestme-diagnostics-text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+}
+
+.assestme-diagnostics__summary-item strong {
+    overflow-wrap: anywhere;
+    color: var(--assestme-diagnostics-text);
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.assestme-diagnostics__summary-item small {
+    color: var(--assestme-diagnostics-text-muted);
+    font-size: 0.75rem;
+}
+
+.assestme-diagnostics__checks {
+    min-width: 0;
+    border: 1px solid var(--assestme-diagnostics-border);
+    border-radius: 0.75rem;
+    background: var(--assestme-diagnostics-surface);
+    color: var(--assestme-diagnostics-text);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+    overflow: hidden;
+}
+
+.assestme-diagnostics__checks-heading {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--assestme-diagnostics-border);
+}
+
+.assestme-diagnostics__checks-heading h2 {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.assestme-diagnostics__checks-heading p {
+    margin-top: 0.25rem;
+    color: var(--assestme-diagnostics-text-muted);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+}
+
+.assestme-diagnostics__table-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.assestme-diagnostics__table {
+    width: 100%;
+    min-width: 48rem;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.875rem;
+}
+
+.assestme-diagnostics__table thead {
+    background: var(--assestme-diagnostics-surface-muted);
+}
+
+.assestme-diagnostics__table th,
+.assestme-diagnostics__table td {
+    padding: 0.75rem 1rem;
+    vertical-align: top;
+}
+
+.assestme-diagnostics__table thead th {
+    color: var(--assestme-diagnostics-text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+}
+
+.assestme-diagnostics__table tbody tr + tr {
+    border-top: 1px solid var(--assestme-diagnostics-border);
+}
+
+.assestme-diagnostics__table tbody th {
+    width: 28%;
+    color: var(--assestme-diagnostics-text);
+    font-weight: 600;
+}
+
+.assestme-diagnostics__table tbody td:nth-child(2) {
+    width: 10rem;
+}
+
+.assestme-diagnostics__detail {
+    overflow-wrap: anywhere;
+    color: var(--assestme-diagnostics-text-muted);
+    line-height: 1.5;
+}
+
+@media (max-width: 47.999rem) {
+    .assestme-diagnostics__summary {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .assestme-diagnostics__checks-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+
+@media (min-width: 48rem) and (max-width: 74.999rem) {
+    .fi-page-has-sub-navigation-top > .fi-page-header-main-ctn > .fi-page-sub-navigation-dropdown,
+    .assestme-settings-parent-navigation__dropdown {
+        display: block;
+    }
+
+    .fi-page-has-sub-navigation-top > .fi-page-header-main-ctn > .fi-page-main > .fi-page-sub-navigation-tabs,
+    .assestme-settings-parent-navigation__tabs {
+        display: none;
+    }
+}
+
 .assestme-workspace-context {
     --assestme-lime: #E1FB15;
     --assestme-green: #32D583;
@@ -2084,192 +2255,6 @@
     aspect-ratio: auto;
     flex: 1 1 auto;
     min-height: 0;
-}
-
-.assestme-application-status {
-    width: 100%;
-    container-type: inline-size;
-}
-
-.assestme-application-status__table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-    color: var(--gray-950);
-    font-size: 0.875rem;
-    line-height: 1.4;
-    text-align: left;
-}
-
-.dark .assestme-application-status__table {
-    color: var(--gray-100);
-}
-
-.assestme-application-status__table thead {
-    background: var(--gray-50);
-    color: var(--gray-600);
-}
-
-.dark .assestme-application-status__table thead {
-    background: color-mix(in srgb, var(--gray-900) 82%, var(--gray-800));
-    color: var(--gray-300);
-}
-
-.assestme-application-status__table thead th {
-    padding: 0.625rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.025em;
-    text-transform: uppercase;
-}
-
-.assestme-application-status__table thead th:nth-child(1) {
-    width: 24%;
-}
-
-.assestme-application-status__table thead th:nth-child(2) {
-    width: 16%;
-}
-
-.assestme-application-status__table thead th:nth-child(3) {
-    width: 16%;
-}
-
-.assestme-application-status__table thead th:nth-child(4) {
-    width: 44%;
-}
-
-.assestme-application-status__row > th,
-.assestme-application-status__row > td {
-    padding: 0.875rem 0.75rem;
-    border-top: 1px solid var(--gray-200);
-    overflow-wrap: anywhere;
-    vertical-align: middle;
-}
-
-.dark .assestme-application-status__row > th,
-.dark .assestme-application-status__row > td {
-    border-top-color: rgb(255 255 255 / 10%);
-}
-
-.assestme-application-status__row > th {
-    font-weight: 600;
-}
-
-.assestme-application-status__condition-content {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 500;
-}
-
-.assestme-application-status__icon {
-    width: 1.25rem;
-    height: 1.25rem;
-    flex: 0 0 1.25rem;
-}
-
-.assestme-application-status__row--ok .assestme-application-status__icon {
-    color: var(--success-600);
-}
-
-.assestme-application-status__row--failed .assestme-application-status__icon {
-    color: var(--danger-600);
-}
-
-.assestme-application-status__row--warning .assestme-application-status__icon {
-    color: var(--warning-600);
-}
-
-.assestme-application-status__row--unknown .assestme-application-status__icon {
-    color: var(--gray-500);
-}
-
-.assestme-application-status__event {
-    color: var(--gray-600);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-}
-
-.dark .assestme-application-status__event,
-.dark .assestme-application-status__message {
-    color: var(--gray-300);
-}
-
-.assestme-application-status__message {
-    color: var(--gray-700);
-}
-
-@container (max-width: 44rem) {
-    .assestme-application-status__table,
-    .assestme-application-status__table tbody,
-    .assestme-application-status__row,
-    .assestme-application-status__row > th,
-    .assestme-application-status__row > td {
-        display: block;
-        width: 100%;
-    }
-
-    .assestme-application-status__table {
-        table-layout: auto;
-    }
-
-    .assestme-application-status__table thead {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-    }
-
-    .assestme-application-status__row {
-        padding: 0.875rem 0;
-        border-top: 1px solid var(--gray-200);
-    }
-
-    .dark .assestme-application-status__row {
-        border-top-color: rgb(255 255 255 / 10%);
-    }
-
-    .assestme-application-status__row:first-child {
-        padding-top: 0;
-        border-top: 0;
-    }
-
-    .assestme-application-status__row:last-child {
-        padding-bottom: 0;
-    }
-
-    .assestme-application-status__row > th,
-    .assestme-application-status__row > td {
-        display: grid;
-        grid-template-columns: minmax(6.5rem, 35%) minmax(0, 1fr);
-        gap: 0.75rem;
-        padding: 0.25rem 0;
-        border-top: 0;
-        align-items: start;
-    }
-
-    .assestme-application-status__row > th::before,
-    .assestme-application-status__row > td::before {
-        content: attr(data-label);
-        color: var(--gray-500);
-        font-size: 0.6875rem;
-        font-weight: 600;
-        letter-spacing: 0.025em;
-        text-transform: uppercase;
-    }
-
-    .assestme-application-status__condition-content {
-        min-width: 0;
-    }
-
-    .assestme-application-status__event {
-        white-space: normal;
-    }
 }
 
 .assestme-fic-composer {

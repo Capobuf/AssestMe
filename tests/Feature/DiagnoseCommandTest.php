@@ -112,6 +112,10 @@ it('renders the authenticated driver-aware administrative diagnostics page', fun
         ->get('/admin/settings/diagnostics')
         ->assertOk()
         ->assertSee('Diagnostica AssestMe')
+        ->assertSee('Controlli diagnostici')
+        ->assertSee('Versione PHP')
+        ->assertSee('Memoria disponibile')
+        ->assertSee('assestme-diagnostics__table-scroll', false)
         ->assertSee('SQLite')
         ->assertSee('Heartbeat scheduler')
         ->assertSee('Stato backup');

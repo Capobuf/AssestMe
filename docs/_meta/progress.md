@@ -295,3 +295,82 @@ Record only factual work performed, the exact affected area, commands run, and r
   diagnostics, 50-Finding benchmark, real PDF/XLSX generation, backup/restore, storage audit, and 22
   Dusk tests with 758 assertions all passed. Resource and published CSS are byte-identical; no
   migration, dependency lock, commercial persistence, or provider-write payload changed.
+- 2026-08-12: Started a focused settings sub-navigation refinement from browser feedback on
+  `develop` at `72a50a6b30cc008f5ec2e6dc5fd563d2fc9a9504`. The current Filament tabs were verified at
+  1280 px with a 1,216 px viewport box, 1,345 px scrollable content, one row, and native
+  `overflow-x: auto`; scope is limited to eliminating that horizontal scrollbar without changing
+  settings routes or mobile navigation.
+- 2026-08-12: Completed the settings sub-navigation refinement. At 1,200 px and wider, compact tabs
+  remain on one line with no horizontal overflow; between the Filament mobile breakpoint and 1,200
+  px, the existing native settings selector is shown instead of squeezing or scrolling the tabs.
+  Browser inspection confirmed one row and zero overflow at 1,280 px in light/dark themes, the
+  native selector and zero page overflow at 1,024 px and 390 px, and no page error overlay. Focused
+  Pint passed, and isolated `FilamentNavigationTest` passed with 79 assertions. The complete gate is
+  pending.
+- 2026-08-12: Started the annotated navigation hierarchy refinement requested after the single-row
+  settings review. Google Drive and Fatture in Cloud are moving from the flat Settings list into an
+  `Integrazioni` Filament cluster nested under `Impostazioni`, with start-positioned native
+  sub-navigation and settings content on the right. Per
+  explicit instruction, only focused automated checks will run before handoff; the complete gate
+  must wait for the user's visual approval and explicit go-ahead.
+- 2026-08-12: Completed the focused implementation for visual review. `Integrazioni` is a native
+  Filament cluster nested under the Settings tab bar, its Fatture in Cloud and Google Drive pages
+  keep that parent bar visible, and their native child navigation remains at the left of the
+  settings content. Application-owned route composition and parent component de-duplication contain
+  Filament's nested-discovery behavior without vendor changes. The general Evidence form now shows
+  `Dimensione Massima File` with a fixed `Mb` suffix; a conditional settings migration changes only
+  the legacy 25/250 defaults to 5/100 and preserves customized limits. Focused Pint and PHPStan
+  passed; 43 navigation/integration feature tests passed with 259 assertions; 8 settings tests
+  passed with 122 assertions; and isolated `FilamentNavigationTest` passed with 87 assertions,
+  including the retained parent tabs, active `Integrazioni` state, and left/content positioning.
+  The migration was applied to the development application. Visual acceptance and the complete
+  gate remain pending the user's review and explicit approval.
+- 2026-08-12: Follow-up visual feedback aligned the assessment evidence limit with the single-file
+  control: its label is now `Dimensione Massima Assessment` and its fixed field suffix is `Mb`.
+  The configured 100 default and existing validation contract are unchanged; the complete gate
+  remains deferred pending explicit approval.
+- 2026-08-12: Started a focused Diagnostics presentation repair after browser review showed that its
+  uncompiled utility classes left runtime data and the complete check table visually unstructured.
+  Scope is limited to application-owned responsive layout and native Filament presentation; no
+  diagnostic check, result, or execution behavior changes. The complete gate remains deferred.
+- 2026-08-12: Completed the focused Diagnostics presentation repair for visual review. Runtime and
+  database information now use a native Filament section with three responsive summary cards; all
+  diagnostic checks remain present in a structured table with native status badges and an internal
+  horizontal scroll area on narrow screens. Application-owned light/dark styles replace the
+  previously unshipped utility classes. Focused Pint and diff checks passed; the normative-container
+  diagnostics suite passed 7 tests with 82 assertions; and isolated desktop/mobile Dusk coverage
+  passed 1 test with 16 assertions, including responsive summary columns, complete status badges,
+  internal table containment, and no document-level horizontal overflow. Resource and published CSS
+  are byte-identical. Visual acceptance and the complete gate remain pending the user's review and
+  explicit approval.
+- 2026-08-12: Started the approved dashboard replacement on `develop`. Scope is limited to a
+  Filament operational homepage with resume-work context, four launchers, recent companies, latest
+  assessments, real attention counts, and compact existing system health. The implementation adds
+  no domain state, analytics, score, chart, dependency, migration, or workspace/report change.
+- 2026-08-12: Started the requested focused dashboard visual revision after real desktop/mobile
+  review. Scope is limited to localizing the hero glow behind a masked neutral logo, removing
+  dashboard attention/system presentation, and replacing it with real counts and links for the
+  existing company, site, asset, and Finding-template archive entities. Operational services and
+  their dedicated product pages remain unchanged.
+- 2026-08-12: Completed the focused operational-dashboard replacement and visual revision. The
+  homepage now provides deterministic resume context, four primary launchers, recent companies,
+  the five latest assessments, and a four-entry archive backed by real Client, Site, Asset, and
+  FindingTemplate counts and index routes. The hero uses an anthracite base, a localized low-alpha
+  lime glow, and the real neutral logo at 0.045 desktop / 0.035 mobile opacity with intersecting
+  edge masks; the former attention and system-health dashboard sections are absent, while their
+  dedicated product behavior remains untouched. Focused Pint and PHPStan passed; the dashboard and
+  risk-profile feature tests passed 16 tests with 74 assertions; isolated dashboard Dusk passed 1
+  test with 27 assertions. Authenticated browser verification at 1440x900 and 390x844 confirmed
+  four/one archive columns, no document overflow or application error overlay, no console errors,
+  and zero scoped Axe violations. Resource and published dashboard CSS are byte-identical. The
+  normative complete gate failed in the application suite after 619 passed tests and 5,412
+  assertions because the pre-existing in-progress Integrations navigation route
+  `filament.admin.integrations` redirected the authorized Canary request with HTTP 302; the later
+  diagnostics, benchmark, storage audit, route/about, and complete Dusk phases were therefore not
+  run. That unrelated navigation work was not modified under the dashboard-only scope.
+- 2026-08-12: Before publishing the complete queued worktree, replaced the redirect-only
+  Integrations cluster landing route with a direct link to its first real settings page. This keeps
+  both integration pages inside the nested Filament navigation while removing a synthetic HTTP 302
+  target from strict authorization sweeps. Focused Pint and PHPStan passed, and the combined strict
+  Canary plus navigation suite passed 18 tests with 90 assertions. The complete exact-fingerprint
+  verification and the GitHub workflow-equivalent browser run follow this repair before publication.

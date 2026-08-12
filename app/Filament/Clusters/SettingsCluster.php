@@ -29,4 +29,10 @@ final class SettingsCluster extends Cluster
     {
         return SubNavigationPosition::Top;
     }
+
+    /** @return array<class-string> */
+    public static function getClusteredComponents(): array
+    {
+        return array_values(array_unique(parent::getClusteredComponents()));
+    }
 }

@@ -106,11 +106,11 @@ final class ApprovedUxQaTest extends DuskTestCase
 
                 $browser->visit('/admin')
                     ->script('window.scrollTo(0, document.documentElement.scrollHeight)');
-                $browser->waitForText('Stato applicazione')
-                    ->waitFor('[data-dusk="application-status"]')
-                    ->scrollIntoView('[data-dusk="application-status"]')
+                $browser->waitForText('Archivio AssestMe')
+                    ->waitFor('[data-dusk="dashboard-archive"]')
+                    ->scrollIntoView('[data-dusk="dashboard-archive"]')
                     ->pause(250);
-                $browser->driver->takeScreenshot("{$artifactRoot}/dashboard-application-status-{$width}x{$height}-dark.png");
+                $browser->driver->takeScreenshot("{$artifactRoot}/dashboard-archive-{$width}x{$height}-dark.png");
 
                 $browser->visit(RiskProfileResource::getUrl('edit', ['record' => $profile]))
                     ->waitFor('[data-dusk="risk-matrix-grid"]')
@@ -152,7 +152,7 @@ final class ApprovedUxQaTest extends DuskTestCase
             foreach ([
                 ...array_keys($pages),
                 'generated-files',
-                'dashboard-application-status',
+                'dashboard-archive',
                 'risk-matrix',
                 'template-solutions',
                 'generated-pdf',

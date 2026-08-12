@@ -81,6 +81,7 @@ class AdminPanelProvider extends PanelProvider
             ->topNavigation()
             ->darkMode()
             ->assets([
+                Css::make('assestme-dashboard', resource_path('css/assestme-dashboard.css')),
                 Css::make('assestme-workspace', resource_path('css/assestme-workspace.css')),
                 Js::make('assestme-workspace', resource_path('js/assestme-workspace.js')),
                 Js::make('assestme-workspace-drafts', resource_path('js/assestme-workspace-drafts.js')),
@@ -124,6 +125,7 @@ class AdminPanelProvider extends PanelProvider
         $hashes = array_map(
             static fn (string $path): string => hash_file('sha256', $path) ?: '',
             [
+                resource_path('css/assestme-dashboard.css'),
                 resource_path('css/assestme-workspace.css'),
                 resource_path('js/assestme-workspace.js'),
                 resource_path('js/assestme-workspace-drafts.js'),

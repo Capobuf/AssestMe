@@ -6,21 +6,26 @@ Filament 5 native clusters and parent items define the hierarchy:
 
 - `Aziende` groups companies, sites, assets, and asset types;
 - `Impostazioni` groups general, report, risk/effort, templates, and backup-related pages;
+- nested `Integrazioni` groups the optional Fatture in Cloud and Google Drive pages under
+  `Impostazioni`, using left-positioned native cluster navigation;
 - global Tag functionality is outside v1.
 
 Standard resources use native responsive Filament layouts and explicit save/cancel destinations. Right-click enhancements duplicate visible accessible actions and are never the only path.
 
 ## Dashboard
 
-The dashboard separates:
+The dashboard is an operational homepage, not a reporting or BI surface. Its priority order is:
 
-- four compact clickable operational KPIs;
-- the latest five assessments;
-- urgent Findings;
-- compact application status for backup, database integrity, and unresolved cleanup.
+1. resume a real draft Assessment, falling back deterministically to the latest Assessment;
+2. launch Assessment creation, company management, the Assessment list, or settings;
+3. show the five recent companies from their latest real Assessment activity, with companies that
+   have no Assessment handled explicitly;
+4. show the latest five Assessments;
+5. show a lightweight archive launcher with real counts and index links for companies, sites,
+   assets, and Finding templates.
 
-Severity uses text or an icon in addition to color. Status messaging must not claim an application block that is not enforced.
-Urgency is profile-relative: the two highest persisted priority levels of each Finding's own profile are used, without technical-code or numeric-score hardcodes.
+Backup, database-integrity, cleanup, and diagnostic behavior remains available on its dedicated
+pages and is not duplicated on the dashboard.
 
 ## Finding workspace
 

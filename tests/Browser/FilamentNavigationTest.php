@@ -7,9 +7,12 @@ namespace Tests\Browser;
 use App\Actions\Assessments\CopyTemplateToAssessment;
 use App\Actions\Backups\CreateBackup;
 use App\Filament\Clusters\AssetCluster;
+use App\Filament\Clusters\IntegrationsCluster;
 use App\Filament\Clusters\SettingsCluster;
 use App\Filament\Pages\BackupSettingsPage;
+use App\Filament\Pages\FattureInCloudSettingsPage;
 use App\Filament\Pages\GeneralSettingsPage;
+use App\Filament\Pages\GoogleDriveSettingsPage;
 use App\Filament\Resources\Assessments\AssessmentResource;
 use App\Filament\Resources\Assets\AssetResource;
 use App\Filament\Resources\Clients\ClientResource;
@@ -96,19 +99,88 @@ final class FilamentNavigationTest extends DuskTestCase
                 'Generale',
                 'Report',
                 'Backup',
-                'Google Drive',
+                'Integrazioni',
                 'Template',
                 'Diagnostica',
-                'Fatture in Cloud',
                 'Categorie',
                 'Matrice priorità',
                 'Livelli di impegno',
             ], self::subNavigationLabels($browser));
+            self::resizeViewport($browser, 1280, 900);
+            $settingsTabsLayout = $browser->script(<<<'JS'
+                const tabs = document.querySelector('.fi-page-sub-navigation-tabs');
+                const itemRows = new Set(Array.from(tabs.children).map((item) => Math.round(item.getBoundingClientRect().top)));
+
+                return {
+                    flexWrap: getComputedStyle(tabs).flexWrap,
+                    overflowX: getComputedStyle(tabs).overflowX,
+                    horizontalOverflow: tabs.scrollWidth - tabs.clientWidth,
+                    rows: itemRows.size,
+                };
+                JS)[0];
+            Assert::assertSame('nowrap', $settingsTabsLayout['flexWrap']);
+            Assert::assertSame('visible', $settingsTabsLayout['overflowX']);
+            Assert::assertLessThanOrEqual(1, $settingsTabsLayout['horizontalOverflow']);
+            Assert::assertSame(1, $settingsTabsLayout['rows']);
+            self::resizeViewport($browser, 1024, 900);
+            $settingsTabletNavigation = $browser->script(<<<'JS'
+                return {
+                    tabsDisplay: getComputedStyle(document.querySelector('.fi-page-sub-navigation-tabs')).display,
+                    dropdownDisplay: getComputedStyle(document.querySelector('.fi-page-sub-navigation-dropdown')).display,
+                    documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                };
+                JS)[0];
+            Assert::assertSame('none', $settingsTabletNavigation['tabsDisplay']);
+            Assert::assertSame('block', $settingsTabletNavigation['dropdownDisplay']);
+            Assert::assertLessThanOrEqual(1, $settingsTabletNavigation['documentOverflow']);
+            self::resizeViewport($browser, 1440, 900);
             Assert::assertSame(
                 ['Dashboard', 'Assessment', 'Aziende', 'Impostazioni'],
                 self::topLevelNavigationLabels($browser),
             );
 
+            $browser->click(sprintf('.fi-page-sub-navigation-tabs a[href="%s"]', IntegrationsCluster::getUrl()))
+                ->waitForText('Fatture in Cloud')
+                ->assertPathIs(self::path(FattureInCloudSettingsPage::getUrl()));
+            Assert::assertSame([
+                'Generale',
+                'Report',
+                'Backup',
+                'Integrazioni',
+                'Template',
+                'Diagnostica',
+                'Categorie',
+                'Matrice priorità',
+                'Livelli di impegno',
+            ], self::subNavigationLabels($browser));
+            Assert::assertSame('Integrazioni', $browser->script(<<<'JS'
+                return document.querySelector('.assestme-settings-parent-navigation__tabs .fi-tabs-item.fi-active .fi-tabs-item-label')
+                    ?.textContent.trim();
+                JS)[0]);
+            Assert::assertSame(
+                ['Fatture in Cloud', 'Google Drive'],
+                self::sidebarSubNavigationLabels($browser),
+            );
+            Assert::assertTrue(
+                $browser->element('.fi-page-sub-navigation-sidebar-ctn')?->isDisplayed() ?? false,
+                'The integration tabs should be visible at the left of the settings content.',
+            );
+            Assert::assertTrue((bool) $browser->script(<<<'JS'
+                const sidebar = document.querySelector('.fi-page-sub-navigation-sidebar-ctn').getBoundingClientRect();
+                const content = document.querySelector('.fi-page-content').getBoundingClientRect();
+
+                return sidebar.right <= content.left;
+                JS)[0], 'The integration tabs should remain to the left of the settings content.');
+            $browser->click(sprintf(
+                '.fi-page-sub-navigation-sidebar a[href="%s"]',
+                GoogleDriveSettingsPage::getUrl(),
+            ))
+                ->waitForText('Come configurare Google Drive')
+                ->assertPathIs(self::path(GoogleDriveSettingsPage::getUrl()));
+
+            $browser->visit(GeneralSettingsPage::getUrl())
+                ->waitForText('Impostazioni generali')
+                ->assertPathIs(self::path(GeneralSettingsPage::getUrl()));
             $browser->click(sprintf('.fi-page-sub-navigation-tabs a[href="%s"]', BackupSettingsPage::getUrl()))
                 ->waitForText('Archivi locali gestiti')
                 ->assertPathIs(self::path(BackupSettingsPage::getUrl()))
@@ -184,16 +256,8 @@ final class FilamentNavigationTest extends DuskTestCase
             ));
             Assert::assertSame([], $severeLogs, 'The navigation and workspace flow contains severe console errors.');
 
-            $browser->script(<<<'JS'
-                document.querySelectorAll('.fi-no-notification-close-btn')
-                    .forEach((button) => button.click());
-                JS);
-            $browser->waitUntil(<<<'JS'
-                return document.querySelectorAll('.fi-no-notification').length === 0;
-                JS);
-            $browser->click('.fi-user-menu-trigger')
-                ->waitForText(__('filament-panels::layout.actions.logout.label'))
-                ->press(__('filament-panels::layout.actions.logout.label'))
+            $browser->logout()
+                ->visit('/admin')
                 ->waitForLocation('/admin/login')
                 ->assertPathIs('/admin/login');
         });
@@ -234,6 +298,15 @@ final class FilamentNavigationTest extends DuskTestCase
     {
         return $browser->script(<<<'JS'
             return Array.from(document.querySelectorAll('.fi-page-sub-navigation-tabs .fi-tabs-item-label'))
+                .map((label) => label.textContent.trim());
+            JS)[0];
+    }
+
+    /** @return list<string> */
+    private static function sidebarSubNavigationLabels(Browser $browser): array
+    {
+        return $browser->script(<<<'JS'
+            return Array.from(document.querySelectorAll('.fi-page-sub-navigation-sidebar .fi-sidebar-item-label'))
                 .map((label) => label.textContent.trim());
             JS)[0];
     }

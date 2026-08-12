@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Data\FattureInCloud\FattureInCloudVatTypeData;
-use App\Filament\Clusters\SettingsCluster;
+use App\Filament\Clusters\IntegrationsCluster;
+use App\Filament\Pages\Concerns\HasParentSettingsNavigation;
 use App\Filament\Support\ClipboardCopyAction;
 use App\Services\FattureInCloud\FattureInCloudApi;
 use App\Services\FattureInCloud\FattureInCloudConfiguration;
@@ -28,11 +29,13 @@ use Throwable;
 
 final class FattureInCloudSettingsPage extends SettingsPage
 {
-    protected static ?string $cluster = SettingsCluster::class;
+    use HasParentSettingsNavigation;
+
+    protected static ?string $cluster = IntegrationsCluster::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedDocumentCurrencyEuro;
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 1;
 
     protected static string $settings = FattureInCloudSettings::class;
 

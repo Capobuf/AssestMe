@@ -8,6 +8,7 @@ use Database\Factories\ClientFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -25,6 +26,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $country
  * @property string|null $fatture_in_cloud_company_id
  * @property string|null $fatture_in_cloud_client_id
+ * @property-read Assessment|null $latestAssessment
  */
 class Client extends Model
 {
@@ -63,6 +65,21 @@ class Client extends Model
     public function assets(): HasMany
     {
         return $this->hasMany(Asset::class);
+    }
+
+    /** @return HasMany<Assessment, $this> */
+    public function assessments(): HasMany
+    {
+        return $this->hasMany(Assessment::class);
+    }
+
+    /** @return HasOne<Assessment, $this> */
+    public function latestAssessment(): HasOne
+    {
+        return $this->hasOne(Assessment::class)->ofMany([
+            'assessment_date' => 'max',
+            'id' => 'max',
+        ]);
     }
 
     public function displayName(): string
