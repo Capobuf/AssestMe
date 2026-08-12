@@ -142,3 +142,11 @@ Add only reproducible observations discovered during implementation or verificat
 - The prior GitHub runner listener loss was not reproduced locally. Local completion evidence does
   not establish why that runner stopped accepting connections; the exact CI root cause remains
   undetermined until the instrumented workflow records its PID/exit/signal and last marker.
+- On Linux, tracing `artisan serve` with `strace -ff -e trace=process` preserves separate per-PID
+  exit records while `ss -ltnp` identifies the PHP process that actually owns the requested socket.
+  The quiet `strace` option suppresses normal exit records and therefore cannot be used when the
+  exit code itself is required evidence.
+- The Artisan lifecycle unit test added with the first installer markers depended on a facade root
+  leaked from test ordering. Binding that test explicitly to `Tests\\TestCase` made both the
+  isolated file and the complete 622-test application suite deterministic without changing
+  `FinalizeInstallation`.

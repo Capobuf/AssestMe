@@ -208,6 +208,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
@@ -220,6 +222,13 @@ jobs:
 
       - name: Install release build and runtime tools
         run: sudo apt-get update && sudo apt-get install --yes rsync unzip weasyprint
+
+      - name: Require built-in process diagnostics
+        run: |
+          command -v ss
+          command -v strace
+          ss --version
+          strace --version | head -n 1
 
       - name: Resolve runtime binaries
         run: |
@@ -234,47 +243,192 @@ jobs:
       - name: Build CloudPanel archive
         run: scripts/build-cloudpanel-release.sh ci "${RUNNER_TEMP}/release"
 
+      - name: Build known-good CloudPanel archive from the historical commit
+        env:
+          KNOWN_GOOD_COMMIT: c8bfab866bed902b606dc75c1685cdcbf4c64c79
+        run: |
+          known_good_source="${RUNNER_TEMP}/source-known-good"
+          git worktree add --detach "$known_good_source" "$KNOWN_GOOD_COMMIT"
+          cd "$known_good_source"
+          test "$(git rev-parse HEAD)" = "$KNOWN_GOOD_COMMIT"
+          composer install --no-interaction --prefer-dist --no-progress
+          scripts/build-cloudpanel-release.sh c8bfab8 "${RUNNER_TEMP}/release-known-good"
+
       - name: Validate archive contents
         run: |
-          cd "${RUNNER_TEMP}/release"
-          mkdir "${RUNNER_TEMP}/extracted"
-          unzip -q assestme-ci.zip -d "${RUNNER_TEMP}/extracted"
-          test ! -e "${RUNNER_TEMP}/extracted/assestme/.env"
-          test -f "${RUNNER_TEMP}/extracted/assestme/vendor/autoload.php"
-          test -f "${RUNNER_TEMP}/extracted/assestme/RELEASE-MANIFEST.sha256"
-          cd "${RUNNER_TEMP}/extracted/assestme"
-          sha256sum --check RELEASE-MANIFEST.sha256
+          validate_archive() {
+            archive_path="$1"
+            extraction_root="$2"
+            mkdir "$extraction_root"
+            unzip -q "$archive_path" -d "$extraction_root"
+            release_path="${extraction_root}/assestme"
+            test ! -e "$release_path/.env"
+            test -f "$release_path/vendor/autoload.php"
+            test -f "$release_path/RELEASE-MANIFEST.sha256"
+            cd "$release_path"
+            sha256sum --check RELEASE-MANIFEST.sha256
+          }
+
+          validate_archive \
+            "${RUNNER_TEMP}/release-known-good/assestme-c8bfab8.zip" \
+            "${RUNNER_TEMP}/validated-known-good"
+          validate_archive \
+            "${RUNNER_TEMP}/release/assestme-ci.zip" \
+            "${RUNNER_TEMP}/validated-current"
+
+      - name: Verify the historical and current installer HTTP contracts
+        run: |
+          expected_routes="$(mktemp)"
+          for route in \
+            'GET|HEAD install installation.welcome' \
+            'POST install/welcome installation.welcome.continue' \
+            'GET|HEAD install/requirements installation.runtime' \
+            'POST install/requirements installation.runtime.continue' \
+            'GET|HEAD install/configuration installation.configuration' \
+            'POST install/configuration installation.configuration.store' \
+            'GET|HEAD install/database installation.database' \
+            'POST install/database installation.database.store' \
+            'GET|HEAD install/administrator installation.administrator' \
+            'POST install/finalize installation.finalize'; do
+            echo "$route" >> "$expected_routes"
+          done
+
+          for release_path in \
+            "${RUNNER_TEMP}/validated-known-good/assestme" \
+            "${RUNNER_TEMP}/validated-current/assestme"; do
+            actual_routes="$(mktemp)"
+            (
+              cd "$release_path"
+              php artisan route:list --json --path=install
+            ) | jq -r '.[] | [.method, .uri, .name] | join(" ")' > "$actual_routes"
+
+            while read -r expected_route; do
+              grep -Fx "$expected_route" "$actual_routes"
+            done < "$expected_routes"
+
+            for field in application_url timezone backup_root database_driver sqlite_path name email password password_confirmation; do
+              rg -q "name=.[{(]?[[:space:]]*['\"]$field['\"]|name=['\"]$field['\"]" \
+                "$release_path/resources/views/installation"
+            done
+          done
+
+          echo 'RELEASE_INSTALLER_HARNESS_CONTRACT=compatible'
 
       - name: Install matching ChromeDriver
         run: php artisan dusk:chrome-driver --detect
 
       - name: Prepare independent extracted releases
         run: |
-          for release_name in release-http release-dusk; do
-            extraction_root="${RUNNER_TEMP}/${release_name}"
-            mkdir "$extraction_root"
-            unzip -q "${RUNNER_TEMP}/release/assestme-ci.zip" -d "$extraction_root"
-            release_path="${extraction_root}/assestme"
-            test ! -e "$release_path/.env"
-            test ! -e "$release_path/.env.pending"
-            test ! -e "$release_path/storage/app/private/installed.lock"
-            test ! -e "$release_path/storage/framework/installer/state.enc"
-            test ! -e "$release_path/storage/app/database/database.sqlite"
-          done
+          extraction_root="${RUNNER_TEMP}/release-dusk"
+          mkdir "$extraction_root"
+          unzip -q "${RUNNER_TEMP}/release/assestme-ci.zip" -d "$extraction_root"
+          release_path="${extraction_root}/assestme"
+          test ! -e "$release_path/.env"
+          test ! -e "$release_path/.env.pending"
+          test ! -e "$release_path/storage/app/private/installed.lock"
+          test ! -e "$release_path/storage/framework/installer/state.enc"
+          test ! -e "$release_path/storage/app/database/database.sqlite"
 
-      - name: Complete an independent extracted-release SQLite installer over HTTP
-        id: release-http-smoke
+      - name: Run known-good extracted-release installer over HTTP
+        id: known-good-http-smoke
         continue-on-error: true
         run: |
+          extraction_root="${RUNNER_TEMP}/http-known-good"
+          mkdir "$extraction_root"
+          unzip -q "${RUNNER_TEMP}/release-known-good/assestme-c8bfab8.zip" -d "$extraction_root"
           set +e
-          scripts/ci-install-release-sqlite.sh "${RUNNER_TEMP}/release-http/assestme" 8124
-          smoke_exit_code="$?"
+          scripts/ci-install-release-sqlite.sh "$extraction_root/assestme" 8124 known-good \
+            2>&1 | tee "${RUNNER_TEMP}/known-good-http.log"
+          smoke_exit_code="${PIPESTATUS[0]}"
           set -e
           if [[ "$smoke_exit_code" -eq 0 ]]; then
-            echo "RELEASE_HTTP_SMOKE_RESULT=PASS"
+            echo 'result=PASS' >> "$GITHUB_OUTPUT"
+            echo "KNOWN_GOOD_HTTP_SMOKE_RESULT=PASS"
           else
-            echo "RELEASE_HTTP_SMOKE_RESULT=FAIL"
-            echo "RELEASE_HTTP_SMOKE_EXIT_CODE=$smoke_exit_code"
+            echo 'result=FAIL' >> "$GITHUB_OUTPUT"
+            echo "KNOWN_GOOD_HTTP_SMOKE_RESULT=FAIL"
+            echo "KNOWN_GOOD_HTTP_SMOKE_EXIT_CODE=$smoke_exit_code"
+            exit "$smoke_exit_code"
+          fi
+
+      - name: Run current extracted-release installer over HTTP
+        id: current-http-smoke
+        continue-on-error: true
+        run: |
+          extraction_root="${RUNNER_TEMP}/http-current-1"
+          mkdir "$extraction_root"
+          unzip -q "${RUNNER_TEMP}/release/assestme-ci.zip" -d "$extraction_root"
+          set +e
+          scripts/ci-install-release-sqlite.sh "$extraction_root/assestme" 8125 current-1 \
+            2>&1 | tee "${RUNNER_TEMP}/current-http-1.log"
+          smoke_exit_code="${PIPESTATUS[0]}"
+          set -e
+          if [[ "$smoke_exit_code" -eq 0 ]]; then
+            echo 'result=PASS' >> "$GITHUB_OUTPUT"
+            echo "CURRENT_HTTP_SMOKE_RESULT=PASS"
+          else
+            echo 'result=FAIL' >> "$GITHUB_OUTPUT"
+            echo "CURRENT_HTTP_SMOKE_RESULT=FAIL"
+            echo "CURRENT_HTTP_SMOKE_EXIT_CODE=$smoke_exit_code"
+            exit "$smoke_exit_code"
+          fi
+
+      - name: Repeat a passing current HTTP smoke twice with fresh state
+        id: current-http-repeat
+        if: steps.current-http-smoke.outputs.result == 'PASS'
+        continue-on-error: true
+        run: |
+          repeated_result=PASS
+          for attempt in 2 3; do
+            extraction_root="${RUNNER_TEMP}/http-current-${attempt}"
+            mkdir "$extraction_root"
+            unzip -q "${RUNNER_TEMP}/release/assestme-ci.zip" -d "$extraction_root"
+            set +e
+            scripts/ci-install-release-sqlite.sh "$extraction_root/assestme" "$((8124 + attempt))" "current-${attempt}" \
+              2>&1 | tee "${RUNNER_TEMP}/current-http-${attempt}.log"
+            smoke_exit_code="${PIPESTATUS[0]}"
+            set -e
+            if [[ "$smoke_exit_code" -ne 0 ]]; then
+              repeated_result=INTERMITTENT
+              break
+            fi
+          done
+          echo "result=$repeated_result" >> "$GITHUB_OUTPUT"
+          echo "CURRENT_HTTP_REPEAT_RESULT=$repeated_result"
+          test "$repeated_result" = PASS
+
+      - name: Build the first known-failing boundary release
+        if: steps.known-good-http-smoke.outputs.result == 'PASS' && steps.current-http-smoke.outputs.result == 'FAIL'
+        env:
+          BOUNDARY_COMMIT: d02539c4acd7beb258d5177af434070704d016ad
+        run: |
+          boundary_source="${RUNNER_TEMP}/source-boundary"
+          git worktree add --detach "$boundary_source" "$BOUNDARY_COMMIT"
+          cd "$boundary_source"
+          test "$(git rev-parse HEAD)" = "$BOUNDARY_COMMIT"
+          composer install --no-interaction --prefer-dist --no-progress
+          scripts/build-cloudpanel-release.sh d02539 "${RUNNER_TEMP}/release-boundary"
+
+      - name: Run the first known-failing boundary release over HTTP
+        id: boundary-http-smoke
+        if: steps.known-good-http-smoke.outputs.result == 'PASS' && steps.current-http-smoke.outputs.result == 'FAIL'
+        continue-on-error: true
+        run: |
+          extraction_root="${RUNNER_TEMP}/http-boundary"
+          mkdir "$extraction_root"
+          unzip -q "${RUNNER_TEMP}/release-boundary/assestme-d02539.zip" -d "$extraction_root"
+          set +e
+          scripts/ci-install-release-sqlite.sh "$extraction_root/assestme" 8126 boundary-d02539 \
+            2>&1 | tee "${RUNNER_TEMP}/boundary-http.log"
+          smoke_exit_code="${PIPESTATUS[0]}"
+          set -e
+          if [[ "$smoke_exit_code" -eq 0 ]]; then
+            echo 'result=PASS' >> "$GITHUB_OUTPUT"
+            echo 'BOUNDARY_HTTP_SMOKE_RESULT=PASS'
+          else
+            echo 'result=FAIL' >> "$GITHUB_OUTPUT"
+            echo "BOUNDARY_HTTP_SMOKE_RESULT=FAIL"
+            echo "BOUNDARY_HTTP_SMOKE_EXIT_CODE=$smoke_exit_code"
             exit "$smoke_exit_code"
           fi
 
@@ -287,40 +441,83 @@ jobs:
           touch "${test_root}/.assestme-test-root"
           mkdir -p "${test_root}/storage/logs"
           administrator_password="CI!$(php -r 'echo bin2hex(random_bytes(14));')aA1"
+          trace_root="$(mktemp -d)"
+          trace_prefix="${trace_root}/process"
+          tracer_pid=''
+          supervisor_pid=''
+          listener_pid=''
 
-          diagnose_release_server() {
-            echo "RELEASE_SERVER_PID=$server_pid"
-
-            if kill -0 "$server_pid" >/dev/null 2>&1; then
-              echo "RELEASE_SERVER_PID_STATUS=alive"
+          process_status() {
+            process_stat="$(ps -o stat= -p "$1" 2>/dev/null | awk '{$1=$1; print}' || true)"
+            if [[ -z "$process_stat" ]]; then
+              echo dead
+            elif [[ "$process_stat" == Z* ]]; then
+              echo zombie
             else
-              echo "RELEASE_SERVER_PID_STATUS=dead"
-              set +e
-              wait "$server_pid"
-              release_server_exit_code="$?"
-              set -e
-              echo "RELEASE_SERVER_EXIT_CODE=$release_server_exit_code"
+              echo alive
+            fi
+          }
 
-              if [[ "$release_server_exit_code" -gt 128 ]]; then
-                release_server_signal="$((release_server_exit_code - 128))"
-                release_server_signal_name="$(kill -l "$release_server_signal" 2>/dev/null || true)"
-                echo "RELEASE_SERVER_SIGNAL=$release_server_signal"
-                echo "RELEASE_SERVER_SIGNAL_NAME=${release_server_signal_name:-unknown}"
+          listener_for_port() {
+            ss -H -ltnp 'sport = :8123' 2>/dev/null \
+              | sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p' \
+              | head -n 1
+          }
+
+          trace_exit_record() {
+            role="$1"
+            pid="$2"
+            trace_file="${trace_prefix}.${pid}"
+            exit_line="$(grep -E '\+\+\+ (exited with [0-9]+|killed by SIG[A-Z0-9]+[^+]*) \+\+\+' "$trace_file" 2>/dev/null | tail -n 1 || true)"
+            exit_code=unavailable
+            signal=none
+            signal_name=none
+
+            if [[ "$exit_line" =~ \+\+\+\ exited\ with\ ([0-9]+)\ \+\+\+ ]]; then
+              exit_code="${BASH_REMATCH[1]}"
+            elif [[ "$exit_line" =~ \+\+\+\ killed\ by\ (SIG[A-Z0-9]+) ]]; then
+              signal_name="${BASH_REMATCH[1]}"
+              signal="$(kill -l "$signal_name" 2>/dev/null || true)"
+              if [[ "$signal" =~ ^[0-9]+$ ]]; then
+                exit_code="$((128 + signal))"
+              else
+                signal=unknown
               fi
+            elif [[ "$(process_status "$pid")" = alive ]]; then
+              exit_code=still-running
             fi
 
-            port_is_listening=no
-            if command -v ss >/dev/null 2>&1 && ss -ltn | awk '$4 ~ /:8123$/ { found = 1 } END { exit(found ? 0 : 1) }'; then
-              port_is_listening=yes
-            elif ! command -v ss >/dev/null 2>&1 && (exec 3<>/dev/tcp/127.0.0.1/8123) 2>/dev/null; then
-              port_is_listening=yes
-            fi
+            echo "RELEASE_${role}_EXIT_CODE=$exit_code"
+            echo "RELEASE_${role}_SIGNAL=$signal"
+            echo "RELEASE_${role}_SIGNAL_NAME=$signal_name"
+            echo "RELEASE_${role}_EXIT_SOURCE=strace"
+          }
 
-            if [[ "$port_is_listening" = yes ]]; then
-              echo "RELEASE_SERVER_PORT_8123_LISTEN=yes"
+          release_server_snapshot() {
+            phase="$1"
+            current_owner="$(listener_for_port || true)"
+            echo "RELEASE_DIAGNOSTIC_PHASE=$phase"
+            echo "RELEASE_SERVER_SUPERVISOR_PID=$supervisor_pid"
+            echo "RELEASE_SERVER_LISTENER_PID=$listener_pid"
+            echo "RELEASE_SERVER_SUPERVISOR_STATUS=$(process_status "$supervisor_pid")"
+            echo "RELEASE_SERVER_LISTENER_STATUS=$(process_status "$listener_pid")"
+            if [[ -n "$current_owner" ]]; then
+              echo 'RELEASE_SERVER_PORT_8123_LISTEN=yes'
+              echo "RELEASE_SERVER_PORT_8123_OWNER_PID=$current_owner"
             else
-              echo "RELEASE_SERVER_PORT_8123_LISTEN=no"
+              echo 'RELEASE_SERVER_PORT_8123_LISTEN=no'
+              echo 'RELEASE_SERVER_PORT_8123_OWNER_PID=none'
             fi
+
+            echo 'RELEASE_SERVER_PROCESS_TREE_BEGIN'
+            echo 'PID PPID STAT COMMAND ARGS'
+            process_ids="${supervisor_pid},${listener_pid}"
+            direct_children="$(pgrep -P "$listener_pid" 2>/dev/null | paste -sd, - || true)"
+            if [[ -n "$direct_children" ]]; then
+              process_ids+=",${direct_children}"
+            fi
+            ps -o pid=,ppid=,stat=,comm=,args= -p "$process_ids" 2>/dev/null || true
+            echo 'RELEASE_SERVER_PROCESS_TREE_END'
 
             for state_path in \
               .env \
@@ -334,10 +531,14 @@ jobs:
                 echo "RELEASE_${state_label}=absent"
               fi
             done
+          }
 
-            echo "RELEASE_PHP_PROCESSES_BEGIN"
-            ps -eo pid,ppid,stat,comm,args | awk '$4 ~ /^php/ { print }'
-            echo "RELEASE_PHP_PROCESSES_END"
+          diagnose_release_server() {
+            release_server_snapshot AFTER_FAILURE
+            sleep 2
+            release_server_snapshot AFTER_FAILURE_DELAY
+            trace_exit_record LISTENER "$listener_pid"
+            trace_exit_record SUPERVISOR "$supervisor_pid"
             echo "RELEASE_SERVER_LOG_TAIL_BEGIN"
             tail -n 120 "${test_root}/storage/logs/release-server.log" 2>/dev/null || true
             echo "RELEASE_SERVER_LOG_TAIL_END"
@@ -359,24 +560,25 @@ jobs:
           }
 
           cleanup_release_server() {
-            server_children="$(pgrep -P "$server_pid" 2>/dev/null || true)"
-            kill "$server_pid" >/dev/null 2>&1 || true
-
-            if [[ -n "$server_children" ]]; then
-              kill $server_children >/dev/null 2>&1 || true
+            kill "$supervisor_pid" >/dev/null 2>&1 || true
+            if [[ -n "$listener_pid" \
+              && "$(process_status "$listener_pid")" = alive \
+              && "$(ps -o ppid= -p "$listener_pid" 2>/dev/null | awk '{$1=$1; print}')" = "$supervisor_pid" ]]; then
+              kill "$listener_pid" >/dev/null 2>&1 || true
             fi
-
-            wait "$server_pid" >/dev/null 2>&1 || true
+            kill "$tracer_pid" >/dev/null 2>&1 || true
+            wait "$tracer_pid" >/dev/null 2>&1 || true
+            find "$trace_root" -depth -delete
           }
 
           (
             cd "$release_path"
-            exec env \
+            exec strace -ff -e trace=process -o "$trace_prefix" env \
               APP_ENV=testing \
               APP_URL=http://127.0.0.1:8123 \
               php artisan serve --no-reload --host=127.0.0.1 --port=8123
           ) >"${test_root}/storage/logs/release-server.log" 2>&1 &
-          server_pid="$!"
+          tracer_pid="$!"
           trap cleanup_release_server EXIT
           for attempt in $(seq 1 40); do
             if curl --fail --silent http://127.0.0.1:8123/install >/dev/null; then
@@ -384,6 +586,15 @@ jobs:
             fi
             sleep 1
           done
+          listener_pid="$(listener_for_port)"
+          test -n "$listener_pid"
+          supervisor_pid="$(ps -o ppid= -p "$listener_pid" | awk '{$1=$1; print}')"
+          test -n "$supervisor_pid"
+          ps -o args= -p "$supervisor_pid" | grep -F 'artisan serve'
+          echo "RELEASE_SERVER_TRACER_PID=$tracer_pid"
+          echo "RELEASE_SERVER_SUPERVISOR_PID=$supervisor_pid"
+          echo "RELEASE_SERVER_LISTENER_PID=$listener_pid"
+          release_server_snapshot BEFORE_DUSK
           set +e
           APP_URL=http://127.0.0.1:8123 \
           ASSESTME_DUSK_ADMIN_PASSWORD="$administrator_password" \
@@ -403,6 +614,9 @@ jobs:
           fi
 
           echo "RELEASE_DUSK_RESULT=PASS"
+          release_server_snapshot AFTER_DUSK
+          trace_exit_record LISTENER "$listener_pid"
+          trace_exit_record SUPERVISOR "$supervisor_pid"
           test -f "$release_path/.env"
           test -f "$release_path/storage/app/private/installed.lock"
           cd "$release_path"
@@ -411,12 +625,98 @@ jobs:
           env -u DB_CONNECTION -u DB_DATABASE -u ASSESTME_BACKUP_ROOT \
             php artisan assestme:diagnose --json
 
-      - name: Require both extracted-release installer paths
+      - name: Summarize the historical HTTP comparison
+        if: always()
+        env:
+          KNOWN_RESULT: ${{ steps.known-good-http-smoke.outputs.result }}
+          CURRENT_INITIAL_RESULT: ${{ steps.current-http-smoke.outputs.result }}
+          CURRENT_REPEAT_RESULT: ${{ steps.current-http-repeat.outputs.result }}
+          BOUNDARY_RESULT: ${{ steps.boundary-http-smoke.outputs.result }}
+        run: |
+          value_from_log() {
+            log_path="$1"
+            key="$2"
+            value="$(grep -F "${key}=" "$log_path" 2>/dev/null | tail -n 1 | cut -d= -f2- || true)"
+            printf '%s' "${value:-n/a}"
+          }
+
+          current_log="${RUNNER_TEMP}/current-http-1.log"
+          if compgen -G "${RUNNER_TEMP}/current-http-*.log" >/dev/null; then
+            current_log="$(find "${RUNNER_TEMP}" -maxdepth 1 -name 'current-http-*.log' -print | sort -V | tail -n 1)"
+          fi
+
+          current_result="$CURRENT_INITIAL_RESULT"
+          if [[ "$CURRENT_INITIAL_RESULT" = PASS && "$CURRENT_REPEAT_RESULT" = PASS ]]; then
+            current_result='PASS (3/3)'
+          elif [[ "$CURRENT_INITIAL_RESULT" = PASS ]]; then
+            current_result=INTERMITTENT
+          fi
+
+          known_log="${RUNNER_TEMP}/known-good-http.log"
+          boundary_log="${RUNNER_TEMP}/boundary-http.log"
+          summary_path="${RUNNER_TEMP}/release-http-summary.md"
+
+          if [[ -f "$boundary_log" ]]; then
+            {
+              echo '| Check | Known-good c8bfab8 | Current develop | d02539 |'
+              echo '| --- | --- | --- | --- |'
+              echo "| HTTP smoke | $KNOWN_RESULT | $current_result | $BOUNDARY_RESULT |"
+              for spec in \
+                'supervisor PID|RELEASE_SERVER_SUPERVISOR_PID' \
+                'listener PID|RELEASE_SERVER_LISTENER_PID' \
+                'listener exit|RELEASE_LISTENER_EXIT_CODE' \
+                'signal|RELEASE_LISTENER_SIGNAL_NAME' \
+                'last finalize marker|RELEASE_LAST_FINALIZE_MARKER' \
+                '.env.pending|RELEASE__ENV_PENDING' \
+                '.env|RELEASE__ENV' \
+                'installed.lock|RELEASE_STORAGE_APP_PRIVATE_INSTALLED_LOCK' \
+                'PHP version|RELEASE_PHP_VERSION' \
+                'SQLite runtime|RELEASE_SQLITE_RUNTIME' \
+                'Laravel framework|RELEASE_LARAVEL_FRAMEWORK'; do
+                label="${spec%%|*}"
+                key="${spec#*|}"
+                echo "| $label | $(value_from_log "$known_log" "$key") | $(value_from_log "$current_log" "$key") | $(value_from_log "$boundary_log" "$key") |"
+              done
+            } > "$summary_path"
+          else
+            {
+              echo '| Check | Known-good c8bfab8 | Current develop |'
+              echo '| --- | --- | --- |'
+              echo "| HTTP smoke | $KNOWN_RESULT | $current_result |"
+              for spec in \
+                'supervisor PID|RELEASE_SERVER_SUPERVISOR_PID' \
+                'listener PID|RELEASE_SERVER_LISTENER_PID' \
+                'listener exit|RELEASE_LISTENER_EXIT_CODE' \
+                'signal|RELEASE_LISTENER_SIGNAL_NAME' \
+                'last finalize marker|RELEASE_LAST_FINALIZE_MARKER' \
+                '.env.pending|RELEASE__ENV_PENDING' \
+                '.env|RELEASE__ENV' \
+                'installed.lock|RELEASE_STORAGE_APP_PRIVATE_INSTALLED_LOCK' \
+                'PHP version|RELEASE_PHP_VERSION' \
+                'SQLite runtime|RELEASE_SQLITE_RUNTIME' \
+                'Laravel framework|RELEASE_LARAVEL_FRAMEWORK'; do
+                label="${spec%%|*}"
+                key="${spec#*|}"
+                echo "| $label | $(value_from_log "$known_log" "$key") | $(value_from_log "$current_log" "$key") |"
+              done
+            } > "$summary_path"
+          fi
+
+          cat "$summary_path"
+          cat "$summary_path" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Require the historical comparison and current browser installer
         if: always()
         run: |
-          echo "RELEASE_HTTP_SMOKE_STEP_OUTCOME=${{ steps.release-http-smoke.outcome }}"
+          echo "KNOWN_GOOD_HTTP_SMOKE_STEP_OUTCOME=${{ steps.known-good-http-smoke.outcome }}"
+          echo "CURRENT_HTTP_SMOKE_STEP_OUTCOME=${{ steps.current-http-smoke.outcome }}"
+          echo "CURRENT_HTTP_REPEAT_STEP_OUTCOME=${{ steps.current-http-repeat.outcome }}"
           echo "RELEASE_DUSK_STEP_OUTCOME=${{ steps.release-dusk.outcome }}"
-          test "${{ steps.release-http-smoke.outcome }}" = success
+          test "${{ steps.known-good-http-smoke.outcome }}" = success
+          test "${{ steps.current-http-smoke.outcome }}" = success
+          if [[ "${{ steps.current-http-repeat.outcome }}" != skipped ]]; then
+            test "${{ steps.current-http-repeat.outcome }}" = success
+          fi
           test "${{ steps.release-dusk.outcome }}" = success
 
       - name: Upload CloudPanel installer diagnostics
@@ -426,7 +726,13 @@ jobs:
           name: cloudpanel-installer-diagnostics
           path: |
             ${{ runner.temp }}/assestme-release-dusk.*/storage/logs/release-server.log
-            ${{ runner.temp }}/release-http/assestme/storage/logs/laravel.log
+            ${{ runner.temp }}/known-good-http.log
+            ${{ runner.temp }}/current-http-*.log
+            ${{ runner.temp }}/boundary-http.log
+            ${{ runner.temp }}/release-http-summary.md
+            ${{ runner.temp }}/http-known-good/assestme/storage/logs/laravel.log
+            ${{ runner.temp }}/http-current-*/assestme/storage/logs/laravel.log
+            ${{ runner.temp }}/http-boundary/assestme/storage/logs/laravel.log
             ${{ runner.temp }}/release-dusk/assestme/storage/logs/laravel.log
             tests/Browser/screenshots
             tests/Browser/source

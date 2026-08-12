@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Actions\Installation\FinalizeInstallation;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 it('logs only the Artisan command lifecycle and returned exit code', function (): void {
     Artisan::shouldReceive('call')

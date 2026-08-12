@@ -399,3 +399,20 @@ Record only factual work performed, the exact affected area, commands run, and r
   workflow YAML parsed, and the shell script passed `bash -n`.
   The earlier GitHub listener loss was not reproduced, so its root cause remains undetermined
   pending evidence from the instrumented workflow.
+- 2026-08-12: Started the requested hard-termination investigation for the extracted-release
+  installer. Scope is limited to a same-run historical A/B between `c8bfab8` and current `develop`,
+  exact `artisan serve` supervisor/listener ownership and exit evidence, sanitized runtime facts,
+  and independent fresh release state. No installer, database-probe, migration, finalization,
+  timeout, retry, or restart behavior will change without a demonstrated root cause.
+- 2026-08-12: Completed the neutral same-run release diagnostic harness. The CloudPanel job now
+  builds `c8bfab8` and current `develop` with the same runner/toolchain, validates their installer
+  route/form contract, installs independent fresh ZIP extractions, and conditionally builds
+  `d02539` only when the known-good/current boundary requires it. The real socket owner is resolved
+  with `ss`; `strace` records separate Artisan supervisor and PHP listener exit/signal evidence;
+  sanitized process trees, runtime facts, state files, last marker, and a GitHub summary table are
+  emitted. A passing current HTTP run is repeated only twice, for three total fresh executions.
+  No application installer behavior, timeout, retry, restart, probe, migration, or finalization
+  logic changed. Focused container checks passed 26 tests with 432 assertions. The complete
+  normative gate passed 622 application tests with 5,456 assertions, 38/38 strict Canary routes,
+  the 50-Finding benchmark, diagnostics, audit and storage checks, and 23 Dusk tests with 785
+  assertions. The historical GitHub-run evidence remains pending; root cause is not yet determined.
