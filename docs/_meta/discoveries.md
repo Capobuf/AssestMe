@@ -157,3 +157,8 @@ Add only reproducible observations discovered during implementation or verificat
   alive and is reparented to PID 1. Cleanup must therefore authorize the recorded listener by exact
   current socket ownership as well as the originally observed parent relationship; waiting for
   `strace` while that traced listener remains alive does not complete.
+- On runner PHP 8.3.33 with SQLite 3.45.1 and Laravel 13.19.0, the traced PHP built-in listener
+  exited through confirmed `SIGSEGV` (exit 139) for both historical `c8bfab8` and a fresh current
+  release attempt; another independent current attempt completed. Current Dusk also recorded the
+  same signal. The historical application-regression hypothesis is therefore rejected, while the
+  native failure is intermittent and still requires the direct-server isolation result.

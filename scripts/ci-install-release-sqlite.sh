@@ -5,9 +5,14 @@ set -euo pipefail
 project_path="${1:-}"
 port="${2:-8123}"
 release_label="${3:-release}"
+server_launch_mode="${4:-artisan}"
 
-if [[ "$project_path" != /* || ! -f "$project_path/artisan" || ! "$port" =~ ^[0-9]+$ || ! "$release_label" =~ ^[0-9A-Za-z._-]+$ ]]; then
-    echo "Usage: scripts/ci-install-release-sqlite.sh <absolute-release-path> [port] [release-label]" >&2
+if [[ "$project_path" != /* \
+    || ! -f "$project_path/artisan" \
+    || ! "$port" =~ ^[0-9]+$ \
+    || ! "$release_label" =~ ^[0-9A-Za-z._-]+$ \
+    || ! "$server_launch_mode" =~ ^(artisan|direct)$ ]]; then
+    echo "Usage: scripts/ci-install-release-sqlite.sh <absolute-release-path> [port] [release-label] [artisan|direct]" >&2
     exit 64
 fi
 
@@ -26,6 +31,7 @@ server_log="$(mktemp)"
 trace_root="$(mktemp -d)"
 trace_prefix="$trace_root/process"
 administrator_password="CI!$(php -r 'echo bin2hex(random_bytes(14));')aA1"
+laravel_server_router=''
 tracer_pid=''
 supervisor_pid=''
 listener_pid=''
@@ -257,6 +263,7 @@ for diagnostic_binary in ss strace; do
 done
 
 echo "RELEASE_LABEL=$release_label"
+echo "RELEASE_SERVER_LAUNCH_MODE=$server_launch_mode"
 echo 'RELEASE_RUNTIME_PHP_VERSION_BEGIN'
 php --version
 echo 'RELEASE_RUNTIME_PHP_VERSION_END'
@@ -286,20 +293,53 @@ exit(1);
 
 mkdir -p "$project_path/storage/backups" "$project_path/storage/app/database"
 
+server_environment=(
+    env
+    -u DB_CONNECTION
+    -u DB_DATABASE
+    -u DB_HOST
+    -u DB_PORT
+    -u DB_USERNAME
+    -u DB_PASSWORD
+    -u DB_SOCKET
+    -u ASSESTME_BACKUP_ROOT
+    APP_ENV=testing
+    APP_URL="$base_url"
+)
+
+if [[ "$server_launch_mode" = direct ]]; then
+    laravel_server_router="$(
+        "$php_binary" -r '
+        require $argv[1]."/vendor/autoload.php";
+        $framework = Composer\InstalledVersions::getInstallPath("laravel/framework");
+        if (! is_string($framework)) {
+            exit(1);
+        }
+        echo realpath($framework."/src/Illuminate/Foundation/resources/server.php");
+        ' "$project_path"
+    )"
+
+    if [[ "$laravel_server_router" != /* || ! -f "$laravel_server_router" ]]; then
+        echo 'The direct PHP server router could not be derived from the installed Laravel framework.' >&2
+        exit 69
+    fi
+
+    echo "RELEASE_DIRECT_SERVER_COMMAND=$php_binary -S 127.0.0.1:$port $laravel_server_router"
+    echo "RELEASE_DIRECT_SERVER_WORKING_DIRECTORY=$project_path/public"
+fi
+
 (
-    cd "$project_path"
-    exec strace -ff -e trace=process -o "$trace_prefix" env \
-        -u DB_CONNECTION \
-        -u DB_DATABASE \
-        -u DB_HOST \
-        -u DB_PORT \
-        -u DB_USERNAME \
-        -u DB_PASSWORD \
-        -u DB_SOCKET \
-        -u ASSESTME_BACKUP_ROOT \
-        APP_ENV=testing \
-        APP_URL="$base_url" \
-        "$php_binary" artisan serve --no-reload --host=127.0.0.1 --port="$port"
+    if [[ "$server_launch_mode" = artisan ]]; then
+        cd "$project_path"
+        exec strace -ff -e trace=process -o "$trace_prefix" \
+            "${server_environment[@]}" \
+            "$php_binary" artisan serve --no-reload --host=127.0.0.1 --port="$port"
+    fi
+
+    cd "$project_path/public"
+    exec strace -ff -e trace=process -o "$trace_prefix" \
+        "${server_environment[@]}" \
+        "$php_binary" -S "127.0.0.1:$port" "$laravel_server_router"
 ) >"$server_log" 2>&1 &
 tracer_pid="$!"
 
@@ -317,23 +357,33 @@ if [[ -z "$listener_pid" ]]; then
     exit 71
 fi
 
-supervisor_pid="$(ps -o ppid= -p "$listener_pid" | awk '{$1=$1; print}')"
-listener_parent_pid="$supervisor_pid"
+listener_parent_pid="$(ps -o ppid= -p "$listener_pid" | awk '{$1=$1; print}')"
 
-if [[ -z "$supervisor_pid" || "$supervisor_pid" = "$tracer_pid" ]]; then
-    echo 'The artisan serve supervisor PID could not be resolved from the listener process.' >&2
-    exit 71
-fi
+if [[ "$server_launch_mode" = artisan ]]; then
+    supervisor_pid="$listener_parent_pid"
 
-supervisor_args="$(ps -o args= -p "$supervisor_pid" 2>/dev/null || true)"
+    if [[ -z "$supervisor_pid" || "$supervisor_pid" = "$tracer_pid" ]]; then
+        echo 'The artisan serve supervisor PID could not be resolved from the listener process.' >&2
+        exit 71
+    fi
 
-if [[ "$supervisor_args" != *"artisan serve"* ]]; then
-    echo "The resolved listener parent is not the artisan serve supervisor: $supervisor_args" >&2
-    exit 71
+    supervisor_args="$(ps -o args= -p "$supervisor_pid" 2>/dev/null || true)"
+
+    if [[ "$supervisor_args" != *"artisan serve"* ]]; then
+        echo "The resolved listener parent is not the artisan serve supervisor: $supervisor_args" >&2
+        exit 71
+    fi
+else
+    listener_args="$(ps -o args= -p "$listener_pid" 2>/dev/null || true)"
+
+    if [[ "$listener_args" != *" -S 127.0.0.1:$port $laravel_server_router"* ]]; then
+        echo "The resolved listener does not match the Laravel-derived direct PHP command: $listener_args" >&2
+        exit 71
+    fi
 fi
 
 echo "RELEASE_SERVER_TRACER_PID=$tracer_pid"
-echo "RELEASE_SERVER_SUPERVISOR_PID=$supervisor_pid"
+echo "RELEASE_SERVER_SUPERVISOR_PID=${supervisor_pid:-unavailable}"
 echo "RELEASE_SERVER_LISTENER_PID=$listener_pid"
 echo "RELEASE_SERVER_LISTENER_PPID=$listener_parent_pid"
 

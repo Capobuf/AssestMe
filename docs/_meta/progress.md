@@ -426,3 +426,12 @@ Record only factual work performed, the exact affected area, commands run, and r
   child was reparented to PID 1, so the stale-parent safety check did not terminate it and `strace`
   could not finish. Cleanup now accepts the exact PID still returned as owner of the requested port,
   preserving the PID safety boundary without adding a timeout, retry, or server restart.
+- 2026-08-12: The same-run GitHub A/B recorded `c8bfab8` FAIL with listener `139/SIGSEGV`,
+  current PASS on its first fresh extraction, current FAIL with `139/SIGSEGV` on its second fresh
+  extraction, and current Dusk FAIL with `139/SIGSEGV`. Added the single post-A/B isolation
+  experiment requested by the investigation: a fresh current release uses the PHP built-in server
+  command and router derived from the installed Laravel package, changing only the Artisan
+  supervisor layer. A fresh local current extraction completed under that direct command. The
+  complete normative gate then passed 622 application tests with 5,462 assertions, 38/38 strict
+  Canary routes, diagnostics, benchmark and storage checks, and 23 Dusk tests with 785 assertions.
+  No application behavior or timeout changed.

@@ -397,6 +397,29 @@ jobs:
           echo "CURRENT_HTTP_REPEAT_RESULT=$repeated_result"
           test "$repeated_result" = PASS
 
+      - name: Compare current with the Laravel-derived direct PHP server
+        id: current-direct-http-smoke
+        if: steps.known-good-http-smoke.outputs.result == 'FAIL' || steps.current-http-smoke.outputs.result == 'FAIL' || steps.current-http-repeat.outputs.result == 'INTERMITTENT'
+        continue-on-error: true
+        run: |
+          extraction_root="${RUNNER_TEMP}/http-current-direct"
+          mkdir "$extraction_root"
+          unzip -q "${RUNNER_TEMP}/release/assestme-ci.zip" -d "$extraction_root"
+          set +e
+          scripts/ci-install-release-sqlite.sh "$extraction_root/assestme" 8128 current-direct direct \
+            2>&1 | tee "${RUNNER_TEMP}/current-http-direct.log"
+          smoke_exit_code="${PIPESTATUS[0]}"
+          set -e
+          if [[ "$smoke_exit_code" -eq 0 ]]; then
+            echo 'result=PASS' >> "$GITHUB_OUTPUT"
+            echo 'CURRENT_DIRECT_HTTP_SMOKE_RESULT=PASS'
+          else
+            echo 'result=FAIL' >> "$GITHUB_OUTPUT"
+            echo 'CURRENT_DIRECT_HTTP_SMOKE_RESULT=FAIL'
+            echo "CURRENT_DIRECT_HTTP_SMOKE_EXIT_CODE=$smoke_exit_code"
+            exit "$smoke_exit_code"
+          fi
+
       - name: Build the first known-failing boundary release
         if: steps.known-good-http-smoke.outputs.result == 'PASS' && steps.current-http-smoke.outputs.result == 'FAIL'
         env:
@@ -632,6 +655,7 @@ jobs:
           CURRENT_INITIAL_RESULT: ${{ steps.current-http-smoke.outputs.result }}
           CURRENT_REPEAT_RESULT: ${{ steps.current-http-repeat.outputs.result }}
           BOUNDARY_RESULT: ${{ steps.boundary-http-smoke.outputs.result }}
+          DIRECT_RESULT: ${{ steps.current-direct-http-smoke.outputs.result }}
         run: |
           value_from_log() {
             log_path="$1"
@@ -705,6 +729,21 @@ jobs:
           cat "$summary_path"
           cat "$summary_path" >> "$GITHUB_STEP_SUMMARY"
 
+          direct_log="${RUNNER_TEMP}/current-http-direct.log"
+          if [[ -f "$direct_log" ]]; then
+            {
+              echo
+              echo '| Direct-server check | Current develop |'
+              echo '| --- | --- |'
+              echo "| HTTP smoke | ${DIRECT_RESULT:-FAIL} |"
+              echo "| launch mode | $(value_from_log "$direct_log" RELEASE_SERVER_LAUNCH_MODE) |"
+              echo "| listener PID | $(value_from_log "$direct_log" RELEASE_SERVER_LISTENER_PID) |"
+              echo "| listener exit | $(value_from_log "$direct_log" RELEASE_LISTENER_EXIT_CODE) |"
+              echo "| signal | $(value_from_log "$direct_log" RELEASE_LISTENER_SIGNAL_NAME) |"
+              echo "| last finalize marker | $(value_from_log "$direct_log" RELEASE_LAST_FINALIZE_MARKER) |"
+            } | tee -a "$summary_path" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Require the historical comparison and current browser installer
         if: always()
         run: |
@@ -728,10 +767,12 @@ jobs:
             ${{ runner.temp }}/assestme-release-dusk.*/storage/logs/release-server.log
             ${{ runner.temp }}/known-good-http.log
             ${{ runner.temp }}/current-http-*.log
+            ${{ runner.temp }}/current-http-direct.log
             ${{ runner.temp }}/boundary-http.log
             ${{ runner.temp }}/release-http-summary.md
             ${{ runner.temp }}/http-known-good/assestme/storage/logs/laravel.log
             ${{ runner.temp }}/http-current-*/assestme/storage/logs/laravel.log
+            ${{ runner.temp }}/http-current-direct/assestme/storage/logs/laravel.log
             ${{ runner.temp }}/http-boundary/assestme/storage/logs/laravel.log
             ${{ runner.temp }}/release-dusk/assestme/storage/logs/laravel.log
             tests/Browser/screenshots
