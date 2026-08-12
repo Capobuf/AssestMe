@@ -126,3 +126,19 @@ Add only reproducible observations discovered during implementation or verificat
 - A reference-only row description has no leading commercial text. Reference normalization must
   therefore recognize the reference block both at the beginning of the string and after a blank-line
   separator, otherwise removing the final Finding can leave a stale reference behind.
+
+## Extracted-release installer discoveries
+
+- A fresh extracted ZIP completed the SQLite installer through
+  `installer.finalize.complete` over the maintained HTTP smoke with `artisan serve --no-reload`;
+  the observed parent PID remained alive and the selected port remained in LISTEN. Removing
+  runner-level `APP_ENV`, `APP_KEY`, and `APP_URL` overrides from post-install CLI checks allowed
+  `schedule:run` and `assestme:diagnose --json` to validate the activated release `.env`.
+- A separate fresh extraction reached the structural installation-complete element through Dusk,
+  with `.env` and `installed.lock` present, no installer progress state, the parent PID alive, and
+  the port still in LISTEN. An initial local login rejection came from Compose's inherited
+  `DB_DATABASE` selecting the development database on the next request; removing runner DB and
+  backup overrides made the complete release Dusk journey, including real login, pass.
+- The prior GitHub runner listener loss was not reproduced locally. Local completion evidence does
+  not establish why that runner stopped accepting connections; the exact CI root cause remains
+  undetermined until the instrumented workflow records its PID/exit/signal and last marker.

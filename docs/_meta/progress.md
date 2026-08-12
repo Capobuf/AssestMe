@@ -374,3 +374,28 @@ Record only factual work performed, the exact affected area, commands run, and r
   target from strict authorization sweeps. Focused Pint and PHPStan passed, and the combined strict
   Canary plus navigation suite passed 18 tests with 90 assertions. The complete exact-fingerprint
   verification and the GitHub workflow-equivalent browser run follow this repair before publication.
+- 2026-08-12: Started the annotated dashboard copy refinement. Scope is limited to the seven
+  selected hero, launcher, panel-heading, and latest-assessment link labels; dashboard behavior,
+  data, routes, and layout remain unchanged.
+- 2026-08-12: Completed the seven annotated dashboard copy changes. Authenticated browser
+  inspection confirmed `Riprendi il Lavoro`, `Apri Workspace`, `Nuovo Assessment`, both requested
+  `Ultimi Assessment` labels, `Aziende Recenti`, and `Altro` only on the latest-assessment panel;
+  the company-panel link remains `Vedi tutto`. Focused Pint passed, dashboard feature coverage
+  passed 10 tests with 46 assertions, and isolated responsive dashboard Dusk passed 1 test with 27
+  assertions. The 1280 px browser viewport had no document-level horizontal overflow.
+- 2026-08-12: Started the extracted-release installer finalization investigation. Scope is limited
+  to sanitized phase markers, deterministic release-server lifecycle diagnostics, equivalent HTTP
+  and Dusk runs against separate fresh ZIP extractions, and a structural final-submit assertion;
+  application finalization behavior remains unchanged until the failing phase is demonstrated.
+- 2026-08-12: Added sanitized finalization and Artisan phase markers, throwable reporting, a
+  structural Dusk final-submit outcome classifier, deterministic PID/port/state diagnostics, and
+  independent HTTP/Dusk extraction paths in the CloudPanel release job. A fresh extracted ZIP
+  passed the maintained SQLite HTTP smoke with the same `--no-reload` startup. A separate fresh
+  Dusk extraction reached `installer.finalize.complete` with the server alive and listening, and
+  the complete browser journey passed after removing Compose DB/backup overrides from the release
+  server environment. The final same-ZIP matrix passed the HTTP smoke, one Dusk test with 28
+  assertions including real login, `schedule:run`, and `assestme:diagnose --json`; the focused
+  installer/action/workflow suite passed 22 tests with 195 assertions, Pint passed, PHPStan passed,
+  workflow YAML parsed, and the shell script passed `bash -n`.
+  The earlier GitHub listener loss was not reproduced, so its root cause remains undetermined
+  pending evidence from the instrumented workflow.

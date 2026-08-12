@@ -116,7 +116,7 @@
                         <h2 id="assestme-dashboard-assessments-title">{{ __('assestme.dashboard.latest_assessments') }}</h2>
                     </div>
                     <a href="{{ \App\Filament\Resources\Assessments\AssessmentResource::getUrl('index') }}">
-                        {{ __('assestme.dashboard.view_all') }}
+                        {{ __('assestme.dashboard.more_assessments') }}
                     </a>
                 </header>
 

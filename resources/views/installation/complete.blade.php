@@ -1,7 +1,7 @@
 @extends('installation.layout', ['title' => 'Installazione completata', 'step' => 6])
 
 @section('content')
-    <p class="installer-eyebrow">Installazione completata</p>
+    <p class="installer-eyebrow" data-dusk="installation-complete">Installazione completata</p>
     <h1>AssestMe è pronto</h1>
     <div class="installer-alert installer-alert-warning">
         Mantieni attiva una protezione temporanea del sito, come Basic Authentication, protezione directory o restrizione IP, finché non hai verificato il primo login.

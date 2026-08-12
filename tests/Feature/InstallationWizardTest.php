@@ -277,6 +277,7 @@ it('renders panel-neutral scheduler instructions for CloudPanel cPanel Plesk and
         'cronCommand' => $command,
         'errors' => new ViewErrorBag,
     ])
+        ->assertSee('data-dusk="installation-complete"', false)
         ->assertSee('CloudPanel')
         ->assertSee('Sites → dominio → Cron Jobs → Add Cron Job')
         ->assertSee('cPanel')

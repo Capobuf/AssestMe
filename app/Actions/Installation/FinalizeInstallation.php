@@ -16,8 +16,10 @@ use App\Services\Installation\InstallationRuntimeConfigurator;
 use App\Services\Installation\InstallationState;
 use App\Support\Installation\BootstrapInstallationKey;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use SensitiveParameter;
+use Throwable;
 
 final readonly class FinalizeInstallation
 {
@@ -34,6 +36,8 @@ final readonly class FinalizeInstallation
     public function __invoke(
         #[SensitiveParameter] AdministratorData $administrator,
     ): InstallationFinalCheckResult {
+        Log::info('installer.finalize.begin');
+
         $lockPath = config('assestme.installation.finalization_lock_path');
 
         if (! is_string($lockPath) || ! str_starts_with($lockPath, DIRECTORY_SEPARATOR)) {
@@ -87,8 +91,12 @@ final readonly class FinalizeInstallation
             throw new RuntimeException('The installer application key is invalid.');
         }
 
+        Log::info('installer.finalize.database_probe.begin');
         $this->databaseCapabilityProbe->probe($database);
+        Log::info('installer.finalize.database_probe.complete');
+
         $classification = $this->databaseClassifier->classify($database, $progress->installationId);
+        Log::info('installer.finalize.classify.complete');
 
         if ($classification->status === InstallationDatabaseStatus::Foreign) {
             $tables = implode(', ', $classification->tables);
@@ -103,13 +111,28 @@ final readonly class FinalizeInstallation
         }
 
         $this->environmentWriter->writePending($application, $database, $applicationKey);
-        $this->runtimeConfigurator->apply($application, $database);
-        $this->runArtisanCommand('migrate', ['--force' => true, '--isolated' => true]);
-        $this->runArtisanCommand('db:seed', ['--force' => true]);
-        $this->persistAdministrator($administrator);
-        $this->databaseClassifier->markComplete($database, $progress->installationId);
+        Log::info('installer.finalize.environment_pending.complete');
 
+        $this->runtimeConfigurator->apply($application, $database);
+        Log::info('installer.finalize.runtime_config.complete');
+
+        Log::info('installer.finalize.migrate.begin');
+        $this->runArtisanCommand('migrate', ['--force' => true, '--isolated' => true]);
+        Log::info('installer.finalize.migrate.complete');
+
+        Log::info('installer.finalize.seed.begin');
+        $this->runArtisanCommand('db:seed', ['--force' => true]);
+        Log::info('installer.finalize.seed.complete');
+
+        $this->persistAdministrator($administrator);
+        Log::info('installer.finalize.administrator.complete');
+
+        $this->databaseClassifier->markComplete($database, $progress->installationId);
+        Log::info('installer.finalize.database_mark_complete.complete');
+
+        Log::info('installer.finalize.final_checks.begin');
         $result = $this->finalCheck->run($application, $database);
+        Log::info('installer.finalize.final_checks.complete');
 
         if (! $result->passed()) {
             $failedLabels = array_map(
@@ -123,15 +146,24 @@ final readonly class FinalizeInstallation
             throw new RuntimeException('Controlli finali non superati: '.implode('; ', $failedLabels).'.');
         }
 
+        Log::info('installer.finalize.environment_activate.begin');
         $this->environmentWriter->activatePending($application, $database, $applicationKey);
+        Log::info('installer.finalize.environment_activate.complete');
+
+        Log::info('installer.finalize.optimize_clear.begin');
         $this->runArtisanCommand('optimize:clear');
+        Log::info('installer.finalize.optimize_clear.complete');
 
         if (app()->environment('production')) {
             $this->runArtisanCommand('optimize');
         }
 
         $this->installationState->createInstalledLock($database->driver);
+        Log::info('installer.finalize.installed_lock.complete');
+
         $this->installationState->removeProgress();
+        Log::info('installer.finalize.progress_removed');
+
         BootstrapInstallationKey::removeAfterCompletion(
             base_path(),
             $applicationKey,
@@ -139,6 +171,8 @@ final readonly class FinalizeInstallation
             $this->configuredAbsolutePath('assestme.installation.lock_path'),
             $this->configuredAbsolutePath('assestme.installation.bootstrap_key_path'),
         );
+        Log::info('installer.finalize.bootstrap_key_removed');
+        Log::info('installer.finalize.complete');
 
         return $result;
     }
@@ -166,9 +200,32 @@ final readonly class FinalizeInstallation
     /** @param array<string, bool|int|string> $parameters */
     private function runArtisanCommand(string $command, array $parameters = []): void
     {
-        if (Artisan::call($command, $parameters) !== 0) {
+        Log::info('installer.finalize.artisan.begin', ['command' => $command]);
+
+        try {
+            $exitCode = Artisan::call($command, $parameters);
+        } catch (Throwable $exception) {
+            Log::error('installer.finalize.artisan.failure', [
+                'command' => $command,
+                'exception' => $exception::class,
+            ]);
+
+            throw $exception;
+        }
+
+        if ($exitCode !== 0) {
+            Log::error('installer.finalize.artisan.failure', [
+                'command' => $command,
+                'exit_code' => $exitCode,
+            ]);
+
             throw new RuntimeException("The {$command} command did not complete successfully.");
         }
+
+        Log::info('installer.finalize.artisan.complete', [
+            'command' => $command,
+            'exit_code' => $exitCode,
+        ]);
     }
 
     private function ensurePrivateDirectory(string $directory): void

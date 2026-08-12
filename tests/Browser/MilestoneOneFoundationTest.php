@@ -51,10 +51,10 @@ final class MilestoneOneFoundationTest extends DuskTestCase
                 ->loginAs($administrator)
                 ->visit('/admin')
                 ->waitFor('[data-dusk="dashboard-hero"]')
-                ->waitForText('Riprendi il lavoro')
-                ->assertSee('Nuovo assessment')
-                ->assertSee('Aziende recenti')
-                ->assertSee('Ultimi assessment')
+                ->waitForText('Riprendi il Lavoro')
+                ->assertSee('Nuovo Assessment')
+                ->assertSee('Aziende Recenti')
+                ->assertSee('Ultimi Assessment')
                 ->assertSee('Archivio AssestMe')
                 ->assertMissing('.fi-account-widget')
                 ->assertPresent("a[href='".AssessmentResource::getUrl('create')."']")
@@ -91,10 +91,10 @@ final class MilestoneOneFoundationTest extends DuskTestCase
             $browser->resize(390, 844)
                 ->visit('/admin')
                 ->waitFor('[data-dusk="dashboard-hero"]')
-                ->waitForText('Riprendi il lavoro')
-                ->assertSee('Nuovo assessment')
-                ->assertSee('Aziende recenti')
-                ->assertSee('Ultimi assessment')
+                ->waitForText('Riprendi il Lavoro')
+                ->assertSee('Nuovo Assessment')
+                ->assertSee('Aziende Recenti')
+                ->assertSee('Ultimi Assessment')
                 ->assertSee('Archivio AssestMe')
                 ->assertPresent('[data-dusk="dashboard-archive"]')
                 ->pause(250);
@@ -160,10 +160,10 @@ final class MilestoneOneFoundationTest extends DuskTestCase
         $this->browse(function (Browser $browser) use ($administrator, $asset, $client, $effortLevel, $riskProfile, $site): void {
             $browser->loginAs($administrator)
                 ->visit('/admin')
-                ->waitForText('Riprendi il lavoro');
+                ->waitForText('Riprendi il Lavoro');
             $browser->script('window.scrollTo(0, document.documentElement.scrollHeight)');
             $browser->waitForText('Archivio AssestMe')
-                ->waitForText('Ultimi assessment')
+                ->waitForText('Ultimi Assessment')
                 ->waitForText('Cliente Browser')
                 ->visit(ClientResource::getUrl('index'))
                 ->waitForText('Aziende')

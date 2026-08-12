@@ -60,9 +60,11 @@ final class CloudPanelInstallationTest extends DuskTestCase
                 ->type('name', 'CI Administrator')
                 ->type('email', 'admin@assestme.invalid')
                 ->type('password', $password)
-                ->type('password_confirmation', $password)
-                ->press('Installa e chiudi l’installer')
-                ->waitForText('AssestMe è pronto', 120)
+                ->type('password_confirmation', $password);
+
+            $this->submitFinalization($browser);
+
+            $browser->assertPresent('[data-dusk="installation-complete"]')
                 ->assertSee('Scheduler')
                 ->assertSee('CloudPanel')
                 ->assertSee('cPanel')
@@ -93,6 +95,83 @@ final class CloudPanelInstallationTest extends DuskTestCase
                 ->assertSee('Diagnostica AssestMe')
                 ->assertSee('SQLite');
         });
+    }
+
+    private function submitFinalization(Browser $browser): void
+    {
+        $navigationToken = 'assestmeFinalize'.bin2hex(random_bytes(8));
+        $browser->driver->executeScript("window['{$navigationToken}'] = true;");
+
+        try {
+            $browser->press('Installa e chiudi l’installer');
+        } catch (Throwable $exception) {
+            $this->failFinalization(
+                $browser,
+                'Installer finalization submit failed in the browser: '.$exception::class.'.',
+            );
+        }
+
+        $deadline = microtime(true) + 30;
+
+        do {
+            if (! $this->releaseServerIsListening()) {
+                $this->failFinalization(
+                    $browser,
+                    "Installer finalization lost the release HTTP server.\nRelease server is no longer reachable.",
+                );
+            }
+
+            if ($this->browserHasNetworkError($browser)) {
+                $this->failFinalization(
+                    $browser,
+                    "Installer finalization lost the release HTTP server.\nRelease server is no longer reachable.",
+                );
+            }
+
+            $diagnosticFailures = [];
+            $complete = $this->diagnosticText(
+                $browser,
+                '[data-dusk="installation-complete"]',
+                $diagnosticFailures,
+            );
+
+            if ($complete !== null) {
+                return;
+            }
+
+            $currentUrl = $this->currentUrl($browser, $diagnosticFailures);
+            $path = parse_url($currentUrl, PHP_URL_PATH);
+            $navigationCompleted = $this->navigationCompleted($browser, $navigationToken);
+
+            if ($navigationCompleted && $path === '/install/administrator') {
+                $installerError = $this->diagnosticText(
+                    $browser,
+                    '[data-dusk="installation-error"]',
+                    $diagnosticFailures,
+                );
+
+                $this->failFinalization(
+                    $browser,
+                    'Installer finalization returned to [/install/administrator].'
+                    ."\nInstaller error: ".($installerError ?? '[none displayed]'),
+                );
+            }
+
+            if ($navigationCompleted) {
+                $this->failFinalization(
+                    $browser,
+                    'Installer finalization navigated to an unexpected path ['
+                    .(is_string($path) ? $path : 'unavailable').'].',
+                );
+            }
+
+            usleep(250_000);
+        } while (microtime(true) < $deadline);
+
+        $this->failFinalization(
+            $browser,
+            'Installer finalization did not complete within 30 seconds; the request is blocked.',
+        );
     }
 
     private function advancePastDatabaseStep(Browser $browser): void
@@ -156,6 +235,89 @@ final class CloudPanelInstallationTest extends DuskTestCase
         }
 
         Assert::fail($message);
+    }
+
+    private function failFinalization(Browser $browser, string $reason): never
+    {
+        $diagnosticFailures = [];
+        $currentUrl = $this->currentUrl($browser, $diagnosticFailures);
+        $installerError = $this->diagnosticText($browser, '[data-dusk="installation-error"]', $diagnosticFailures);
+
+        foreach ([
+            'screenshot' => static fn () => $browser->screenshot('cloudpanel-installer-finalization-failure'),
+            'DOM source' => static fn () => $browser->storeSource('cloudpanel-installer-finalization-failure'),
+            'console log' => static fn () => $browser->storeConsoleLog('cloudpanel-installer-finalization-failure'),
+        ] as $label => $capture) {
+            try {
+                $capture();
+            } catch (Throwable $exception) {
+                $diagnosticFailures[] = $label.': '.$exception::class;
+            }
+        }
+
+        $message = implode("\n", [
+            $reason,
+            "Current URL: {$currentUrl}",
+            'Installer error: '.($installerError ?? '[none displayed]'),
+        ]);
+
+        if ($diagnosticFailures !== []) {
+            $message .= "\nDiagnostic capture failures: ".implode(', ', $diagnosticFailures);
+        }
+
+        Assert::fail($message);
+    }
+
+    private function releaseServerIsListening(): bool
+    {
+        $url = (string) config('app.url');
+        $host = parse_url($url, PHP_URL_HOST);
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+        $port = parse_url($url, PHP_URL_PORT);
+
+        if (! is_string($host) || $host === '') {
+            return false;
+        }
+
+        if (! is_int($port)) {
+            $port = $scheme === 'https' ? 443 : 80;
+        }
+
+        $socket = @fsockopen($host, $port, $errorCode, $errorMessage, 0.2);
+
+        if (! is_resource($socket)) {
+            return false;
+        }
+
+        fclose($socket);
+
+        return true;
+    }
+
+    private function browserHasNetworkError(Browser $browser): bool
+    {
+        try {
+            $currentUrl = $browser->driver->getCurrentURL();
+            $source = $browser->driver->getPageSource();
+
+            return str_starts_with($currentUrl, 'chrome-error://')
+                || str_contains($source, 'ERR_CONNECTION_REFUSED')
+                || str_contains($source, 'chrome-error://chromewebdata/')
+                || str_contains($source, 'main-frame-error');
+        } catch (Throwable) {
+            return ! $this->releaseServerIsListening();
+        }
+    }
+
+    private function navigationCompleted(Browser $browser, string $navigationToken): bool
+    {
+        try {
+            return $browser->driver->executeScript(
+                "return typeof window['{$navigationToken}'] === 'undefined';",
+            ) === true;
+        } catch (Throwable) {
+            return true;
+        }
     }
 
     /** @param list<string> $diagnosticFailures */

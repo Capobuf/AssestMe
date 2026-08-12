@@ -248,25 +248,143 @@ jobs:
       - name: Install matching ChromeDriver
         run: php artisan dusk:chrome-driver --detect
 
-      - name: Complete the extracted-release SQLite installer in a browser
+      - name: Prepare independent extracted releases
         run: |
-          release_path="${RUNNER_TEMP}/extracted/assestme"
+          for release_name in release-http release-dusk; do
+            extraction_root="${RUNNER_TEMP}/${release_name}"
+            mkdir "$extraction_root"
+            unzip -q "${RUNNER_TEMP}/release/assestme-ci.zip" -d "$extraction_root"
+            release_path="${extraction_root}/assestme"
+            test ! -e "$release_path/.env"
+            test ! -e "$release_path/.env.pending"
+            test ! -e "$release_path/storage/app/private/installed.lock"
+            test ! -e "$release_path/storage/framework/installer/state.enc"
+            test ! -e "$release_path/storage/app/database/database.sqlite"
+          done
+
+      - name: Complete an independent extracted-release SQLite installer over HTTP
+        id: release-http-smoke
+        continue-on-error: true
+        run: |
+          set +e
+          scripts/ci-install-release-sqlite.sh "${RUNNER_TEMP}/release-http/assestme" 8124
+          smoke_exit_code="$?"
+          set -e
+          if [[ "$smoke_exit_code" -eq 0 ]]; then
+            echo "RELEASE_HTTP_SMOKE_RESULT=PASS"
+          else
+            echo "RELEASE_HTTP_SMOKE_RESULT=FAIL"
+            echo "RELEASE_HTTP_SMOKE_EXIT_CODE=$smoke_exit_code"
+            exit "$smoke_exit_code"
+          fi
+
+      - name: Complete the extracted-release SQLite installer in a browser
+        id: release-dusk
+        continue-on-error: true
+        run: |
+          release_path="${RUNNER_TEMP}/release-dusk/assestme"
           test_root="$(mktemp -d "${RUNNER_TEMP}/assestme-release-dusk.XXXXXXXX")"
           touch "${test_root}/.assestme-test-root"
           mkdir -p "${test_root}/storage/logs"
           administrator_password="CI!$(php -r 'echo bin2hex(random_bytes(14));')aA1"
+
+          diagnose_release_server() {
+            echo "RELEASE_SERVER_PID=$server_pid"
+
+            if kill -0 "$server_pid" >/dev/null 2>&1; then
+              echo "RELEASE_SERVER_PID_STATUS=alive"
+            else
+              echo "RELEASE_SERVER_PID_STATUS=dead"
+              set +e
+              wait "$server_pid"
+              release_server_exit_code="$?"
+              set -e
+              echo "RELEASE_SERVER_EXIT_CODE=$release_server_exit_code"
+
+              if [[ "$release_server_exit_code" -gt 128 ]]; then
+                release_server_signal="$((release_server_exit_code - 128))"
+                release_server_signal_name="$(kill -l "$release_server_signal" 2>/dev/null || true)"
+                echo "RELEASE_SERVER_SIGNAL=$release_server_signal"
+                echo "RELEASE_SERVER_SIGNAL_NAME=${release_server_signal_name:-unknown}"
+              fi
+            fi
+
+            port_is_listening=no
+            if command -v ss >/dev/null 2>&1 && ss -ltn | awk '$4 ~ /:8123$/ { found = 1 } END { exit(found ? 0 : 1) }'; then
+              port_is_listening=yes
+            elif ! command -v ss >/dev/null 2>&1 && (exec 3<>/dev/tcp/127.0.0.1/8123) 2>/dev/null; then
+              port_is_listening=yes
+            fi
+
+            if [[ "$port_is_listening" = yes ]]; then
+              echo "RELEASE_SERVER_PORT_8123_LISTEN=yes"
+            else
+              echo "RELEASE_SERVER_PORT_8123_LISTEN=no"
+            fi
+
+            for state_path in \
+              .env \
+              .env.pending \
+              storage/app/private/installed.lock \
+              storage/framework/installer/state.enc; do
+              state_label="$(printf '%s' "$state_path" | tr '/.' '__' | tr '[:lower:]' '[:upper:]')"
+              if [[ -e "$release_path/$state_path" ]]; then
+                echo "RELEASE_${state_label}=present"
+              else
+                echo "RELEASE_${state_label}=absent"
+              fi
+            done
+
+            echo "RELEASE_PHP_PROCESSES_BEGIN"
+            ps -eo pid,ppid,stat,comm,args | awk '$4 ~ /^php/ { print }'
+            echo "RELEASE_PHP_PROCESSES_END"
+            echo "RELEASE_SERVER_LOG_TAIL_BEGIN"
+            tail -n 120 "${test_root}/storage/logs/release-server.log" 2>/dev/null || true
+            echo "RELEASE_SERVER_LOG_TAIL_END"
+
+            if [[ -f "$release_path/storage/logs/laravel.log" ]]; then
+              last_finalize_marker="$(
+                grep -o 'installer\.finalize\.[a-z_.]*' "$release_path/storage/logs/laravel.log" \
+                  | tail -n 1 \
+                  || true
+              )"
+              echo "LAST_FINALIZE_MARKER=${last_finalize_marker:-none}"
+              echo "RELEASE_LARAVEL_LOG_TAIL_BEGIN"
+              tail -n 200 "$release_path/storage/logs/laravel.log"
+              echo "RELEASE_LARAVEL_LOG_TAIL_END"
+            else
+              echo "LAST_FINALIZE_MARKER=none"
+              echo "RELEASE_LARAVEL_LOG=absent"
+            fi
+          }
+
+          cleanup_release_server() {
+            server_children="$(pgrep -P "$server_pid" 2>/dev/null || true)"
+            kill "$server_pid" >/dev/null 2>&1 || true
+
+            if [[ -n "$server_children" ]]; then
+              kill $server_children >/dev/null 2>&1 || true
+            fi
+
+            wait "$server_pid" >/dev/null 2>&1 || true
+          }
+
           (
             cd "$release_path"
-            APP_ENV=testing APP_URL=http://127.0.0.1:8123 php artisan serve --no-reload --host=127.0.0.1 --port=8123
+            exec env \
+              APP_ENV=testing \
+              APP_URL=http://127.0.0.1:8123 \
+              php artisan serve --no-reload --host=127.0.0.1 --port=8123
           ) >"${test_root}/storage/logs/release-server.log" 2>&1 &
           server_pid="$!"
-          trap 'kill "$server_pid" >/dev/null 2>&1 || true' EXIT
+          trap cleanup_release_server EXIT
           for attempt in $(seq 1 40); do
             if curl --fail --silent http://127.0.0.1:8123/install >/dev/null; then
               break
             fi
             sleep 1
           done
+          set +e
           APP_URL=http://127.0.0.1:8123 \
           ASSESTME_DUSK_ADMIN_PASSWORD="$administrator_password" \
           ASSESTME_DUSK_INSTALLER=1 \
@@ -274,11 +392,32 @@ jobs:
           ASSESTME_TEST_ISOLATED=1 \
           ASSESTME_TEST_ROOT="$test_root" \
           php artisan dusk --without-tty tests/Browser/CloudPanelInstallationTest.php
+          dusk_exit_code="$?"
+          set -e
+
+          if [[ "$dusk_exit_code" -ne 0 ]]; then
+            echo "RELEASE_DUSK_RESULT=FAIL"
+            echo "RELEASE_DUSK_EXIT_CODE=$dusk_exit_code"
+            diagnose_release_server
+            exit "$dusk_exit_code"
+          fi
+
+          echo "RELEASE_DUSK_RESULT=PASS"
           test -f "$release_path/.env"
           test -f "$release_path/storage/app/private/installed.lock"
           cd "$release_path"
-          php artisan schedule:run
-          php artisan assestme:diagnose --json
+          env -u DB_CONNECTION -u DB_DATABASE -u ASSESTME_BACKUP_ROOT \
+            php artisan schedule:run
+          env -u DB_CONNECTION -u DB_DATABASE -u ASSESTME_BACKUP_ROOT \
+            php artisan assestme:diagnose --json
+
+      - name: Require both extracted-release installer paths
+        if: always()
+        run: |
+          echo "RELEASE_HTTP_SMOKE_STEP_OUTCOME=${{ steps.release-http-smoke.outcome }}"
+          echo "RELEASE_DUSK_STEP_OUTCOME=${{ steps.release-dusk.outcome }}"
+          test "${{ steps.release-http-smoke.outcome }}" = success
+          test "${{ steps.release-dusk.outcome }}" = success
 
       - name: Upload CloudPanel installer diagnostics
         if: failure()
@@ -287,7 +426,8 @@ jobs:
           name: cloudpanel-installer-diagnostics
           path: |
             ${{ runner.temp }}/assestme-release-dusk.*/storage/logs/release-server.log
-            ${{ runner.temp }}/extracted/assestme/storage/logs/laravel.log
+            ${{ runner.temp }}/release-http/assestme/storage/logs/laravel.log
+            ${{ runner.temp }}/release-dusk/assestme/storage/logs/laravel.log
             tests/Browser/screenshots
             tests/Browser/source
             tests/Browser/console

@@ -57,17 +57,17 @@ final class MilestoneZeroTest extends DuskTestCase
             $browser->driver->takeScreenshot("{$artifactRoot}/assessment-company-name-list.png");
             $browser
                 ->visit('/admin')
-                ->waitForText('Riprendi il lavoro');
+                ->waitForText('Riprendi il Lavoro');
             $browser->script('window.scrollTo(0, document.documentElement.scrollHeight)');
-            $browser->waitForText('Ultimi assessment')
+            $browser->waitForText('Ultimi Assessment')
                 ->waitForText('Azienda Test S.r.l.')
                 ->assertSee('Azienda Test')
                 ->assertDontSee('Seconda Ragione Sociale S.r.l.');
 
             $browser->refresh()
-                ->waitForText('Riprendi il lavoro');
+                ->waitForText('Riprendi il Lavoro');
             $browser->script('window.scrollTo(0, document.documentElement.scrollHeight)');
-            $browser->waitForText('Ultimi assessment')
+            $browser->waitForText('Ultimi Assessment')
                 ->waitForText('Azienda Test S.r.l.')
                 ->assertSee('Azienda Test')
                 ->assertDontSee('Seconda Ragione Sociale S.r.l.');

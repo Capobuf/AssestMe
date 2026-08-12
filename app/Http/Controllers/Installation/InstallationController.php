@@ -295,7 +295,9 @@ final class InstallationController extends Controller
             return back()
                 ->withInput($request->except(['password', 'password_confirmation']))
                 ->with('installation_error', $exception->getMessage());
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            report($exception);
+
             return back()
                 ->withInput($request->except(['password', 'password_confirmation']))
                 ->with('installation_error', 'La finalizzazione non è riuscita. Puoi riprenderla in sicurezza senza cancellare il database.');
