@@ -27,7 +27,7 @@
         </nav>
 
         @if (session('installation_error'))
-            <div class="installer-alert installer-alert-error" role="alert">{{ session('installation_error') }}</div>
+            <div class="installer-alert installer-alert-error" role="alert" data-dusk="installation-error">{{ session('installation_error') }}</div>
         @endif
 
         @if (session('installation_success'))
@@ -35,7 +35,7 @@
         @endif
 
         @if ($errors->any())
-            <div class="installer-alert installer-alert-error" role="alert">
+            <div class="installer-alert installer-alert-error" role="alert" data-dusk="validation-errors">
                 <strong>Correggi i campi indicati.</strong>
                 <ul>
                     @foreach ($errors->all() as $error)

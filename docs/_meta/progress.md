@@ -2,6 +2,24 @@
 
 ## Current state
 
+- 2026-08-12: Started the focused `cloudpanel-release` installer CI stabilization on `develop` at
+  `8bd1829409d1bec67694cc4f46853193f5e36fc8`. Scope is limited to path-based Dusk synchronization
+  and failure diagnostics, failure-only safe artifact retention, server-side reporting of sanitized
+  installer exceptions, and disabling Artisan development-server reload while the extracted release
+  writes `.env`. The existing SQLite probe and installer business flow remain unchanged.
+- 2026-08-12: Completed the focused `cloudpanel-release` installer CI stabilization. The database
+  submit now waits for a real reload, identifies success only by `/install/administrator`, and emits
+  URL, installer error, validation errors, screenshot, DOM, and available console evidence for a
+  same-page failure or possible hang. A deliberately invalid symlinked SQLite path in an extracted
+  release proved the diagnostic failure message and artifacts; a clean extracted-release run passed
+  the database redirect and finalization before a later login mismatch specific to the remote
+  Compose adaptation. The workflow now starts Artisan with `--no-reload` and uploads an allowlisted
+  failure-only `cloudpanel-installer-diagnostics` artifact. Focused Pint and PHPStan passed, and 46
+  focused PHP tests passed with 597 assertions. The aggregate quality portion passed 615 tests with
+  5,396 assertions plus Canary, diagnostics, benchmark, PDF/XLSX, backup/restore, and storage audit;
+  `CloudPanelInstallationTest` passed in both complete-gate attempts. The complete gate is not green:
+  both 22-test Dusk runs ended with the unrelated existing five-second notification-removal timeout
+  at `FilamentNavigationTest.php:191`, while its immediate isolated rerun passed with 70 assertions.
 - 2026-08-11: Investigated Quality run `31506605494` for commit `5b520aa`.
   All 543 feature tests passed with 4,869 assertions; the sole quality-job failure
   was the stale `FilamentNavigationTest` expectation that `selected_assets` remained

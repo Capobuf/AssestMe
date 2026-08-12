@@ -626,6 +626,8 @@ it('publishes the validated rolling develop prerelease only after every quality 
     $workflow = Yaml::parseFile($workflowPath);
     $publish = $workflow['jobs']['publish-develop-release'];
     $cloudPanel = $workflow['jobs']['cloudpanel-release'];
+    $cloudPanelDiagnostics = collect($cloudPanel['steps'])
+        ->firstWhere('name', 'Upload CloudPanel installer diagnostics');
 
     expect($workflow['permissions'])->toBe(['contents' => 'read'])
         ->and($publish['if'])->toContain("github.event_name == 'push'")
@@ -646,6 +648,7 @@ it('publishes the validated rolling develop prerelease only after every quality 
         ->toContain('uses: actions/checkout@v5')
         ->toContain('uses: actions/download-artifact@v7')
         ->toContain('uses: actions/upload-artifact@v6')
+        ->toContain('php artisan serve --no-reload --host=127.0.0.1 --port=8123')
         ->not->toContain('uses: actions/checkout@v4')
         ->not->toContain('uses: actions/download-artifact@v4')
         ->not->toContain('uses: actions/upload-artifact@v4')
@@ -656,6 +659,19 @@ it('publishes the validated rolling develop prerelease only after every quality 
         ->toContain('git rev-parse origin/develop')
         ->not->toContain($legacyArchiveSuffix)
         ->not->toContain($externalChecksumSuffix)
+        ->and($cloudPanelDiagnostics)->toBeArray()
+        ->and($cloudPanelDiagnostics['if'])->toBe('failure()')
+        ->and($cloudPanelDiagnostics['uses'])->toBe('actions/upload-artifact@v6')
+        ->and($cloudPanelDiagnostics['with']['name'])->toBe('cloudpanel-installer-diagnostics')
+        ->and($cloudPanelDiagnostics['with']['path'])
+        ->toContain('${{ runner.temp }}/assestme-release-dusk.*/storage/logs/release-server.log')
+        ->toContain('${{ runner.temp }}/extracted/assestme/storage/logs/laravel.log')
+        ->toContain('tests/Browser/screenshots')
+        ->toContain('tests/Browser/source')
+        ->toContain('tests/Browser/console')
+        ->not->toContain('.env')
+        ->not->toContain('bootstrap-key')
+        ->not->toContain('state.enc')
         ->and($cloudPanel['steps'])->toContain([
             'name' => 'Upload validated installable release',
             'uses' => 'actions/upload-artifact@v6',

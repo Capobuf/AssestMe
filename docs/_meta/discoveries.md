@@ -1,5 +1,10 @@
 # Discoveries
 
+- Laravel Dusk in the locked dependency set writes screenshots, DOM sources, and browser-console
+  logs under `tests/Browser/screenshots`, `tests/Browser/source`, and `tests/Browser/console`.
+  Its automatic failure handling does not persist DOM for every PHPUnit assertion path, so an
+  installer diagnostic that fails through `Assert::fail()` must call `storeSource()` explicitly.
+
 ## Documentation migration discoveries
 
 - The inspected `plan.md` is specification 2.7.

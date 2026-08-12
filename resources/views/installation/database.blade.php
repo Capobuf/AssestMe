@@ -6,7 +6,7 @@
     <h1>Configura {{ $database->driver === \App\Enums\SupportedDatabaseDriver::Sqlite ? 'SQLite' : 'MySQL / MariaDB' }}</h1>
     <p>La verifica crea due tabelle casuali di probe, prova schema, vincoli, CRUD e rollback, quindi le elimina sempre. AssestMe rileverà automaticamente se il server è MySQL o MariaDB. Un database esistente non viene mai cancellato automaticamente.</p>
 
-    <form method="post" action="{{ route('installation.database.store') }}" class="installer-form" data-database-form>
+    <form method="post" action="{{ route('installation.database.store') }}" class="installer-form" data-database-form data-dusk="database-step">
         @csrf
         <input type="hidden" name="database_driver" value="{{ $database->driver->value === 'sqlite' ? 'sqlite' : 'mysql' }}">
 
@@ -48,7 +48,7 @@
 
         <div class="installer-actions">
             <a class="installer-button installer-button-secondary" href="{{ route('installation.configuration') }}">Indietro</a>
-            <button class="installer-button" type="submit">Testa realmente il database</button>
+            <button class="installer-button" type="submit" data-dusk="database-submit">Testa realmente il database</button>
         </div>
     </form>
 @endsection

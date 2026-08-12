@@ -257,7 +257,7 @@ jobs:
           administrator_password="CI!$(php -r 'echo bin2hex(random_bytes(14));')aA1"
           (
             cd "$release_path"
-            APP_ENV=testing APP_URL=http://127.0.0.1:8123 php artisan serve --host=127.0.0.1 --port=8123
+            APP_ENV=testing APP_URL=http://127.0.0.1:8123 php artisan serve --no-reload --host=127.0.0.1 --port=8123
           ) >"${test_root}/storage/logs/release-server.log" 2>&1 &
           server_pid="$!"
           trap 'kill "$server_pid" >/dev/null 2>&1 || true' EXIT
@@ -279,6 +279,20 @@ jobs:
           cd "$release_path"
           php artisan schedule:run
           php artisan assestme:diagnose --json
+
+      - name: Upload CloudPanel installer diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: cloudpanel-installer-diagnostics
+          path: |
+            ${{ runner.temp }}/assestme-release-dusk.*/storage/logs/release-server.log
+            ${{ runner.temp }}/extracted/assestme/storage/logs/laravel.log
+            tests/Browser/screenshots
+            tests/Browser/source
+            tests/Browser/console
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload validated installable release
         uses: actions/upload-artifact@v6

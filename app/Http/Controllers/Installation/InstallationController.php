@@ -230,10 +230,14 @@ final class InstallationController extends Controller
                 }
             }
         } catch (DatabaseCapabilityProbeException|InstallationDatabaseClassificationException|RuntimeException $exception) {
+            report($exception);
+
             return back()
                 ->withInput($request->except('database_password'))
                 ->with('installation_error', $exception->getMessage());
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            report($exception);
+
             return back()
                 ->withInput($request->except('database_password'))
                 ->with('installation_error', 'La verifica reale del database non è stata superata.');

@@ -5,7 +5,7 @@
     <h1>Crea l’unico amministratore</h1>
     <p>La password non viene mai inserita nello stato di avanzamento, nei log o nei messaggi. L’invio avvia migration riprendibili, seed, test finali e chiusura irreversibile dell’installer.</p>
 
-    <form method="post" action="{{ route('installation.finalize') }}" class="installer-form">
+    <form method="post" action="{{ route('installation.finalize') }}" class="installer-form" data-dusk="administrator-step">
         @csrf
         <label>Nome<input name="name" required maxlength="120" value="{{ old('name') }}" autocomplete="name"></label>
         <label>Email<input name="email" required type="email" maxlength="254" value="{{ old('email') }}" autocomplete="email"></label>

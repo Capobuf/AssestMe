@@ -11,12 +11,14 @@ use App\Models\User;
 use App\Services\Database\DatabaseClientBinaryResolver;
 use App\Services\Database\DatabaseDumpBinaryValidator;
 use App\Services\Database\DatabaseRestoreBinaryValidator;
+use App\Services\Installation\DatabaseCapabilityProbeException;
 use App\Services\Installation\InstallationFinalCheck;
 use App\Services\Installation\InstallationRuntimeInspector;
 use App\Services\Installation\InstallationState;
 use App\Services\Installation\SchedulerHeartbeat;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Illuminate\Support\ViewErrorBag;
@@ -154,6 +156,8 @@ it('omits binary and application name fields and ignores a submitted application
 
     $this->get('/install/database')
         ->assertOk()
+        ->assertSee('data-dusk="database-step"', false)
+        ->assertSee('data-dusk="database-submit"', false)
         ->assertDontSee('name="dump_binary"', false)
         ->assertDontSee('name="restore_binary"', false)
         ->assertSee('href="'.route('installation.configuration').'"', false);
@@ -258,6 +262,7 @@ it('renders the generic server database page and administrator back link', funct
 
     $this->get('/install/administrator')
         ->assertOk()
+        ->assertSee('data-dusk="administrator-step"', false)
         ->assertSee('href="'.route('installation.database').'"', false);
 });
 
@@ -395,6 +400,7 @@ it('keeps a failed server backup pending but retains a failed SQLite final backu
 });
 
 it('rejects an SQLite path below public through the HTTP database step', function (): void {
+    Exceptions::fake();
     $state = app(InstallationState::class);
     $progress = $state->progress();
     $state->save(new InstallationProgressData(
@@ -423,6 +429,16 @@ it('rejects an SQLite path below public through the HTTP database step', functio
         ->assertSessionHas('installation_error', 'The SQLite database must not be stored under the public directory.');
 
     expect($state->progress()->step)->toBe('database');
+
+    Exceptions::assertReported(
+        static fn (DatabaseCapabilityProbeException $exception): bool => $exception->getMessage()
+            === 'The SQLite database must not be stored under the public directory.',
+    );
+
+    $this->get('/install/database')
+        ->assertOk()
+        ->assertSee('data-dusk="installation-error"', false)
+        ->assertSee('The SQLite database must not be stored under the public directory.');
 });
 
 it('reinitializes a foreign database only after the typed destructive confirmation', function (): void {
