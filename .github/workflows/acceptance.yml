@@ -32,7 +32,6 @@ jobs:
           docker compose -f docker/compose.dev.yml --profile browser exec -T \
             -e ASSESTME_TEST_ROOT=/tmp/assestme-ci-acceptance \
             -e ASSESTME_TEST_ISOLATED=1 \
-            -e ASSESTME_FIC_DUSK_FAKE=1 \
             app scripts/verify.sh
 
       - name: Stop application and browser infrastructure

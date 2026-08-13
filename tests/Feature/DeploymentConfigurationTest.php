@@ -691,6 +691,7 @@ it('keeps normal PR quality browser-free and publishes only after complete accep
         ->not->toContain('d02539')
         ->not->toContain('strace')
         ->not->toContain('current-http-repeat')
+        ->not->toContain('ASSESTME_FIC_DUSK_FAKE=1')
         ->toContain('assestme-develop.zip')
         ->toContain("release_tag='develop-latest'")
         ->toContain("release_title='AssestMe develop — ultima build valida'")

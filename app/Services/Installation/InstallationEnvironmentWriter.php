@@ -42,6 +42,27 @@ final readonly class InstallationEnvironmentWriter
         return $pendingPath;
     }
 
+    /** @return array<string, string> */
+    public function validatedPendingValues(
+        ApplicationConfigurationData $application,
+        DatabaseConfigurationData $database,
+        string $applicationKey,
+        ?string $basePath = null,
+    ): array {
+        $pendingPath = $this->environmentPath($basePath).'.pending';
+        $values = $this->values($application, $database, $applicationKey);
+
+        $this->assertEnvironmentTargetIsSafe($pendingPath);
+
+        if (! is_file($pendingPath)) {
+            throw new RuntimeException('Pending environment configuration is missing.');
+        }
+
+        $this->validateFile($pendingPath, $values);
+
+        return $values;
+    }
+
     public function activatePending(
         ApplicationConfigurationData $application,
         DatabaseConfigurationData $database,

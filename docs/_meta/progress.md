@@ -1,5 +1,7 @@
 # Progress
 
+- 2026-08-13: Started the approved follow-up for Acceptance run `31693715445`: isolate the Fatture in Cloud Dusk fake from the core gate and remove in-process Artisan execution from HTTP installer finalization.
+
 ## Current state
 
 - 2026-08-13: Started the approved CI gate separation on `develop` at `ba66a7c`. The scoped change

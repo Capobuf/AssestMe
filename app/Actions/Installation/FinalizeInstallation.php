@@ -15,7 +15,6 @@ use App\Services\Installation\InstallationFinalCheck;
 use App\Services\Installation\InstallationRuntimeConfigurator;
 use App\Services\Installation\InstallationState;
 use App\Support\Installation\BootstrapInstallationKey;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use SensitiveParameter;
@@ -112,17 +111,32 @@ final readonly class FinalizeInstallation
         }
 
         $this->environmentWriter->writePending($application, $database, $applicationKey);
+        $pendingEnvironment = $this->environmentWriter->validatedPendingValues(
+            $application,
+            $database,
+            $applicationKey,
+        );
         Log::info('installer.finalize.environment_pending.complete');
 
         $this->runtimeConfigurator->apply($application, $database);
         Log::info('installer.finalize.runtime_config.complete');
 
         Log::info('installer.finalize.migrate.begin');
-        $this->runArtisanCommand('migrate', ['--force' => true, '--isolated' => true]);
+        $this->runArtisanSubprocess(
+            $application->phpBinary,
+            'migrate',
+            ['--force', '--isolated'],
+            $pendingEnvironment,
+        );
         Log::info('installer.finalize.migrate.complete');
 
         Log::info('installer.finalize.seed.begin');
-        $this->runArtisanCommand('db:seed', ['--force' => true]);
+        $this->runArtisanSubprocess(
+            $application->phpBinary,
+            'db:seed',
+            ['--force'],
+            $pendingEnvironment,
+        );
         Log::info('installer.finalize.seed.complete');
 
         $this->persistAdministrator($administrator);
@@ -152,11 +166,19 @@ final readonly class FinalizeInstallation
         Log::info('installer.finalize.environment_activate.complete');
 
         Log::info('installer.finalize.optimize_clear.begin');
-        $this->runArtisanCommand('optimize:clear');
+        $this->runArtisanSubprocess(
+            $application->phpBinary,
+            'optimize:clear',
+            environment: $pendingEnvironment,
+        );
         Log::info('installer.finalize.optimize_clear.complete');
 
         if (app()->environment('production')) {
-            $this->runArtisanSubprocess($application->phpBinary, 'optimize');
+            $this->runArtisanSubprocess(
+                $application->phpBinary,
+                'optimize',
+                environment: $pendingEnvironment,
+            );
         }
 
         $this->installationState->createInstalledLock($database->driver);
@@ -198,44 +220,29 @@ final readonly class FinalizeInstallation
         ($this->createAdministrator)($administrator);
     }
 
-    /** @param array<string, bool|int|string> $parameters */
-    private function runArtisanCommand(string $command, array $parameters = []): void
-    {
-        Log::info('installer.finalize.artisan.begin', ['command' => $command]);
-
-        try {
-            $exitCode = Artisan::call($command, $parameters);
-        } catch (Throwable $exception) {
-            Log::error('installer.finalize.artisan.failure', [
-                'command' => $command,
-                'exception' => $exception::class,
-            ]);
-
-            throw $exception;
-        }
-
-        if ($exitCode !== 0) {
-            Log::error('installer.finalize.artisan.failure', [
-                'command' => $command,
-                'exit_code' => $exitCode,
-            ]);
-
-            throw new RuntimeException("The {$command} command did not complete successfully.");
-        }
-
-        Log::info('installer.finalize.artisan.complete', [
-            'command' => $command,
-            'exit_code' => $exitCode,
-        ]);
-    }
-
-    private function runArtisanSubprocess(string $phpBinary, string $command): void
-    {
+    /**
+     * @param  list<string>  $arguments
+     * @param  array<string, string>|null  $environment
+     */
+    private function runArtisanSubprocess(
+        string $phpBinary,
+        string $command,
+        array $arguments = [],
+        ?array $environment = null,
+    ): void {
         Log::info('installer.finalize.artisan_process.begin', ['command' => $command]);
 
         $process = new Process(
-            [$phpBinary, base_path('artisan'), $command, '--no-interaction', '--no-ansi'],
+            [
+                $phpBinary,
+                base_path('artisan'),
+                $command,
+                ...$arguments,
+                '--no-interaction',
+                '--no-ansi',
+            ],
             base_path(),
+            $environment,
         );
         $process->setTimeout(20);
 

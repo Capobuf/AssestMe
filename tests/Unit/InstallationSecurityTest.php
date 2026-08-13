@@ -134,9 +134,11 @@ it('round trips special environment values through an atomic pending file', func
     try {
         $pending = $writer->writePending($application, $database, $key, $root);
         $loaded = Dotenv::createArrayBacked($root, '.env.pending')->load();
+        $pendingValues = $writer->validatedPendingValues($application, $database, $key, $root);
 
         expect($pending)->toBe($root.'/.env.pending')
             ->and($loaded['DB_PASSWORD'])->toBe($password)
+            ->and($pendingValues)->toBe($loaded)
             ->and($loaded['APP_NAME'])->toBe('AssestMe')
             ->and(fileperms($pending) & 0777)->toBe(0600);
 
