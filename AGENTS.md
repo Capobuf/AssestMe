@@ -48,7 +48,7 @@ Never:
 4. Implement one coherent vertical slice.
 5. Add success and failure-path tests consistent with the existing suite.
 6. Run focused checks selected from the actual change surface. Rerun the failing test or command before broadening scope.
-7. Run the complete gate only inside the normative Compose app service with `docker compose -f docker/compose.dev.yml exec -T app scripts/verify.sh`, at the conclusion of a coherent change set, before merging to `main`, at milestone completion, after dependency/runtime/test-infrastructure changes, or when explicitly requested. Direct host execution is forbidden and rejected by the script.
+7. Run the browser-free core gate only inside the normative Compose app service with `docker compose -f docker/compose.dev.yml exec -T app scripts/verify-core.sh` for a coherent normal change set. Run `scripts/verify.sh` there for complete acceptance before publication/deployment, before merging to `main`, at milestone completion, after browser/test-infrastructure changes, or when explicitly requested. Direct host execution is forbidden and rejected by the core script.
 8. Record factual discoveries in `docs/_meta/discoveries.md`; do not use discoveries to silently create new requirements.
 9. Update an ADR only when an accepted architectural decision changes with explicit approval.
 10. Keep `main` releasable and do not declare completion without the required evidence.
@@ -102,13 +102,25 @@ Never:
 
 ## Tests and gates
 
-The complete gate is available only inside the normative development container:
+The required normal PR gate is browser-free and available only inside the normative development container:
+
+```bash
+docker compose -f docker/compose.dev.yml exec -T app scripts/verify-core.sh
+```
+
+It covers preflight, Composer validation/audit, Pint, PHPStan, application tests, strict Canary,
+diagnostics, the 50-Finding benchmark, and storage audit. CI also keeps the pinned MySQL/MariaDB
+compatibility matrix as a normal PR gate.
+
+The complete acceptance gate adds the maintained Dusk suite exactly once:
 
 ```bash
 docker compose -f docker/compose.dev.yml exec -T app scripts/verify.sh
 ```
 
-It orchestrates Composer validation/audit, Pint, PHPStan, application tests, strict Canary, diagnostics, the 50-Finding benchmark, storage audit, and Dusk. Focused checks remain valid during implementation but do not replace the complete gate.
+Release archive and installer acceptance run in the `Acceptance` workflow before develop publication
+and CloudPanel deployment. Focused checks remain valid during implementation but do not replace the
+applicable gate.
 
 Manual Edge, Firefox, iOS Safari, Android Chrome, and real-hosting acceptance must never be reported as passed without execution evidence.
 

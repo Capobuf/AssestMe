@@ -40,7 +40,7 @@ else
 fi
 
 if [[ ! -f "$project_dir/vendor/autoload.php" ]]; then
-    command -v composer >/dev/null 2>&1 || fail "vendor/autoload.php is missing and Composer is unavailable. Use the CloudPanel release archive."
+    command -v composer >/dev/null 2>&1 || fail "vendor/autoload.php is missing and Composer is unavailable. Use the prebuilt release archive."
     composer_major="$(composer --version --no-ansi | sed -E 's/.*version ([0-9]+).*/\1/')"
     [[ "$composer_major" == "2" ]] || fail "Composer 2 is required to prepare a source checkout."
     info "Composer: $(composer --version --no-ansi)"
@@ -48,7 +48,10 @@ else
     info "Locked production dependencies: present"
 fi
 
-weasyprint_binary="${LARAVEL_PDF_WEASYPRINT_BINARY:-$(command -v weasyprint || true)}"
+weasyprint_binary="${LARAVEL_PDF_WEASYPRINT_BINARY:-}"
+if [[ -z "$weasyprint_binary" ]] && command -v weasyprint >/dev/null 2>&1; then
+    weasyprint_binary="$(command -v weasyprint)"
+fi
 [[ "$weasyprint_binary" == /* && -f "$weasyprint_binary" && -x "$weasyprint_binary" ]] || \
     fail "An absolute executable WeasyPrint path is required."
 

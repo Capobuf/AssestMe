@@ -10,7 +10,7 @@ use PHPUnit\Framework\Assert;
 use Tests\DuskTestCase;
 use Throwable;
 
-final class CloudPanelInstallationTest extends DuskTestCase
+final class ReleaseInstallationTest extends DuskTestCase
 {
     public function test_release_installer_closes_permanently_then_allows_login_and_diagnostics(): void
     {
@@ -28,10 +28,13 @@ final class CloudPanelInstallationTest extends DuskTestCase
 
             $releasePath = getenv('ASSESTME_RELEASE_PATH');
             $password = getenv('ASSESTME_DUSK_ADMIN_PASSWORD');
+            $applicationUrl = getenv('ASSESTME_DUSK_APPLICATION_URL');
             Assert::assertIsString($releasePath);
             Assert::assertNotSame('', $releasePath);
             Assert::assertIsString($password);
             Assert::assertNotSame('', $password);
+            Assert::assertIsString($applicationUrl);
+            Assert::assertMatchesRegularExpression('/^https:\/\/[A-Za-z0-9.-]+(?::[0-9]+)?$/', $applicationUrl);
 
             $browser->assertSee('Installa AssestMe su questo dominio')
                 ->assertSee('Basic Authentication')
@@ -42,7 +45,7 @@ final class CloudPanelInstallationTest extends DuskTestCase
                 ->assertMissing('input[name="application_name"]')
                 ->assertMissing('input[name="weasyprint_binary"]')
                 ->assertMissing('input[name="php_binary"]')
-                ->type('application_url', rtrim((string) config('app.url'), '/'))
+                ->type('application_url', $applicationUrl)
                 ->type('timezone', 'Europe/Rome')
                 ->type('backup_root', $releasePath.'/storage/backups')
                 ->radio('database_driver', 'sqlite')
@@ -212,9 +215,9 @@ final class CloudPanelInstallationTest extends DuskTestCase
         $validationErrors = $this->diagnosticText($browser, '[data-dusk="validation-errors"]', $diagnosticFailures);
 
         foreach ([
-            'screenshot' => static fn () => $browser->screenshot('cloudpanel-installer-database-failure'),
-            'DOM source' => static fn () => $browser->storeSource('cloudpanel-installer-database-failure'),
-            'console log' => static fn () => $browser->storeConsoleLog('cloudpanel-installer-database-failure'),
+            'screenshot' => static fn () => $browser->screenshot('release-installer-database-failure'),
+            'DOM source' => static fn () => $browser->storeSource('release-installer-database-failure'),
+            'console log' => static fn () => $browser->storeConsoleLog('release-installer-database-failure'),
         ] as $label => $capture) {
             try {
                 $capture();
@@ -244,9 +247,9 @@ final class CloudPanelInstallationTest extends DuskTestCase
         $installerError = $this->diagnosticText($browser, '[data-dusk="installation-error"]', $diagnosticFailures);
 
         foreach ([
-            'screenshot' => static fn () => $browser->screenshot('cloudpanel-installer-finalization-failure'),
-            'DOM source' => static fn () => $browser->storeSource('cloudpanel-installer-finalization-failure'),
-            'console log' => static fn () => $browser->storeConsoleLog('cloudpanel-installer-finalization-failure'),
+            'screenshot' => static fn () => $browser->screenshot('release-installer-finalization-failure'),
+            'DOM source' => static fn () => $browser->storeSource('release-installer-finalization-failure'),
+            'console log' => static fn () => $browser->storeConsoleLog('release-installer-finalization-failure'),
         ] as $label => $capture) {
             try {
                 $capture();

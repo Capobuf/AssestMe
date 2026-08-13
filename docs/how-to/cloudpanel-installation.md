@@ -121,7 +121,7 @@ Lo scheduler è operativo quando l'heartbeat risulta recente. Esso mantiene anch
 Da shell del site user è disponibile anche lo smoke test non distruttivo per la configurazione:
 
 ```bash
-scripts/cloudpanel-smoke.sh /home/<site-user>/htdocs/<dominio> <dominio>
+scripts/shared-hosting-smoke.sh /home/<site-user>/htdocs/<dominio> <dominio>
 ```
 
 Lo script crea e verifica un backup applicativo; per MySQL/MariaDB richiede quindi il dump client coerente. Non installa pacchetti e non stampa credenziali.
@@ -158,7 +158,11 @@ AssestMe non converte dati tra SQLite, MySQL e MariaDB. Un cambio di driver rich
 
 ## Aggiornamento automatico da GitHub Actions
 
-L'istanza CI di AssestMe usa il workflow `Quality` del repository `Capobuf/AssestMe`: il job `deploy_cloudpanel` si esegue soltanto dopo il job terminale `publish-develop-release`, quindi dopo il successo dei controlli `quality`, `database-compatibility`, `cloudpanel-release` e `clean-checkout-bootstrap`. Il deploy è limitato agli eventi `push` sul branch `develop`; le pull request non ricevono i secret di deploy.
+L'istanza CI di AssestMe usa i workflow `Quality` e `Acceptance` del repository `Capobuf/AssestMe`.
+Le pull request eseguono il core browser-free e la matrice database. Su un push a `develop`, il job
+`deploy_cloudpanel` si esegue soltanto dopo `complete-validation`, `release-acceptance`,
+`clean-checkout-bootstrap` e il job terminale `publish-develop-release`. Le pull request non ricevono
+i secret di deploy.
 
 Il job apre una connessione SSH non interattiva con una chiave dedicata e un file `known_hosts` verificato. La chiave è limitata sul server a un comando forzato che esegue `dploy deploy develop`; il comando crea la release, usa lo storage condiviso e l'overlay `.env`, esegue le operazioni dploy e aggiorna `current`. Non modificare questa procedura per cambiare document root, `.env`, database, storage condiviso o configurazione dploy.
 

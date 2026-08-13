@@ -12,35 +12,61 @@ Use checks proportional to the affected behavior. A graphical/navigation change 
 
 After a failure, rerun the failing test or command first. Broaden only when the failure or dependency surface requires it.
 
-## Complete gate
+## Core quality gate
 
 ```bash
-docker compose -f docker/compose.dev.yml exec -T app scripts/verify.sh
+docker compose -f docker/compose.dev.yml exec -T app scripts/verify-core.sh
 ```
 
-The aggregate gate is fail-closed outside the marked `app` service from
-`docker/compose.dev.yml`. Host execution is not a supported verification path and is rejected before
-Composer, database, storage, benchmark, or browser work begins.
+The core gate is the required normal PR/push check. It is fail-closed outside the marked `app`
+service from `docker/compose.dev.yml`; host execution is rejected before Composer, database,
+storage, or benchmark work begins. It starts no Selenium, ChromeDriver, Dusk, temporary HTTP server,
+installer browser, historical comparison, or externally timed process test.
 
-The aggregate gate executes each expensive gate at most once and covers:
+The core gate executes each expensive gate at most once and covers:
 
 ```bash
+scripts/preflight.sh
 composer validate --strict
 vendor/bin/pint --test
 vendor/bin/phpstan analyse --memory-limit=1G
 php artisan test
 php artisan canary:check --strict
-php artisan dusk
 composer audit --locked
 php artisan assestme:diagnose
 php artisan assestme:benchmark --findings=50
 ```
 
-It also includes storage audit and the maintained report/export/backup evidence. No skipped Canary page, browser console error, PHP warning, notice, or deprecation is accepted.
+It also includes storage audit and the maintained report/export/backup evidence. The full application
+suite executes the deterministic `InstallationWizardTest`, `InstallationRuntimeInspectorTest`,
+`LibraryClassificationTest`, `BackupRestoreTest`, `DeletionRecoveryTest`, `BenchmarkIsolationTest`,
+and `DeploymentConfigurationTest` coverage without repeating those files as targeted invocations.
+No skipped Canary page, PHP warning, notice, or deprecation is accepted.
+
+## Complete acceptance gate
+
+```bash
+docker compose -f docker/compose.dev.yml exec -T app scripts/verify.sh
+```
+
+The complete gate calls `scripts/verify-core.sh` and then runs `scripts/dusk-isolated.sh` once when
+`RUN_DUSK=1`, which is the default. `RUN_DUSK=0` is an explicit browser-free local mode and does not
+run a targeted Dusk test. A browser regression fails Acceptance normally; screenshot, DOM source,
+console, server, and Laravel logs are retained on CI failure.
+
+The `Acceptance` workflow runs on pushes to `develop` and manual dispatch. It combines the complete
+gate with a single current release build, archive integrity and installer-contract validation, one
+canonical extracted-release installer journey, post-install diagnostics/health checks, and clean
+checkout bootstrap. Publication of `develop-latest` and actual CloudPanel deployment depend on these
+acceptance jobs. Historical release builds, repeated installer smoke attempts, process tracing, and
+alternative-server comparisons are diagnostic history rather than normal release gates.
 
 ## Database matrix
 
-CI proves common behavior using real SQLite, MySQL, and MariaDB services at explicitly pinned versions. Documentation must not describe an unexecuted database/server version as compatible or certified.
+Normal CI proves common behavior using SQLite plus MySQL 8.0/8.4 and MariaDB 11.8/12.3 at explicitly
+pinned patch versions. The wider functional subset runs only on the recent MySQL and MariaDB entries;
+all four entries keep capability, integrity, diagnostic, and real backup/restore coverage.
+Documentation must not describe an unexecuted database/server version as compatible or certified.
 
 ## Browser evidence
 

@@ -1,0 +1,395 @@
+name: Acceptance
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  complete-validation:
+    name: Complete validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Start application and browser infrastructure
+        run: docker compose -f docker/compose.dev.yml --profile browser up --build --detach --wait app selenium
+
+      - name: Prepare inspectable acceptance root
+        run: |
+          docker compose -f docker/compose.dev.yml --profile browser exec -T app \
+            sh -c 'mkdir -p /tmp/assestme-ci-acceptance && touch /tmp/assestme-ci-acceptance/.assestme-test-root'
+
+      - name: Run complete acceptance gate with Dusk once
+        run: |
+          docker compose -f docker/compose.dev.yml --profile browser exec -T \
+            -e ASSESTME_TEST_ROOT=/tmp/assestme-ci-acceptance \
+            -e ASSESTME_TEST_ISOLATED=1 \
+            -e ASSESTME_FIC_DUSK_FAKE=1 \
+            app scripts/verify.sh
+
+      - name: Stop application and browser infrastructure
+        if: always()
+        run: |
+          container_id="$(docker compose -f docker/compose.dev.yml --profile browser ps --quiet app)"
+          if [[ -n "$container_id" ]] && docker compose -f docker/compose.dev.yml --profile browser exec -T app \
+              test -d /tmp/assestme-ci-acceptance/storage/logs; then
+            mkdir -p storage/framework/assestme-ci-acceptance/storage/logs
+            docker cp "${container_id}:/tmp/assestme-ci-acceptance/storage/logs/." \
+              storage/framework/assestme-ci-acceptance/storage/logs
+          fi
+          docker compose -f docker/compose.dev.yml --profile browser down --remove-orphans
+
+      - name: Upload complete-validation diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: complete-validation-diagnostics
+          path: |
+            storage/logs/*.log
+            storage/framework/assestme-ci-acceptance/storage/logs/*.log
+            tests/Browser/screenshots
+            tests/Browser/source
+            tests/Browser/console
+          if-no-files-found: ignore
+          retention-days: 7
+
+  release-acceptance:
+    name: Release acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sockets, sqlite3, xml, zip
+          ini-values: memory_limit=512M
+          tools: composer:v2
+
+      - name: Install release build and runtime tools
+        run: sudo apt-get update && sudo apt-get install --yes rsync unzip weasyprint
+
+      - name: Resolve runtime binaries
+        run: |
+          weasyprint_binary="$(command -v weasyprint)"
+          test -n "$weasyprint_binary"
+          test -x "$weasyprint_binary"
+          echo "LARAVEL_PDF_WEASYPRINT_BINARY=$weasyprint_binary" >> "$GITHUB_ENV"
+
+      - name: Install locked development dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Build current release archive once
+        run: scripts/build-release.sh ci "${RUNNER_TEMP}/release"
+
+      - name: Validate archive integrity and extract release
+        run: |
+          archive_path="${RUNNER_TEMP}/release/assestme-ci.zip"
+          extraction_root="${RUNNER_TEMP}/validated-release"
+          test -s "$archive_path"
+          unzip -tq "$archive_path"
+          mkdir "$extraction_root"
+          unzip -q "$archive_path" -d "$extraction_root"
+          release_path="${extraction_root}/assestme"
+          test ! -e "$release_path/.env"
+          test ! -e "$release_path/.env.pending"
+          test ! -e "$release_path/storage/app/private/installed.lock"
+          test ! -e "$release_path/storage/framework/installer/state.enc"
+          test ! -e "$release_path/storage/app/database/database.sqlite"
+          test -f "$release_path/vendor/autoload.php"
+          test -s "$release_path/RELEASE-MANIFEST.sha256"
+          cd "$release_path"
+          sha256sum --check RELEASE-MANIFEST.sha256
+
+      - name: Verify installer route and form contract
+        run: |
+          release_path="${RUNNER_TEMP}/validated-release/assestme"
+          expected_routes="$(mktemp)"
+          for route in \
+            'GET|HEAD install installation.welcome' \
+            'POST install/welcome installation.welcome.continue' \
+            'GET|HEAD install/requirements installation.runtime' \
+            'POST install/requirements installation.runtime.continue' \
+            'GET|HEAD install/configuration installation.configuration' \
+            'POST install/configuration installation.configuration.store' \
+            'GET|HEAD install/database installation.database' \
+            'POST install/database installation.database.store' \
+            'GET|HEAD install/administrator installation.administrator' \
+            'POST install/finalize installation.finalize'; do
+            echo "$route" >> "$expected_routes"
+          done
+
+          actual_routes="$(mktemp)"
+          (cd "$release_path" && php artisan route:list --json --path=install) \
+            | jq -r '.[] | [.method, .uri, .name] | join(" ")' > "$actual_routes"
+          while read -r expected_route; do
+            grep -Fx "$expected_route" "$actual_routes"
+          done < "$expected_routes"
+
+          for field in application_url timezone backup_root database_driver sqlite_path name email password password_confirmation; do
+            grep -R -E -q "name=['\"]${field}['\"]" "$release_path/resources/views/installation"
+          done
+
+      - name: Install matching ChromeDriver
+        run: php artisan dusk:chrome-driver --detect
+
+      - name: Prepare release acceptance diagnostics root
+        run: mkdir -p "${RUNNER_TEMP}/release-installer" && touch "${RUNNER_TEMP}/release-installer/.assestme-test-root"
+
+      - name: Complete canonical extracted-release installer journey
+        env:
+          ASSESTME_TEST_ROOT: ${{ runner.temp }}/release-installer
+        run: scripts/release-installer-acceptance.sh "${RUNNER_TEMP}/validated-release/assestme"
+
+      - name: Upload release installer diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-installer-diagnostics
+          path: |
+            ${{ runner.temp }}/release-installer/storage/logs/release-server.log
+            ${{ runner.temp }}/validated-release/assestme/storage/logs/laravel.log
+            tests/Browser/screenshots
+            tests/Browser/source
+            tests/Browser/console
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload validated installable release
+        uses: actions/upload-artifact@v6
+        with:
+          name: assestme-ci-release
+          path: ${{ runner.temp }}/release/assestme-ci.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  clean-checkout-bootstrap:
+    name: Clean checkout bootstrap
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      APP_FALLBACK_LOCALE: it
+      APP_LOCALE: it
+      APP_TIMEZONE: Europe/Rome
+      ASSESTME_BACKUP_ROOT: ${{ github.workspace }}/backups
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ${{ github.workspace }}/database/database.sqlite
+      DEV_ADMIN_NAME: CI Administrator
+      DEV_ADMIN_EMAIL: admin@assestme.local
+      DEV_ADMIN_PASSWORD: CI-Only!AssestMe-2026
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sockets, sqlite3, xml, zip
+          ini-values: memory_limit=512M
+          tools: composer:v2
+
+      - name: Install WeasyPrint runtime
+        run: sudo apt-get update && sudo apt-get install --yes poppler-utils weasyprint
+
+      - name: Bootstrap a clean checkout
+        run: scripts/bootstrap-local.sh "${GITHUB_WORKSPACE}"
+
+      - name: Verify bootstrapped application
+        run: |
+          php artisan assestme:diagnose
+          test "$(php artisan tinker --execute='echo App\Models\User::query()->count();')" = "1"
+          test "$(php artisan tinker --execute='echo App\Models\Category::query()->count();')" = "18"
+          test "$(php artisan tinker --execute='echo App\Models\Assessment::query()->count();')" = "0"
+          test "$(php artisan tinker --execute='echo App\Models\FindingTemplate::query()->count();')" -gt "0"
+
+  publish-develop-release:
+    name: Publish develop release
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/develop'
+    needs:
+      - complete-validation
+      - release-acceptance
+      - clean-checkout-bootstrap
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: assestme-develop-release
+      cancel-in-progress: true
+
+    steps:
+      - name: Check out validated commit
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Download validated release artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: assestme-ci-release
+          path: dist
+
+      - name: Prepare stable develop asset
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          test -s dist/assestme-ci.zip
+          install -m 0644 dist/assestme-ci.zip dist/assestme-develop.zip
+          test -s dist/assestme-develop.zip
+
+          mapfile -t archives < <(find dist -maxdepth 1 -type f -name '*.zip' -print | sort)
+          if [[ "${#archives[@]}" -ne 2 ]]; then
+              printf 'Expected the CI archive and the renamed develop archive, found %s.\n' \
+                  "${#archives[@]}" >&2
+              printf '%s\n' "${archives[@]}" >&2
+              exit 1
+          fi
+
+          if find dist -type f -name '*.sha256' -print -quit | grep -q .; then
+              printf 'Unexpected external SHA-256 sidecar found in the release artifact.\n' >&2
+              find dist -type f -name '*.sha256' -print >&2
+              exit 1
+          fi
+
+      - name: Confirm this is still the latest develop commit
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git fetch --no-tags --depth=1 origin develop
+          latest_develop_sha="$(git rev-parse origin/develop)"
+          if [[ "$GITHUB_SHA" != "$latest_develop_sha" ]]; then
+              printf 'Refusing to publish obsolete commit %s; develop is now %s.\n' \
+                  "$GITHUB_SHA" "$latest_develop_sha" >&2
+              exit 1
+          fi
+
+      - name: Publish rolling develop prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -Eeuo pipefail
+
+          release_tag='develop-latest'
+          release_title='AssestMe develop — ultima build valida'
+          release_asset='dist/assestme-develop.zip'
+          short_sha="${GITHUB_SHA:0:7}"
+
+          cat > release-notes.md <<EOF
+          Build automatica validata del branch \`develop\`.
+
+          - Commit: \`${GITHUB_SHA}\`
+          - Commit breve: \`${short_sha}\`
+          - Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+
+          Il file \`assestme-develop.zip\` è il pacchetto installabile prodotto e verificato dal job \`release-acceptance\`.
+
+          Questa è una prerelease di sviluppo. Non sostituisce una release stabile versionata.
+          EOF
+
+          if gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              gh release delete "$release_tag" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+          elif gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${release_tag}" >/dev/null 2>&1; then
+              gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${release_tag}"
+          fi
+
+          gh release create "$release_tag" "$release_asset" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "$release_title" \
+              --notes-file release-notes.md \
+              --prerelease
+
+  deploy_cloudpanel:
+    name: Deploy CloudPanel CI
+    needs:
+      - publish-develop-release
+    if: >-
+      ${{
+        github.event_name == 'push' &&
+        github.ref == 'refs/heads/develop' &&
+        success()
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    concurrency:
+      group: assestme-cloudpanel-ci
+      cancel-in-progress: false
+
+    steps:
+      - name: Configure SSH
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.CLOUDPANEL_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.CLOUDPANEL_KNOWN_HOSTS }}
+        run: |
+          set -Eeuo pipefail
+
+          test -n "$SSH_PRIVATE_KEY" || {
+            echo "CLOUDPANEL_SSH_PRIVATE_KEY is not configured." >&2
+            exit 1
+          }
+          test -n "$SSH_KNOWN_HOSTS" || {
+            echo "CLOUDPANEL_KNOWN_HOSTS is not configured." >&2
+            exit 1
+          }
+
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/cloudpanel_deploy"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/cloudpanel_deploy" "$HOME/.ssh/known_hosts"
+
+      - name: Deploy develop to CloudPanel
+        shell: bash
+        env:
+          CLOUDPANEL_HOST: ${{ secrets.CLOUDPANEL_HOST }}
+          CLOUDPANEL_PORT: ${{ secrets.CLOUDPANEL_PORT }}
+          CLOUDPANEL_USER: ${{ secrets.CLOUDPANEL_USER }}
+        run: |
+          set -Eeuo pipefail
+
+          test -n "$CLOUDPANEL_HOST" || {
+            echo "CLOUDPANEL_HOST is not configured." >&2
+            exit 1
+          }
+          test -n "$CLOUDPANEL_PORT" || {
+            echo "CLOUDPANEL_PORT is not configured." >&2
+            exit 1
+          }
+          test -n "$CLOUDPANEL_USER" || {
+            echo "CLOUDPANEL_USER is not configured." >&2
+            exit 1
+          }
+
+          ssh \
+            -p "$CLOUDPANEL_PORT" \
+            -i "$HOME/.ssh/cloudpanel_deploy" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=20 \
+            "$CLOUDPANEL_USER@$CLOUDPANEL_HOST"

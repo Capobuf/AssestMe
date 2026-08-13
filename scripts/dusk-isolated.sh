@@ -23,8 +23,12 @@ assestme_begin_isolated_environment dusk
 server_pid=""
 cleanup() {
     if [[ -n "$server_pid" ]]; then
-        kill "$server_pid" >/dev/null 2>&1 || true
-        wait "$server_pid" >/dev/null 2>&1 || true
+        if kill "$server_pid" >/dev/null 2>&1; then
+            :
+        fi
+        if wait "$server_pid" >/dev/null 2>&1; then
+            :
+        fi
     fi
     assestme_end_isolated_environment
 }

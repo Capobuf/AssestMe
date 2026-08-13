@@ -2,6 +2,11 @@
 
 ## Current state
 
+- 2026-08-13: Started the approved CI gate separation on `develop` at `ba66a7c`. The scoped change
+  keeps `quality` and the four-version database matrix as the normal PR gates, introduces a
+  browser-free Compose core verifier, moves Dusk and release/install acceptance ahead of develop
+  publication and CloudPanel deployment, and removes the historical installer forensic harness from
+  the normal path. Branch protection was queried through GitHub and `develop` is currently unprotected.
 - 2026-08-12: Started the focused `cloudpanel-release` installer CI stabilization on `develop` at
   `8bd1829409d1bec67694cc4f46853193f5e36fc8`. Scope is limited to path-based Dusk synchronization
   and failure diagnostics, failure-only safe artifact retention, server-side reporting of sanitized

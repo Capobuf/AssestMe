@@ -30,9 +30,14 @@ resources/views/reports/partials/
 tests/
 tests/Browser/
 .github/workflows/quality.yml
+.github/workflows/acceptance.yml
 scripts/preflight.sh
 scripts/bootstrap-local.sh
+scripts/verify-core.sh
 scripts/verify.sh
+scripts/build-release.sh
+scripts/release-installer-acceptance.sh
+scripts/shared-hosting-smoke.sh
 docker/compose.dev.yml
 docker/dev/Dockerfile
 docker/dev/php.ini

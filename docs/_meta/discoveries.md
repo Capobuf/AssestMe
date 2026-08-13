@@ -1,5 +1,16 @@
 # Discoveries
 
+- On the inspected `develop` HEAD, `scripts/preflight.sh` performs only local runtime, extension,
+  project, database-driver, and WeasyPrint probes; it starts no HTTP server or browser process and is
+  safe to compose into the browser-free core gate.
+- The former release builder and post-deploy smoke script contained no CloudPanel API, filesystem,
+  service, or control-panel contract. Their technical scope is the generic prebuilt shared-hosting
+  release, while `deploy/cloudpanel`, `CLOUDPANEL_*`, and `Deploy CloudPanel CI` remain actual
+  CloudPanel responsibilities.
+- The canonical extracted-release journey exposed that Laravel's in-process `optimize` command boots
+  fresh application state while building the configuration cache and can discard view data shared by
+  the active installer request. Running only the post-install optimization as the already-approved
+  bounded Symfony subprocess preserves the final response and keeps a nonzero exit fail-closed.
 - Laravel Dusk in the locked dependency set writes screenshots, DOM sources, and browser-console
   logs under `tests/Browser/screenshots`, `tests/Browser/source`, and `tests/Browser/console`.
   Its automatic failure handling does not persist DOM for every PHPUnit assertion path, so an
@@ -15,7 +26,9 @@
 
 ## CloudPanel CI deployment discoveries
 
-- The sole GitHub Actions workflow is `.github/workflows/quality.yml`. Its `publish-develop-release` job is the existing terminal develop job and requires `quality`, `database-compatibility`, `cloudpanel-release`, and `clean-checkout-bootstrap`.
+- Before the 2026-08-13 gate separation, the sole GitHub Actions workflow was
+  `.github/workflows/quality.yml`; its terminal develop path coupled normal quality, database,
+  extracted-release diagnostics, bootstrap, publication, and deployment.
 - CloudPanel dploy releases do not retain a `.git` directory. The restricted deployment script therefore reports the verified release path but does not derive or declare a commit from the release directory.
 - On 2026-08-02, the dedicated restricted SSH key, server-side command, and five repository secrets were configured. A direct forced-command deployment activated the release and passed `artisan about`; the GitHub workflow run was cancelled before its deployment job to avoid a duplicate deployment while the obsolete Git metadata check was removed.
 

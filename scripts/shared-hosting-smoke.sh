@@ -7,7 +7,7 @@ domain="${2:-}"
 php_binary="${3:-}"
 
 if [[ -z "$project_path" || -z "$domain" ]]; then
-    echo "Usage: scripts/cloudpanel-smoke.sh <absolute-project-path> <domain> [absolute-php-cli]" >&2
+    echo "Usage: scripts/shared-hosting-smoke.sh <absolute-project-path> <domain> [absolute-php-cli]" >&2
     exit 64
 fi
 
@@ -22,7 +22,9 @@ if [[ ! "$domain" =~ ^[A-Za-z0-9.-]+$ ]]; then
 fi
 
 if [[ -z "$php_binary" ]]; then
-    php_binary="$(command -v php || true)"
+    if command -v php >/dev/null 2>&1; then
+        php_binary="$(command -v php)"
+    fi
 fi
 
 if [[ "$php_binary" != /* || ! -f "$php_binary" || ! -x "$php_binary" ]]; then
@@ -65,10 +67,10 @@ fi
 
 backup_directory="$project_path/storage/backups"
 mkdir -p "$backup_directory"
-backup_path="$backup_directory/cloudpanel-smoke-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
+backup_path="$backup_directory/shared-hosting-smoke-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
 "$php_binary" artisan assestme:backup --output="$backup_path" >/dev/null
 "$php_binary" artisan assestme:backup:verify "$backup_path" >/dev/null
 
-echo "CloudPanel smoke checks passed."
+echo "Shared-hosting smoke checks passed."
 echo "Health, login, lock, scheduler heartbeat, WeasyPrint diagnostics, backup and verification are operational."
 echo "Verified backup: $backup_path"

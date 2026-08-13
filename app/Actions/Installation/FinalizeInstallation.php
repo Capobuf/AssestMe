@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use SensitiveParameter;
+use Symfony\Component\Process\Process;
 use Throwable;
 
 final readonly class FinalizeInstallation
@@ -155,7 +156,7 @@ final readonly class FinalizeInstallation
         Log::info('installer.finalize.optimize_clear.complete');
 
         if (app()->environment('production')) {
-            $this->runArtisanCommand('optimize');
+            $this->runArtisanSubprocess($application->phpBinary, 'optimize');
         }
 
         $this->installationState->createInstalledLock($database->driver);
@@ -223,6 +224,42 @@ final readonly class FinalizeInstallation
         }
 
         Log::info('installer.finalize.artisan.complete', [
+            'command' => $command,
+            'exit_code' => $exitCode,
+        ]);
+    }
+
+    private function runArtisanSubprocess(string $phpBinary, string $command): void
+    {
+        Log::info('installer.finalize.artisan_process.begin', ['command' => $command]);
+
+        $process = new Process(
+            [$phpBinary, base_path('artisan'), $command, '--no-interaction', '--no-ansi'],
+            base_path(),
+        );
+        $process->setTimeout(20);
+
+        try {
+            $exitCode = $process->run();
+        } catch (Throwable $exception) {
+            Log::error('installer.finalize.artisan_process.failure', [
+                'command' => $command,
+                'exception' => $exception::class,
+            ]);
+
+            throw $exception;
+        }
+
+        if ($exitCode !== 0) {
+            Log::error('installer.finalize.artisan_process.failure', [
+                'command' => $command,
+                'exit_code' => $exitCode,
+            ]);
+
+            throw new RuntimeException("The {$command} command did not complete successfully.");
+        }
+
+        Log::info('installer.finalize.artisan_process.complete', [
             'command' => $command,
             'exit_code' => $exitCode,
         ]);

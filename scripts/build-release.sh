@@ -7,7 +7,7 @@ release_version="${1:-}"
 output_directory="${2:-$project_path/releases}"
 
 if [[ ! "$release_version" =~ ^[0-9A-Za-z][0-9A-Za-z._-]*$ ]]; then
-    echo "Usage: scripts/build-cloudpanel-release.sh <version> [absolute-output-directory]" >&2
+    echo "Usage: scripts/build-release.sh <version> [absolute-output-directory]" >&2
     exit 64
 fi
 

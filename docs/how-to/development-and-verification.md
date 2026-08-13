@@ -37,15 +37,25 @@ php artisan dusk --filter=<relevant-browser-test>
 
 Rerun the failed test or command before running a broader gate.
 
-## Complete verification
+## Core verification
+
+```bash
+docker compose -f docker/compose.dev.yml exec -T app scripts/verify-core.sh
+```
+
+Use this browser-free gate for a coherent normal change set and normal PR feedback. It includes the
+complete unit/feature suite and deterministic focused verification, but no Selenium or Dusk.
+
+## Complete acceptance verification
 
 ```bash
 docker compose -f docker/compose.dev.yml exec -T app scripts/verify.sh
 ```
 
-Run the complete gate at coherent change-set completion, before merging to `main`, at milestone completion, after dependency/runtime/test-infrastructure changes, or when explicitly requested.
-`scripts/verify.sh` fails before any check or mutation when invoked on the host or outside the marked
-`app` service from `docker/compose.dev.yml`.
+Run complete acceptance before publication/deployment, before merging to `main`, at milestone
+completion, after browser/test-infrastructure changes, or when explicitly requested. It invokes the
+core gate and then the complete Dusk suite exactly once. Both commands reject unsupported host or
+unmarked-container execution through the core runtime guard.
 
 ## Production release
 
