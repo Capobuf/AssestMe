@@ -73,6 +73,9 @@ final class FindingSolution extends Model
         }
 
         $minimum = number_format((float) $this->amount_min, 2, ',', '.').' '.$this->currency_code;
+        if ($this->estimate_type === EstimateType::Approximate) {
+            return $estimateLabel.': '.$minimum;
+        }
         if ($this->estimate_type === EstimateType::Range && $this->amount_max !== null) {
             return $minimum.' – '.number_format((float) $this->amount_max, 2, ',', '.').' '.$this->currency_code;
         }

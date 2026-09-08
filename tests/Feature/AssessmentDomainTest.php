@@ -35,6 +35,7 @@ use App\Models\PriorityLevel;
 use App\Models\RiskMatrixEntry;
 use App\Models\RiskProfile;
 use App\Models\Site;
+use App\Settings\GeneralSettings;
 use Database\Seeders\MilestoneOneSeeder;
 use Database\Seeders\MilestoneTwoSeeder;
 use Illuminate\Support\Str;
@@ -246,6 +247,29 @@ it('sets and clears solution references while rejecting invalid assignments', fu
     $readOnlyFinding->assessment()->update(['status' => AssessmentStatus::Completed]);
     expect(fn () => app(SetRecommendedSolution::class)($readOnlyFinding->fresh(), $readOnlySolution))->toThrow(ValidationException::class)
         ->and(fn () => app(SetImplementedSolution::class)($readOnlyFinding->fresh(), $readOnlySolution))->toThrow(ValidationException::class);
+});
+
+it('stores approximate estimates with the configured global currency', function (): void {
+    $settings = app(GeneralSettings::class);
+    $settings->currency = 'USD';
+    $settings->save();
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create();
+    $solution = createFindingSolution($finding, 'stimata');
+    app(SetRecommendedSolution::class)($finding, $solution);
+    $payload = findingDetailsPayload($finding->fresh());
+    $payload['solutions'][0]['estimate_type'] = EstimateType::Approximate->value;
+    $payload['solutions'][0]['amount_min'] = 125;
+    $payload['solutions'][0]['amount_max'] = null;
+    $payload['solutions'][0]['currency_code'] = 'JPY';
+
+    $saved = saveFindingAggregate($finding, $payload);
+    $savedSolution = $saved->solutions()->sole();
+
+    expect($savedSolution->estimate_type)->toBe(EstimateType::Approximate)
+        ->and($savedSolution->amount_min)->toBe('125.00')
+        ->and($savedSolution->amount_max)->toBeNull()
+        ->and($savedSolution->currency_code)->toBe('USD');
 });
 
 it('returns row-numbered completion errors and enforces the assessment lifecycle', function (): void {

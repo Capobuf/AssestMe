@@ -270,7 +270,6 @@ return [
             'contacts' => 'Contatti',
             'additional' => 'Informazioni aggiuntive',
         ],
-        'solutions_help' => 'Puoi inserire al massimo 3 soluzioni totali: 1 raccomandata e fino a 2 alternative.',
         'fields' => [
             'legal_name' => 'Ragione sociale',
             'trade_name' => 'Nome commerciale',
@@ -314,6 +313,10 @@ return [
         ],
         'slug_help' => 'Se vuoto viene generato dal nome. Gli slug già usati restano riservati.',
         'disabled_option' => ':name — disabilitata',
+        'quick_create' => [
+            'action' => 'Aggiungi tipologia',
+            'heading' => 'Aggiungi rapidamente una tipologia asset',
+        ],
     ],
     'assets' => [
         'navigation' => 'Asset',
@@ -338,6 +341,11 @@ return [
             'notes' => 'Note',
         ],
         'identifier_help' => 'Compila almeno uno tra nome, modello, hostname, IP, MAC o numero di serie.',
+        'quick_create' => [
+            'action' => 'Aggiungi asset',
+            'heading' => 'Aggiungi rapidamente un asset',
+            'save_and_new' => 'Salva & Nuovo',
+        ],
         'errors' => [
             'identifier_required' => 'È richiesto almeno un valore identificativo.',
             'site_client' => 'La sede selezionata non appartiene all’azienda.',
@@ -348,6 +356,10 @@ return [
         'navigation' => 'Categorie',
         'singular' => 'categoria',
         'plural' => 'categorie',
+        'quick_create' => [
+            'action' => 'Aggiungi categoria',
+            'heading' => 'Aggiungi rapidamente una categoria',
+        ],
     ],
     'templates' => [
         'navigation' => 'Template',
@@ -359,12 +371,13 @@ return [
             'solutions' => 'Soluzioni',
             'advanced' => 'Opzioni avanzate',
         ],
+        'solutions_help' => 'Puoi inserire al massimo 3 soluzioni totali: 1 raccomandata e fino a 2 alternative.',
         'fields' => [
             'external_id' => 'ID esterno', 'title' => 'Titolo', 'category' => 'Categoria',
             'technical_notes' => 'Note tecniche', 'scope' => 'Ambito', 'scope_description' => 'Descrizione ambito',
             'consequence' => 'Conseguenza', 'likelihood' => 'Probabilità', 'priority_rationale' => 'Motivazione priorità',
             'recommended' => 'Raccomandata', 'comparison_notes' => 'Note comparative', 'effort_notes' => 'Note impegno',
-            'amount_min' => 'Importo minimo', 'amount_max' => 'Importo massimo', 'currency' => 'Valuta',
+            'amount' => 'Importo', 'amount_min' => 'Importo minimo', 'amount_max' => 'Importo massimo', 'currency' => 'Valuta',
             'billing_frequency' => 'Frequenza', 'custom_billing' => 'Frequenza personalizzata', 'solution_count' => 'Soluzioni',
             'json_file' => 'File JSON', 'conflict_mode' => 'Gestione conflitti',
         ],
@@ -389,7 +402,7 @@ return [
             'risk_matrix_mismatch' => 'Template :index (:external_id): la priorità non coincide con la matrice per conseguenza e probabilità.',
             'monetary_amount' => 'Una stima monetaria richiede importo minimo e valuta.',
             'non_monetary_amount' => 'Una stima non monetaria non può contenere importi o valuta.',
-            'exact_max' => 'Una stima esatta non può contenere un importo massimo.',
+            'exact_max' => 'Una stima a importo singolo non può contenere un importo massimo.',
             'custom_billing' => 'Specifica la frequenza personalizzata.',
             'solution_ownership' => 'La soluzione non appartiene a questo template.',
             'external_id_immutable' => 'L’ID esterno non può essere modificato dopo il primo salvataggio.',
@@ -618,7 +631,7 @@ return [
             'evidence' => 'Include immagini, link e file selezionati nel loro ordine originale.',
             'evidence_captions' => 'Mostra le didascalie valorizzate sotto le immagini incluse.',
             'freeze_after_generation' => 'Dopo una generazione PDF riuscita, completa l’Assessment se è ancora in bozza; non modifica l’anteprima.',
-            'currency' => 'Codice ISO usato per riconoscere la valuta principale durante la formattazione delle stime.',
+            'currency' => 'Codice ISO applicato a tutte le stime monetarie di Finding e template.',
             'currency_symbol' => 'Simbolo mostrato per gli importi espressi nella valuta principale.',
             'currency_symbol_position' => 'Stabilisce se il simbolo della valuta principale precede o segue l’importo.',
             'currency_decimals' => 'Definisce i decimali degli importi non interi; gli importi interi restano senza decimali.',
@@ -1201,7 +1214,8 @@ return [
             ],
         ],
         'estimates' => [
-            'exact' => 'Circa :amount:frequency',
+            'exact' => ':amount:frequency',
+            'approximate' => 'Circa :amount:frequency',
             'range' => 'Indicativamente :minimum–:maximum:frequency',
             'bundled' => 'Da sommare ad altre attività',
             'requires_quote' => 'Richiede preventivo',
@@ -1288,6 +1302,7 @@ return [
         ],
         'estimate_type' => [
             'exact' => 'Esatta',
+            'approximate' => 'Stima',
             'range' => 'Intervallo',
             'bundled' => 'Inclusa in altre attività',
             'requires_quote' => 'Richiede preventivo',

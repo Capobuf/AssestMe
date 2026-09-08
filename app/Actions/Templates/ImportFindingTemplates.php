@@ -6,6 +6,7 @@ namespace App\Actions\Templates;
 
 use App\Actions\Categories\SaveCategory;
 use App\Actions\Risk\CalculateFindingPriority;
+use App\Enums\EstimateType;
 use App\Models\Category;
 use App\Models\ConsequenceLevel;
 use App\Models\EffortLevel;
@@ -15,6 +16,7 @@ use App\Models\LikelihoodLevel;
 use App\Models\RiskProfile;
 use App\Services\Reporting\EditorialLimits;
 use App\Services\Risk\ActiveRiskProfileResolver;
+use App\Settings\GeneralSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use JsonException;
@@ -23,7 +25,10 @@ use Opis\JsonSchema\Validator;
 
 final class ImportFindingTemplates
 {
-    public function __construct(private readonly ActiveRiskProfileResolver $activeRiskProfileResolver) {}
+    public function __construct(
+        private readonly ActiveRiskProfileResolver $activeRiskProfileResolver,
+        private readonly GeneralSettings $generalSettings,
+    ) {}
 
     /** @return array{created:int,replaced:int,skipped:int} */
     public function __invoke(string $json, string $conflictMode): array
@@ -217,6 +222,16 @@ final class ImportFindingTemplates
 
             $this->validateRiskSemantics($template, $index);
         }
+
+        $currency = mb_strtoupper($this->generalSettings->currency);
+        foreach ($document['templates'] as &$template) {
+            foreach ($template['solutions'] as &$solution) {
+                $type = EstimateType::from((string) $solution['estimate_type']);
+                $solution['currency_code'] = $type->isMonetary() ? $currency : null;
+            }
+            unset($solution);
+        }
+        unset($template);
 
         return $document;
     }

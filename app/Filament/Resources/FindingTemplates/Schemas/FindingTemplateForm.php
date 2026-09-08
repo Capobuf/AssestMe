@@ -11,6 +11,8 @@ use App\Models\Category;
 use App\Models\EffortLevel;
 use App\Services\Reporting\EditorialLimits;
 use App\Services\Risk\ActiveRiskProfileResolver;
+use App\Settings\GeneralSettings;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -61,12 +63,13 @@ final class FindingTemplateForm
                             ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['comparison_notes'])),
                         Select::make('estimate_type')->label(__('assestme.findings.fields.estimate_type'))->options(EstimateType::options())->required()->live(),
                         Select::make('billing_frequency')->label(__('assestme.templates.fields.billing_frequency'))->options(self::billingOptions())->required()->default(BillingFrequency::OneOff->value)->live(),
-                        TextInput::make('amount_min')->label(__('assestme.templates.fields.amount_min'))->numeric()->minValue(0)
+                        TextInput::make('amount_min')->label(fn (Get $get): string => $get('estimate_type') === EstimateType::Range->value
+                            ? __('assestme.templates.fields.amount_min')
+                            : __('assestme.templates.fields.amount'))->numeric()->minValue(0)
                             ->visible(fn (Get $get): bool => self::isMonetary($get('estimate_type'))),
                         TextInput::make('amount_max')->label(__('assestme.templates.fields.amount_max'))->numeric()->minValue(0)
                             ->visible(fn (Get $get): bool => $get('estimate_type') === EstimateType::Range->value),
-                        TextInput::make('currency_code')->label(__('assestme.templates.fields.currency'))->length(3)->default('EUR')
-                            ->visible(fn (Get $get): bool => self::isMonetary($get('estimate_type'))),
+                        Hidden::make('currency_code')->default(fn (): string => app(GeneralSettings::class)->currency),
                         TextInput::make('custom_billing_frequency')->label(__('assestme.templates.fields.custom_billing'))->maxLength(120)
                             ->visible(fn (Get $get): bool => $get('billing_frequency') === BillingFrequency::Custom->value),
                         Textarea::make('estimate_notes')->label(__('assestme.findings.fields.estimate_notes'))->rows(3)->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['estimate_notes'])
@@ -108,7 +111,7 @@ final class FindingTemplateForm
 
     private static function isMonetary(mixed $estimateType): bool
     {
-        return in_array($estimateType, [EstimateType::Exact->value, EstimateType::Range->value], true);
+        return EstimateType::tryFrom((string) $estimateType)?->isMonetary() ?? false;
     }
 
     private static function remaining(?string $state, int $limit): string

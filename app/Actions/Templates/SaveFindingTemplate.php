@@ -16,6 +16,7 @@ use App\Models\LikelihoodLevel;
 use App\Models\PriorityLevel;
 use App\Services\Reporting\EditorialLimits;
 use App\Services\Risk\ActiveRiskProfileResolver;
+use App\Settings\GeneralSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -24,7 +25,10 @@ use Illuminate\Validation\ValidationException;
 
 final class SaveFindingTemplate
 {
-    public function __construct(private readonly ActiveRiskProfileResolver $activeRiskProfileResolver) {}
+    public function __construct(
+        private readonly ActiveRiskProfileResolver $activeRiskProfileResolver,
+        private readonly GeneralSettings $generalSettings,
+    ) {}
 
     /** @param array<string, mixed> $data */
     public function handle(?FindingTemplate $template, array $data): FindingTemplate
@@ -35,6 +39,7 @@ final class SaveFindingTemplate
     /** @param array<string, mixed> $data */
     public function handleWithSolutionIds(?FindingTemplate $template, array $data): SavedFindingTemplate
     {
+        $data = $this->withConfiguredCurrency($data);
         $data = $this->withStableExternalIds($template, $data);
         $solutionCount = count(is_array($data['solutions'] ?? null) ? $data['solutions'] : []);
         $limits = EditorialLimits::forSolutionCount($solutionCount);
@@ -258,7 +263,7 @@ final class SaveFindingTemplate
         foreach ($validated['solutions'] as $index => $solution) {
             /** @var array<string, mixed> $solution */
             $type = (string) $solution['estimate_type'];
-            $monetary = in_array($type, [EstimateType::Exact->value, EstimateType::Range->value], true);
+            $monetary = EstimateType::from($type)->isMonetary();
             if ($monetary && (($solution['amount_min'] ?? null) === null || ($solution['currency_code'] ?? null) === null)) {
                 throw ValidationException::withMessages(["solutions.{$index}.amount_min" => __('assestme.templates.errors.monetary_amount')]);
             }
@@ -268,7 +273,8 @@ final class SaveFindingTemplate
             if ($type === EstimateType::Range->value && (float) $solution['amount_min'] > (float) ($solution['amount_max'] ?? -1)) {
                 throw ValidationException::withMessages(["solutions.{$index}.amount_max" => __('assestme.templates.errors.invalid_range')]);
             }
-            if ($type === EstimateType::Exact->value && ($solution['amount_max'] ?? null) !== null) {
+            if (in_array($type, [EstimateType::Exact->value, EstimateType::Approximate->value], true)
+                && ($solution['amount_max'] ?? null) !== null) {
                 throw ValidationException::withMessages(["solutions.{$index}.amount_max" => __('assestme.templates.errors.exact_max')]);
             }
             if ($solution['billing_frequency'] === BillingFrequency::Custom->value && blank($solution['custom_billing_frequency'] ?? null)) {
@@ -278,5 +284,32 @@ final class SaveFindingTemplate
                 throw ValidationException::withMessages(["solutions.{$index}.id" => __('assestme.templates.errors.solution_ownership')]);
             }
         }
+    }
+
+    /** @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function withConfiguredCurrency(array $data): array
+    {
+        if (! is_array($data['solutions'] ?? null)) {
+            return $data;
+        }
+
+        $currency = mb_strtoupper($this->generalSettings->currency);
+        $data['solutions'] = array_map(static function (mixed $solution) use ($currency): mixed {
+            if (! is_array($solution)) {
+                return $solution;
+            }
+
+            $estimateType = $solution['estimate_type'] ?? null;
+            $type = $estimateType instanceof EstimateType
+                ? $estimateType
+                : (is_string($estimateType) ? EstimateType::tryFrom($estimateType) : null);
+            $solution['currency_code'] = $type?->isMonetary() === true ? $currency : null;
+
+            return $solution;
+        }, $data['solutions']);
+
+        return $data;
     }
 }

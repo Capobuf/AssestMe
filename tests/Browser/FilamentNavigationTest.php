@@ -56,7 +56,7 @@ final class FilamentNavigationTest extends DuskTestCase
                 ->waitFor('.fi-topbar-nav-groups');
 
             Assert::assertSame(
-                ['Dashboard', 'Assessment', 'Aziende', 'Impostazioni'],
+                ['Dashboard', 'Assessment', 'Aziende', 'Asset', 'Impostazioni'],
                 self::topLevelNavigationLabels($browser),
             );
             Assert::assertNotContains('Tag', self::topLevelNavigationLabels($browser));
@@ -70,15 +70,15 @@ final class FilamentNavigationTest extends DuskTestCase
             self::resizeViewport($browser, 768, 900);
             self::openResponsiveNavigation($browser);
             Assert::assertSame(
-                ['Dashboard', 'Assessment', 'Aziende', 'Impostazioni'],
+                ['Dashboard', 'Assessment', 'Aziende', 'Asset', 'Impostazioni'],
                 self::topLevelSidebarLabels($browser),
             );
-            Assert::assertSame(['Sedi', 'Asset'], self::companyChildLabels($browser));
+            Assert::assertSame(['Sedi'], self::companyChildLabels($browser));
             $browser->click(self::sidebarLink(SiteResource::getUrl('index')))
                 ->waitForText('Sedi')
                 ->assertPathIs(self::path(SiteResource::getUrl('index')));
             self::openResponsiveNavigation($browser);
-            Assert::assertSame(['Sedi', 'Asset'], self::companyChildLabels($browser));
+            Assert::assertSame(['Sedi'], self::companyChildLabels($browser));
 
             $browser->click(self::sidebarLink(AssetCluster::getUrl()))
                 ->waitForText('Asset navigazione')
@@ -135,7 +135,7 @@ final class FilamentNavigationTest extends DuskTestCase
             Assert::assertLessThanOrEqual(1, $settingsTabletNavigation['documentOverflow']);
             self::resizeViewport($browser, 1440, 900);
             Assert::assertSame(
-                ['Dashboard', 'Assessment', 'Aziende', 'Impostazioni'],
+                ['Dashboard', 'Assessment', 'Aziende', 'Asset', 'Impostazioni'],
                 self::topLevelNavigationLabels($browser),
             );
 
@@ -195,7 +195,7 @@ final class FilamentNavigationTest extends DuskTestCase
             self::resizeViewport($browser, 390, 844);
             self::openResponsiveNavigation($browser);
             Assert::assertSame(
-                ['Dashboard', 'Assessment', 'Aziende', 'Impostazioni'],
+                ['Dashboard', 'Assessment', 'Aziende', 'Asset', 'Impostazioni'],
                 self::topLevelSidebarLabels($browser),
             );
             self::closeResponsiveNavigation($browser);
@@ -220,12 +220,24 @@ final class FilamentNavigationTest extends DuskTestCase
                 'return document.documentElement.scrollWidth - document.documentElement.clientWidth;',
             )[0], 'The workspace overflows horizontally after enabling top navigation.');
             $browser->waitUntil(<<<'JS'
-                return Array.from(document.querySelectorAll('[data-assestme-workbench-properties] .assestme-workbench-section--properties .fi-section-content-ctn'))
-                    .every((section) => section.getAttribute('aria-expanded') === 'true');
+                return Array.from(document.querySelectorAll('[data-assestme-workbench-properties] .assestme-workbench-section--properties .fi-section-collapse-btn'))
+                    .every((button) => button.getAttribute('aria-expanded') === 'true');
                 JS);
             Assert::assertSame(5, (int) $browser->script(<<<'JS'
-                return document.querySelectorAll('[data-assestme-workbench-properties] .assestme-workbench-section--properties .fi-section-content-ctn[aria-expanded="true"]').length;
+                return document.querySelectorAll('[data-assestme-workbench-properties] .assestme-workbench-section--properties .fi-section-collapse-btn[aria-expanded="true"]').length;
                 JS)[0], 'Every lateral Finding property section should be open by default.');
+
+            $categorySelector = self::categorySelectorState($browser);
+            Assert::assertTrue($categorySelector['present']);
+            Assert::assertTrue($categorySelector['required']);
+            Assert::assertTrue($categorySelector['quickCreate']);
+            $browser->click('button[aria-label="Aggiungi categoria"]')
+                ->waitForText('Aggiungi rapidamente una categoria')
+                ->press('Annulla');
+
+            $estimateEditor = self::estimateEditorState($browser);
+            Assert::assertContains('Stima', $estimateEditor['options']);
+            Assert::assertFalse($estimateEditor['currencyPresent']);
 
             Assert::assertFalse(self::assetSelectorState($browser)['present']);
 
@@ -242,6 +254,13 @@ final class FilamentNavigationTest extends DuskTestCase
             $assetSelector = self::assetSelectorState($browser);
             Assert::assertTrue($assetSelector['present']);
             Assert::assertFalse($assetSelector['required']);
+            Assert::assertTrue($assetSelector['quickCreate']);
+
+            $browser->click('button[aria-label="Aggiungi asset"]')
+                ->waitForText('Aggiungi rapidamente un asset')
+                ->assertSee('Salva & Nuovo')
+                ->assertPresent('button[aria-label="Aggiungi tipologia"]')
+                ->press('Annulla');
 
             $browser->click('[data-dusk="save-finding"]')
                 ->waitUntil('return document.querySelector("[data-assestme-save-status]").dataset.status === "saved"');
@@ -311,7 +330,7 @@ final class FilamentNavigationTest extends DuskTestCase
             JS)[0];
     }
 
-    /** @return array{present: bool, required: bool} */
+    /** @return array{present: bool, required: bool, quickCreate: bool} */
     private static function assetSelectorState(Browser $browser): array
     {
         return $browser->script(<<<'JS'
@@ -321,6 +340,38 @@ final class FilamentNavigationTest extends DuskTestCase
             return {
                 present: Boolean(field),
                 required: Boolean(field?.querySelector('.fi-fo-field-label-required-mark')),
+                quickCreate: Boolean(field?.querySelector('button[aria-label="Aggiungi asset"]')),
+            };
+            JS)[0];
+    }
+
+    /** @return array{present: bool, required: bool, quickCreate: bool} */
+    private static function categorySelectorState(Browser $browser): array
+    {
+        return $browser->script(<<<'JS'
+            const field = Array.from(document.querySelectorAll('[data-assestme-workbench-properties] [data-field-wrapper]'))
+                .find((wrapper) => wrapper.querySelector('.fi-fo-field-label-content')?.childNodes[0]?.textContent.trim() === 'Categoria');
+
+            return {
+                present: Boolean(field),
+                required: Boolean(field?.querySelector('.fi-fo-field-label-required-mark')),
+                quickCreate: Boolean(field?.querySelector('button[aria-label="Aggiungi categoria"]')),
+            };
+            JS)[0];
+    }
+
+    /** @return array{options: list<string>, currencyPresent: bool} */
+    private static function estimateEditorState(Browser $browser): array
+    {
+        return $browser->script(<<<'JS'
+            const editor = document.querySelector('[data-assestme-workbench-editor]');
+            const estimateType = editor?.querySelector('[data-dusk="finding-estimate-type"] select');
+            const labels = Array.from(editor?.querySelectorAll('.fi-fo-field-label-content') ?? [])
+                .map((label) => label.childNodes[0]?.textContent.trim());
+
+            return {
+                options: Array.from(estimateType?.options ?? []).map((option) => option.textContent.trim()),
+                currencyPresent: labels.includes('Valuta'),
             };
             JS)[0];
     }

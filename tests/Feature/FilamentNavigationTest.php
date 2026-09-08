@@ -87,16 +87,16 @@ it('builds the approved hierarchy with native Filament navigation items', functi
     $settings = $items->first(
         static fn (NavigationItem $item): bool => $item->getLabel() === SettingsCluster::getNavigationLabel(),
     );
-    expect($labels)->toContain('Dashboard', 'Assessment', 'Aziende', 'Impostazioni')
-        ->and($labels)->not->toContain('Sedi', 'Asset', 'Tipologie asset', 'Generale', 'Report', 'Template', 'Categorie', 'Matrice priorità', 'Livelli di impegno', 'Integrazioni', 'Fatture in Cloud', 'Google Drive', 'Tag')
+    expect($labels)->toContain('Dashboard', 'Assessment', 'Aziende', 'Asset', 'Impostazioni')
+        ->and($labels)->not->toContain('Sedi', 'Tipologie asset', 'Generale', 'Report', 'Template', 'Categorie', 'Matrice priorità', 'Livelli di impegno', 'Integrazioni', 'Fatture in Cloud', 'Google Drive', 'Tag')
         ->and($companies)->toBeInstanceOf(NavigationItem::class)
         ->and($companies->getUrl())->toBe(ClientResource::getUrl('index'))
         ->and(collect($companies->getChildItems())->map(
             static fn (NavigationItem $item): string => $item->getLabel(),
-        )->all())->toBe(['Sedi', 'Asset'])
+        )->all())->toBe(['Sedi'])
         ->and($settings)->toBeInstanceOf(NavigationItem::class)
         ->and($settings->getUrl())->toBe(SettingsCluster::getUrl())
-        ->and(AssetCluster::getNavigationParentItem())->toBe(ClientResource::getNavigationLabel());
+        ->and(AssetCluster::getNavigationParentItem())->toBeNull();
 });
 
 it('uses clustered URLs route names and ordered native subnavigation', function (): void {

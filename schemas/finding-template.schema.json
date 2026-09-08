@@ -70,7 +70,7 @@
         "comparison_notes": {"$ref": "#/$defs/nullableLongText"},
         "effort": {"type": ["string", "null"], "enum": ["low", "moderate", "high", "very_high", null]},
         "effort_notes": {"$ref": "#/$defs/nullableLongText"},
-        "estimate_type": {"enum": ["exact", "range", "bundled", "requires_quote", "requires_analysis", "variable", "not_applicable"]},
+        "estimate_type": {"enum": ["exact", "approximate", "range", "bundled", "requires_quote", "requires_analysis", "variable", "not_applicable"]},
         "amount_min": {"type": ["number", "null"], "minimum": 0, "maximum": 999999999.99, "multipleOf": 0.01},
         "amount_max": {"type": ["number", "null"], "minimum": 0, "maximum": 999999999.99, "multipleOf": 0.01},
         "currency_code": {"type": ["string", "null"], "pattern": "^[A-Z]{3}$"},
@@ -82,7 +82,7 @@
       },
       "allOf": [
         {
-          "if": {"properties": {"estimate_type": {"const": "exact"}}},
+          "if": {"properties": {"estimate_type": {"enum": ["exact", "approximate"]}}},
           "then": {"properties": {"amount_min": {"type": "number"}, "amount_max": {"type": "null"}, "currency_code": {"type": "string", "pattern": "^[A-Z]{3}$"}}}
         },
         {

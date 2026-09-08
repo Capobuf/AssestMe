@@ -135,7 +135,7 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 return Array.from(document.querySelectorAll('.assestme-workbench-properties .fi-section'))
                     .map((section) => ({
                         heading: section.querySelector('.fi-section-header-heading')?.textContent.trim(),
-                        expanded: section.querySelector('.fi-section-content-ctn')?.getAttribute('aria-expanded'),
+                        expanded: section.querySelector('.fi-section-collapse-btn')?.getAttribute('aria-expanded'),
                     }));
                 JS)[0];
             Assert::assertSame(
@@ -170,7 +170,7 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                     resolutionBottom: resolutionRect.bottom,
                     bodyTop: bodyRect.top,
                     bodyBottom: bodyRect.bottom,
-                    resolutionExpanded: resolution.querySelector('.fi-section-content-ctn').getAttribute('aria-expanded'),
+                    resolutionExpanded: resolution.querySelector('.fi-section-collapse-btn').getAttribute('aria-expanded'),
                 };
                 JS)[0];
             Assert::assertGreaterThan($propertiesScroll['clientHeight'], $propertiesScroll['scrollHeight']);
@@ -333,29 +333,44 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 const field = document.querySelector('[data-dusk="finding-estimate-type"]');
                 editor.scrollTop += field.getBoundingClientRect().top - editor.getBoundingClientRect().top - 120;
 
-                return editor.scrollTop;
+                return {
+                    maximum: editor.scrollHeight - editor.clientHeight,
+                    position: editor.scrollTop,
+                };
                 JS)[0];
-            Assert::assertGreaterThan(0, $desktopBefore);
+            Assert::assertGreaterThan(0, $desktopBefore['position']);
 
             $browser->select('[data-dusk="finding-estimate-type"] select', EstimateType::Exact->value)
                 ->waitUntil(<<<'JS'
                     return document.querySelector('[data-dusk="finding-estimate-type"] select')?.value === 'exact'
-                        && Array.from(document.querySelectorAll('label')).some((label) => label.textContent.includes('Importo minimo'));
+                        && Array.from(document.querySelectorAll('label')).some((label) => label.textContent.includes('Importo'));
                     JS)
                 ->pause(250);
-            $desktopAfter = $browser->script(
-                "return document.querySelector('[data-assestme-workbench-editor]').scrollTop",
-            )[0];
-            Assert::assertEqualsWithDelta($desktopBefore, $desktopAfter, 2);
+            $desktopAfter = $browser->script(<<<'JS'
+                const editor = document.querySelector('[data-assestme-workbench-editor]');
+
+                return {
+                    maximum: editor.scrollHeight - editor.clientHeight,
+                    position: editor.scrollTop,
+                };
+                JS)[0];
+            Assert::assertEqualsWithDelta(
+                min($desktopBefore['position'], $desktopAfter['maximum']),
+                $desktopAfter['position'],
+                10,
+            );
 
             self::resizeViewport($browser, 1024, 800);
             $narrowBefore = $browser->script(<<<'JS'
                 const field = document.querySelector('[data-dusk="finding-estimate-type"]');
                 window.scrollTo(0, field.getBoundingClientRect().top + window.scrollY - 120);
 
-                return window.scrollY;
+                return {
+                    maximum: Math.max(0, document.documentElement.scrollHeight - window.innerHeight),
+                    position: window.scrollY,
+                };
                 JS)[0];
-            Assert::assertGreaterThan(0, $narrowBefore);
+            Assert::assertGreaterThan(0, $narrowBefore['position']);
 
             $browser->select('[data-dusk="finding-estimate-type"] select', EstimateType::Range->value)
                 ->waitUntil(<<<'JS'
@@ -363,10 +378,17 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                         && Array.from(document.querySelectorAll('label')).some((label) => label.textContent.includes('Importo massimo'));
                     JS)
                 ->pause(250);
-            $narrowAfter = $browser->script(
-                'return window.scrollY',
-            )[0];
-            Assert::assertEqualsWithDelta($narrowBefore, $narrowAfter, 2);
+            $narrowAfter = $browser->script(<<<'JS'
+                return {
+                    maximum: Math.max(0, document.documentElement.scrollHeight - window.innerHeight),
+                    position: window.scrollY,
+                };
+                JS)[0];
+            Assert::assertEqualsWithDelta(
+                min($narrowBefore['position'], $narrowAfter['maximum']),
+                $narrowAfter['position'],
+                2,
+            );
 
             self::assertNoSevereBrowserLogs($browser, 'Reactive Finding fields produced severe console errors.');
         });

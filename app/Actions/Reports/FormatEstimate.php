@@ -42,7 +42,8 @@ final class FormatEstimate
         int $currencyDecimals,
     ): string {
         return match ($estimateType) {
-            EstimateType::Exact => $this->exact(
+            EstimateType::Exact, EstimateType::Approximate => $this->singleAmount(
+                $estimateType,
                 $amountMin,
                 $currencyCode,
                 $billingFrequency,
@@ -71,7 +72,8 @@ final class FormatEstimate
         };
     }
 
-    private function exact(
+    private function singleAmount(
+        EstimateType $estimateType,
         ?string $amountMin,
         ?string $currencyCode,
         BillingFrequency $billingFrequency,
@@ -82,10 +84,10 @@ final class FormatEstimate
         int $currencyDecimals,
     ): string {
         if ($amountMin === null) {
-            throw new \LogicException('An exact estimate requires a minimum amount.');
+            throw new \LogicException('A single-amount estimate requires an amount.');
         }
 
-        return __('assestme.reports.estimates.exact', [
+        return __('assestme.reports.estimates.'.$estimateType->value, [
             'amount' => $this->money(
                 $amountMin,
                 $currencyCode,

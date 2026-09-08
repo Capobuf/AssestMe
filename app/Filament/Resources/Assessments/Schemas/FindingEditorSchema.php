@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Assessments\Schemas;
 
+use App\Actions\Assets\SaveAsset;
+use App\Actions\AssetTypes\SaveAssetType;
+use App\Actions\Categories\SaveCategory;
 use App\Enums\BillingFrequency;
 use App\Enums\EstimateType;
 use App\Enums\FindingStatus;
 use App\Enums\ScopeType;
 use App\Filament\Resources\Assessments\Pages\WorkspaceAssessment;
 use App\Models\Asset;
+use App\Models\AssetType;
 use App\Models\Category;
 use App\Models\EffortLevel;
 use App\Models\Finding;
@@ -109,17 +113,16 @@ final class FindingEditorSchema
                                     ->live()
                                     ->required(),
                                 TextInput::make('amount_min')
-                                    ->label(__('assestme.templates.fields.amount_min'))
+                                    ->label(fn (Get $get): string => $get('estimate_type') === EstimateType::Range->value
+                                        ? __('assestme.templates.fields.amount_min')
+                                        : __('assestme.templates.fields.amount'))
                                     ->numeric()
-                                    ->visible(fn (Get $get): bool => in_array($get('estimate_type'), [EstimateType::Exact->value, EstimateType::Range->value], true)),
+                                    ->visible(fn (Get $get): bool => self::isMonetaryEstimate($get('estimate_type'))),
                                 TextInput::make('amount_max')
                                     ->label(__('assestme.templates.fields.amount_max'))
                                     ->numeric()
                                     ->visible(fn (Get $get): bool => $get('estimate_type') === EstimateType::Range->value),
-                                TextInput::make('currency_code')
-                                    ->label(__('assestme.templates.fields.currency'))
-                                    ->maxLength(3)
-                                    ->visible(fn (Get $get): bool => in_array($get('estimate_type'), [EstimateType::Exact->value, EstimateType::Range->value], true)),
+                                Hidden::make('currency_code'),
                                 Select::make('billing_frequency')
                                     ->label(__('assestme.templates.fields.billing_frequency'))
                                     ->options([
@@ -263,6 +266,28 @@ final class FindingEditorSchema
                             ->options(fn (): array => Category::query()->where('is_enabled', true)->orderBy('sort_order')->pluck('name', 'id')->all())
                             ->searchable()
                             ->preload()
+                            ->markAsRequired()
+                            ->createOptionForm([
+                                TextInput::make('name')
+                                    ->label(__('assestme.common.name'))
+                                    ->required()
+                                    ->maxLength(255),
+                            ])
+                            ->createOptionUsing(function (array $data): int {
+                                $category = app(SaveCategory::class)->handle(null, [
+                                    'name' => $data['name'] ?? null,
+                                    'sort_order' => ((int) Category::query()->max('sort_order')) + 1,
+                                    'is_enabled' => true,
+                                ]);
+
+                                return (int) $category->getKey();
+                            })
+                            ->createOptionAction(fn (Action $action): Action => $action
+                                ->label(__('assestme.categories.quick_create.action')))
+                            ->createOptionModalHeading(__('assestme.categories.quick_create.heading'))
+                            ->afterStateUpdated(function (WorkspaceAssessment $livewire): void {
+                                $livewire->updatedFindingData();
+                            })
                             ->disabled(self::isReadOnly(...)),
                     ]),
                 Section::make(__('assestme.workspace.properties.scope'))
@@ -298,6 +323,66 @@ final class FindingEditorSchema
                             )->all())
                             ->multiple()
                             ->searchable()
+                            ->preload()
+                            ->createOptionForm(fn (WorkspaceAssessment $livewire): array => [
+                                TextInput::make('name')
+                                    ->label(__('assestme.assets.fields.name'))
+                                    ->required()
+                                    ->maxLength(255),
+                                Select::make('asset_type_id')
+                                    ->label(__('assestme.assets.fields.asset_type'))
+                                    ->options(fn (): array => AssetType::query()
+                                        ->where('is_enabled', true)
+                                        ->orderBy('sort_order')
+                                        ->pluck('name', 'id')
+                                        ->all())
+                                    ->searchable()
+                                    ->preload()
+                                    ->createOptionForm([
+                                        TextInput::make('name')
+                                            ->label(__('assestme.asset_types.fields.name'))
+                                            ->required()
+                                            ->maxLength(120),
+                                    ])
+                                    ->createOptionUsing(function (array $data): int {
+                                        $assetType = app(SaveAssetType::class)->handle(null, [
+                                            'name' => $data['name'] ?? null,
+                                            'sort_order' => ((int) AssetType::query()->max('sort_order')) + 1,
+                                            'is_enabled' => true,
+                                        ]);
+
+                                        return (int) $assetType->getKey();
+                                    })
+                                    ->createOptionAction(fn (Action $action): Action => $action
+                                        ->label(__('assestme.asset_types.quick_create.action')))
+                                    ->createOptionModalHeading(__('assestme.asset_types.quick_create.heading'))
+                                    ->required(),
+                                Select::make('site_id')
+                                    ->label(__('assestme.assets.fields.site'))
+                                    ->options(fn (): array => $livewire->assessmentRecord()->client->sites()
+                                        ->orderBy('name')
+                                        ->pluck('name', 'id')
+                                        ->all())
+                                    ->searchable()
+                                    ->preload(),
+                            ])
+                            ->createOptionUsing(function (array $data, WorkspaceAssessment $livewire): int {
+                                $asset = app(SaveAsset::class)->handle(null, [
+                                    'client_id' => (int) $livewire->assessmentRecord()->client_id,
+                                ] + $data);
+
+                                return (int) $asset->getKey();
+                            })
+                            ->createOptionAction(fn (Action $action): Action => $action
+                                ->label(__('assestme.assets.quick_create.action'))
+                                ->extraModalFooterActions([
+                                    $action->makeModalSubmitAction('createAnother', arguments: ['another' => true])
+                                        ->label(__('assestme.assets.quick_create.save_and_new')),
+                                ]))
+                            ->createOptionModalHeading(__('assestme.assets.quick_create.heading'))
+                            ->afterStateUpdated(function (WorkspaceAssessment $livewire): void {
+                                $livewire->updatedFindingData();
+                            })
                             ->visible(fn (Get $get): bool => $get('scope_type') === ScopeType::SelectedAssets->value)
                             ->disabled(self::isReadOnly(...)),
                     ]),
@@ -392,6 +477,11 @@ final class FindingEditorSchema
     private static function isReadOnly(WorkspaceAssessment $livewire): bool
     {
         return $livewire->isWorkspaceReadOnly() || $livewire->saveStatus === WorkspaceAssessment::STATUS_CONFLICT;
+    }
+
+    private static function isMonetaryEstimate(mixed $estimateType): bool
+    {
+        return EstimateType::tryFrom((string) $estimateType)?->isMonetary() ?? false;
     }
 
     private static function remaining(?string $state, int $limit): string

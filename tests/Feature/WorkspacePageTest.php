@@ -11,9 +11,13 @@ use App\Filament\Resources\Assessments\Pages\CreateAssessment;
 use App\Filament\Resources\Assessments\Pages\ListAssessments;
 use App\Filament\Resources\Assessments\Pages\WorkspaceAssessment;
 use App\Models\Assessment;
+use App\Models\Asset;
+use App\Models\AssetType;
+use App\Models\Category;
 use App\Models\Client;
 use App\Models\Finding;
 use App\Models\FindingTemplate;
+use App\Models\Site;
 use App\Models\User;
 use App\Models\WorkspaceSaveRequest;
 use Database\Seeders\DatabaseSeeder;
@@ -21,6 +25,7 @@ use Database\Seeders\MilestoneOneSeeder;
 use Database\Seeders\MilestoneTwoSeeder;
 use Filament\Actions\Testing\TestAction;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -152,6 +157,165 @@ it('mounts the structured findings table workspace with fifty related findings',
         ->assertSee('Dettagli assessment')
         ->assertDontSee('Anteprima riepilogo')
         ->assertSee('File Generati');
+});
+
+it('creates and selects an asset for the assessment company from the finding', function (): void {
+    $administrator = User::factory()->create();
+    $client = Client::factory()->create();
+    $assessment = Assessment::factory()->for($client)->create();
+    $finding = Finding::factory()->for($assessment)->create([
+        'scope_type' => ScopeType::SelectedAssets,
+        'sort_order' => 1,
+    ]);
+    $assetType = AssetType::query()->where('is_enabled', true)->firstOrFail();
+    $this->actingAs($administrator);
+
+    $component = Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->assertFormComponentActionExists('asset_ids', 'createOption', 'findingProperties')
+        ->callFormComponentAction('asset_ids', 'createOption', [
+            'name' => 'Firewall reception',
+            'asset_type_id' => $assetType->id,
+            'site_id' => null,
+        ], [], 'findingProperties')
+        ->assertHasNoFormComponentActionErrors();
+
+    $asset = Asset::query()->where('name', 'Firewall reception')->sole();
+
+    $component
+        ->assertSet('findingData.asset_ids', [$asset->id])
+        ->assertSet('findingSaveStatus', WorkspaceAssessment::STATUS_UNSAVED)
+        ->call('saveFinding')
+        ->assertHasNoErrors();
+
+    expect($asset->client_id)->toBe($client->id)
+        ->and($finding->fresh()->assets()->pluck('assets.id')->all())->toBe([$asset->id]);
+});
+
+it('creates and selects an asset type from the finding quick asset form', function (): void {
+    $administrator = User::factory()->create();
+    $client = Client::factory()->create();
+    $assessment = Assessment::factory()->for($client)->create();
+    $finding = Finding::factory()->for($assessment)->create([
+        'scope_type' => ScopeType::SelectedAssets,
+        'sort_order' => 1,
+    ]);
+    $lastSortOrder = (int) AssetType::query()->max('sort_order');
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->callAction([
+            TestAction::make('createOption')->schemaComponent('asset_ids', 'findingProperties'),
+            TestAction::make('createOption')->schemaComponent('asset_type_id'),
+        ], ['name' => 'Appliance speciale'])
+        ->assertHasNoActionErrors();
+
+    $assetType = AssetType::query()->where('name', 'Appliance speciale')->sole();
+
+    expect($assetType->slug)->toBe('appliance-speciale')
+        ->and($assetType->sort_order)->toBe($lastSortOrder + 1)
+        ->and($assetType->is_enabled)->toBeTrue();
+});
+
+it('rejects an unnamed asset type from the finding quick asset form', function (): void {
+    $administrator = User::factory()->create();
+    $client = Client::factory()->create();
+    $assessment = Assessment::factory()->for($client)->create();
+    $finding = Finding::factory()->for($assessment)->create([
+        'scope_type' => ScopeType::SelectedAssets,
+        'sort_order' => 1,
+    ]);
+    $assetTypeCount = AssetType::query()->count();
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->callAction([
+            TestAction::make('createOption')->schemaComponent('asset_ids', 'findingProperties'),
+            TestAction::make('createOption')->schemaComponent('asset_type_id'),
+        ], ['name' => ''])
+        ->assertHasActionErrors(['name']);
+
+    expect(AssetType::query()->count())->toBe($assetTypeCount);
+});
+
+it('rejects a foreign company site when creating an asset from the finding', function (): void {
+    $administrator = User::factory()->create();
+    $client = Client::factory()->create();
+    $assessment = Assessment::factory()->for($client)->create();
+    $finding = Finding::factory()->for($assessment)->create([
+        'scope_type' => ScopeType::SelectedAssets,
+        'sort_order' => 1,
+    ]);
+    $foreignSite = Site::factory()->create();
+    $assetType = AssetType::query()->where('is_enabled', true)->firstOrFail();
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->callFormComponentAction('asset_ids', 'createOption', [
+            'name' => 'Asset non valido',
+            'asset_type_id' => $assetType->id,
+            'site_id' => $foreignSite->id,
+        ], [], 'findingProperties')
+        ->assertHasFormComponentActionErrors(['site_id']);
+
+    expect(Asset::query()->where('name', 'Asset non valido')->exists())->toBeFalse();
+});
+
+it('marks category as required for completion and creates it from the finding', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create([
+        'category_id' => null,
+        'sort_order' => 1,
+    ]);
+    $lastSortOrder = (int) Category::query()->max('sort_order');
+    $this->actingAs($administrator);
+
+    $component = Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->assertFormComponentActionExists('category_id', 'createOption', 'findingProperties')
+        ->callFormComponentAction('category_id', 'createOption', [
+            'name' => 'Sicurezza fisica',
+        ], [], 'findingProperties')
+        ->assertHasNoFormComponentActionErrors();
+
+    $category = Category::query()->where('name', 'Sicurezza fisica')->sole();
+    $categoryField = $component->instance()->getSchema('findingProperties')?->getComponent(
+        static fn (mixed $field): bool => $field instanceof Select && $field->getName() === 'category_id',
+    );
+
+    expect($categoryField)->toBeInstanceOf(Select::class)
+        ->and($categoryField?->isMarkedAsRequired())->toBeTrue()
+        ->and($categoryField?->isRequired())->toBeFalse()
+        ->and($category->slug)->toBe('sicurezza-fisica')
+        ->and($category->sort_order)->toBe($lastSortOrder + 1)
+        ->and($category->is_enabled)->toBeTrue();
+
+    $component
+        ->assertSet('findingData.category_id', $category->id)
+        ->assertSet('findingSaveStatus', WorkspaceAssessment::STATUS_UNSAVED)
+        ->call('saveFinding')
+        ->assertHasNoErrors();
+
+    expect($finding->fresh()->category_id)->toBe($category->id);
+});
+
+it('rejects an unnamed category from the finding', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $categoryCount = Category::query()->count();
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->callFormComponentAction('category_id', 'createOption', ['name' => ''], [], 'findingProperties')
+        ->assertHasFormComponentActionErrors(['name']);
+
+    expect(Category::query()->count())->toBe($categoryCount);
 });
 
 it('keeps assessment metadata on its separate signed persistence path', function (): void {
@@ -560,7 +724,9 @@ it('shows template learning actions only for the applicable lineage and draft st
     Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
         ->assertTableActionVisible('save_as_template', $manual)
         ->assertTableActionHidden('save_as_new_template', $manual)
-        ->assertTableActionHidden('update_source_template', $manual)
+        ->assertTableActionHidden('update_source_template', $manual);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
         ->assertTableActionHidden('save_as_template', $linked)
         ->assertTableActionVisible('save_as_new_template', $linked)
         ->assertTableActionVisible('update_source_template', $linked);

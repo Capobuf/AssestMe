@@ -8,10 +8,12 @@ use App\Actions\Assessments\CopyTemplateToAssessment;
 use App\Actions\Templates\ExportFindingTemplates;
 use App\Actions\Templates\ImportFindingTemplates;
 use App\Enums\AssessmentStatus;
+use App\Enums\EstimateType;
 use App\Enums\ScopeType;
 use App\Models\Assessment;
 use App\Models\FindingTemplate;
 use App\Models\FindingTemplateSolution;
+use App\Settings\GeneralSettings;
 use Database\Seeders\MilestoneOneSeeder;
 use Illuminate\Validation\ValidationException;
 
@@ -57,6 +59,35 @@ it('keeps assets optional for a finding copied from an imported selected asset t
         ->and(app(AssessFindingCompleteness::class)($finding))->toBe([])
         ->and($incompleteIds)->toBe([])
         ->and($completed->status)->toBe(AssessmentStatus::Completed);
+});
+
+it('imports and exports approximate estimates with the configured global currency', function (): void {
+    $settings = app(GeneralSettings::class);
+    $settings->currency = 'CHF';
+    $settings->save();
+    $payload = json_decode(
+        (string) file_get_contents(base_path('fixtures/imports/valid-all-branches.json')),
+        true,
+        flags: JSON_THROW_ON_ERROR,
+    );
+    $payload['schema_version'] = 2;
+    $payload['templates'] = [$payload['templates'][0]];
+    $payload['templates'][0]['solutions'][0]['estimate_type'] = EstimateType::Approximate->value;
+    $payload['templates'][0]['solutions'][0]['amount_min'] = 180;
+    $payload['templates'][0]['solutions'][0]['amount_max'] = null;
+    $payload['templates'][0]['solutions'][0]['currency_code'] = 'USD';
+
+    app(ImportFindingTemplates::class)(json_encode($payload, JSON_THROW_ON_ERROR), 'replace');
+
+    $solution = FindingTemplateSolution::query()
+        ->where('external_id', $payload['templates'][0]['solutions'][0]['external_id'])
+        ->sole();
+    $export = json_decode(app(ExportFindingTemplates::class)(), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($solution->estimate_type)->toBe(EstimateType::Approximate)
+        ->and($solution->currency_code)->toBe('CHF')
+        ->and($export['templates'][0]['solutions'][0]['estimate_type'])->toBe(EstimateType::Approximate->value)
+        ->and($export['templates'][0]['solutions'][0]['currency_code'])->toBe('CHF');
 });
 
 it('previews conflicts and skips existing templates without changing them', function (): void {

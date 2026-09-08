@@ -42,6 +42,9 @@ The `selected_assets` scope may be saved, completed, and reported without an ass
 - A Finding has one or more bounded remediation solutions.
 - Exactly one may be recommended where required by the report contract.
 - A resolved Finding records one implemented solution.
+- Monetary estimate types are exact single amount, approximate single amount (`Stima`), and range.
+- Monetary solutions use the single ISO currency configured in report settings; solution editors do
+  not expose a per-solution currency override. Fresh installations default to EUR.
 - Referenced solutions cannot be deleted until references are reassigned.
 - Template solutions copied into Findings become detached snapshots.
 - Economic values are indicative and exclude VAT.

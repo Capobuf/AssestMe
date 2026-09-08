@@ -25,6 +25,7 @@ use App\Models\PriorityLevel;
 use App\Models\WorkspaceSaveRequest;
 use App\Services\Reporting\EditorialLimits;
 use App\Services\Risk\ActiveRiskProfileResolver;
+use App\Settings\GeneralSettings;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
@@ -41,6 +42,7 @@ final class SaveFindingDetails
         private readonly IncrementAssessmentVersion $incrementAssessmentVersion,
         private readonly PrepareEvidenceFiles $prepareEvidenceFiles,
         private readonly ActiveRiskProfileResolver $activeRiskProfileResolver,
+        private readonly GeneralSettings $generalSettings,
     ) {}
 
     /**
@@ -147,6 +149,7 @@ final class SaveFindingDetails
      */
     private function validatePayload(array $data): array
     {
+        $data = $this->withConfiguredCurrency($data);
         $solutionCount = count(is_array($data['solutions'] ?? null) ? $data['solutions'] : []);
         $limits = EditorialLimits::forSolutionCount($solutionCount);
 
@@ -450,7 +453,7 @@ final class SaveFindingDetails
             $type = $solution['estimate_type'] instanceof EstimateType
                 ? $solution['estimate_type']->value
                 : (string) $solution['estimate_type'];
-            $monetary = in_array($type, [EstimateType::Exact->value, EstimateType::Range->value], true);
+            $monetary = EstimateType::from($type)->isMonetary();
             if ($monetary && (($solution['amount_min'] ?? null) === null || ($solution['currency_code'] ?? null) === null)) {
                 throw ValidationException::withMessages(["solutions.{$index}.amount_min" => __('assestme.templates.errors.monetary_amount')]);
             }
@@ -460,7 +463,8 @@ final class SaveFindingDetails
             if ($type === EstimateType::Range->value && (float) $solution['amount_min'] > (float) ($solution['amount_max'] ?? -1)) {
                 throw ValidationException::withMessages(["solutions.{$index}.amount_max" => __('assestme.templates.errors.invalid_range')]);
             }
-            if ($type === EstimateType::Exact->value && ($solution['amount_max'] ?? null) !== null) {
+            if (in_array($type, [EstimateType::Exact->value, EstimateType::Approximate->value], true)
+                && ($solution['amount_max'] ?? null) !== null) {
                 throw ValidationException::withMessages(["solutions.{$index}.amount_max" => __('assestme.templates.errors.exact_max')]);
             }
             $billing = $solution['billing_frequency'] instanceof BillingFrequency
@@ -474,5 +478,32 @@ final class SaveFindingDetails
         if ($solutions !== [] && ($recommendedCount !== 1 || $implementedCount > 1)) {
             throw ValidationException::withMessages(['solutions' => __('assestme.findings.errors.solution_selection')]);
         }
+    }
+
+    /** @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function withConfiguredCurrency(array $data): array
+    {
+        if (! is_array($data['solutions'] ?? null)) {
+            return $data;
+        }
+
+        $currency = mb_strtoupper($this->generalSettings->currency);
+        $data['solutions'] = array_map(static function (mixed $solution) use ($currency): mixed {
+            if (! is_array($solution)) {
+                return $solution;
+            }
+
+            $estimateType = $solution['estimate_type'] ?? null;
+            $type = $estimateType instanceof EstimateType
+                ? $estimateType
+                : (is_string($estimateType) ? EstimateType::tryFrom($estimateType) : null);
+            $solution['currency_code'] = $type?->isMonetary() === true ? $currency : null;
+
+            return $solution;
+        }, $data['solutions']);
+
+        return $data;
     }
 }

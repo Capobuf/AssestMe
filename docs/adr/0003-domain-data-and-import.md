@@ -27,6 +27,7 @@ Defines stable domain identities, risk ownership, scope validation, import seman
 | D-049 | APPROVED | Risk profile and level technical codes are generated on creation and immutable after first save; existing level identity is preserved and the sixteen entries are edited through a deterministic 4×4 consequence-by-likelihood matrix |
 | D-053 | APPROVED | Risk-matrix editing uses an application-owned custom Filament Field with one independent select in each semantic 4×4 table cell; nested Livewire state is keyed by persisted level IDs, `risk_matrix_entries` remains authoritative, and no plugin, Node.js pipeline, or runtime dependency is added |
 | D-063 | APPROVED | Fresh AssestMe installations support SQLite, MySQL, and MariaDB through portable Laravel migrations; no data conversion or migration between database drivers is provided |
+| D-074 | APPROVED | Solution estimates support exact single amount, approximate single amount, range, and the existing non-monetary states; monetary Finding and template solutions always snapshot the global ISO currency configured in report settings, defaulting to EUR on fresh installations, with no per-solution currency override in the editors |
 
 ## Consequences
 

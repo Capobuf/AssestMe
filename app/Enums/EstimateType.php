@@ -7,6 +7,7 @@ namespace App\Enums;
 enum EstimateType: string
 {
     case Exact = 'exact';
+    case Approximate = 'approximate';
     case Range = 'range';
     case Bundled = 'bundled';
     case RequiresQuote = 'requires_quote';
@@ -19,6 +20,7 @@ enum EstimateType: string
     {
         return [
             self::Exact->value => __('assestme.findings.estimate_type.exact'),
+            self::Approximate->value => __('assestme.findings.estimate_type.approximate'),
             self::Range->value => __('assestme.findings.estimate_type.range'),
             self::Bundled->value => __('assestme.findings.estimate_type.bundled'),
             self::RequiresQuote->value => __('assestme.findings.estimate_type.requires_quote'),
@@ -26,5 +28,10 @@ enum EstimateType: string
             self::Variable->value => __('assestme.findings.estimate_type.variable'),
             self::NotApplicable->value => __('assestme.findings.estimate_type.not_applicable'),
         ];
+    }
+
+    public function isMonetary(): bool
+    {
+        return in_array($this, [self::Exact, self::Approximate, self::Range], true);
     }
 }

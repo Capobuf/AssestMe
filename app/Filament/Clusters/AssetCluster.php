@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Filament\Clusters;
 
-use App\Filament\Resources\Clients\ClientResource;
 use BackedEnum;
 use Filament\Clusters\Cluster;
 use Filament\Pages\Enums\SubNavigationPosition;
@@ -24,11 +23,6 @@ final class AssetCluster extends Cluster
     public static function getClusterBreadcrumb(): string
     {
         return __('assestme.assets.navigation');
-    }
-
-    public static function getNavigationParentItem(): string
-    {
-        return ClientResource::getNavigationLabel();
     }
 
     public static function getSubNavigationPosition(): SubNavigationPosition

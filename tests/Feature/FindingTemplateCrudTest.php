@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use App\Actions\Templates\SaveFindingTemplate;
+use App\Enums\EstimateType;
 use App\Filament\Resources\FindingTemplates\FindingTemplateResource;
 use App\Filament\Resources\FindingTemplates\Pages\CreateFindingTemplate;
 use App\Models\Category;
 use App\Models\FindingTemplate;
 use App\Models\FindingTemplateSolution;
 use App\Models\User;
+use App\Settings\GeneralSettings;
 use Database\Seeders\MilestoneOneSeeder;
 use Filament\Forms\Components\Repeater;
 use Illuminate\Validation\ValidationException;
@@ -33,6 +35,21 @@ it('returns authoritative ordered solution identifiers without changing the exis
     expect($saved->template)->toBeInstanceOf(FindingTemplate::class)
         ->and($saved->solutionExternalIds)->toBe(['soluzione-raccomandata'])
         ->and($saved->template->solutions()->pluck('external_id')->all())->toBe($saved->solutionExternalIds);
+});
+
+it('stores approximate template estimates with the configured global currency', function (): void {
+    $settings = app(GeneralSettings::class);
+    $settings->currency = 'CHF';
+    $settings->save();
+    $data = findingTemplateData();
+    $data['solutions'][0]['estimate_type'] = 'approximate';
+    $data['solutions'][0]['currency_code'] = 'JPY';
+
+    $template = app(SaveFindingTemplate::class)->handle(null, $data);
+    $solution = $template->solutions()->sole();
+
+    expect($solution->estimate_type)->toBe(EstimateType::Approximate)
+        ->and($solution->currency_code)->toBe('CHF');
 });
 
 it('generates collision-safe stable external identifiers and rejects later mutations', function (): void {

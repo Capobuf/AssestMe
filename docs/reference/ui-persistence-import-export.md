@@ -4,7 +4,8 @@
 
 Filament 5 native clusters and parent items define the hierarchy:
 
-- `Aziende` groups companies, sites, assets, and asset types;
+- `Aziende` groups companies and sites;
+- `Asset` is a primary menu item and groups assets with asset types;
 - `Impostazioni` groups general, report, risk/effort, templates, and backup-related pages;
 - nested `Integrazioni` groups the optional Fatture in Cloud and Google Drive pages under
   `Impostazioni`, using left-positioned native cluster navigation;
@@ -45,7 +46,11 @@ Responsive behavior has two intentional modes:
 Contextual properties remain reachable on narrow containers. Mobile supports essential vertical editing and evidence capture but does not claim desktop workbench parity.
 The five contextual-property sections beside the selected Finding are collapsible and open by default; users may close them individually when they need a more compact inspector.
 
-Finding asset selection is optional for every scope. Selecting `selected_assets` reveals the asset selector but does not make it required, including for Findings copied from imported templates. Submitting that selector empty is a successful save, not a validation-error state.
+Category is visibly marked as required for completion while incomplete drafts remain saveable. The
+Finding category selector can create and immediately select an enabled category by name through the
+authoritative category save action.
+
+Finding asset selection is optional for every scope. Selecting `selected_assets` reveals the asset selector but does not make it required, including for Findings copied from imported templates. Submitting that selector empty is a successful save, not a validation-error state. An editable Finding can create and immediately select a minimal Asset from this selector; the Asset is always assigned to the Assessment company, offers only that company's sites, and uses the authoritative Asset save validation. The quick Asset form can create and select an enabled Asset type by name through the authoritative Asset-type save action; its generated slug remains unique and the new type is appended to the configured order.
 
 ## Save protocol
 

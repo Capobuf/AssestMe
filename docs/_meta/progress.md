@@ -473,3 +473,31 @@ Record only factual work performed, the exact affected area, commands run, and r
   `WorkspaceResponsiveTest` passed 5 tests with 193 assertions; and the complete CI-equivalent
   browser suite passed 23 tests with 785 assertions. No application, CSS, geometry, teleport, or
   `Nuovo finding` behavior changed.
+- 2026-09-08: Started the requested Asset navigation and Finding quick-create change. Scope is
+  limited to exposing the existing Asset cluster as a primary menu item and allowing an editable
+  Finding to create and select an Asset for its Assessment company through the existing `SaveAsset`
+  contract, with focused navigation and Workspace success/failure coverage.
+- 2026-09-08: Expanded the active Finding quick-create slice at explicit request so the nested Asset
+  form can create and select an enabled Asset type by name through `SaveAssetType`, using its
+  generated unique slug and the next configured sort position.
+- 2026-09-08: Renamed the repeat-submit action in the Finding quick Asset modal from Filament's
+  generic create-another copy to the explicitly requested `Salva & Nuovo` label.
+- 2026-09-08: Moved the existing solutions helper translation from the unrelated `clients` group
+  to its referenced `templates.solutions_help` key, preventing the raw translation key from being
+  rendered below Finding and template solutions.
+- 2026-09-08: Expanded the active slice with the explicitly clarified estimate and category work:
+  add an approximate single-amount `Stima` branch, source monetary solution currency only from the
+  global report setting (EUR on fresh installs), hide per-solution currency inputs, visibly mark
+  Finding category as required for completion, and allow enabled category creation by name inline.
+- 2026-09-08: Completed implementation of the combined navigation, quick-create, translation,
+  estimate, currency, and category slice. Focused success and failure-path tests passed for Asset,
+  nested Asset type, category, approximate estimates, configured-currency persistence and import,
+  plus real PDF/XLSX estimate formatting; the three regressions reported by the complete affected
+  Feature run passed on focused rerun after correction, and PHPStan reported no errors. Complete
+  acceptance remains the final publication gate.
+- 2026-09-08: The requested publication gate passed Pint, PHPStan, 632 application tests with 5,546
+  assertions, and strict Canary 38/38 before stopping at five newly published Composer advisories.
+  Updated the affected packages within the existing major-version constraints to Filament 5.8.1,
+  Livewire 4.4.4, and CommonMark 2.10.1, including Composer-resolved compatible dependencies and
+  Filament-published assets; the locked audit now reports no advisories. The complete acceptance
+  gate must be rerun for this exact updated dependency tree before publication.

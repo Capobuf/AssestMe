@@ -191,3 +191,7 @@ Add only reproducible observations discovered during implementation or verificat
   Actions runner version, Ubuntu image version, PHP 8.3.33, and Laravel 13.19.0. The historical run
   did not emit the SQLite runtime and predates the process-tracing harness; the recorded version
   comparison therefore neither identifies a changed runtime component nor proves a tracing effect.
+- The 2026-09-08 publication gate found five new Composer advisories affecting the locked Filament
+  5.6.8, Livewire 4.3.3, and CommonMark 2.9.2 packages. Compatible updates to Filament 5.8.1,
+  Livewire 4.4.4, and CommonMark 2.10.1 clear the locked dependency audit without changing the
+  declared major-version constraints.
