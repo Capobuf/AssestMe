@@ -81,8 +81,8 @@
     .finding-detail { min-height: 260mm; }
     .finding-heading { border-bottom: .35mm solid var(--ink); break-inside: avoid; margin-bottom: 4mm; padding-bottom: 3mm; }
     .finding-heading__table { border-collapse: collapse; table-layout: fixed; width: 100%; }
-    .finding-heading__number { font-size: 20pt; font-weight: 700; line-height: 1; padding: 0 4mm 0 0; vertical-align: top; width: 17mm; }
-    .finding-heading__content { padding: 0; vertical-align: top; }
+    .finding-heading__number { font-size: 20pt; font-weight: 700; line-height: 1.08; padding: 0 4mm 0 0; vertical-align: baseline; width: 17mm; }
+    .finding-heading__content { padding: 0; vertical-align: baseline; }
     .finding-title { line-height: 1.08; margin: 0; overflow-wrap: anywhere; }
     .finding-title--default { font-size: 21pt; }
     .finding-title--medium { font-size: 18pt; }
@@ -141,13 +141,8 @@
     .risk-axis--horizontal { margin-top: 1mm; text-align: center; }
     .risk-mini-matrix { border-collapse: separate; border-spacing: 1mm; table-layout: fixed; width: auto; }
     .risk-mini-matrix td { border: 0; height: 5mm; padding: 0; text-align: center; vertical-align: middle; width: 5mm; }
-    .risk-dot { border: .25mm solid rgba(0, 0, 0, .18); border-radius: 50%; display: inline-block; height: 3.8mm; position: relative; vertical-align: middle; width: 3.8mm; }
+    .risk-dot { border: .25mm solid rgba(0, 0, 0, .18); border-radius: 50%; display: inline-block; height: 3.8mm; vertical-align: middle; width: 3.8mm; }
     .risk-dot--current { border: .75mm solid var(--ink); height: 5mm; width: 5mm; }
-    .risk-dot__current-mark {
-        background: #FFFFFF; border: .2mm solid var(--ink); border-radius: 50%; display: block;
-        height: 1.3mm; left: 50%; margin: 0; position: absolute; top: 50%;
-        transform: translate(-50%, -50%); width: 1.3mm;
-    }
     .risk-result-compact strong { display: block; font-size: 12pt; line-height: 1.15; }
     .risk-result-compact .priority-marker { float: left; height: 6mm; margin-right: 2mm; }
     .risk-result-compact__factors { color: var(--muted); display: block; font-size: 8pt; margin-top: 1mm; }
@@ -190,7 +185,7 @@
     @page report {
         size: A4 portrait;
         margin: 17mm 16mm 18mm;
-        @top-left { content: {!! json_encode($report->assessmentTitle.' · '.$report->clientName, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE) !!}; color: #666; font: 7.5pt "DejaVu Sans"; }
+        @top-left { content: {!! json_encode($report->clientName, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE) !!}; color: #666; font: 7.5pt "DejaVu Sans"; }
         @top-right { content: none; }
         @bottom-right {
             @if ($report->setting('page_numbers') === true)
@@ -204,7 +199,7 @@
     @page summary {
         size: A4 landscape;
         margin: 15mm 16mm 16mm;
-        @top-left { content: {!! json_encode($report->assessmentTitle.' · '.$report->clientName, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE) !!}; color: #666; font: 7.5pt "DejaVu Sans"; }
+        @top-left { content: {!! json_encode($report->clientName, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE) !!}; color: #666; font: 7.5pt "DejaVu Sans"; }
         @bottom-right {
             @if ($report->setting('page_numbers') === true)
                 content: counter(page);

@@ -145,7 +145,7 @@ final class ReportSettingsPage extends SettingsPage
                                 ->disk('local')
                                 ->directory('branding')
                                 ->visibility('private')
-                                ->acceptedFileTypes(['image/png', 'image/jpeg'])
+                                ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/webp'])
                                 ->maxSize(5120)
                                 ->preventFilePathTampering(),
                             TextInput::make('signature_name')->label(__('assestme.settings.fields.signature_name'))->helperText(__('assestme.settings.help.signature_name'))->live(debounce: 500)->maxLength(255),

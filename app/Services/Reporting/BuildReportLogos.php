@@ -46,7 +46,7 @@ final class BuildReportLogos
             }
 
             $mimeType = $disk->mimeType($path);
-            if (! is_string($mimeType) || ! in_array($mimeType, ['image/png', 'image/jpeg'], true)) {
+            if (! is_string($mimeType) || ! in_array($mimeType, ['image/png', 'image/jpeg', 'image/webp'], true)) {
                 throw ValidationException::withMessages(['report' => __('assestme.reports.errors.logo_invalid')]);
             }
 

@@ -15,6 +15,13 @@
     @include('reports.partials.finding-header', ['continuation' => false])
 
     <div class="finding-body">
+        <section class="finding-section problem-section">
+            <h2 class="finding-section__label finding-section__label--prominent">
+                {{ __('assestme.reports.document.problem') }}
+            </h2>
+            <div class="pre-line">{{ $finding->problem }}</div>
+        </section>
+
         @if (filled($finding->entrepreneurNotes))
             <section class="problem-explanation">
                 <h2 class="finding-section__label finding-section__label--prominent">
@@ -23,13 +30,6 @@
                 <div class="pre-line">{{ $finding->entrepreneurNotes }}</div>
             </section>
         @endif
-
-        <section class="finding-section problem-section">
-            <h2 class="finding-section__label finding-section__label--prominent">
-                {{ __('assestme.reports.document.problem') }}
-            </h2>
-            <div class="pre-line">{{ $finding->problem }}</div>
-        </section>
 
         @foreach ($firstPageSolutions as $solution)
             @include('reports.partials.solution-block', ['solution' => $solution, 'primary' => $loop->first])

@@ -175,8 +175,8 @@ it('serves the shared report view from an authenticated session-bound preview to
     expect($contents)->toStartWith('%PDF-')
         ->and($normalizedText)->toContain(
             'Anteprima non salvata — Azienda Demo S.r.l.',
-            'Quadro generale',
-            'Riepilogo dei finding',
+            'Quadro Generale',
+            'Riepilogo dei Finding',
             'Ripristino dei backup non verificato',
             'Servizio RDP esposto direttamente su Internet',
             'Notifiche del NAS non configurate',
@@ -250,7 +250,7 @@ it('applies disabled visual settings to the transient WeasyPrint preview', funct
 
     expect($contents)->toStartWith('%PDF-')
         ->and($text)->toContain(
-            'Quadro generale',
+            'Quadro Generale',
             'Ripristino dei backup non verificato',
             'Servizio RDP esposto direttamente su Internet',
             'Notifiche del NAS non configurate',
@@ -258,7 +258,7 @@ it('applies disabled visual settings to the transient WeasyPrint preview', funct
         ->and($text)->not->toContain(
             'Anteprima essenziale',
             'Indice dei contenuti',
-            'Riepilogo dei finding',
+            'Riepilogo dei Finding',
             'Legenda priorità',
             'Ambiente dedicato di disaster recovery',
             'Gateway gestito con MFA',

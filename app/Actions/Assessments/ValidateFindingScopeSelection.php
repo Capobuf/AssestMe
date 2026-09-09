@@ -27,10 +27,16 @@ final class ValidateFindingScopeSelection
     /** @throws ValidationException */
     public function __invoke(ScopeType $scope, int $siteCount, ?string $description): void
     {
-        $messages = $this->messages($scope, $siteCount, $description);
+        $errors = [];
+        if ($scope === ScopeType::SelectedSites && $siteCount === 0) {
+            $errors['site_ids'][] = __('assestme.findings.errors.site_scope_required');
+        }
+        if (in_array($scope, [ScopeType::Network, ScopeType::Custom], true) && blank($description)) {
+            $errors['scope_description'][] = __('assestme.findings.errors.scope_description_required');
+        }
 
-        if ($messages !== []) {
-            throw ValidationException::withMessages(['scope' => $messages]);
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
         }
     }
 }

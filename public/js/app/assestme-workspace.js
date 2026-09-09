@@ -464,10 +464,59 @@
             editor?.querySelector('input, textarea')?.focus();
         });
     });
-    window.addEventListener('assestme-finding-validation-failed', () => {
-        cancelScheduledScrollRestore();
-        requestAnimationFrame(() => document.querySelector('.assestme-workbench-form [aria-invalid="true"]')?.focus());
+    const fieldBoundTo = (statePath) => {
+        if (!statePath) {
+            return null;
+        }
+
+        const workspace = document.querySelector('[data-assestme-workspace-context]');
+        const boundElement = Array.from(workspace?.querySelectorAll('*') ?? []).find((element) => (
+            element.getAttributeNames().some((name) => (
+                name.startsWith('wire:model') && element.getAttribute(name) === statePath
+            ))
+        ));
+        if (!boundElement) {
+            return null;
+        }
+
+        const wrapper = boundElement.closest('[data-field-wrapper]');
+        return wrapper?.querySelector(
+            'input:not([type="hidden"]):not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex]:not([tabindex="-1"])',
+        ) ?? boundElement;
+    };
+
+    const revealFirstInvalidField = (statePath, remainingAttempts = 8) => {
+        const invalidField = document.querySelector(
+            '[data-assestme-workspace-context] [aria-invalid="true"]',
+        ) ?? fieldBoundTo(statePath);
+        if (!invalidField) {
+            if (remainingAttempts > 0) {
+                window.setTimeout(() => revealFirstInvalidField(statePath, remainingAttempts - 1), 50);
+            }
+
+            return;
+        }
+
+        const section = invalidField.closest('.fi-section');
+        const collapseButton = section?.querySelector('.fi-section-collapse-btn[aria-expanded="false"]');
+        collapseButton?.click();
+
+        requestAnimationFrame(() => {
+            document.querySelectorAll('.assestme-validation-target').forEach((element) => {
+                element.classList.remove('assestme-validation-target');
+            });
+            const target = invalidField.closest('[data-field-wrapper]') ?? invalidField;
+            target.classList.add('assestme-validation-target');
+            target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+            invalidField.setAttribute('aria-invalid', 'true');
+            invalidField.focus({ preventScroll: true });
+        });
+    };
+
+    window.addEventListener('assestme-validation-visible', (event) => {
+        window.setTimeout(() => revealFirstInvalidField(event.detail?.field), 0);
     });
+
     window.addEventListener('assestme-local-draft-persisted', (event) => {
         const draftEvent = stateFromDraftEvent(event);
         if (!draftEvent) {

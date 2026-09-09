@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Settings\GeneralSettings;
 use App\Settings\ReportSettings;
 use Database\Seeders\MilestoneOneSeeder;
+use Filament\Forms\Components\FileUpload;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -70,6 +71,13 @@ it('mounts the report settings Filament page from migrated values', function ():
         ]);
 
     expect($page->instance()->getMaxContentWidth())->toBe(Width::Full);
+
+    $form = $page->instance()->getSchema('form');
+    $logo = collect($form?->getFlatComponents())
+        ->first(static fn (mixed $component): bool => $component instanceof FileUpload
+            && $component->getName() === 'consultant_logo_path');
+    expect($logo)->toBeInstanceOf(FileUpload::class)
+        ->and($logo?->getAcceptedFileTypes())->toBe(['image/png', 'image/jpeg', 'image/webp']);
 });
 
 it('describes every visible report option and hides obsolete duplicate controls', function (): void {

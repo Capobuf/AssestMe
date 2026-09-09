@@ -162,6 +162,8 @@ final class FindingEditorSchema
                             ->columnSpanFull(),
                     ]),
                 Section::make(__('assestme.workspace.inspector.evidence'))
+                    ->collapsible()
+                    ->collapsed()
                     ->contained(false)
                     ->divided()
                     ->extraAttributes(['class' => 'assestme-workbench-section assestme-workbench-section--evidence'])
@@ -174,7 +176,8 @@ final class FindingEditorSchema
                                 return view('filament.resources.assessments.finding-evidence-list', [
                                     'evidences' => $finding instanceof Finding ? $finding->evidences : collect(),
                                 ]);
-                            }),
+                            })
+                            ->columnSpanFull(),
                         FileUpload::make('evidence_uploads')
                             ->label(__('assestme.workspace.add_evidence_files'))
                             ->disk('local')
@@ -194,18 +197,22 @@ final class FindingEditorSchema
                             ])
                             ->helperText(__('assestme.workspace.evidence_upload_hint'))
                             ->extraInputAttributes(['data-dusk' => 'finding-evidence-upload'])
-                            ->disabled(self::isReadOnly(...)),
+                            ->disabled(self::isReadOnly(...))
+                            ->columnSpanFull(),
                         Hidden::make('evidence_original_names'),
                         TextInput::make('evidence_title')
                             ->label(__('assestme.workspace.evidence_url_title'))
                             ->maxLength(255)
+                            ->extraInputAttributes(['data-dusk' => 'finding-evidence-url-title'])
                             ->disabled(self::isReadOnly(...)),
                         TextInput::make('evidence_url')
                             ->label(__('assestme.workspace.evidence_url'))
                             ->url()
                             ->maxLength(2048)
+                            ->extraInputAttributes(['data-dusk' => 'finding-evidence-url'])
                             ->disabled(self::isReadOnly(...)),
-                    ]),
+                    ])
+                    ->columns(['default' => 1, 'md' => 2]),
                 Section::make(__('assestme.templates.fields.technical_notes'))
                     ->collapsible()
                     ->collapsed()
@@ -307,6 +314,7 @@ final class FindingEditorSchema
                             ->label(__('assestme.assessments.fields.scope_description'))
                             ->rows(3)
                             ->maxLength(20000)
+                            ->extraInputAttributes(['data-dusk' => 'finding-scope-description'])
                             ->disabled(self::isReadOnly(...)),
                         Select::make('site_ids')
                             ->label(__('assestme.assessments.fields.sites'))

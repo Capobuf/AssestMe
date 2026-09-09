@@ -340,11 +340,15 @@ it('keeps invalid assessment state visible after a validation failure', function
     $this->actingAs($administrator);
 
     Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('setWorkspaceTab', 'assessment-details')
         ->set('data.title', '')
         ->call('saveAssessmentDetails')
         ->assertSet('data.title', '')
         ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
-        ->assertHasErrors(['data.assessment.title']);
+        ->assertHasErrors(['data.title'])
+        ->assertSee(__('assestme.workspace.errors.validation_summary'))
+        ->assertSee('Il campo Titolo Assessment è obbligatorio.')
+        ->assertSet('saveErrorField', 'data.title');
 
     expect($assessment->fresh()->title)->not->toBe('');
 });
@@ -477,11 +481,34 @@ it('keeps an invalid contextual scope visible without persisting partial workben
         ->call('saveFinding')
         ->assertSet('findingData.title', 'Modifica non persistita')
         ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
-        ->assertHasErrors(['findingData.scope']);
+        ->assertHasErrors(['findingData.site_ids'])
+        ->assertSee(__('assestme.workspace.errors.validation_summary'))
+        ->assertSee(__('assestme.findings.errors.site_scope_required'))
+        ->assertSet('saveErrorField', 'findingData.site_ids');
 
     $persisted = $finding->fresh();
     expect($persisted->title)->toBe('Finding invariato')
         ->and($persisted->scope_type)->toBe(ScopeType::Organization)
+        ->and($assessment->fresh()->lock_version)->toBe(0);
+});
+
+it('maps an incomplete evidence URL to the visible title field', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->set('findingData.evidence_title', '')
+        ->set('findingData.evidence_url', 'https://example.test/evidenza')
+        ->call('saveFinding')
+        ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
+        ->assertHasErrors(['findingData.evidence_title'])
+        ->assertSee('Il campo Titolo Evidenza URL è obbligatorio.')
+        ->assertSet('saveErrorField', 'findingData.evidence_title');
+
+    expect($finding->evidences()->count())->toBe(0)
         ->and($assessment->fresh()->lock_version)->toBe(0);
 });
 
@@ -525,7 +552,7 @@ it('does not create a blank finding when the current finding fails pre action va
         ->call('createBlankFinding')
         ->assertSet('selectedFindingId', $current->id)
         ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
-        ->assertHasErrors(['findingData.scope']);
+        ->assertHasErrors(['findingData.site_ids']);
 
     expect($assessment->findings()->count())->toBe(1)
         ->and($current->fresh()->title)->toBe('Finding da mantenere')
@@ -552,7 +579,7 @@ it('retains pending evidence when finding validation fails', function (): void {
         ->set('findingData.site_ids', [])
         ->call('saveFinding')
         ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
-        ->assertHasErrors(['findingData.scope']);
+        ->assertHasErrors(['findingData.site_ids']);
 
     Storage::disk('local')->assertExists($pendingPath);
     expect($current->evidences()->count())->toBe(0)
@@ -688,7 +715,7 @@ it('does not complete the assessment when the selected finding pre action save f
         ->set('findingData.site_ids', [])
         ->callAction(TestAction::make('complete'))
         ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
-        ->assertHasErrors(['findingData.scope']);
+        ->assertHasErrors(['findingData.site_ids']);
 
     expect($finding->fresh()->title)->toBe($originalTitle)
         ->and($assessment->fresh()->status->value)->toBe('draft');
@@ -783,7 +810,7 @@ it('cancels template learning when the required pre-action Finding save fails', 
         ->mountTableAction('save_as_template', $finding)
         ->assertActionNotMounted()
         ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
-        ->assertHasErrors(['findingData.scope']);
+        ->assertHasErrors(['findingData.site_ids']);
 
     expect(FindingTemplate::query()->count())->toBe($templateCount)
         ->and($finding->fresh()->source_template_id)->toBeNull()

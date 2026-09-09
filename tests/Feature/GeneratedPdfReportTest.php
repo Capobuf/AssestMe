@@ -184,7 +184,7 @@ it('produces searchable mixed-orientation pages through the real production acti
     $textProcess->mustRun();
     $searchableText = Str::squish($textProcess->getOutput());
     expect($searchableText)
-        ->toContain($finding->title, 'Quadro generale', 'Riepilogo dei finding')
+        ->toContain($finding->title, 'Quadro Generale', 'Riepilogo dei Finding')
         ->and($searchableText)->not->toContain('Pagina 1 di');
 });
 
@@ -402,6 +402,29 @@ it('loads exactly the configured private report logos', function (string $brandi
     'both' => ['both', ['consultant', 'client']],
 ]);
 
+it('renders a WebP consultant logo through the production PDF pipeline', function (): void {
+    [$assessment] = createPdfReadyAssessment();
+    $image = imagecreatetruecolor(8, 8);
+    imagefilledrectangle($image, 0, 0, 7, 7, imagecolorallocate($image, 37, 99, 235));
+    ob_start();
+    imagewebp($image, null, 90);
+    $webp = ob_get_clean();
+    imagedestroy($image);
+
+    expect($webp)->toBeString();
+    Storage::disk('local')->put('logos/consultant.webp', $webp);
+    $settings = app(ReportSettings::class);
+    $settings->branding = 'consultant';
+    $settings->consultant_logo_path = 'logos/consultant.webp';
+    $settings->save();
+
+    $report = app(GenerateAssessmentPdf::class)($assessment->fresh());
+
+    expect($report->payload_snapshot['logos'])->toHaveCount(1)
+        ->and($report->payload_snapshot['logos'][0]['mime_type'])->toBe('image/webp')
+        ->and(file_get_contents(Storage::disk('local')->path($report->file_path), false, null, 0, 5))->toBe('%PDF-');
+});
+
 it('formats every approved estimate branch without repeating the VAT note', function (): void {
     [, $finding] = createPdfReadyAssessment();
     $solution = $finding->solutions()->firstOrFail();
@@ -437,7 +460,7 @@ it('formats every approved estimate branch without repeating the VAT note', func
         EstimateType::Bundled->value => 'Da sommare ad altre attività',
         EstimateType::RequiresQuote->value => 'Richiede preventivo',
         EstimateType::RequiresAnalysis->value => 'Richiede approfondimento',
-        EstimateType::Variable->value => 'Variabile in base alla soluzione',
+        EstimateType::Variable->value => 'Variabile in base alla Soluzione',
         EstimateType::NotApplicable->value => 'Nessun costo diretto previsto',
     ];
     foreach ($expected as $type => $label) {
@@ -617,7 +640,7 @@ it('rejects invalid and oversized report logos before creating a report', functi
         ->toThrow(ValidationException::class, $message)
         ->and(GeneratedReport::query()->count())->toBe(0);
 })->with([
-    'invalid image bytes' => ['not a decodable PNG', 'Il logo configurato non è un file PNG o JPEG valido.'],
+    'invalid image bytes' => ['not a decodable PNG', 'Il logo configurato non è un file PNG, JPEG o WebP valido.'],
     'larger than five megabytes' => [str_repeat('x', 5 * 1024 * 1024 + 1), 'Il logo configurato supera il limite di 5 MB.'],
 ]);
 

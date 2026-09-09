@@ -98,6 +98,8 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
 
     public ?string $saveError = null;
 
+    public ?string $saveErrorField = null;
+
     public ?string $pendingFindingRequestId = null;
 
     public ?string $pendingAssessmentRequestId = null;
@@ -173,6 +175,7 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
             $this->findingSaveStatus = self::STATUS_UNSAVED;
             $this->saveStatus = self::STATUS_UNSAVED;
             $this->saveError = null;
+            $this->saveErrorField = null;
         }
     }
 
@@ -183,6 +186,7 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
             if ($this->activeWorkspaceTab === 'assessment-details') {
                 $this->saveStatus = self::STATUS_UNSAVED;
                 $this->saveError = null;
+                $this->saveErrorField = null;
             }
         }
     }
@@ -245,6 +249,7 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
         $this->findingSaveStatus = self::STATUS_SAVING;
         $this->saveStatus = self::STATUS_SAVING;
         $this->saveError = null;
+        $this->saveErrorField = null;
         $this->resetErrorBag();
 
         $rawState = $this->findingEditorSchema()->getRawState();
@@ -312,12 +317,15 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
             $this->findingSaveStatus = self::STATUS_ERROR;
             $this->saveStatus = self::STATUS_ERROR;
             $this->saveError = __('assestme.workspace.errors.validation');
+            $firstErrorPath = null;
             foreach ($exception->errors() as $key => $messages) {
+                $errorPath = 'findingData.'.$key;
+                $firstErrorPath ??= $errorPath;
                 foreach ($messages as $message) {
-                    $this->addError('findingData.'.$key, $message);
+                    $this->addError($errorPath, $message);
                 }
             }
-            $this->dispatch('assestme-finding-validation-failed');
+            $this->saveErrorField = $firstErrorPath;
         } catch (Throwable $exception) {
             $this->reportSaveFailure($exception);
         }
@@ -607,6 +615,7 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
 
         $this->assessmentSaveStatus = self::STATUS_SAVING;
         $this->saveStatus = self::STATUS_SAVING;
+        $this->saveErrorField = null;
         $rawState = $this->form->getRawState();
         $state = is_array($rawState) ? $rawState : $rawState->toArray();
         $payload = ['assessment' => [
@@ -657,11 +666,18 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
             $this->assessmentSaveStatus = self::STATUS_ERROR;
             $this->saveStatus = self::STATUS_ERROR;
             $this->saveError = __('assestme.workspace.errors.validation');
+            $firstErrorPath = null;
             foreach ($exception->errors() as $key => $messages) {
+                $stateKey = str($key)
+                    ->replaceStart('payload.assessment.', '')
+                    ->replaceStart('assessment.', '');
+                $errorPath = 'data.'.$stateKey;
+                $firstErrorPath ??= $errorPath;
                 foreach ($messages as $message) {
-                    $this->addError('data.'.str($key)->replaceStart('payload.', ''), $message);
+                    $this->addError($errorPath, $message);
                 }
             }
+            $this->saveErrorField = $firstErrorPath;
         } catch (Throwable $exception) {
             $this->reportSaveFailure($exception);
         }
@@ -983,6 +999,7 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
         $this->findingSaveStatus = self::STATUS_SAVED;
         $this->saveStatus = self::STATUS_SAVED;
         $this->saveError = null;
+        $this->saveErrorField = null;
         $this->resetErrorBag();
     }
 

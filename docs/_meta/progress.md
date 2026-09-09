@@ -501,3 +501,19 @@ Record only factual work performed, the exact affected area, commands run, and r
   Livewire 4.4.4, and CommonMark 2.10.1, including Composer-resolved compatible dependencies and
   Filament-published assets; the locked audit now reports no advisories. The complete acceptance
   gate must be rerun for this exact updated dependency tree before publication.
+- 2026-09-09: Started the requested production-report and Finding-workspace correction slice.
+  Scope is limited to the reported PDF copy/order/alignment/risk-marker issues, consultant-logo
+  formats that the normative renderer can decode, clearer field-level save validation with focus
+  and visual emphasis, and the compact default-collapsed Evidence editor layout. The current
+  runtime accepts PNG/JPEG only; the normative Compose runtime confirms WebP support and no AVIF
+  support in WeasyPrint 57.2/Pillow 9.4, so AVIF is not being advertised or accepted.
+- 2026-09-09: Completed the production-report and Finding-workspace correction slice. PDF page
+  chrome now carries only the client name, reported labels and section order are corrected, the
+  risk matrix uses one black-outline marker, and Finding number/title baselines are aligned. Report
+  logos accept content-verified PNG, JPEG, and WebP; a WebP logo passed the real WeasyPrint PDF
+  pipeline. Save failures now expose Italian field-level messages, reveal, focus, and visibly
+  emphasize the first invalid control. Evidence is collapsible and closed initially, with URL title
+  and URL sharing one row where space permits. The final normative `scripts/verify.sh` invocation
+  exited 0: Composer validation/audit, Pint on 512 files, PHPStan on 395 files, 634 application tests
+  with 5,571 assertions, strict Canary 38/38, diagnostics, the 50-Finding PDF/XLSX benchmark,
+  storage audit, and 23 Dusk tests with 799 assertions all passed.

@@ -1160,6 +1160,46 @@
     font-size: 0.75rem;
 }
 
+.assestme-save-feedback {
+    min-width: 0;
+}
+
+.assestme-validation-summary {
+    max-width: 44rem;
+    margin-top: 0.5rem;
+    color: var(--danger-700, #B91C1C);
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+.assestme-validation-summary ul {
+    margin-top: 0.25rem;
+    padding-left: 1rem;
+    list-style: disc;
+}
+
+.dark .assestme-validation-summary {
+    color: var(--danger-300, #FCA5A5);
+}
+
+.assestme-validation-target {
+    border-radius: 0.625rem;
+    outline: 2px solid var(--danger-500, #EF4444);
+    outline-offset: 0.25rem;
+    animation: assestme-validation-glow 1.1s ease-in-out 2;
+}
+
+@keyframes assestme-validation-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgb(239 68 68 / 0%); }
+    50% { box-shadow: 0 0 0 0.45rem rgb(239 68 68 / 24%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .assestme-validation-target {
+        animation: none;
+    }
+}
+
 .assestme-workbench-footer__draft-note {
     max-width: 44rem;
     margin-top: 0.25rem;

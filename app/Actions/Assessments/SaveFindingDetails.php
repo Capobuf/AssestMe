@@ -260,9 +260,15 @@ final class SaveFindingDetails
             return;
         }
 
-        Validator::make($request->evidenceUrl->normalizedPayload(), [
-            'title' => ['required', 'string', 'max:255'],
-            'url' => ['required', 'url:http,https', 'max:2048'],
+        Validator::make([
+            'evidence_title' => $request->evidenceUrl->title,
+            'evidence_url' => $request->evidenceUrl->url,
+            'caption' => $request->evidenceUrl->caption,
+            'internal_notes' => $request->evidenceUrl->internalNotes,
+            'include_in_report' => $request->evidenceUrl->includeInReport,
+        ], [
+            'evidence_title' => ['required', 'string', 'max:255'],
+            'evidence_url' => ['required', 'url:http,https', 'max:2048'],
             'caption' => ['nullable', 'string', 'max:20000'],
             'internal_notes' => ['nullable', 'string', 'max:20000'],
             'include_in_report' => ['required', 'boolean'],
@@ -270,7 +276,7 @@ final class SaveFindingDetails
 
         $parts = parse_url($request->evidenceUrl->url);
         if ($parts === false || isset($parts['user']) || isset($parts['pass'])) {
-            throw ValidationException::withMessages(['evidence.url' => __('assestme.evidence.errors.url_credentials')]);
+            throw ValidationException::withMessages(['evidence_url' => __('assestme.evidence.errors.url_credentials')]);
         }
     }
 
@@ -398,9 +404,11 @@ final class SaveFindingDetails
     {
         $siteIds = $validated['site_ids'] ?? [];
         $assetIds = $validated['asset_ids'] ?? [];
-        if ($finding->assessment->client->sites()->whereIn('id', $siteIds)->count() !== count($siteIds)
-            || $finding->assessment->client->assets()->whereIn('id', $assetIds)->count() !== count($assetIds)) {
-            throw ValidationException::withMessages(['scope' => __('assestme.findings.errors.scope_ownership')]);
+        if ($finding->assessment->client->sites()->whereIn('id', $siteIds)->count() !== count($siteIds)) {
+            throw ValidationException::withMessages(['site_ids' => __('assestme.findings.errors.scope_ownership')]);
+        }
+        if ($finding->assessment->client->assets()->whereIn('id', $assetIds)->count() !== count($assetIds)) {
+            throw ValidationException::withMessages(['asset_ids' => __('assestme.findings.errors.scope_ownership')]);
         }
 
         $scope = $validated['scope_type'] instanceof ScopeType

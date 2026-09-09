@@ -201,8 +201,13 @@ it('keeps page chrome titles risk evaluation and assets in non-overlapping edito
             'class="affected-systems"',
             'class="asset-details"',
         )
-        ->and(__('assestme.reports.document.assessment_overview'))->toBe('Quadro generale')
+        ->and(__('assestme.reports.document.assessment_overview'))->toBe('Quadro Generale')
         ->and($html)->toMatch('/<table class="finding-heading__table"[^>]*>.*?<td class="finding-heading__number">\s*01\s*<\/td>.*?<td class="finding-heading__content">/su')
+        ->and(editorialPdfReportNormalizeText($html))->toContain(
+            '.finding-heading__number { font-size: 20pt; font-weight: 700; line-height: 1.08;',
+            'vertical-align: baseline; width: 17mm;',
+            '.finding-heading__content { padding: 0; vertical-align: baseline; }',
+        )
         ->and($riskMatch)->toHaveKey(1)
         ->and($riskMatch[1])->toContain(
             __('assestme.reports.document.risk_evaluation'),
@@ -263,14 +268,15 @@ it('uses print-safe table structures and a symbol-only compact risk matrix', fun
 
     expect(preg_match_all('/class="risk-dot(?:\s|")/u', $matrix))->toBe(16)
         ->and(substr_count($matrix, 'risk-dot--current'))->toBe(1)
-        ->and(substr_count($matrix, 'risk-dot__current-mark'))->toBe(1)
+        ->and(substr_count($matrix, 'risk-dot__current-mark'))->toBe(0)
         ->and(trim((string) preg_replace('/\s+/u', '', strip_tags($matrix))))->toBe('')
         ->and($matrixRows[1])->toBe($expectedConsequenceIds)
         ->and($matrixLayout)->toContain(
             __('assestme.reports.document.consequence'),
             __('assestme.reports.document.likelihood'),
         )
-        ->and($matrixLayout)->not->toContain('↓', '→');
+        ->and($matrixLayout)->not->toContain('↓', '→')
+        ->and(editorialPdfReportNormalizeText($html))->not->toContain('.risk-dot__current-mark');
 
     foreach ($matrixRows[2] as $row) {
         preg_match_all('/data-likelihood-id="(\d+)"/u', $row, $likelihoodMatches);
@@ -300,12 +306,7 @@ it('uses print-safe table structures and a symbol-only compact risk matrix', fun
     expect($matrixRows[2][0])->toContain('title="'.$topRight['priority_label'].'"')
         ->and($matrixRows[2][3])->toContain('title="'.$bottomLeft['priority_label'].'"')
         ->and($topRight['priority_label'])->toBe($highestPriority->label)
-        ->and($bottomLeft['priority_label'])->toBe($lowestPriority->label)
-        ->and(editorialPdfReportNormalizeText($html))->toContain(
-            '.risk-dot__current-mark { background: #FFFFFF;',
-            'left: 50%; margin: 0; position: absolute; top: 50%;',
-            'transform: translate(-50%, -50%);',
-        );
+        ->and($bottomLeft['priority_label'])->toBe($lowestPriority->label);
 });
 
 it('uses the compact priority legend when descriptions are disabled', function (): void {
@@ -424,6 +425,12 @@ it('uses a visible semantic heading hierarchy without indenting the problem expl
     preg_match('/<section class="finding-section problem-section">(.*?)<\/section>/s', $result['html'], $problemMatch);
     preg_match('/<section class="solution-block.*?<\/section>/s', $result['html'], $solutionMatch);
     $normalizedHtml = editorialPdfReportNormalizeText($result['html']);
+    $problemPosition = strpos($result['html'], '<section class="finding-section problem-section">');
+    $explanationPosition = strpos($result['html'], '<section class="problem-explanation">');
+
+    if (! is_int($problemPosition) || ! is_int($explanationPosition)) {
+        throw new RuntimeException('The Finding problem and explanation sections must both be rendered.');
+    }
 
     expect($noteMatch)->toHaveKey(1)
         ->and($noteMatch[1])->toContain(
@@ -436,6 +443,7 @@ it('uses a visible semantic heading hierarchy without indenting the problem expl
             '<h2 class="finding-section__label finding-section__label--prominent">',
             __('assestme.reports.document.problem'),
         )
+        ->and($problemPosition)->toBeLessThan($explanationPosition)
         ->and($solutionMatch)->toHaveKey(0)
         ->and($solutionMatch[0])->toContain(
             '<h2 class="finding-section__label">',
@@ -816,7 +824,7 @@ it('honors the technical notes presentation setting', function (bool $enabled): 
     'technical notes enabled' => [true],
 ]);
 
-it('keeps the cover unnumbered and uses minimal internal headers with numeric footers', function (): void {
+it('keeps the cover unnumbered and uses only the client name in internal headers', function (): void {
     [$assessment] = editorialPdfReportReadyAssessment();
     editorialPdfReportSettings([
         'cover' => true,
@@ -824,19 +832,22 @@ it('keeps the cover unnumbered and uses minimal internal headers with numeric fo
     ]);
 
     $result = editorialPdfReportRenderAndGenerate($assessment);
-    $header = $assessment->title.' · '.$assessment->client->display_name;
+    $header = $assessment->client->displayName();
+    $duplicatedHeader = $assessment->title.' · '.$header;
 
     expect($result['pages'])->toHaveCount(4)
-        ->and($result['pages'][0])->not->toContain($header)
+        ->and($result['html'])->toContain('@top-left { content: "'.$header.'";')
+        ->and($result['html'])->not->toContain($duplicatedHeader)
         ->and(trim($result['pages'][0]))->not->toMatch('/(?:^|\\s)\\d+$/')
         ->and(trim($result['pages'][1]))->toEndWith('1')
         ->and($result['pages'][1])->toContain($header)
+        ->and($result['pages'][1])->not->toContain($duplicatedHeader)
         ->and(trim($result['pages'][2]))->toEndWith('2')
         ->and(trim($result['pages'][3]))->toEndWith('3');
 
     foreach (array_slice($result['pages'], 1) as $pageText) {
         expect($pageText)->toContain($header)
-            ->and($pageText)->not->toContain('Pagina ', 'AssestMe');
+            ->and($pageText)->not->toContain($duplicatedHeader, 'Pagina ', 'AssestMe');
     }
 });
 

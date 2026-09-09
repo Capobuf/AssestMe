@@ -11,6 +11,7 @@
         data-active-tab="{{ $activeWorkspaceTab }}"
         data-active-form="{{ $activeWorkspaceTab === 'findings' && $selectedFindingId ? 'finding' : ($activeWorkspaceTab === 'assessment-details' ? 'assessment' : '') }}"
         data-active-state-path="{{ $activeWorkspaceTab === 'findings' && $selectedFindingId ? 'findingData' : ($activeWorkspaceTab === 'assessment-details' ? 'data' : '') }}"
+        data-validation-field="{{ $saveErrorField ?? '' }}"
     >
     <x-filament::tabs label="{{ __('assestme.workspace.title') }}">
         @foreach ([
@@ -220,9 +221,6 @@
                                     'status' => $saveStatus,
                                     'label' => $this->getSaveStatusLabel(),
                                 ])
-                                @if ($saveError)
-                                    <p class="assestme-workbench-footer__error">{{ $saveError }}</p>
-                                @endif
                                 <p class="assestme-workbench-footer__draft-note" data-assestme-evidence-draft-notice>
                                     {{ __('assestme.workspace.drafts.evidence_excluded') }}
                                 </p>

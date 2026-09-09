@@ -43,11 +43,7 @@
                                                                         class="risk-dot {{ $current ? 'risk-dot--current' : '' }}"
                                                                         style="background-color: {{ $cell['priority_color'] ?? '#D7D7D2' }}"
                                                                         title="{{ $cell['priority_label'] ?? '' }}"
-                                                                    >
-                                                                        @if ($current)
-                                                                            <span class="risk-dot__current-mark"></span>
-                                                                        @endif
-                                                                    </span>
+                                                                    ></span>
                                                                 </td>
                                                             @endforeach
                                                         </tr>

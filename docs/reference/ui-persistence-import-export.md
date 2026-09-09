@@ -45,6 +45,8 @@ Responsive behavior has two intentional modes:
 
 Contextual properties remain reachable on narrow containers. Mobile supports essential vertical editing and evidence capture but does not claim desktop workbench parity.
 The five contextual-property sections beside the selected Finding are collapsible and open by default; users may close them individually when they need a more compact inspector.
+The Evidence editor section is collapsible and closed by default; its URL title and URL fields share
+one row when the available width permits it.
 
 Category is visibly marked as required for completion while incomplete drafts remain saveable. The
 Finding category selector can create and immediately select an enabled category by name through the
@@ -63,6 +65,8 @@ Each save includes:
 - unique request UUID for idempotency.
 
 The UI exposes saving, saved, unsaved, offline, validation error, server error, and conflict states. It must never report saved before the server confirms persistence.
+Validation failures identify the affected fields, expose a visible error summary, and move focus to
+the first invalid visible control after expanding its section when necessary.
 
 A stale version produces an explicit conflict. Repeated delivery of the same request UUID returns the original result rather than applying the mutation twice.
 

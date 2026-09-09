@@ -218,6 +218,31 @@ final class WorkspaceResponsiveTest extends DuskTestCase
             Assert::assertNotNull($footer);
             $footer->takeElementScreenshot("{$artifactRoot}/palette-after-editor-footer-dark.png");
             $browser->driver->takeScreenshot("{$artifactRoot}/workbench-after-1920x1080.png");
+            $evidenceCollapsed = $browser->script(<<<'JS'
+                const section = document.querySelector('.assestme-workbench-section--evidence');
+                return section?.querySelector('.fi-section-collapse-btn')?.getAttribute('aria-expanded');
+                JS)[0];
+            Assert::assertSame('false', $evidenceCollapsed);
+            $browser->script(<<<'JS'
+                document.querySelector('.assestme-workbench-section--evidence .fi-section-collapse-btn')?.click();
+                JS);
+            $browser->waitUntil(<<<'JS'
+                return document.querySelector('.assestme-workbench-section--evidence .fi-section-collapse-btn')
+                    ?.getAttribute('aria-expanded') === 'true';
+                JS);
+            $evidenceUrlGeometry = $browser->script(<<<'JS'
+                const title = document.querySelector('[data-dusk="finding-evidence-url-title"]')
+                    ?.closest('[data-field-wrapper]')?.getBoundingClientRect();
+                const url = document.querySelector('[data-dusk="finding-evidence-url"]')
+                    ?.closest('[data-field-wrapper]')?.getBoundingClientRect();
+                return title && url ? {
+                    sameRow: Math.abs(title.top - url.top) < 2,
+                    ordered: title.left < url.left,
+                } : null;
+                JS)[0];
+            Assert::assertIsArray($evidenceUrlGeometry);
+            Assert::assertTrue($evidenceUrlGeometry['sameRow']);
+            Assert::assertTrue($evidenceUrlGeometry['ordered']);
             $pasteEnabled = $browser->script(<<<JS
                 const editor = document.querySelector('[data-assestme-workbench-editor]');
                 editor.scrollTop = editor.scrollHeight;
@@ -262,7 +287,12 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 Livewire.find(root.getAttribute('wire:id')).$set('findingData.scope_type', 'custom');
                 JS);
             $browser->pause(250)->click('[data-dusk="save-finding"]')
-                ->waitUntil('return document.querySelector("[data-assestme-save-status]").dataset.status === "error"');
+                ->waitUntil('return document.querySelector("[data-assestme-save-status]").dataset.status === "error"')
+                ->waitFor('.assestme-validation-target')
+                ->assertPresent('[data-dusk="workspace-validation-summary"]');
+            Assert::assertSame('finding-scope-description', $browser->script(
+                'return document.activeElement?.dataset?.dusk ?? null',
+            )[0]);
             $browser->driver->takeScreenshot("{$artifactRoot}/workbench-validation-error-1920x1080.png");
 
             $browser->refresh()

@@ -48,6 +48,8 @@ The report remains entrepreneur-oriented while retaining required technical info
 - the fixed VAT-excluded estimate note exactly once.
 
 `cover_title_mode` supports separate and combined title/company presentation. Branding remains consultant, company, or both. Empty optional content produces no placeholder block.
+Consultant report logos accept verified PNG, JPEG, and WebP files up to 5 MB. Formats unsupported by
+the normative WeasyPrint runtime, including AVIF, are rejected before report generation.
 
 ## Pagination and layout
 

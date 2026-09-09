@@ -234,7 +234,7 @@ it('exports every estimate type and billing frequency as native workbook values'
         [EstimateType::Bundled, BillingFrequency::OneOff, null, null, null, null, 'Da sommare ad altre attività'],
         [EstimateType::RequiresQuote, BillingFrequency::Yearly, null, null, null, null, 'Richiede preventivo'],
         [EstimateType::RequiresAnalysis, BillingFrequency::Monthly, null, null, null, null, 'Richiede approfondimento'],
-        [EstimateType::Variable, BillingFrequency::OneOff, null, null, null, null, 'Variabile in base alla soluzione'],
+        [EstimateType::Variable, BillingFrequency::OneOff, null, null, null, null, 'Variabile in base alla Soluzione'],
         [EstimateType::NotApplicable, BillingFrequency::Yearly, null, null, null, null, 'Nessun costo diretto previsto'],
     ];
 
