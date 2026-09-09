@@ -521,8 +521,18 @@ Record only factual work performed, the exact affected area, commands run, and r
   the host-only `release-acceptance` PHP runtime: run `34325914898` passed Quality, clean bootstrap,
   and complete Compose validation, while both release-acceptance attempts terminated the PHP 8.3.33
   built-in server with `SIGSEGV`/exit 139. The broader CI shape is intentionally unchanged.
-- 2026-09-09: Implemented the bounded release-acceptance mitigation: setup-php disables the unused
-  shared XSL extension and the workflow fails before release work if XSL remains loaded. The focused
-  workflow contract passed 51 assertions; the complete normative gate passed Pint on 512 files,
-  PHPStan on 395 files, 634 application tests with 5,573 assertions, strict Canary 38/38,
-  diagnostics, the 50-Finding benchmark, storage audit, and 23 Dusk tests with 799 assertions.
+- 2026-09-09: Tested a bounded release-acceptance XSL isolation on run `34336782783`. The runner
+  confirmed XSL disabled, but the PHP 8.3.33 built-in server still terminated with `SIGSEGV`/exit
+  139 at `installer.finalize.database_probe.begin`; the hypothesis was rejected and the extension
+  change was removed. Before publication, the focused workflow contract passed 51 assertions and
+  the complete normative gate passed Pint on 512 files, PHPStan on 395 files, 634 application tests
+  with 5,573 assertions, strict Canary 38/38, diagnostics, the 50-Finding benchmark, storage audit,
+  and 23 Dusk tests with 799 assertions.
+- 2026-09-09: Added one fail-closed retry for the confirmed intermittent native release-server
+  exit 139. The script preserves all ordinary Dusk/application failures, exposes a server
+  `SIGSEGV` as status 139, and only that status reruns the complete canonical journey once against
+  a fresh extraction and separate diagnostic root. No job, matrix, normal-path check, or broader
+  CI structure changed. The focused contracts passed 2 tests with 70 assertions; shell and YAML
+  syntax checks passed; and the complete normative gate passed Pint on 512 files, PHPStan on 395
+  files, 634 application tests with 5,576 assertions, strict Canary 38/38, diagnostics, the
+  50-Finding benchmark, storage audit, and 23 Dusk tests with 799 assertions.

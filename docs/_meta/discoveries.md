@@ -6,6 +6,11 @@
   built-in server with `SIGSEGV`/exit 139 at different request phases, while the same commit passed
   the complete Compose gate. The Ubuntu 24.04 setup-php runtime loads shared XSL by default, but
   neither AssestMe's runtime contract nor its locked production packages require `ext-xsl`.
+- 2026-09-09: Disabling shared XSL did not prevent the native termination: run `34336782783`
+  confirmed XSL disabled, then its release server exited 139 at
+  `installer.finalize.database_probe.begin`. A successful run on the preceding commit used the
+  same runner image and PHP 8.3.33, so the available evidence establishes an intermittent native
+  failure, not an application assertion failure or a deterministic PHP-version boundary.
 
 - On the inspected `develop` HEAD, `scripts/preflight.sh` performs only local runtime, extension,
   project, database-driver, and WeasyPrint probes; it starts no HTTP server or browser process and is

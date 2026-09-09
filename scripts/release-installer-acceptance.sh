@@ -74,7 +74,23 @@ ASSESTME_FIC_DUSK_FAKE=1 \
 ASSESTME_RELEASE_PATH="$release_path" \
 ASSESTME_TEST_ISOLATED=1 \
 ASSESTME_TEST_ROOT="$test_root" \
-php artisan dusk --without-tty tests/Browser/ReleaseInstallationTest.php
+php artisan dusk --without-tty tests/Browser/ReleaseInstallationTest.php || dusk_status="$?"
+
+dusk_status="${dusk_status:-0}"
+if [[ "$dusk_status" -ne 0 ]]; then
+    server_status=0
+    if ! kill -0 "$server_pid" >/dev/null 2>&1; then
+        wait "$server_pid" || server_status="$?"
+        server_pid=""
+    fi
+
+    if [[ "$server_status" -eq 139 ]]; then
+        printf 'Release PHP server terminated with SIGSEGV (exit 139).\n' >&2
+        exit 139
+    fi
+
+    exit "$dusk_status"
+fi
 
 [[ -s "$release_path/.env" ]] || fail "The installed release .env is missing or empty."
 [[ -f "$release_path/storage/app/private/installed.lock" ]] || fail "The installation lock is missing."
