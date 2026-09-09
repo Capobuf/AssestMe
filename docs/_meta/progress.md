@@ -528,11 +528,14 @@ Record only factual work performed, the exact affected area, commands run, and r
   the complete normative gate passed Pint on 512 files, PHPStan on 395 files, 634 application tests
   with 5,573 assertions, strict Canary 38/38, diagnostics, the 50-Finding benchmark, storage audit,
   and 23 Dusk tests with 799 assertions.
-- 2026-09-09: Added one fail-closed retry for the confirmed intermittent native release-server
-  exit 139. The script preserves all ordinary Dusk/application failures, exposes a server
-  `SIGSEGV` as status 139, and only that status reruns the complete canonical journey once against
-  a fresh extraction and separate diagnostic root. No job, matrix, normal-path check, or broader
-  CI structure changed. The focused contracts passed 2 tests with 70 assertions; shell and YAML
-  syntax checks passed; and the complete normative gate passed Pint on 512 files, PHPStan on 395
-  files, 634 application tests with 5,576 assertions, strict Canary 38/38, diagnostics, the
-  50-Finding benchmark, storage audit, and 23 Dusk tests with 799 assertions.
+- 2026-09-09: Tested one fail-closed retry for the confirmed release-server exit 139. Run
+  `34338488153` correctly repeated the complete journey against a fresh extraction, but both PHP
+  servers terminated natively; the retry was removed rather than hiding a repeatable failure. Its
+  focused contracts had passed 2 tests with 70 assertions, shell and YAML syntax checks passed, and
+  the complete normative gate passed Pint on 512 files, PHPStan on 395 files, 634 application tests
+  with 5,576 assertions, strict Canary 38/38, diagnostics, the 50-Finding benchmark, storage audit,
+  and 23 Dusk tests with 799 assertions.
+- 2026-09-09: Restricted only the host release-acceptance runtime to the canonical AssestMe PHP
+  extension set by using setup-php's `none` directive followed by every required shared extension
+  and both supported PDO drivers. This removes unrelated preloaded extensions from the long-lived
+  PHP server without changing the PHP version, the application, the journey, or the wider CI shape.

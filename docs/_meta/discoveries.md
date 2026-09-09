@@ -11,6 +11,11 @@
   `installer.finalize.database_probe.begin`. A successful run on the preceding commit used the
   same runner image and PHP 8.3.33, so the available evidence establishes an intermittent native
   failure, not an application assertion failure or a deterministic PHP-version boundary.
+- 2026-09-09: Run `34338488153` recognized the first release-server exit 139 and repeated the
+  complete journey against a fresh extraction, but the second server also exited 139 at a different
+  finalization phase. Setup-php's documented Ubuntu 24.04 PHP 8.3 default contains dozens of shared
+  extensions outside AssestMe's runtime contract; its `none` extension directive disables them all
+  before explicitly requested extensions are enabled again.
 
 - On the inspected `develop` HEAD, `scripts/preflight.sh` performs only local runtime, extension,
   project, database-driver, and WeasyPrint probes; it starts no HTTP server or browser process and is

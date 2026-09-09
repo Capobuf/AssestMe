@@ -77,7 +77,7 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
-          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sockets, sqlite3, xml, zip
+          extensions: none, bcmath, ctype, curl, dom, fileinfo, gd, iconv, intl, mbstring, pdo, pdo_mysql, pdo_sqlite, phar, session, simplexml, tokenizer, xml, xmlreader, xmlwriter, zip
           ini-values: memory_limit=512M
           tools: composer:v2
 
@@ -154,33 +154,7 @@ jobs:
       - name: Complete canonical extracted-release installer journey
         env:
           ASSESTME_TEST_ROOT: ${{ runner.temp }}/release-installer
-        run: |
-          scripts/release-installer-acceptance.sh "${RUNNER_TEMP}/validated-release/assestme" \
-            || acceptance_status="$?"
-          acceptance_status="${acceptance_status:-0}"
-
-          if [[ "$acceptance_status" -eq 0 ]]; then
-            exit 0
-          fi
-
-          if [[ "$acceptance_status" -ne 139 ]]; then
-            exit "$acceptance_status"
-          fi
-
-          printf 'Release PHP server exited with SIGSEGV; retrying the complete journey once against a fresh extraction.\n' >&2
-          retry_root="${RUNNER_TEMP}/validated-release-retry"
-          retry_diagnostics="${RUNNER_TEMP}/release-installer-retry"
-          mkdir "$retry_root" "$retry_diagnostics"
-          touch "${retry_diagnostics}/.assestme-test-root"
-          unzip -q "${RUNNER_TEMP}/release/assestme-ci.zip" -d "$retry_root"
-          retry_release_path="${retry_root}/assestme"
-          test ! -e "$retry_release_path/.env"
-          test ! -e "$retry_release_path/.env.pending"
-          test ! -e "$retry_release_path/storage/app/private/installed.lock"
-          test ! -e "$retry_release_path/storage/framework/installer/state.enc"
-          test ! -e "$retry_release_path/storage/app/database/database.sqlite"
-          ASSESTME_TEST_ROOT="$retry_diagnostics" \
-            scripts/release-installer-acceptance.sh "$retry_release_path"
+        run: scripts/release-installer-acceptance.sh "${RUNNER_TEMP}/validated-release/assestme"
 
       - name: Upload release installer diagnostics
         if: failure()
@@ -190,8 +164,6 @@ jobs:
           path: |
             ${{ runner.temp }}/release-installer/storage/logs/release-server.log
             ${{ runner.temp }}/validated-release/assestme/storage/logs/laravel.log
-            ${{ runner.temp }}/release-installer-retry/storage/logs/release-server.log
-            ${{ runner.temp }}/validated-release-retry/assestme/storage/logs/laravel.log
             tests/Browser/screenshots
             tests/Browser/source
             tests/Browser/console

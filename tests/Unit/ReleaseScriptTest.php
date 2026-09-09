@@ -54,8 +54,6 @@ it('defines one fail-closed extracted-release browser acceptance path', function
         ->toContain('php artisan assestme:diagnose --json')
         ->toContain('${application_url}/up')
         ->toContain('${application_url}/admin/login')
-        ->toContain('if [[ "$server_status" -eq 139 ]]')
-        ->toContain('exit 139')
         ->not->toContain('strace')
         ->not->toContain('KNOWN_GOOD_COMMIT')
         ->not->toContain('continue-on-error');
