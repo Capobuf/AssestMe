@@ -517,3 +517,12 @@ Record only factual work performed, the exact affected area, commands run, and r
   exited 0: Composer validation/audit, Pint on 512 files, PHPStan on 395 files, 634 application tests
   with 5,571 assertions, strict Canary 38/38, diagnostics, the 50-Finding PDF/XLSX benchmark,
   storage audit, and 23 Dusk tests with 799 assertions all passed.
+- 2026-09-09: Started the requested repair of the latest `develop` CI failure. Scope is limited to
+  the host-only `release-acceptance` PHP runtime: run `34325914898` passed Quality, clean bootstrap,
+  and complete Compose validation, while both release-acceptance attempts terminated the PHP 8.3.33
+  built-in server with `SIGSEGV`/exit 139. The broader CI shape is intentionally unchanged.
+- 2026-09-09: Implemented the bounded release-acceptance mitigation: setup-php disables the unused
+  shared XSL extension and the workflow fails before release work if XSL remains loaded. The focused
+  workflow contract passed 51 assertions; the complete normative gate passed Pint on 512 files,
+  PHPStan on 395 files, 634 application tests with 5,573 assertions, strict Canary 38/38,
+  diagnostics, the 50-Finding benchmark, storage audit, and 23 Dusk tests with 799 assertions.

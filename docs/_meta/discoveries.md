@@ -2,6 +2,10 @@
 
 - 2026-08-13: Acceptance run `31693715445` showed that exporting `ASSESTME_FIC_DUSK_FAKE=1` around `scripts/verify.sh` also changes the preceding application suite; the fake must be enabled only inside the Dusk runner.
 - 2026-08-13: On the GitHub Ubuntu runner with PHP 8.3.33, the extracted-release HTTP process terminated with a segmentation fault immediately after beginning the in-process `migrate` Artisan call. Installer Artisan work must use the already-approved bounded Symfony Process boundary and the validated pending production environment.
+- 2026-09-09: Both attempts of acceptance run `34325914898` terminated the host PHP 8.3.33
+  built-in server with `SIGSEGV`/exit 139 at different request phases, while the same commit passed
+  the complete Compose gate. The Ubuntu 24.04 setup-php runtime loads shared XSL by default, but
+  neither AssestMe's runtime contract nor its locked production packages require `ext-xsl`.
 
 - On the inspected `develop` HEAD, `scripts/preflight.sh` performs only local runtime, extension,
   project, database-driver, and WeasyPrint probes; it starts no HTTP server or browser process and is

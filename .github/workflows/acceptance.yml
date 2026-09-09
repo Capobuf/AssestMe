@@ -77,7 +77,7 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
-          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sockets, sqlite3, xml, zip
+          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sockets, sqlite3, xml, zip, :xsl
           ini-values: memory_limit=512M
           tools: composer:v2
 
@@ -86,6 +86,7 @@ jobs:
 
       - name: Resolve runtime binaries
         run: |
+          php -r 'exit(extension_loaded("xsl") ? 1 : 0);'
           weasyprint_binary="$(command -v weasyprint)"
           test -n "$weasyprint_binary"
           test -x "$weasyprint_binary"
