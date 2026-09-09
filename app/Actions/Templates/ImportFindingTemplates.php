@@ -180,10 +180,16 @@ final class ImportFindingTemplates
             2 => base_path('schemas/finding-template.schema.json'),
             default => null,
         };
+        if ($schemaVersion === 2) {
+            $document = $this->normalizeLegacyEstimateTypes($document);
+            $object = json_decode(json_encode($document, JSON_THROW_ON_ERROR), flags: JSON_THROW_ON_ERROR);
+        }
         $schema = $schemaPath === null ? null : json_decode((string) file_get_contents($schemaPath));
         if ($schema === null || ! (new Validator)->validate($object, $schema)->isValid() || ! is_array($document)) {
             throw ValidationException::withMessages(['file' => __('assestme.templates.errors.invalid_schema')]);
         }
+
+        $document = $this->normalizeLegacyEstimateTypes($document);
 
         /** @var array{schema_version:int,templates:list<array<string, mixed>>} $document */
         $templateIds = array_column($document['templates'], 'external_id');
@@ -228,6 +234,31 @@ final class ImportFindingTemplates
             foreach ($template['solutions'] as &$solution) {
                 $type = EstimateType::from((string) $solution['estimate_type']);
                 $solution['currency_code'] = $type->isMonetary() ? $currency : null;
+            }
+            unset($solution);
+        }
+        unset($template);
+
+        return $document;
+    }
+
+    /** @param array<string, mixed> $document
+     * @return array<string, mixed>
+     */
+    private function normalizeLegacyEstimateTypes(array $document): array
+    {
+        if (! is_array($document['templates'] ?? null)) {
+            return $document;
+        }
+
+        foreach ($document['templates'] as &$template) {
+            if (! is_array($template) || ! is_array($template['solutions'] ?? null)) {
+                continue;
+            }
+            foreach ($template['solutions'] as &$solution) {
+                if (is_array($solution) && ($solution['estimate_type'] ?? null) === 'exact') {
+                    $solution['estimate_type'] = EstimateType::Approximate->value;
+                }
             }
             unset($solution);
         }

@@ -28,6 +28,7 @@ it('imports every valid template atomically and exports a data-equivalent docume
     expect($result)->toBe(['created' => 5, 'replaced' => 0, 'skipped' => 0])
         ->and(FindingTemplate::query()->count())->toBe(5)
         ->and(FindingTemplateSolution::query()->count())->toBe(11)
+        ->and(FindingTemplateSolution::query()->where('estimate_type', 'exact')->count())->toBe(0)
         ->and(FindingTemplate::query()->whereHas('solutions', fn ($query) => $query->where('is_recommended', true))->count())->toBe(5);
 
     $export = app(ExportFindingTemplates::class)();

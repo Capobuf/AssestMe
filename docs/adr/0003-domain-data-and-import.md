@@ -27,11 +27,13 @@ Defines stable domain identities, risk ownership, scope validation, import seman
 | D-049 | APPROVED | Risk profile and level technical codes are generated on creation and immutable after first save; existing level identity is preserved and the sixteen entries are edited through a deterministic 4×4 consequence-by-likelihood matrix |
 | D-053 | APPROVED | Risk-matrix editing uses an application-owned custom Filament Field with one independent select in each semantic 4×4 table cell; nested Livewire state is keyed by persisted level IDs, `risk_matrix_entries` remains authoritative, and no plugin, Node.js pipeline, or runtime dependency is added |
 | D-063 | APPROVED | Fresh AssestMe installations support SQLite, MySQL, and MariaDB through portable Laravel migrations; no data conversion or migration between database drivers is provided |
-| D-074 | APPROVED | Solution estimates support exact single amount, approximate single amount, range, and the existing non-monetary states; monetary Finding and template solutions always snapshot the global ISO currency configured in report settings, defaulting to EUR on fresh installations, with no per-solution currency override in the editors |
+| D-074 | SUPERSEDED | Solution estimates support exact single amount, approximate single amount, range, and the existing non-monetary states; monetary Finding and template solutions always snapshot the global ISO currency configured in report settings, defaulting to EUR on fresh installations, with no per-solution currency override in the editors |
+| D-074 v2 | APPROVED | Solution estimates support one single-amount type named `Stima`, range, and the existing non-monetary states; legacy `exact` import values and persisted rows are normalized to `Stima`; monetary Finding and template solutions always snapshot the global ISO currency configured in report settings, defaulting to EUR on fresh installations, with no per-solution currency override in the editors |
 
 ## Consequences
 
 - D-045 v2 is an intentional reversal of D-045 v1 following explicit approval on 2026-08-11: zero asset associations are valid for `selected_assets`, including after template import/copy. The superseded minimum-one-asset rule must not remain in validation, completeness, report generation, or tests.
+- D-074 v2 follows explicit approval on 2026-09-09: `Esatta` is not a separate estimate type. Existing persisted and legacy interchange values are converted to the single `Stima` meaning without changing their amounts.
 - The listed decisions remain normative with their recorded status.
 - `SUPERSEDED` entries remain historical evidence and must not be reactivated implicitly.
 - Detailed application contracts live in the reference pages linked from [the documentation index](../index.md); those pages may clarify implementation but may not contradict these decisions.

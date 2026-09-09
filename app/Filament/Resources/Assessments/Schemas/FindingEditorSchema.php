@@ -31,6 +31,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Contracts\View\View;
 
@@ -111,6 +112,7 @@ final class FindingEditorSchema
                                     ->options(EstimateType::options())
                                     ->extraAttributes(['data-dusk' => 'finding-estimate-type'])
                                     ->live()
+                                    ->afterStateUpdated(self::clearInapplicableEstimateValues(...))
                                     ->required(),
                                 TextInput::make('amount_min')
                                     ->label(fn (Get $get): string => $get('estimate_type') === EstimateType::Range->value
@@ -204,6 +206,7 @@ final class FindingEditorSchema
                             ->label(__('assestme.workspace.evidence_url_title'))
                             ->maxLength(255)
                             ->extraInputAttributes(['data-dusk' => 'finding-evidence-url-title'])
+                            ->extraFieldWrapperAttributes(['class' => 'assestme-evidence-url-field--title'])
                             ->disabled(self::isReadOnly(...)),
                         TextInput::make('evidence_url')
                             ->label(__('assestme.workspace.evidence_url'))
@@ -236,6 +239,18 @@ final class FindingEditorSchema
             'data-assestme-draft-structural-action' => 'solutions',
             'data-dusk' => 'finding-solution-'.$action->getName(),
         ]);
+    }
+
+    private static function clearInapplicableEstimateValues(Set $set, mixed $state): void
+    {
+        $type = EstimateType::tryFrom((string) $state);
+        if ($type !== EstimateType::Range) {
+            $set('amount_max', null);
+        }
+        if ($type?->isMonetary() !== true) {
+            $set('amount_min', null);
+            $set('currency_code', null);
+        }
     }
 
     public static function properties(Schema $schema): Schema
@@ -307,6 +322,7 @@ final class FindingEditorSchema
                         Select::make('scope_type')
                             ->label(__('assestme.assessments.fields.scope'))
                             ->options(self::scopeOptions())
+                            ->extraAttributes(['data-dusk' => 'finding-scope-type'])
                             ->live()
                             ->required()
                             ->disabled(self::isReadOnly(...)),

@@ -6,6 +6,7 @@ namespace Tests\Browser;
 
 use App\Enums\BillingFrequency;
 use App\Enums\EstimateType;
+use App\Enums\ScopeType;
 use App\Models\Assessment;
 use App\Models\Category;
 use App\Models\Finding;
@@ -55,6 +56,14 @@ final class WorkspaceLocalDraftTest extends DuskTestCase
         $this->browse(function (Browser $browser) use ($administrator, $assessment, $finding, $solution, $url): void {
             $browser->loginAs($administrator)
                 ->visit($url)
+                ->waitFor('[data-assestme-finding-inspector]')
+                ->waitUntil(<<<'JS'
+                    return document.documentElement.dataset.assestmeWorkspaceAsset === 'loaded'
+                        && document.documentElement.dataset.assestmeWorkspaceDraftsAsset === 'loaded';
+                    JS);
+
+            $this->clearWorkspaceDrafts($browser);
+            $browser->visit($url)
                 ->waitFor('[data-assestme-finding-inspector]')
                 ->waitUntil(<<<'JS'
                     return document.documentElement.dataset.assestmeWorkspaceAsset === 'loaded'
@@ -236,5 +245,110 @@ final class WorkspaceLocalDraftTest extends DuskTestCase
 
         self::assertSame('Titolo conservato in IndexedDB', $finding->fresh()->title);
         self::assertSame(1, $assessment->fresh()->lock_version);
+    }
+
+    public function test_failed_finding_changes_can_be_discarded_with_their_local_draft(): void
+    {
+        $administrator = User::factory()->create();
+        $assessment = Assessment::factory()->create();
+        $finding = Finding::factory()->for($assessment)->create([
+            'title' => 'Titolo persistito',
+            'scope_type' => ScopeType::Organization,
+            'sort_order' => 1,
+        ]);
+        $url = "/admin/assessments/{$assessment->getKey()}/workspace?finding={$finding->getKey()}";
+
+        $this->browse(function (Browser $browser) use ($administrator, $assessment, $finding, $url): void {
+            $browser->loginAs($administrator)
+                ->visit($url)
+                ->waitFor('[data-assestme-finding-inspector]')
+                ->waitUntil(<<<'JS'
+                    return document.documentElement.dataset.assestmeWorkspaceAsset === 'loaded'
+                        && document.documentElement.dataset.assestmeWorkspaceDraftsAsset === 'loaded';
+                    JS);
+
+            $this->clearWorkspaceDrafts($browser);
+            $browser->visit($url)
+                ->waitFor('[data-assestme-finding-inspector]')
+                ->waitUntil(<<<'JS'
+                    return document.documentElement.dataset.assestmeWorkspaceAsset === 'loaded'
+                        && document.documentElement.dataset.assestmeWorkspaceDraftsAsset === 'loaded';
+                    JS)
+                ->type('[data-dusk="finding-editor-title"]', 'Modifica non valida')
+                ->select('[data-dusk="finding-scope-type"] select', 'selected_sites')
+                ->waitUntil(
+                    'return document.querySelector(\'[data-assestme-save-status]\')?.dataset.status === "local";',
+                )
+                ->click('[data-dusk="save-finding"]')
+                ->waitFor('[data-dusk="discard-finding-changes"]')
+                ->click('[data-dusk="discard-finding-changes"]')
+                ->waitUntil(<<<'JS'
+                    return document.querySelector('[data-dusk="finding-editor-title"]')?.value === 'Titolo persistito'
+                        && document.querySelector('[data-assestme-save-status]')?.dataset.status === 'saved';
+                    JS)
+                ->assertMissing('[data-dusk="discard-finding-changes"]');
+
+            $browser->script(<<<JS
+                const inspectDrafts = () => {
+                    const currentTabId = document.querySelector('[data-assestme-workspace-context]')?.dataset.tabId;
+                    const request = indexedDB.open('assestme-workspace');
+                    request.onerror = () => {
+                        document.documentElement.dataset.assestmeDiscardDraftTest = 'error';
+                    };
+                    request.onsuccess = () => {
+                        const database = request.result;
+                        const transaction = database.transaction('drafts', 'readonly');
+                        const draftsRequest = transaction.objectStore('drafts').getAll();
+                        draftsRequest.onsuccess = () => {
+                            const remains = draftsRequest.result.some((draft) => (
+                                draft.kind === 'finding'
+                                    && draft.findingId === {$finding->getKey()}
+                                    && draft.assessmentId === {$assessment->getKey()}
+                                    && draft.tabId === currentTabId
+                            ));
+                            database.close();
+                            document.documentElement.dataset.assestmeDiscardDraftTest = remains ? 'pending' : 'clean';
+                            if (remains) {
+                                window.setTimeout(inspectDrafts, 100);
+                            }
+                        };
+                    };
+                };
+                inspectDrafts();
+                JS);
+            $browser->waitUntil(
+                'return document.documentElement.dataset.assestmeDiscardDraftTest === "clean";',
+            );
+
+            Assert::assertSame('Titolo persistito', $finding->fresh()->title);
+            Assert::assertSame(0, $assessment->fresh()->lock_version);
+        });
+    }
+
+    private function clearWorkspaceDrafts(Browser $browser): void
+    {
+        $browser->script(<<<'JS'
+            const request = indexedDB.open('assestme-workspace');
+            request.onerror = () => {
+                document.documentElement.dataset.assestmeDraftTestIsolation = 'error';
+            };
+            request.onsuccess = () => {
+                const database = request.result;
+                const transaction = database.transaction('drafts', 'readwrite');
+                transaction.objectStore('drafts').clear();
+                transaction.oncomplete = () => {
+                    database.close();
+                    document.documentElement.dataset.assestmeDraftTestIsolation = 'clean';
+                };
+                transaction.onerror = () => {
+                    database.close();
+                    document.documentElement.dataset.assestmeDraftTestIsolation = 'error';
+                };
+            };
+            JS);
+
+        $browser->waitUntil(
+            'return document.documentElement.dataset.assestmeDraftTestIsolation === "clean";',
+        );
     }
 }

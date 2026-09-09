@@ -273,9 +273,9 @@ final class SaveFindingTemplate
             if ($type === EstimateType::Range->value && (float) $solution['amount_min'] > (float) ($solution['amount_max'] ?? -1)) {
                 throw ValidationException::withMessages(["solutions.{$index}.amount_max" => __('assestme.templates.errors.invalid_range')]);
             }
-            if (in_array($type, [EstimateType::Exact->value, EstimateType::Approximate->value], true)
+            if ($type === EstimateType::Approximate->value
                 && ($solution['amount_max'] ?? null) !== null) {
-                throw ValidationException::withMessages(["solutions.{$index}.amount_max" => __('assestme.templates.errors.exact_max')]);
+                throw ValidationException::withMessages(["solutions.{$index}.amount_max" => __('assestme.templates.errors.single_amount_max')]);
             }
             if ($solution['billing_frequency'] === BillingFrequency::Custom->value && blank($solution['custom_billing_frequency'] ?? null)) {
                 throw ValidationException::withMessages(["solutions.{$index}.custom_billing_frequency" => __('assestme.templates.errors.custom_billing')]);
@@ -305,6 +305,12 @@ final class SaveFindingTemplate
             $type = $estimateType instanceof EstimateType
                 ? $estimateType
                 : (is_string($estimateType) ? EstimateType::tryFrom($estimateType) : null);
+            if ($type !== EstimateType::Range) {
+                $solution['amount_max'] = null;
+            }
+            if ($type?->isMonetary() !== true) {
+                $solution['amount_min'] = null;
+            }
             $solution['currency_code'] = $type?->isMonetary() === true ? $currency : null;
 
             return $solution;

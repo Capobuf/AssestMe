@@ -431,22 +431,13 @@ it('formats every approved estimate branch without repeating the VAT note', func
     $formatter = app(FormatEstimate::class);
 
     $solution->forceFill([
-        'estimate_type' => EstimateType::Exact,
+        'estimate_type' => EstimateType::Approximate,
         'amount_min' => '20.00',
         'amount_max' => null,
         'currency_code' => 'EUR',
         'billing_frequency' => BillingFrequency::Monthly,
     ]);
-    expect($formatter->handle($solution))->toBe('20 €/mese');
-
-    $solution->forceFill([
-        'estimate_type' => EstimateType::Approximate,
-        'amount_min' => '125.00',
-        'amount_max' => null,
-        'currency_code' => 'EUR',
-        'billing_frequency' => BillingFrequency::Yearly,
-    ]);
-    expect($formatter->handle($solution))->toBe('Circa 125 €/anno');
+    expect($formatter->handle($solution))->toBe('Circa 20 €/mese');
 
     $solution->forceFill([
         'estimate_type' => EstimateType::Range,

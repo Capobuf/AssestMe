@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Actions\Assessments\CopyTemplateToAssessment;
 use App\Actions\Assessments\UpdateTemplateFromFinding;
+use App\Enums\BillingFrequency;
+use App\Enums\EstimateType;
 use App\Enums\FindingStatus;
 use App\Enums\ScopeType;
 use App\Filament\Resources\Assessments\AssessmentResource;
@@ -490,6 +492,70 @@ it('keeps an invalid contextual scope visible without persisting partial workben
     expect($persisted->title)->toBe('Finding invariato')
         ->and($persisted->scope_type)->toBe(ScopeType::Organization)
         ->and($assessment->fresh()->lock_version)->toBe(0);
+});
+
+it('discards failed Finding changes and restores the persisted state', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create([
+        'title' => 'Finding persistito',
+        'scope_type' => ScopeType::Organization,
+        'sort_order' => 1,
+    ]);
+    $this->actingAs($administrator);
+
+    Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->assertDontSee(__('assestme.workspace.inspector.discard_changes'))
+        ->set('findingData.title', 'Modifica non valida')
+        ->set('findingData.scope_type', ScopeType::SelectedSites->value)
+        ->set('findingData.site_ids', [])
+        ->call('saveFinding')
+        ->assertSet('saveStatus', WorkspaceAssessment::STATUS_ERROR)
+        ->assertSee(__('assestme.workspace.inspector.discard_changes'))
+        ->call('discardFindingChanges')
+        ->assertSet('findingData.title', 'Finding persistito')
+        ->assertSet('findingData.scope_type', ScopeType::Organization->value)
+        ->assertSet('saveStatus', WorkspaceAssessment::STATUS_SAVED)
+        ->assertHasNoErrors()
+        ->assertDispatched('assestme-server-changes-discarded');
+
+    expect($finding->fresh()->title)->toBe('Finding persistito')
+        ->and($assessment->fresh()->lock_version)->toBe(0);
+});
+
+it('clears a stale maximum when a range becomes a single-amount estimate', function (): void {
+    $administrator = User::factory()->create();
+    $assessment = Assessment::factory()->create();
+    $finding = Finding::factory()->for($assessment)->create(['sort_order' => 1]);
+    $solution = $finding->solutions()->create([
+        'external_key' => 'manual-estimate',
+        'title' => 'Soluzione stimata',
+        'description' => 'Descrizione della soluzione stimata.',
+        'estimate_type' => EstimateType::Range,
+        'amount_min' => '100.00',
+        'amount_max' => '200.00',
+        'currency_code' => 'EUR',
+        'billing_frequency' => BillingFrequency::OneOff,
+        'sort_order' => 1,
+    ]);
+    $finding->update(['recommended_solution_id' => $solution->getKey()]);
+    $this->actingAs($administrator);
+
+    $component = Livewire::test(WorkspaceAssessment::class, ['record' => $assessment->getRouteKey()])
+        ->call('selectFinding', $finding->id)
+        ->assertDontSee('Esatta');
+    $solutionKey = array_key_first($component->get('findingData.solutions'));
+
+    $component
+        ->set("findingData.solutions.{$solutionKey}.estimate_type", EstimateType::Approximate->value)
+        ->call('saveFinding')
+        ->assertHasNoErrors()
+        ->assertSet('saveStatus', WorkspaceAssessment::STATUS_SAVED);
+
+    $saved = $solution->fresh();
+    expect($saved->estimate_type)->toBe(EstimateType::Approximate)
+        ->and($saved->amount_max)->toBeNull();
 });
 
 it('maps an incomplete evidence URL to the visible title field', function (): void {

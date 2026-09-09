@@ -80,7 +80,7 @@ function completeGoogleDriveAssessment(): Assessment
             'external_key' => 'solution-complete-'.$index,
             'title' => 'Soluzione completa '.($index + 1),
             'description' => 'Descrizione',
-            'estimate_type' => EstimateType::Exact,
+            'estimate_type' => EstimateType::Approximate,
             'amount_min' => '100.00',
             'currency_code' => 'EUR',
             'billing_frequency' => BillingFrequency::OneOff,

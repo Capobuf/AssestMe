@@ -456,7 +456,7 @@ it('uses a visible semantic heading hierarchy without indenting the problem expl
         )
         ->and($normalizedHtml)->toContain(
             '--accent: #135E75;',
-            '.problem-explanation { margin: 0 0 4mm; padding: 0; }',
+            '.problem-explanation { margin: 0; padding: 4mm 0 0; }',
             '.finding-section__label--prominent { color: var(--ink); font-size: 11pt;',
             '.problem-explanation .pre-line { font-size: 9.4pt; line-height: 1.45; }',
         )
@@ -623,7 +623,7 @@ it('omits disabled costs or an absent effort metric from HTML and PDF', function
     $recommended->update([
         'effort_level_id' => $effortLevelId,
         'effort_notes' => $withEffort ? 'Nota impegno editoriale univoca' : null,
-        'estimate_type' => EstimateType::Exact,
+        'estimate_type' => EstimateType::Approximate,
         'amount_min' => '9876.00',
         'amount_max' => null,
         'currency_code' => 'EUR',

@@ -1144,6 +1144,13 @@
     padding-bottom: 1rem;
 }
 
+@media (min-width: 48rem) {
+    .assestme-evidence-url-field--title {
+        width: calc(100% - 0.75rem);
+        margin-inline-end: 0.75rem;
+    }
+}
+
 .assestme-workbench-footer {
     position: sticky;
     z-index: 5;

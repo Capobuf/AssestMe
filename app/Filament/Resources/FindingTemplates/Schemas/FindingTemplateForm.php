@@ -20,6 +20,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 
 final class FindingTemplateForm
@@ -61,7 +62,8 @@ final class FindingTemplateForm
                             ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['effort_notes'])),
                         Textarea::make('comparison_notes')->label(__('assestme.templates.fields.comparison_notes'))->rows(3)->maxLength(fn (Get $get): int => EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['comparison_notes'])
                             ->helperText(fn (Get $get, ?string $state): string => self::remaining($state, EditorialLimits::forSolutionCount(count((array) $get('../../solutions')))['comparison_notes'])),
-                        Select::make('estimate_type')->label(__('assestme.findings.fields.estimate_type'))->options(EstimateType::options())->required()->live(),
+                        Select::make('estimate_type')->label(__('assestme.findings.fields.estimate_type'))->options(EstimateType::options())->required()->live()
+                            ->afterStateUpdated(self::clearInapplicableEstimateValues(...)),
                         Select::make('billing_frequency')->label(__('assestme.templates.fields.billing_frequency'))->options(self::billingOptions())->required()->default(BillingFrequency::OneOff->value)->live(),
                         TextInput::make('amount_min')->label(fn (Get $get): string => $get('estimate_type') === EstimateType::Range->value
                             ? __('assestme.templates.fields.amount_min')
@@ -112,6 +114,18 @@ final class FindingTemplateForm
     private static function isMonetary(mixed $estimateType): bool
     {
         return EstimateType::tryFrom((string) $estimateType)?->isMonetary() ?? false;
+    }
+
+    private static function clearInapplicableEstimateValues(Set $set, mixed $state): void
+    {
+        $type = EstimateType::tryFrom((string) $state);
+        if ($type !== EstimateType::Range) {
+            $set('amount_max', null);
+        }
+        if ($type?->isMonetary() !== true) {
+            $set('amount_min', null);
+            $set('currency_code', null);
+        }
     }
 
     private static function remaining(?string $state, int $limit): string

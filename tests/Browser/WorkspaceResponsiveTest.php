@@ -232,17 +232,25 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 JS);
             $evidenceUrlGeometry = $browser->script(<<<'JS'
                 const title = document.querySelector('[data-dusk="finding-evidence-url-title"]')
-                    ?.closest('[data-field-wrapper]')?.getBoundingClientRect();
+                    ?.getBoundingClientRect();
                 const url = document.querySelector('[data-dusk="finding-evidence-url"]')
-                    ?.closest('[data-field-wrapper]')?.getBoundingClientRect();
+                    ?.getBoundingClientRect();
+                const styled = document.querySelector('.assestme-evidence-url-field--title');
                 return title && url ? {
                     sameRow: Math.abs(title.top - url.top) < 2,
                     ordered: title.left < url.left,
+                    gap: url.left - title.right,
+                    styled: styled ? {
+                        className: styled.className,
+                        marginInlineEnd: getComputedStyle(styled).marginInlineEnd,
+                        width: getComputedStyle(styled).width,
+                    } : null,
                 } : null;
                 JS)[0];
             Assert::assertIsArray($evidenceUrlGeometry);
             Assert::assertTrue($evidenceUrlGeometry['sameRow']);
             Assert::assertTrue($evidenceUrlGeometry['ordered']);
+            Assert::assertGreaterThanOrEqual(10, $evidenceUrlGeometry['gap'], json_encode($evidenceUrlGeometry));
             $pasteEnabled = $browser->script(<<<JS
                 const editor = document.querySelector('[data-assestme-workbench-editor]');
                 editor.scrollTop = editor.scrollHeight;
@@ -370,9 +378,9 @@ final class WorkspaceResponsiveTest extends DuskTestCase
                 JS)[0];
             Assert::assertGreaterThan(0, $desktopBefore['position']);
 
-            $browser->select('[data-dusk="finding-estimate-type"] select', EstimateType::Exact->value)
+            $browser->select('[data-dusk="finding-estimate-type"] select', EstimateType::Approximate->value)
                 ->waitUntil(<<<'JS'
-                    return document.querySelector('[data-dusk="finding-estimate-type"] select')?.value === 'exact'
+                    return document.querySelector('[data-dusk="finding-estimate-type"] select')?.value === 'approximate'
                         && Array.from(document.querySelectorAll('label')).some((label) => label.textContent.includes('Importo'));
                     JS)
                 ->pause(250);

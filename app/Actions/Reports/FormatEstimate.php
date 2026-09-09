@@ -42,7 +42,7 @@ final class FormatEstimate
         int $currencyDecimals,
     ): string {
         return match ($estimateType) {
-            EstimateType::Exact, EstimateType::Approximate => $this->singleAmount(
+            EstimateType::Approximate => $this->singleAmount(
                 $estimateType,
                 $amountMin,
                 $currencyCode,

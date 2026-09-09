@@ -1465,6 +1465,55 @@
         }
     };
 
+    const handleServerDiscard = async (detail) => {
+        const context = resolveContext();
+        if (!context
+            || detail?.kind !== context.kind
+            || Number.parseInt(detail?.assessmentId, 10) !== context.assessmentId
+            || Number.parseInt(detail?.findingId, 10) !== context.findingId
+            || detail?.tabId !== context.tabId) {
+            return;
+        }
+
+        const key = contextKey(context);
+        const timer = debounceTimers.get(key);
+        if (timer !== undefined) {
+            window.clearTimeout(timer);
+            debounceTimers.delete(key);
+        }
+        editRevisions.delete(key);
+        evidenceRevisions.delete(key);
+        newerPayloads.delete(key);
+        structuralDraftChanges.delete(key);
+        for (const [requestId, attempt] of pendingAttempts) {
+            if (attempt.entityKey === context.entityKey && attempt.tabId === context.tabId) {
+                pendingAttempts.delete(requestId);
+            }
+        }
+
+        try {
+            await queueDraftMutation(key, async () => {
+                const drafts = await draftsForEntity(context.entityKey);
+                for (const draft of drafts) {
+                    if (draft.tabId === context.tabId) {
+                        await deleteDraft(draft.id);
+                    }
+                }
+            });
+            activeDraftIds.delete(context.entityKey);
+            if (displayedDraft?.contextKey === key) {
+                hideBanner();
+            }
+            emit('assestme-local-draft-clean', {
+                clearEvidence: true,
+                entityKey: context.entityKey,
+            });
+            queueRecovery();
+        } catch (error) {
+            showStorageFailure(error);
+        }
+    };
+
     const registerLivewire = () => {
         if (livewireRegistered || typeof window.Livewire?.on !== 'function') {
             return;
@@ -1472,6 +1521,7 @@
 
         livewireRegistered = true;
         window.Livewire.on('assestme-server-save-confirmed', handleServerConfirmation);
+        window.Livewire.on('assestme-server-changes-discarded', handleServerDiscard);
         window.Livewire.hook('morphed', () => {
             persistStructuralChangeAfterMorph();
             queueRecovery();

@@ -39,7 +39,7 @@ final class FattureInCloudQuoteLogic
     }
 
     /** @param list<FindingSolution> $solutions */
-    public static function compatibleExactSum(array $solutions): ?float
+    public static function compatibleEstimateSum(array $solutions): ?float
     {
         if ($solutions === []) {
             return null;
@@ -48,7 +48,7 @@ final class FattureInCloudQuoteLogic
         $frequency = null;
         $sum = 0.0;
         foreach ($solutions as $solution) {
-            if ($solution->estimate_type !== EstimateType::Exact || $solution->amount_min === null
+            if ($solution->estimate_type !== EstimateType::Approximate || $solution->amount_min === null
                 || $solution->currency_code === null) {
                 return null;
             }

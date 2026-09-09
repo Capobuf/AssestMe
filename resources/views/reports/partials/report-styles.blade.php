@@ -99,7 +99,7 @@
     .finding-body > :first-child { margin-top: 0; }
     .status-accepted { color: #15803D; }
     .status-not_applicable { color: #777777; }
-    .problem-explanation { margin: 0 0 4mm; padding: 0; }
+    .problem-explanation { margin: 0; padding: 4mm 0 0; }
     .problem-explanation .pre-line { font-size: 9.4pt; line-height: 1.45; }
     .finding-section { margin-top: 4mm; }
     .finding-section__label { margin-bottom: 1mm; }

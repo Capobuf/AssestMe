@@ -52,6 +52,23 @@ it('stores approximate template estimates with the configured global currency', 
         ->and($solution->currency_code)->toBe('CHF');
 });
 
+it('clears estimate values that no longer apply when the type changes', function (): void {
+    $singleAmount = findingTemplateData();
+    $singleAmount['solutions'][0]['amount_max'] = 250;
+    $singleTemplate = app(SaveFindingTemplate::class)->handle(null, $singleAmount);
+
+    $nonMonetary = findingTemplateData();
+    $nonMonetary['title'] = 'Template senza importo';
+    $nonMonetary['solutions'][0]['estimate_type'] = 'requires_quote';
+    $nonMonetaryTemplate = app(SaveFindingTemplate::class)->handle(null, $nonMonetary);
+
+    expect(EstimateType::options())->not->toHaveKey('exact')
+        ->and($singleTemplate->solutions()->sole()->amount_max)->toBeNull()
+        ->and($nonMonetaryTemplate->solutions()->sole()->amount_min)->toBeNull()
+        ->and($nonMonetaryTemplate->solutions()->sole()->amount_max)->toBeNull()
+        ->and($nonMonetaryTemplate->solutions()->sole()->currency_code)->toBeNull();
+});
+
 it('generates collision-safe stable external identifiers and rejects later mutations', function (): void {
     $first = app(SaveFindingTemplate::class)->handle(null, findingTemplateData());
     $second = app(SaveFindingTemplate::class)->handle(null, findingTemplateData());
@@ -118,7 +135,7 @@ it('rolls back a template when recommendations or estimates are invalid', functi
         ->and(FindingTemplateSolution::query()->count())->toBe(0);
 })->with([
     'no recommended solution' => [['solutions' => [0 => ['is_recommended' => false]]]],
-    'non monetary amount' => [['solutions' => [0 => ['estimate_type' => 'bundled', 'amount_min' => 10, 'currency_code' => 'EUR']]]],
+    'missing monetary amount' => [['solutions' => [0 => ['amount_min' => null]]]],
     'inverted range' => [['solutions' => [0 => ['estimate_type' => 'range', 'amount_min' => 20, 'amount_max' => 10]]]],
 ]);
 
@@ -176,7 +193,7 @@ function findingTemplateData(): array
             'comparison_notes' => null,
             'effort_level_id' => null,
             'effort_notes' => null,
-            'estimate_type' => 'exact',
+            'estimate_type' => 'approximate',
             'amount_min' => 100,
             'amount_max' => null,
             'currency_code' => 'EUR',

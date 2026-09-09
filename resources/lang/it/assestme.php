@@ -402,7 +402,7 @@ return [
             'risk_matrix_mismatch' => 'Template :index (:external_id): la priorità non coincide con la matrice per conseguenza e probabilità.',
             'monetary_amount' => 'Una stima monetaria richiede importo minimo e valuta.',
             'non_monetary_amount' => 'Una stima non monetaria non può contenere importi o valuta.',
-            'exact_max' => 'Una stima a importo singolo non può contenere un importo massimo.',
+            'single_amount_max' => 'Una stima a importo singolo non può contenere un importo massimo.',
             'custom_billing' => 'Specifica la frequenza personalizzata.',
             'solution_ownership' => 'La soluzione non appartiene a questo template.',
             'external_id_immutable' => 'L’ID esterno non può essere modificato dopo il primo salvataggio.',
@@ -994,6 +994,7 @@ return [
             'next' => 'Finding successivo',
             'close' => 'Torna al navigatore',
             'save' => 'Salva',
+            'discard_changes' => 'Annulla Modifiche',
             'save_next' => 'Salva e passa al successivo',
             'saved' => 'Finding salvato',
             'unsaved_navigation' => 'Modifiche non salvate',
@@ -1215,7 +1216,6 @@ return [
             ],
         ],
         'estimates' => [
-            'exact' => ':amount:frequency',
             'approximate' => 'Circa :amount:frequency',
             'range' => 'Indicativamente :minimum–:maximum:frequency',
             'bundled' => 'Da sommare ad altre attività',
@@ -1302,7 +1302,6 @@ return [
             'very_high' => 'Molto alto',
         ],
         'estimate_type' => [
-            'exact' => 'Esatta',
             'approximate' => 'Stima',
             'range' => 'Intervallo',
             'bundled' => 'Inclusa in altre attività',

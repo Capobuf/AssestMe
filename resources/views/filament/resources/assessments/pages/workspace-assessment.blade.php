@@ -227,6 +227,17 @@
                             </div>
                             @if (! $this->isWorkspaceReadOnly())
                                 <div class="assestme-workbench-footer__actions">
+                                    @if ($findingSaveStatus === \App\Filament\Resources\Assessments\Pages\WorkspaceAssessment::STATUS_ERROR)
+                                        <x-filament::button
+                                            type="button"
+                                            color="gray"
+                                            outlined
+                                            wire:click="discardFindingChanges"
+                                            data-dusk="discard-finding-changes"
+                                        >
+                                            {{ __('assestme.workspace.inspector.discard_changes') }}
+                                        </x-filament::button>
+                                    @endif
                                     <x-filament::button type="submit" class="assestme-save-primary" data-dusk="save-finding">
                                         {{ __('assestme.workspace.inspector.save') }}
                                     </x-filament::button>

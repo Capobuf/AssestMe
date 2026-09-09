@@ -618,7 +618,7 @@ final class CreateFattureInCloudQuote extends ViewRecord
             return null;
         }
 
-        return FattureInCloudQuoteLogic::compatibleExactSum($solutions->all());
+        return FattureInCloudQuoteLogic::compatibleEstimateSum($solutions->all());
     }
 
     private static function decimal(float $value): string

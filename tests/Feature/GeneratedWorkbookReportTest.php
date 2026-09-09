@@ -75,7 +75,7 @@ it('persists and downloads complete immutable three-sheet workbook versions', fu
 
     $recommended = $finding->solutions()->firstOrFail();
     $recommended->update([
-        'estimate_type' => EstimateType::Exact,
+        'estimate_type' => EstimateType::Approximate,
         'amount_min' => '250.00',
         'amount_max' => null,
         'currency_code' => 'EUR',
@@ -158,7 +158,7 @@ it('persists and downloads complete immutable three-sheet workbook versions', fu
         ->and($findingSheet?->getCell('F3')->getValue())->toContain("\n")
         ->and($findingSheet?->getCell('H3')->getValue())->toContain($recommended->title, $recommended->description)
         ->and($findingSheet?->getCell('I3')->getValue())->toContain('Soluzione alternativa', 'Minore impatto')
-        ->and($findingSheet?->getCell('M3')->getValue())->toBe('250 € una tantum')
+        ->and($findingSheet?->getCell('M3')->getValue())->toBe('Circa 250 € una tantum')
         ->and($findingSheet?->getCell('O3')->getValue())->toContain('Nota tecnica riga due')
         ->and($findingSheet?->getCell('P3')->getValue())->toContain('Verbale tecnico', 'Riferimento online')
         ->and($findingSheet?->getStyle('F3')->getAlignment()->getWrapText())->toBeTrue()
@@ -228,8 +228,7 @@ it('exports every estimate type and billing frequency as native workbook values'
     $assessment = Assessment::factory()->create(['title' => 'Assessment stime XLSX']);
     $template = FindingTemplate::query()->with('solutions')->firstOrFail();
     $cases = [
-        [EstimateType::Exact, BillingFrequency::Monthly, '20.00', null, 'EUR', null, '20 €/mese'],
-        [EstimateType::Approximate, BillingFrequency::Yearly, '125.00', null, 'EUR', null, 'Circa 125 €/anno'],
+        [EstimateType::Approximate, BillingFrequency::Monthly, '20.00', null, 'EUR', null, 'Circa 20 €/mese'],
         [EstimateType::Range, BillingFrequency::Custom, '500.00', '900.00', 'EUR', 'trimestre', 'Indicativamente 500–900 €/trimestre'],
         [EstimateType::Bundled, BillingFrequency::OneOff, null, null, null, null, 'Da sommare ad altre attività'],
         [EstimateType::RequiresQuote, BillingFrequency::Yearly, null, null, null, null, 'Richiede preventivo'],
@@ -266,14 +265,12 @@ it('exports every estimate type and billing frequency as native workbook values'
 
     expect($solutionSheet?->getCell('J2')->getDataType())->toBe(DataType::TYPE_NUMERIC)
         ->and($solutionSheet?->getCell('J2')->getValue())->toBe(20.0)
-        ->and($solutionSheet?->getCell('J3')->getValue())->toBe(125.0)
-        ->and($solutionSheet?->getCell('J4')->getValue())->toBe(500.0)
-        ->and($solutionSheet?->getCell('K4')->getValue())->toBe(900.0)
+        ->and($solutionSheet?->getCell('J3')->getValue())->toBe(500.0)
+        ->and($solutionSheet?->getCell('K3')->getValue())->toBe(900.0)
         ->and($solutionSheet?->getCell('M2')->getValue())->toBe('Mensile')
-        ->and($solutionSheet?->getCell('M3')->getValue())->toBe('Annuale')
-        ->and($solutionSheet?->getCell('M4')->getValue())->toBe('Personalizzata — trimestre')
-        ->and($solutionSheet?->getCell('M5')->getValue())->toBe('Una tantum')
-        ->and($solutionSheet?->getCell('M6')->getValue())->toBe('Annuale');
+        ->and($solutionSheet?->getCell('M3')->getValue())->toBe('Personalizzata — trimestre')
+        ->and($solutionSheet?->getCell('M4')->getValue())->toBe('Una tantum')
+        ->and($solutionSheet?->getCell('M5')->getValue())->toBe('Annuale');
 
     $workbook->disconnectWorksheets();
 });

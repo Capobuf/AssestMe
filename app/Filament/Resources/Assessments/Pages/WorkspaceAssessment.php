@@ -338,6 +338,31 @@ final class WorkspaceAssessment extends EditRecord implements HasTable
         $this->saveFinding(moveNext: true);
     }
 
+    public function discardFindingChanges(): void
+    {
+        $findingId = $this->selectedFindingId;
+        if ($findingId === null
+            || $this->isWorkspaceReadOnly()
+            || $this->findingSaveStatus !== self::STATUS_ERROR) {
+            return;
+        }
+
+        $rawState = $this->findingEditorSchema()->getRawState();
+        $state = is_array($rawState) ? $rawState : $rawState->toArray();
+        $uploads = is_array($state['evidence_uploads'] ?? null) ? $state['evidence_uploads'] : [];
+        Storage::disk('local')->delete(array_values(array_filter($uploads, 'is_string')));
+
+        $this->pendingFindingRequestId = null;
+        $this->loadSelectedFinding($findingId);
+        $this->dispatch(
+            'assestme-server-changes-discarded',
+            kind: 'finding',
+            assessmentId: (int) $this->assessmentRecord()->getKey(),
+            findingId: $findingId,
+            tabId: $this->tabId,
+        );
+    }
+
     public function updateInlineStatus(Finding $finding, string $status): string
     {
         if (! $this->persistCurrentWorkspaceStateBeforeAction()) {

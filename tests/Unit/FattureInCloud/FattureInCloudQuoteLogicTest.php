@@ -16,18 +16,18 @@ it('generates exact references and markers and rejects non-exact marker grammar'
         ->and(FattureInCloudQuoteLogic::parseMarker('[assestme assessment=7 version=3]'))->toBeNull();
 });
 
-it('suggests only a compatible sum of exact estimates', function (): void {
-    $first = ficExactSolution(100);
-    $second = ficExactSolution(25.5);
+it('suggests only a compatible sum of single-amount estimates', function (): void {
+    $first = ficEstimateSolution(100);
+    $second = ficEstimateSolution(25.5);
 
-    expect(FattureInCloudQuoteLogic::compatibleExactSum([$first, $second]))->toBe(125.5);
+    expect(FattureInCloudQuoteLogic::compatibleEstimateSum([$first, $second]))->toBe(125.5);
 
     $second->estimate_type = EstimateType::Range;
-    expect(FattureInCloudQuoteLogic::compatibleExactSum([$first, $second]))->toBeNull();
+    expect(FattureInCloudQuoteLogic::compatibleEstimateSum([$first, $second]))->toBeNull();
 
-    $second->estimate_type = EstimateType::Exact;
+    $second->estimate_type = EstimateType::Approximate;
     $second->currency_code = 'USD';
-    expect(FattureInCloudQuoteLogic::compatibleExactSum([$first, $second]))->toBeNull();
+    expect(FattureInCloudQuoteLogic::compatibleEstimateSum([$first, $second]))->toBeNull();
 });
 
 it('adds sorted unique Finding references to one row description', function (): void {
@@ -49,12 +49,12 @@ it('derives only the transient VAT-excluded net row total', function (): void {
         ]))->toBeNull();
 });
 
-function ficExactSolution(float $amount): FindingSolution
+function ficEstimateSolution(float $amount): FindingSolution
 {
     return new FindingSolution([
         'title' => 'Soluzione',
         'description' => 'Descrizione',
-        'estimate_type' => EstimateType::Exact,
+        'estimate_type' => EstimateType::Approximate,
         'amount_min' => $amount,
         'currency_code' => 'EUR',
         'billing_frequency' => BillingFrequency::OneOff,

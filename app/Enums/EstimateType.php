@@ -6,7 +6,6 @@ namespace App\Enums;
 
 enum EstimateType: string
 {
-    case Exact = 'exact';
     case Approximate = 'approximate';
     case Range = 'range';
     case Bundled = 'bundled';
@@ -19,7 +18,6 @@ enum EstimateType: string
     public static function options(): array
     {
         return [
-            self::Exact->value => __('assestme.findings.estimate_type.exact'),
             self::Approximate->value => __('assestme.findings.estimate_type.approximate'),
             self::Range->value => __('assestme.findings.estimate_type.range'),
             self::Bundled->value => __('assestme.findings.estimate_type.bundled'),
@@ -32,6 +30,6 @@ enum EstimateType: string
 
     public function isMonetary(): bool
     {
-        return in_array($this, [self::Exact, self::Approximate, self::Range], true);
+        return in_array($this, [self::Approximate, self::Range], true);
     }
 }

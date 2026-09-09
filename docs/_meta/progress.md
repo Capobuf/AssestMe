@@ -539,3 +539,10 @@ Record only factual work performed, the exact affected area, commands run, and r
   extension set by using setup-php's `none` directive followed by every required shared extension
   and both supported PDO drivers. This removes unrelated preloaded extensions from the long-lived
   PHP server without changing the PHP version, the application, the journey, or the wider CI shape.
+- 2026-09-09: Started the requested estimate-switch and Workspace error-recovery correction. Scope
+  is limited to clearing values that no longer apply when an estimate type changes, consolidating
+  the duplicate `Esatta` type into `Stima` with existing-data/import compatibility, adding visible
+  spacing between the two URL-evidence fields, and offering an explicit persisted-state restore
+  action beside Finding save controls after an error.
+- 2026-09-09: Expanded the active correction at explicit request to add visible vertical spacing
+  between the Problem text and the optional Problem explanation in the authoritative PDF layout.

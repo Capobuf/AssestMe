@@ -69,7 +69,7 @@ function googleDriveSnapshotDataset(): array
             'external_key' => 'solution-'.($index + 1),
             'title' => 'Soluzione '.($index + 1),
             'description' => 'Descrizione soluzione '.($index + 1),
-            'estimate_type' => EstimateType::Exact,
+            'estimate_type' => EstimateType::Approximate,
             'amount_min' => '100.00',
             'currency_code' => 'EUR',
             'billing_frequency' => BillingFrequency::OneOff,
