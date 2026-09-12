@@ -48,8 +48,8 @@ PHPStan, and the Unit suite once with disposable SQLite. Composer audit remains 
 
 ## CI verification
 
-The primary `.github/workflows/ci.yml` workflow runs on pull requests to and pushes on `develop` or
-`main`, plus manual dispatch. Its `application` job runs `scripts/test-app.sh` with MariaDB 12.3.3;
+The primary `.github/workflows/ci.yml` workflow runs on pull requests to and pushes on `main`, plus
+manual dispatch. Its `application` job runs `scripts/test-app.sh` with MariaDB 12.3.3;
 its `installer` job validates one extracted release ZIP with MariaDB 12.3.3. The SQLite/MySQL
 compatibility smoke runs only on branch pushes and manual dispatch. No job nests another complete
 gate.

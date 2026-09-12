@@ -159,11 +159,11 @@ AssestMe non converte dati tra SQLite, MySQL e MariaDB. Un cambio di driver rich
 ## Aggiornamento automatico da GitHub Actions
 
 L'istanza CI di AssestMe usa il workflow unico `CI` del repository `Capobuf/AssestMe`. Su un push a
-`develop`, il job `publish-develop-release` richiede `check`, `application`, `installer` e
+`main`, il job `publish-main-release` richiede `check`, `application`, `installer` e
 `compatibility-smoke`; `deploy_cloudpanel` si esegue soltanto dopo la pubblicazione riuscita. Le pull
 request non ricevono i secret di deploy.
 
-Il job apre una connessione SSH non interattiva con una chiave dedicata e un file `known_hosts` verificato. La chiave è limitata sul server a un comando forzato che esegue `dploy deploy develop`; il comando crea la release, usa lo storage condiviso e l'overlay `.env`, esegue le operazioni dploy e aggiorna `current`. Non modificare questa procedura per cambiare document root, `.env`, database, storage condiviso o configurazione dploy.
+Il job apre una connessione SSH non interattiva con una chiave dedicata e un file `known_hosts` verificato. La chiave è limitata sul server a un comando forzato che esegue `dploy deploy main`; il comando crea la release, usa lo storage condiviso e l'overlay `.env`, esegue le operazioni dploy e aggiorna `current`. Non modificare questa procedura per cambiare document root, `.env`, database, storage condiviso o configurazione dploy.
 
 ### Installare lo script server-side
 
@@ -189,7 +189,7 @@ install \
   /home/bydot-assestme/bin/deploy-assestme
 ```
 
-Lo script installato è `/home/bydot-assestme/bin/deploy-assestme`. Usa il lock `/home/bydot-assestme/.dploy/github-actions-deploy.lock`, pertanto due deploy GitHub non possono sovrapporsi nemmeno oltre alla concorrenza del workflow. Dopo `dploy deploy develop` controlla `current`, `artisan` e `public/index.php`, esegue `php8.3 artisan about` e stampa nei log SSH la release effettivamente pubblicata. Le release dploy non conservano `.git`; il deploy non ricava né dichiara un commit da quella directory.
+Lo script installato è `/home/bydot-assestme/bin/deploy-assestme`. Usa il lock `/home/bydot-assestme/.dploy/github-actions-deploy.lock`, pertanto due deploy GitHub non possono sovrapporsi nemmeno oltre alla concorrenza del workflow. Dopo `dploy deploy main` controlla `current`, `artisan` e `public/index.php`, esegue `php8.3 artisan about` e stampa nei log SSH la release effettivamente pubblicata. Le release dploy non conservano `.git`; il deploy non ricava né dichiara un commit da quella directory.
 
 ### Creare e limitare la chiave SSH dedicata
 
@@ -257,4 +257,4 @@ CLOUDPANEL_SSH_PRIVATE_KEY
 CLOUDPANEL_KNOWN_HOSTS
 ```
 
-Il valore noto di `CLOUDPANEL_USER` è `bydot-assestme`, ma resta un secret per uniformità operativa e non è inserito nel workflow. Non pubblicare valori dei secret in issue, commit, workflow o log. Dopo l'installazione dello script, della chiave pubblica e dei secret, un vero push su `develop` eseguirà il primo deploy automatico; conservarne il log come evidenza dell'istanza reale.
+Il valore noto di `CLOUDPANEL_USER` è `bydot-assestme`, ma resta un secret per uniformità operativa e non è inserito nel workflow. Non pubblicare valori dei secret in issue, commit, workflow o log. Dopo l'installazione dello script, della chiave pubblica e dei secret, un vero push su `main` eseguirà il primo deploy automatico; conservarne il log come evidenza dell'istanza reale.

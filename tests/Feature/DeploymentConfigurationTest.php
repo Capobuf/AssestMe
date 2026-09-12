@@ -573,9 +573,9 @@ it('defines one primary CI workflow with separated non-repeating jobs', function
     $testApp = (string) file_get_contents(base_path('scripts/test-app.sh'));
     $check = (string) file_get_contents(base_path('scripts/check.sh'));
 
-    /** @var array{permissions: array{contents: string}, jobs: array<string, array<string, mixed>>} $workflow */
+    /** @var array{on: array{pull_request: array{branches: list<string>}, push: array{branches: list<string>}}, permissions: array{contents: string}, jobs: array<string, array<string, mixed>>} $workflow */
     $workflow = Yaml::parseFile($workflowPath);
-    $publish = $workflow['jobs']['publish-develop-release'];
+    $publish = $workflow['jobs']['publish-main-release'];
     $installer = $workflow['jobs']['installer'];
     $applicationRuntime = collect($workflow['jobs']['application']['steps'])->firstWhere('name', 'Install application test runtimes');
     $compatibilityRuntime = collect($workflow['jobs']['compatibility-smoke']['steps'])->firstWhere('name', 'Install compatibility runtimes');
@@ -588,9 +588,11 @@ it('defines one primary CI workflow with separated non-repeating jobs', function
         'application',
         'installer',
         'compatibility-smoke',
-        'publish-develop-release',
+        'publish-main-release',
         'deploy_cloudpanel',
-    ])->and($workflow['permissions'])->toBe(['contents' => 'read'])
+    ])->and($workflow['on']['pull_request']['branches'])->toBe(['main'])
+        ->and($workflow['on']['push']['branches'])->toBe(['main'])
+        ->and($workflow['permissions'])->toBe(['contents' => 'read'])
         ->and($workflow['jobs']['compatibility-smoke']['if'])->toBe("github.event_name != 'pull_request'")
         ->and($workflow['jobs']['application']['services']['mariadb']['image'])->toBe('mariadb:12.3.3')
         ->and($workflow['jobs']['installer']['services']['mariadb']['image'])->toBe('mariadb:12.3.3')
@@ -605,9 +607,10 @@ it('defines one primary CI workflow with separated non-repeating jobs', function
         ->toContain('scripts/release-installer-acceptance.sh "${RUNNER_TEMP}/validated-release/assestme"')
         ->toContain('name: assestme-ci-release')
         ->toContain('path: ${{ runner.temp }}/release/assestme-ci.zip')
-        ->toContain('assestme-develop.zip')
-        ->toContain("release_tag='develop-latest'")
-        ->toContain('git rev-parse origin/develop')
+        ->toContain('assestme-main.zip')
+        ->toContain("release_tag='main-latest'")
+        ->toContain('git rev-parse origin/main')
+        ->not->toMatch('/\\bdevelop\\b/')
         ->not->toContain('continue-on-error')
         ->not->toContain('matrix:')
         ->not->toContain('verify-core.sh')
@@ -651,7 +654,7 @@ it('defines one primary CI workflow with separated non-repeating jobs', function
         ->and(base_path('.github/workflows/acceptance.yml'))->not->toBeFile();
 });
 
-it('deploys CloudPanel only after the successful terminal develop job with verified SSH', function (): void {
+it('deploys CloudPanel only after the successful terminal main job with verified SSH', function (): void {
     $workflowPath = base_path('.github/workflows/ci.yml');
     $workflowSource = (string) file_get_contents($workflowPath);
 
@@ -660,9 +663,9 @@ it('deploys CloudPanel only after the successful terminal develop job with verif
     $deploy = $workflow['jobs']['deploy_cloudpanel'];
 
     expect($deploy['name'])->toBe('Deploy CloudPanel CI')
-        ->and($deploy['needs'])->toBe(['publish-develop-release'])
+        ->and($deploy['needs'])->toBe(['publish-main-release'])
         ->and($deploy['if'])->toContain("github.event_name == 'push'")
-        ->toContain("github.ref == 'refs/heads/develop'")
+        ->toContain("github.ref == 'refs/heads/main'")
         ->toContain('success()')
         ->and($deploy['runs-on'])->toBe('ubuntu-latest')
         ->and($deploy['timeout-minutes'])->toBe(20)
@@ -671,7 +674,7 @@ it('deploys CloudPanel only after the successful terminal develop job with verif
             'group' => 'assestme-cloudpanel-ci',
             'cancel-in-progress' => false,
         ])
-        ->and($workflow['jobs']['publish-develop-release']['needs'])->toBe([
+        ->and($workflow['jobs']['publish-main-release']['needs'])->toBe([
             'check',
             'application',
             'installer',
@@ -707,7 +710,7 @@ it('defines a locked forced-command CloudPanel deploy script with explicit failu
         ->toContain('if ! /usr/bin/flock -n 9; then')
         ->toContain('Another AssestMe deployment is already running.')
         ->toContain('exit 75')
-        ->toContain('/usr/local/bin/dploy deploy develop')
+        ->toContain('/usr/local/bin/dploy deploy main')
         ->toContain('test -f "$CURRENT_RELEASE/artisan"')
         ->toContain('test -f "$CURRENT_RELEASE/public/index.php"')
         ->toContain('/usr/bin/php8.3')

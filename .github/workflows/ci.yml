@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [develop, main]
+    branches: [main]
   push:
-    branches: [develop, main]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -246,16 +246,16 @@ jobs:
           trap assestme_cleanup_isolated_environment_file EXIT
           php artisan test tests/Feature/SeedDataTest.php tests/Feature/ServerDatabaseCapabilityTest.php
 
-  publish-develop-release:
-    name: Publish develop release
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+  publish-main-release:
+    name: Publish main release
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [check, application, installer, compatibility-smoke]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
     concurrency:
-      group: assestme-develop-release
+      group: assestme-main-release
       cancel-in-progress: true
     steps:
       - name: Check out validated commit
@@ -267,16 +267,16 @@ jobs:
         with:
           name: assestme-ci-release
           path: dist
-      - name: Prepare stable develop asset
+      - name: Prepare stable main asset
         shell: bash
         run: |
           set -Eeuo pipefail
           test -s dist/assestme-ci.zip
-          install -m 0644 dist/assestme-ci.zip dist/assestme-develop.zip
-          test -s dist/assestme-develop.zip
+          install -m 0644 dist/assestme-ci.zip dist/assestme-main.zip
+          test -s dist/assestme-main.zip
           mapfile -t archives < <(find dist -maxdepth 1 -type f -name '*.zip' -print | sort)
           if [[ "${#archives[@]}" -ne 2 ]]; then
-              printf 'Expected the CI archive and the renamed develop archive, found %s.\n' "${#archives[@]}" >&2
+              printf 'Expected the CI archive and the renamed main archive, found %s.\n' "${#archives[@]}" >&2
               printf '%s\n' "${archives[@]}" >&2
               exit 1
           fi
@@ -285,34 +285,34 @@ jobs:
               find dist -type f -name '*.sha256' -print >&2
               exit 1
           fi
-      - name: Confirm this is still the latest develop commit
+      - name: Confirm this is still the latest main commit
         shell: bash
         run: |
           set -Eeuo pipefail
-          git fetch --no-tags --depth=1 origin develop
-          latest_develop_sha="$(git rev-parse origin/develop)"
-          if [[ "$GITHUB_SHA" != "$latest_develop_sha" ]]; then
-              printf 'Refusing to publish obsolete commit %s; develop is now %s.\n' "$GITHUB_SHA" "$latest_develop_sha" >&2
+          git fetch --no-tags --depth=1 origin main
+          latest_main_sha="$(git rev-parse origin/main)"
+          if [[ "$GITHUB_SHA" != "$latest_main_sha" ]]; then
+              printf 'Refusing to publish obsolete commit %s; main is now %s.\n' "$GITHUB_SHA" "$latest_main_sha" >&2
               exit 1
           fi
-      - name: Publish rolling develop prerelease
+      - name: Publish rolling main prerelease
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
-          release_tag='develop-latest'
-          release_title='AssestMe develop — ultima build valida'
-          release_asset='dist/assestme-develop.zip'
+          release_tag='main-latest'
+          release_title='AssestMe main — ultima build valida'
+          release_asset='dist/assestme-main.zip'
           short_sha="${GITHUB_SHA:0:7}"
           cat > release-notes.md <<EOF
-          Build automatica validata del branch \`develop\`.
+          Build automatica validata del branch \`main\`.
 
           - Commit: \`${GITHUB_SHA}\`
           - Commit breve: \`${short_sha}\`
           - Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
 
-          Il file \`assestme-develop.zip\` è il pacchetto installabile prodotto e verificato dal job \`installer\`.
+          Il file \`assestme-main.zip\` è il pacchetto installabile prodotto e verificato dal job \`installer\`.
 
           Questa è una prerelease di sviluppo. Non sostituisce una release stabile versionata.
           EOF
@@ -330,8 +330,8 @@ jobs:
 
   deploy_cloudpanel:
     name: Deploy CloudPanel CI
-    needs: [publish-develop-release]
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/develop' && success() }}
+    needs: [publish-main-release]
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && success() }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -359,7 +359,7 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$HOME/.ssh/cloudpanel_deploy"
           printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/cloudpanel_deploy" "$HOME/.ssh/known_hosts"
-      - name: Deploy develop to CloudPanel
+      - name: Deploy main to CloudPanel
         shell: bash
         env:
           CLOUDPANEL_HOST: ${{ secrets.CLOUDPANEL_HOST }}

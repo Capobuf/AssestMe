@@ -17,7 +17,7 @@ if ! /usr/bin/flock -n 9; then
     exit 75
 fi
 
-/usr/local/bin/dploy deploy develop
+/usr/local/bin/dploy deploy main
 
 CURRENT_RELEASE="$(readlink -f "$DEPLOY_ROOT/current")"
 

@@ -53,6 +53,44 @@ Never:
 9. Update an ADR only when an accepted architectural decision changes with explicit approval.
 10. Keep `main` releasable and do not declare completion without the required evidence.
 
+## Branch policy
+
+`main` is the only permanent branch. Do not use permanent integration branches such as `develop`,
+and keep `main` releasable.
+
+A temporary work branch is mandatory for every change that affects project behavior or operation,
+regardless of size. This includes features, fixes, functional refactoring, tests, migrations,
+dependencies, CI, builds, deployments, and operational configuration. Read-only analysis and checks,
+and exclusively documentary changes, do not require a branch. Documentation that accompanies a
+functional change belongs on the same work branch.
+
+Before starting a change that requires a branch:
+
+1. update and inspect local and remote refs;
+2. identify every branch not yet merged into `main`;
+3. determine each branch's purpose from its name, commits, diff, and pull request when present;
+4. compare that purpose with the current request.
+
+A branch is open while it contains work not merged into `main`. If an open branch clearly concerns
+the same functional area as the new request, continue there without asking for confirmation. Judge
+relevance by functional area, not only by the wording of the original request, and do not create
+parallel branches for successive changes in the same area. If relevance is ambiguous, ask before
+changing the repository.
+
+When no relevant branch exists and no other branch is open, create a short, descriptive work branch
+from the latest `main`. When unrelated branches are open, stop before changing the repository and,
+for each branch, report its name, purpose, completed and pending work, verification results, relation
+to `main`, and any pull request. Ask whether to resume, verify, or complete an existing branch; leave
+it open and authorize a new branch; or stop the new activity. Do not choose on the user's behalf.
+
+At the end of work, run the applicable checks and report the changes, commit, branch state, and exact
+results. Ask for explicit confirmation before merging. Do not merge while a mandatory check has
+failed or was not run. After confirmation, update the branch from the latest `main`, resolve conflicts,
+and complete any resulting changes or checks before merging directly into `main`; a pull request is
+not required. Verify that `main` contains the final commit, then delete the local and remote work
+branch. Without confirmation, leave the branch open and say so. Later work in the same area requires
+a new branch after the prior branch has been merged and deleted.
+
 ## Architecture
 
 - Keep Filament resources and pages thin.
@@ -111,7 +149,7 @@ docker compose -f docker/compose.dev.yml exec -T app scripts/check.sh
 CI runs the complete Feature suite once on MariaDB 12.3.3, the real MariaDB backup/restore round
 trip, four maintained application Dusk files, and one extracted-release MariaDB installer journey.
 SQLite and MySQL 8.4.11 receive only bounded migration/seed, capability, and diagnostic smokes on
-pushes to `develop`/`main` and manual runs. Composer audit runs only in CI. Focused checks remain
+pushes to `main` and manual runs. Composer audit runs only in CI. Focused checks remain
 valid during implementation but do not replace the applicable CI path.
 
 Manual Edge, Firefox, iOS Safari, Android Chrome, and real-hosting acceptance must never be reported as passed without execution evidence.

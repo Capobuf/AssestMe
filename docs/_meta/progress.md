@@ -4,6 +4,19 @@
 
 ## Current state
 
+- 2026-09-12: Started the explicitly requested branch-model bootstrap on `develop`. Verified after
+  fetching and pruning remote refs that `main` is the direct ancestor of `develop` by 95 commits,
+  neither permanent branch has local/remote drift, `main` is the GitHub default and is unprotected,
+  and no pull request is open. The separate `ci/workspace-http500-diagnostics` branch remains open
+  four commits beyond `develop` and is excluded from modification, merge, or deletion by this
+  migration. Scope is limited to the branch policy, operational `main`-only CI/release/deploy
+  references, their regression contract, required verification, fast-forward promotion, and removal
+  of `develop` if every gate passes.
+- 2026-09-12: The local branch-model migration checks passed: workflow YAML parsing, CloudPanel
+  deploy-script shell syntax, diff whitespace, and 20 focused deployment-configuration tests with
+  388 assertions. The mandatory pre-commit gate passed strict Composer validation, Pint on 502 files,
+  PHPStan on 396 files, and 93 Unit tests with 607 assertions. `actionlint` is unavailable in the
+  inspected runtime; hosted manual-dispatch verification remains pending before promotion.
 - 2026-09-12: Started the repair of CI run `34678977316` after the test-suite refactor moved
   application checks onto a clean hosted runner without Poppler, omitted WeasyPrint from the
   compatibility runtime, and stopped creating the existing private disposable `.env` placeholder.

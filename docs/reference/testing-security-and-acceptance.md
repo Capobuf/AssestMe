@@ -55,7 +55,7 @@ login, diagnostics, and scheduler behavior without rerunning the application sui
 
 MariaDB 12.3.3 is the pinned canonical CI database. SQLite and MySQL 8.4.11 run only a small
 compatibility smoke covering migrations and seeds, product/capability detection, and fundamental
-diagnostics. Compatibility smoke runs on pushes to `develop`/`main` and manual dispatch, not ordinary
+diagnostics. Compatibility smoke runs on pushes to `main` and manual dispatch, not ordinary
 pull requests. SQLite and MySQL do not run the complete Feature suite, Dusk, or real backup/restore.
 
 ## Browser evidence
