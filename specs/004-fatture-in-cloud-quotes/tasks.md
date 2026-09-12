@@ -10,7 +10,7 @@
 
 **Purpose**: Preserve concurrent work and freeze the actual implementation/verification surface without creating horizontal feature infrastructure.
 
-- [X] T001 Re-read `.github/workflows/quality.yml`, inspect current diffs and locked dependencies, confirm the official FIC contract still matches `specs/004-fatture-in-cloud-quotes/contracts/fatture-in-cloud-v2.md`, and record only changed facts in `docs/_meta/progress.md` / `docs/_meta/discoveries.md`
+- [X] T001 Re-read the then-current CI workflow, inspect current diffs and locked dependencies, confirm the official FIC contract still matches `specs/004-fatture-in-cloud-quotes/contracts/fatture-in-cloud-v2.md`, and record only changed facts in `docs/_meta/progress.md` / `docs/_meta/discoveries.md`
 
 ---
 
@@ -139,10 +139,10 @@ No horizontal foundation is created. Each shared class, migration, route, transl
 - [ ] T034 Audit `app/`, `database/`, `resources/`, and `tests/` diffs for hidden commercial persistence, automatic grouping, invented endpoints, generic fake/provider infrastructure, untranslated strings, raw secret/error exposure, TODO/placeholders, and unconnected slice artifacts; correct each finding in its owning file
 - [ ] T035 Consolidate only canonical decisions and evidence in `docs/explanation/product-and-scope.md`, `docs/reference/domain-and-application-contracts.md`, `docs/reference/ui-persistence-import-export.md`, `docs/reference/testing-security-and-acceptance.md`, `docs/_meta/discoveries.md`, and `docs/_meta/progress.md` without duplicating the feature spec
 - [ ] T036 Run final working-tree review, `git diff --check`, touched-file Pint, application PHPStan, all focused FIC tests, and affected Workspace/settings/migration/deployment tests; fix and rerun failures
-- [ ] T037 Re-read `.github/workflows/quality.yml` then reproduce `quality` with `RUN_DUSK=0 scripts/verify.sh` followed by the workflow's isolated complete Dusk command; fix and rerun the affected full job equivalent
-- [ ] T038 Reproduce every current `database-compatibility` matrix entry and its configured migration/seed/capability/full-suite/integrity/diagnostics/dump-restore steps using disposable Docker services; fix and rerun affected entries
-- [ ] T039 Reproduce `cloudpanel-release`: build archive, verify manifest/content/secrets, extract, complete SQLite installer/browser check, run scheduler and diagnostics, and verify optional FIC configuration never blocks install
-- [ ] T040 Reproduce `clean-checkout-bootstrap` from a disposable clean checkout and verify diagnostics/singleton/canonical seed counts with no FIC credential/network requirement
+- [ ] T037 Re-read `.github/workflows/ci.yml`, then reproduce the pre-commit check and canonical MariaDB application path; fix and rerun the affected job equivalent
+- [ ] T038 Reproduce the bounded SQLite and MySQL compatibility smokes using disposable databases; fix and rerun affected entries
+- [ ] T039 Build and validate one release archive, extract it cleanly, complete the MariaDB installer browser journey, and run scheduler and diagnostics
+- [ ] T040 Verify the installer job's extracted-release clean-state, manifest, singleton, seed, health, and diagnostic assertions without FIC credential/network requirements
 - [ ] T041 Statically validate GitHub-only publish/deploy steps and execute applicable local release/deploy script gates without publishing a release or deploying; record GitHub-specific operations as `NOT_RUN locally`
 - [ ] T042 Write the exact final preflight/spec/slice/provider/test/CI/failure/status evidence in `docs/_meta/progress.md`, `docs/_meta/discoveries.md`, and `docs/_meta/final-outcome.md`, marking every unexecuted real-provider/manual environment check `NOT VERIFIED`
 

@@ -48,18 +48,25 @@ it('defines one fail-closed extracted-release browser acceptance path', function
         ->toContain('php artisan dusk --without-tty tests/Browser/ReleaseInstallationTest.php')
         ->toContain('ASSESTME_DUSK_INSTALLER=1')
         ->toContain('ASSESTME_DUSK_APPLICATION_URL="$configured_application_url"')
+        ->toContain('ASSESTME_DUSK_DATABASE_HOST="$database_host"')
+        ->toContain('ASSESTME_DUSK_DATABASE_PASSWORD="$database_password"')
         ->toContain('storage/logs/release-server.log')
         ->toContain('storage/app/private/installed.lock')
         ->toContain('php artisan schedule:run')
         ->toContain('php artisan assestme:diagnose --json')
-        ->toContain('${application_url}/up')
-        ->toContain('${application_url}/admin/login')
+        ->toContain('=== "MariaDB"')
+        ->toContain('application_url="http://${browser_host}:${port}"')
+        ->toContain('ready_url="http://${ready_host}:${port}"')
+        ->toContain('${ready_url}/up')
+        ->toContain('${ready_url}/admin/login')
         ->not->toContain('strace')
         ->not->toContain('KNOWN_GOOD_COMMIT')
         ->not->toContain('continue-on-error');
 
     expect($browserTest)
         ->toContain('final class ReleaseInstallationTest')
+        ->toContain("radio('database_driver', 'mysql')")
+        ->toContain("assertSee('MariaDB')")
         ->toContain('[data-dusk="installation-complete"]')
         ->toContain('Installer finalization lost the release HTTP server.');
     expect(str_contains($browserTest, "waitForText('AssestMe è pronto'"))->toBeFalse();

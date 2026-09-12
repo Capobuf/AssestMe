@@ -63,7 +63,7 @@ function assestMeDiagnosticServerConnection(
     return $connection;
 }
 
-it('emits a machine-readable driver-aware SQLite diagnostic report', function (): void {
+it('emits a machine-readable driver-aware diagnostic report', function (): void {
     User::factory()->create();
 
     $exitCode = Artisan::call('assestme:diagnose', ['--json' => true]);
@@ -75,24 +75,35 @@ it('emits a machine-readable driver-aware SQLite diagnostic report', function ()
      */
     $report = json_decode(Artisan::output(), true, 64, JSON_THROW_ON_ERROR);
 
+    $driver = (string) config('database.default');
+    $product = $driver === 'sqlite' ? 'SQLite' : ($driver === 'mysql' ? 'MySQL' : 'MariaDB');
+
     expect($exitCode)->toBe(0)
         ->and($report['ok'])->toBeTrue()
-        ->and($report['database']['driver'])->toBe('sqlite')
-        ->and($report['database']['product'])->toBe('SQLite')
+        ->and($report['database']['driver'])->toBe($driver)
+        ->and($report['database']['product'])->toBe($product)
         ->and($report['database']['server_version'])->not->toBeEmpty()
-        ->and($report['checks']['database_extension']['detail'])->toBe('pdo_sqlite')
-        ->and($report['checks']['database_integrity']['status'])->toBe('passed')
-        ->and($report['checks']['sqlite_foreign_keys']['status'])->toBe('passed')
-        ->and($report['checks']['sqlite_journal_mode']['status'])->toBe('passed')
-        ->and($report['checks']['sqlite_busy_timeout']['status'])->toBe('passed')
-        ->and($report['checks']['sqlite_synchronous']['status'])->toBe('passed')
-        ->and($report['checks']['sqlite_transaction_mode']['status'])->toBe('passed')
-        ->and($report['checks'])->not->toHaveKeys([
-            'database_charset',
-            'database_collation',
-            'database_engine',
-            'database_utilities',
-        ]);
+        ->and($report['checks']['database_extension']['detail'])->toBe($driver === 'sqlite' ? 'pdo_sqlite' : 'pdo_mysql')
+        ->and($report['checks']['database_integrity']['status'])->toBe('passed');
+
+    if ($driver === 'sqlite') {
+        expect($report['checks']['sqlite_foreign_keys']['status'])->toBe('passed')
+            ->and($report['checks']['sqlite_journal_mode']['status'])->toBe('passed')
+            ->and($report['checks']['sqlite_busy_timeout']['status'])->toBe('passed')
+            ->and($report['checks']['sqlite_synchronous']['status'])->toBe('passed')
+            ->and($report['checks']['sqlite_transaction_mode']['status'])->toBe('passed')
+            ->and($report['checks'])->not->toHaveKeys([
+                'database_charset',
+                'database_collation',
+                'database_engine',
+                'database_utilities',
+            ]);
+    } else {
+        expect($report['checks']['database_charset']['status'])->toBe('passed')
+            ->and($report['checks']['database_collation']['status'])->toBe('passed')
+            ->and($report['checks']['database_engine']['status'])->toBe('passed')
+            ->and($report['checks']['database_utilities']['status'])->toBe('passed');
+    }
 });
 
 it('renders the default diagnostic output for an administrator in Italian', function (): void {
@@ -107,6 +118,11 @@ it('renders the default diagnostic output for an administrator in Italian', func
 
 it('renders the authenticated driver-aware administrative diagnostics page', function (): void {
     $administrator = User::factory()->create();
+    $product = match ((string) config('database.default')) {
+        'mysql' => 'MySQL',
+        'mariadb' => 'MariaDB',
+        default => 'SQLite',
+    };
 
     $this->actingAs($administrator)
         ->get('/admin/settings/diagnostics')
@@ -116,7 +132,7 @@ it('renders the authenticated driver-aware administrative diagnostics page', fun
         ->assertSee('Versione PHP')
         ->assertSee('Memoria disponibile')
         ->assertSee('assestme-diagnostics__table-scroll', false)
-        ->assertSee('SQLite')
+        ->assertSee($product)
         ->assertSee('Heartbeat scheduler')
         ->assertSee('Stato backup');
 });

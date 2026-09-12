@@ -27,10 +27,12 @@ beforeEach(function (): void {
 
 it('projects one complete assessment without omitting documents or evidence', function (): void {
     $assessment = completeGoogleDriveAssessment();
+    $clientPrefix = sprintf('C-%06d', $assessment->client_id);
+    $assessmentPrefix = sprintf('A-%06d', $assessment->getKey());
     $google = Mockery::mock(GoogleWorkspaceClient::class);
-    $google->shouldReceive('ensureFolder')->once()->with('root-123', 'C-000001', Mockery::pattern('/^C-000001 - /'))
+    $google->shouldReceive('ensureFolder')->once()->with('root-123', $clientPrefix, Mockery::pattern('/^'.preg_quote($clientPrefix, '/').' - /'))
         ->andReturn(driveObject('client-folder', 'Client'));
-    $google->shouldReceive('ensureFolder')->once()->with('client-folder', 'A-000001', Mockery::pattern('/^A-000001 - /'))
+    $google->shouldReceive('ensureFolder')->once()->with('client-folder', $assessmentPrefix, Mockery::pattern('/^'.preg_quote($assessmentPrefix, '/').' - /'))
         ->andReturn(driveObject('assessment-folder', 'Assessment'));
     $google->shouldReceive('ensureFolder')->once()->with('assessment-folder', 'Documenti', 'Documenti')
         ->andReturn(driveObject('documents-folder', 'Documenti'));
@@ -44,7 +46,7 @@ it('projects one complete assessment without omitting documents or evidence', fu
                 && $bytes === 'evidence bytes' && $mime === 'text/plain',
     )->andReturn(driveObject('evidence-file', 'Evidence', 'text/plain', 'https://drive.test/evidence'));
     $google->shouldReceive('ensureSpreadsheet')->once()
-        ->with('assessment-folder', 'Findings - A-000001', 'Findings - A-000001')
+        ->with('assessment-folder', 'Findings - '.$assessmentPrefix, 'Findings - '.$assessmentPrefix)
         ->andReturn(driveObject('sheet-123', 'Findings', GoogleWorkspaceClient::SPREADSHEET_MIME_TYPE));
     $google->shouldReceive('replaceSpreadsheet')->once()->withArgs(
         static function (string $id, array $assessmentRows, array $findingRows, array $solutionRows, array $evidenceRows): bool {

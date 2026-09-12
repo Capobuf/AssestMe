@@ -52,13 +52,13 @@ The baseline JSON must remain unchanged.
 
 ## Complete repository gate
 
-Run once after the coherent slice and documentation are complete:
+Use the current canonical application path after the coherent slice and documentation are complete:
 
 ```bash
-docker compose -f docker/compose.dev.yml exec -T app scripts/verify.sh
+scripts/test-app.sh
 ```
 
-Direct host or unmarked-container invocation of `scripts/verify.sh` must fail before running checks.
+Set the documented canonical MariaDB test environment before invoking this path.
 
 Do not report physical Edge, Firefox, iOS Safari, Android Chrome, device, or hosting acceptance as
 passed without direct execution evidence.

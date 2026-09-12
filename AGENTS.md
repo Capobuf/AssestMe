@@ -48,7 +48,7 @@ Never:
 4. Implement one coherent vertical slice.
 5. Add success and failure-path tests consistent with the existing suite.
 6. Run focused checks selected from the actual change surface. Rerun the failing test or command before broadening scope.
-7. Run the browser-free core gate only inside the normative Compose app service with `docker compose -f docker/compose.dev.yml exec -T app scripts/verify-core.sh` for a coherent normal change set. Run `scripts/verify.sh` there for complete acceptance before publication/deployment, before merging to `main`, at milestone completion, after browser/test-infrastructure changes, or when explicitly requested. Direct host execution is forbidden and rejected by the core script.
+7. Before creating every commit, run `docker compose -f docker/compose.dev.yml exec -T app scripts/check.sh`. Run focused MariaDB, browser, installer, or compatibility checks when the affected surface requires them; CI owns the complete separated paths.
 8. Record factual discoveries in `docs/_meta/discoveries.md`; do not use discoveries to silently create new requirements.
 9. Update an ADR only when an accepted architectural decision changes with explicit approval.
 10. Keep `main` releasable and do not declare completion without the required evidence.
@@ -102,25 +102,17 @@ Never:
 
 ## Tests and gates
 
-The required normal PR gate is browser-free and available only inside the normative development container:
+The mandatory pre-commit gate is browser-free and runs Composer validation, Pint, PHPStan, and the Unit suite once against disposable SQLite:
 
 ```bash
-docker compose -f docker/compose.dev.yml exec -T app scripts/verify-core.sh
+docker compose -f docker/compose.dev.yml exec -T app scripts/check.sh
 ```
 
-It covers preflight, Composer validation/audit, Pint, PHPStan, application tests, strict Canary,
-diagnostics, the 50-Finding benchmark, and storage audit. CI also keeps the pinned MySQL/MariaDB
-compatibility matrix as a normal PR gate.
-
-The complete acceptance gate adds the maintained Dusk suite exactly once:
-
-```bash
-docker compose -f docker/compose.dev.yml exec -T app scripts/verify.sh
-```
-
-Release archive and installer acceptance run in the `Acceptance` workflow before develop publication
-and CloudPanel deployment. Focused checks remain valid during implementation but do not replace the
-applicable gate.
+CI runs the complete Feature suite once on MariaDB 12.3.3, the real MariaDB backup/restore round
+trip, four maintained application Dusk files, and one extracted-release MariaDB installer journey.
+SQLite and MySQL 8.4.11 receive only bounded migration/seed, capability, and diagnostic smokes on
+pushes to `develop`/`main` and manual runs. Composer audit runs only in CI. Focused checks remain
+valid during implementation but do not replace the applicable CI path.
 
 Manual Edge, Firefox, iOS Safari, Android Chrome, and real-hosting acceptance must never be reported as passed without execution evidence.
 
@@ -137,4 +129,4 @@ Manual Edge, Firefox, iOS Safari, Android Chrome, and real-hosting acceptance mu
 
 ## Final handoff
 
-Start the application through `docker/compose.dev.yml`, verify a real login, generate and validate real PDF/XLSX files, verify backup/restore, run applicable gates, and report exact evidence. Never print production credentials or claim a real environment that was not tested.
+Start the application through `docker/compose.dev.yml` when application behavior is affected, run the mandatory pre-commit check plus every applicable focused CI path, and report exact evidence. Never print production credentials or claim a real environment that was not tested.

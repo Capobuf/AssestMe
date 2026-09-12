@@ -106,9 +106,9 @@
 - [x] T032 Record implementation facts and any discoveries in docs/_meta/progress.md and docs/_meta/discoveries.md
 - [x] T033 Run the focused Feature/Livewire tests from specs/003-learn-finding-templates/quickstart.md and resolve failures
 - [x] T034 Run focused Pint and PHPStan over the actual change surface and resolve failures
-- [x] T037 Add fail-closed normative-runtime enforcement for scripts/verify.sh, update Compose/CI/agent contracts, and cover host refusal in tests/Feature/DeploymentConfigurationTest.php
-- [x] T038 Record D-074 and the normative complete-gate invocation in canonical testing documentation
-- [x] T035 Run scripts/verify.sh inside the normative Compose app service as the authoritative complete gate and record exact results in docs/_meta/progress.md
+- [x] T037 Add fail-closed normative-runtime enforcement for the then-current complete gate, update Compose/CI/agent contracts, and cover host refusal in tests/Feature/DeploymentConfigurationTest.php
+- [x] T038 Record the then-current verification decision and invocation in canonical testing documentation
+- [x] T035 Run the then-current authoritative complete gate and record exact results in docs/_meta/progress.md
 - [x] T036 Audit the final diff, confirm all acceptance scenarios/evidence and mark every completed task in specs/003-learn-finding-templates/tasks.md
 
 ---

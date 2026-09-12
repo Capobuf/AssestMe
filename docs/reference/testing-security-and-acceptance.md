@@ -2,75 +2,69 @@
 
 ## Verification model
 
-Development and CI verification are autonomous and isolated. Maintained commands must not read, migrate, truncate, seed, back up, restore, benchmark, or otherwise mutate the configured application database or private storage.
-
-Tests create disposable database and storage roots and clean them on success and failure. Backup/restore and deployment tests operate only on temporary paths.
+Development and CI verification are autonomous and isolated. Test commands use disposable database
+and storage roots and must not mutate configured application data. The layers are deliberately
+separate: the pre-commit check owns static checks and Unit tests, the canonical application path owns
+Feature and application-browser coverage, and installer acceptance owns only the extracted release.
 
 ## Focused checks
 
-Use checks proportional to the affected behavior. A graphical/navigation change does not automatically require benchmark, backup/restore, complete report suites, storage audit, or the entire Dusk suite. A focused check does not certify the complete gate.
+Use checks proportional to the affected behavior. A graphical/navigation change does not
+automatically require benchmark, backup/restore, complete report suites, storage audit, or the
+entire Dusk suite. A focused check does not certify the broader CI acceptance paths.
 
-After a failure, rerun the failing test or command first. Broaden only when the failure or dependency surface requires it.
+After a failure, rerun the failing test or command first. Broaden only when the failure or
+dependency surface requires it.
 
-## Core quality gate
+## Mandatory pre-commit check
 
 ```bash
-docker compose -f docker/compose.dev.yml exec -T app scripts/verify-core.sh
+docker compose -f docker/compose.dev.yml exec -T app scripts/check.sh
 ```
 
-The core gate is the required normal PR/push check. It is fail-closed outside the marked `app`
-service from `docker/compose.dev.yml`; host execution is rejected before Composer, database,
-storage, or benchmark work begins. It starts no Selenium, ChromeDriver, Dusk, temporary HTTP server,
-installer browser, historical comparison, or externally timed process test.
-
-The core gate executes each expensive gate at most once and covers:
+Run this browser-free command before every commit. It covers exactly:
 
 ```bash
-scripts/preflight.sh
 composer validate --strict
 vendor/bin/pint --test
 vendor/bin/phpstan analyse --memory-limit=1G
-php artisan test
-php artisan canary:check --strict
-composer audit --locked
-php artisan assestme:diagnose
-php artisan assestme:benchmark --findings=50
+php artisan test --testsuite=Unit
 ```
 
-It also includes storage audit and the maintained report/export/backup evidence. The full application
-suite executes the deterministic `InstallationWizardTest`, `InstallationRuntimeInspectorTest`,
-`LibraryClassificationTest`, `BackupRestoreTest`, `DeletionRecoveryTest`, `BenchmarkIsolationTest`,
-and `DeploymentConfigurationTest` coverage without repeating those files as targeted invocations.
-No skipped Canary page, PHP warning, notice, or deprecation is accepted.
+Unit tests run explicitly with disposable SQLite. This check does not run Feature tests, server
+databases, Dusk, installer acceptance, benchmark, storage audit, strict Canary CLI, real
+backup/restore, dependency audit, release build, or deployment. CI runs
+`composer audit --locked --no-interaction` in the `check` job after this script.
 
-## Complete acceptance gate
+## Canonical application path
 
 ```bash
-docker compose -f docker/compose.dev.yml exec -T app scripts/verify.sh
+scripts/test-app.sh
 ```
 
-The complete gate calls `scripts/verify-core.sh` and then runs `scripts/dusk-isolated.sh` once when
-`RUN_DUSK=1`, which is the default. `RUN_DUSK=0` is an explicit browser-free local mode and does not
-run a targeted Dusk test. A browser regression fails Acceptance normally; screenshot, DOM source,
-console, server, and Laravel logs are retained on CI failure.
+This path fails unless `ASSESTME_TEST_DB_DRIVER=mariadb`. It runs the complete Feature suite once on
+MariaDB 12.3.3, the real `ServerDatabaseBackupRestoreTest` round trip on that database, and exactly
+the four maintained application Browser files. It does not rerun Unit tests, Composer validation,
+Pint, PHPStan, or another aggregate gate.
 
-The `Acceptance` workflow runs on pushes to `develop` and manual dispatch. It combines the complete
-gate with a single current release build, archive integrity and installer-contract validation, one
-canonical extracted-release installer journey, post-install diagnostics/health checks, and clean
-checkout bootstrap. Publication of `develop-latest` and actual CloudPanel deployment depend on these
-acceptance jobs. Historical release builds, repeated installer smoke attempts, process tracing, and
-alternative-server comparisons are diagnostic history rather than normal release gates.
+The separate `installer` CI job builds the release ZIP once, validates and extracts it, then runs
+`ReleaseInstallationTest` once against MariaDB 12.3.3. It verifies final lock/state, health, real
+login, diagnostics, and scheduler behavior without rerunning the application suite.
 
-## Database matrix
+## Database coverage
 
-Normal CI proves common behavior using SQLite plus MySQL 8.0/8.4 and MariaDB 11.8/12.3 at explicitly
-pinned patch versions. The wider functional subset runs only on the recent MySQL and MariaDB entries;
-all four entries keep capability, integrity, diagnostic, and real backup/restore coverage.
-Documentation must not describe an unexecuted database/server version as compatible or certified.
+MariaDB 12.3.3 is the pinned canonical CI database. SQLite and MySQL 8.4.11 run only a small
+compatibility smoke covering migrations and seeds, product/capability detection, and fundamental
+diagnostics. Compatibility smoke runs on pushes to `develop`/`main` and manual dispatch, not ordinary
+pull requests. SQLite and MySQL do not run the complete Feature suite, Dusk, or real backup/restore.
 
 ## Browser evidence
 
-The maintained Dusk suite is the automated browser gate. Manual physical checks remain required for:
+The maintained automated browser set contains five files total: four application/browser-specific
+files plus the separate release installer. Application Dusk covers login/workspace/save/report
+smoke, IndexedDB local-draft recovery, functional risk-matrix interaction, and reactive PDF preview
+fullscreen behavior. It does not use screenshot or pixel geometry assertions as normative coverage.
+Manual physical checks remain required for:
 
 - Edge;
 - Firefox;
@@ -175,4 +169,10 @@ Completion requires evidence for:
 
 ## Current verified outcome
 
-The D-063–D-070 release/installer and SQLite/MySQL/MariaDB scope passed the complete local automated gate recorded in the source plan. Real CloudPanel acceptance and the physical Edge, Firefox, iOS Safari, and Android Chrome checklist remain `NOT VERIFIED`. Global product acceptance therefore remains open.
+On 2026-09-12 the refactored local verification paths passed against the pinned MariaDB 12.3.3 and
+MySQL 8.4.11 Compose services: the pre-commit check, complete Feature suite, real MariaDB
+backup/restore, four-file application Dusk set, extracted-ZIP MariaDB installer, and bounded
+SQLite/MySQL compatibility smokes. Exact counts and timings are recorded in
+[`docs/_meta/progress.md`](../_meta/progress.md). GitHub-hosted workflow execution, publication,
+CloudPanel deployment, and the physical Edge, Firefox, iOS Safari, and Android Chrome checklist
+remain `NOT VERIFIED`.

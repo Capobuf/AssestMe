@@ -29,12 +29,11 @@ resources/views/reports/assessment.blade.php
 resources/views/reports/partials/
 tests/
 tests/Browser/
-.github/workflows/quality.yml
-.github/workflows/acceptance.yml
+.github/workflows/ci.yml
 scripts/preflight.sh
 scripts/bootstrap-local.sh
-scripts/verify-core.sh
-scripts/verify.sh
+scripts/check.sh
+scripts/test-app.sh
 scripts/build-release.sh
 scripts/release-installer-acceptance.sh
 scripts/shared-hosting-smoke.sh

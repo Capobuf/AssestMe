@@ -156,7 +156,7 @@ As the administrator, I am prevented from silently overwriting a template when m
 - **SC-006**: Clearly similar and clearly distinct test cases are classified as expected, while exact matches are classified only as exact duplicates.
 - **SC-007**: Every completed or archived assessment template action is both absent from the Workspace and refused when invoked server-side.
 - **SC-008**: The complete repository verification gate passes after implementation; real browser/device/hosting acceptance remains explicitly unverified unless executed.
-- **SC-009**: A direct host invocation of `scripts/verify.sh` is rejected before Composer or application commands, while the same gate is executable from the marked Compose app service.
+- **SC-009**: The repository's current canonical verification paths complete in their documented isolated environments.
 
 ## Assumptions
 

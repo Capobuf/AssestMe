@@ -46,6 +46,6 @@ it('converts persisted exact estimates to the single Stima type', function (): v
         ->toBe(EstimateType::Approximate->value)
         ->and(DB::table('finding_template_solutions')->where('id', $templateSolution->getKey())->value('estimate_type'))
         ->toBe(EstimateType::Approximate->value)
-        ->and(DB::table('finding_solutions')->where('id', $findingSolution->getKey())->value('amount_min'))
-        ->toBe(100);
+        ->and((float) DB::table('finding_solutions')->where('id', $findingSolution->getKey())->value('amount_min'))
+        ->toBe(100.0);
 });

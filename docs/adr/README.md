@@ -3,7 +3,7 @@
 ## Rules
 
 - Accepted ADR decisions are normative.
-- Each base decision ID D-001 through D-075 appears in exactly one thematic ADR.
+- Each base decision ID D-001 through D-080 appears in exactly one thematic ADR.
 - Historical superseded versions remain in the same thematic ADR as their base ID.
 - Do not create an ADR for a bug fix, ordinary UI refinement, progress entry, command result, or dependency version already locked by `composer.lock`.
 - A decision changes only with explicit approval and a superseding entry.
@@ -19,12 +19,12 @@
 | [0005-reporting-and-exports](0005-reporting-and-exports.md) | Reporting and exports | D-009, D-010, D-022, D-026, D-050, D-051, D-052, D-059, D-060 |
 | [0006-storage-deletion-and-backup](0006-storage-deletion-and-backup.md) | Storage, deletion, and backup | D-017, D-018, D-023, D-029, D-061, D-066, D-072 |
 | [0007-security-and-installation-state](0007-security-and-installation-state.md) | Security and installation state | D-028, D-065 |
-| [0008-testing-and-verification](0008-testing-and-verification.md) | Testing and verification | D-027, D-041, D-067, D-074 |
+| [0008-testing-and-verification](0008-testing-and-verification.md) | Testing and verification | D-027, D-041, D-067, D-074, D-076, D-077, D-078, D-079, D-080 |
 | [0009-deployment-and-installer](0009-deployment-and-installer.md) | Deployment and installer | D-019, D-064, D-068, D-069, D-070 |
 
 ## Coverage
 
-- Base IDs present: 75/75.
+- Base IDs present: 80/80.
 - Duplicate base IDs across ADRs: 0.
 - Missing base IDs: 0.
 - Baseline: specification 2.7, source `plan.md` blob `c201bf64ec39519e1f26eba5f18e63886f3ae8ae`.

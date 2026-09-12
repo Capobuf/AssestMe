@@ -108,7 +108,7 @@ it('defines the authoritative minimal Docker development topology semantically',
     expect($mysql['profiles'])->toBe(['database'])
         ->and($mysql['image'])->toBe('${ASSESTME_MYSQL_TEST_IMAGE:-mysql:8.4.11}')
         ->and($mariaDb['profiles'])->toBe(['database'])
-        ->and($mariaDb['image'])->toBe('${ASSESTME_MARIADB_TEST_IMAGE:-mariadb:12.3.2}');
+        ->and($mariaDb['image'])->toBe('${ASSESTME_MARIADB_TEST_IMAGE:-mariadb:12.3.3}');
 
     $serializedCompose = strtolower((string) file_get_contents($composePath));
     expect($serializedCompose)
@@ -237,8 +237,13 @@ it('records the superseded installation history and approved Docker and hosted p
     expect($securityAdr)->toContain('| D-065 | APPROVED |');
     expect($backupAdr)->toContain('| D-066 | APPROVED |');
     expect($verificationAdr)
-        ->toContain('| D-067 | APPROVED |')
-        ->toContain('| D-074 | APPROVED |');
+        ->toContain('| D-067 | SUPERSEDED |')
+        ->toContain('| D-074 | SUPERSEDED |')
+        ->toContain('| D-076 | APPROVED |')
+        ->toContain('| D-077 | APPROVED |')
+        ->toContain('| D-078 | APPROVED |')
+        ->toContain('| D-079 | APPROVED |')
+        ->toContain('| D-080 | APPROVED |');
 
     $requiredDocumentation = [
         'docs/index.md',
@@ -271,22 +276,20 @@ it('normalizes blank optional Google credentials from a clean Compose checkout',
         ->toContain("'client_secret' => env('GOOGLE_CLIENT_SECRET') ?: null");
 });
 
-it('rejects both verification gates before work begins outside the marked Compose runtime', function (): void {
-    foreach (['scripts/verify-core.sh', 'scripts/verify.sh'] as $script) {
-        $process = new Process([
-            'env',
-            '-u',
-            'ASSESTME_VERIFY_RUNTIME',
-            'bash',
-            base_path($script),
-        ], base_path());
-        $process->run();
+it('fails the canonical application script before tests when MariaDB is not selected', function (): void {
+    $process = new Process([
+        'env',
+        '-u',
+        'ASSESTME_TEST_DB_DRIVER',
+        'bash',
+        base_path('scripts/test-app.sh'),
+    ], base_path());
+    $process->run();
 
-        expect($process->isSuccessful())->toBeFalse()
-            ->and($process->getOutput())->toBe('')
-            ->and($process->getErrorOutput())
-            ->toContain('must run inside the app service from docker/compose.dev.yml');
-    }
+    expect($process->isSuccessful())->toBeFalse()
+        ->and($process->getOutput())->toBe('')
+        ->and($process->getErrorOutput())
+        ->toContain('requires ASSESTME_TEST_DB_DRIVER=mariadb');
 });
 
 it('uses capability-based preflight and rejects an incomplete project root', function (): void {
@@ -390,133 +393,56 @@ BASH;
     }
 });
 
-it('runs each expensive gate once and reuses only exact fingerprint receipts', function (): void {
-    $quality = (string) file_get_contents(base_path('scripts/quality-isolated.sh'));
+it('separates the pre-commit application and browser responsibilities without recursive gates', function (): void {
+    $check = (string) file_get_contents(base_path('scripts/check.sh'));
+    $application = (string) file_get_contents(base_path('scripts/test-app.sh'));
     $browser = (string) file_get_contents(base_path('scripts/dusk-isolated.sh'));
-    $core = (string) file_get_contents(base_path('scripts/verify-core.sh'));
-    $verify = (string) file_get_contents(base_path('scripts/verify.sh'));
-    $qualityWorkflow = (string) file_get_contents(base_path('.github/workflows/quality.yml'));
-    $acceptanceWorkflow = (string) file_get_contents(base_path('.github/workflows/acceptance.yml'));
-    $testPosition = strpos($quality, 'php artisan test');
-    $canarySetupPosition = strrpos($quality, 'php artisan migrate:fresh --seed --force');
-    $canaryPosition = strpos($quality, 'php artisan canary:check --strict');
 
-    expect($quality)
+    expect($check)
+        ->toContain('export ASSESTME_TEST_DB_DRIVER=sqlite')
+        ->toContain('composer validate --strict')
         ->toContain('vendor/bin/pint --test')
         ->toContain('vendor/bin/phpstan analyse --memory-limit=1G')
-        ->toContain('assestme_prepare_isolated_environment_file "$PWD"')
-        ->toContain('assestme_cleanup_isolated_environment_file')
-        ->toContain('php artisan test')
-        ->toContain('php artisan canary:check --strict')
-        ->toContain('php artisan assestme:create-admin --from-env >/dev/null')
-        ->toContain('php artisan assestme:installation:lock --force >/dev/null')
-        ->toContain('composer audit --locked --no-interaction')
-        ->toContain('assestme_write_gate_receipt quality')
-        ->and(substr_count($quality, 'php artisan migrate:fresh --seed --force'))->toBe(2)
-        ->and($testPosition)->toBeInt()
-        ->and($canarySetupPosition)->toBeInt()->toBeGreaterThan($testPosition)
-        ->and($canaryPosition)->toBeInt()->toBeGreaterThan($canarySetupPosition)
-        ->and($core)
-        ->toContain('[[ -f /.dockerenv && "${ASSESTME_VERIFY_RUNTIME:-}" == "docker-compose-dev" ]]')
-        ->toContain('bash scripts/preflight.sh "$project_dir"')
-        ->toContain('assestme_gate_receipt_matches quality')
-        ->toContain('php artisan assestme:diagnose')
-        ->toContain('php artisan assestme:benchmark --findings=50')
-        ->toContain('php artisan assestme:storage:audit')
-        ->not->toContain('dusk')
-        ->not->toContain('selenium')
-        ->and($verify)
-        ->toContain('bash scripts/verify-core.sh "$project_dir"')
-        ->toContain('assestme_gate_receipt_matches browser')
-        ->not->toContain('vendor/bin/pint --test')
-        ->not->toContain('vendor/bin/phpstan analyse')
-        ->not->toContain('php artisan test')
-        ->not->toContain('php artisan canary:check')
+        ->toContain('php artisan test --testsuite=Unit')
+        ->not->toContain('--testsuite=Feature')
         ->not->toContain('composer audit')
-        ->and($browser)
+        ->not->toContain('dusk')
+        ->not->toContain('migrate:fresh')
+        ->not->toContain('canary:check')
+        ->not->toContain('benchmark')
+        ->not->toContain('storage:audit');
+
+    expect($application)
+        ->toContain('ASSESTME_TEST_DB_DRIVER:-')
+        ->toContain('php artisan test --testsuite=Feature')
+        ->toContain('php artisan test tests/Unit/ServerDatabaseBackupRestoreTest.php')
+        ->toContain('tests/Browser/ApplicationSmokeTest.php')
+        ->toContain('tests/Browser/WorkspaceLocalDraftTest.php')
+        ->toContain('tests/Browser/RiskMatrixFieldTest.php')
+        ->toContain('tests/Browser/ReportSettingsPreviewTest.php')
+        ->not->toContain('--testsuite=Unit')
+        ->not->toContain('vendor/bin/pint')
+        ->not->toContain('phpstan')
+        ->not->toContain('composer validate')
+        ->not->toContain('verify-core.sh')
+        ->not->toContain('verify.sh');
+
+    expect($browser)
         ->toContain('if [[ $# -eq 0 ]]')
-        ->toContain('assestme_write_gate_receipt browser')
-        ->and($qualityWorkflow)
-        ->toContain('app scripts/verify-core.sh')
-        ->not->toContain('--profile browser')
-        ->not->toContain('selenium')
-        ->not->toContain('composer validate --strict')
-        ->not->toContain('composer audit --locked')
-        ->and($acceptanceWorkflow)
-        ->toContain('app scripts/verify.sh')
-        ->not->toContain('RUN_DUSK=0');
+        ->toContain('Pass the browser test files')
+        ->toContain('php artisan dusk --without-tty "$@"')
+        ->not->toContain('gate-receipts')
+        ->not->toContain('fingerprint');
 
-    expect(substr_count($verify, 'scripts/dusk-isolated.sh'))->toBe(1)
-        ->and(substr_count($acceptanceWorkflow, 'app scripts/verify.sh'))->toBe(1);
-
-    $repository = storage_path('framework/testing/gate-receipt-'.bin2hex(random_bytes(6)));
-    File::ensureDirectoryExists($repository);
-    File::put($repository.'/tracked.txt', "initial\n");
-    File::put($repository.'/plan.md', "# Specification\n\n## 22. Progress\n\nInitial evidence.\n");
-
-    try {
-        foreach ([
-            ['git', 'init'],
-            ['git', 'config', 'user.email', 'gate-test@assestme.local'],
-            ['git', 'config', 'user.name', 'Gate Test'],
-            ['git', 'add', 'tracked.txt', 'plan.md'],
-            ['git', 'commit', '-m', 'Initial'],
-        ] as $command) {
-            $process = new Process($command, $repository);
-            $process->run();
-            expect($process->isSuccessful())->toBeTrue($process->getErrorOutput());
-        }
-
-        $writeAndMatch = new Process(
-            ['bash', '-c', <<<'BASH'
-source "$GATE_RECEIPTS_HELPER"
-fingerprint="$(assestme_gate_fingerprint quality "$GATE_TEST_ROOT")"
-assestme_write_gate_receipt quality "$GATE_TEST_ROOT" "$fingerprint"
-assestme_gate_receipt_matches quality "$GATE_TEST_ROOT"
-BASH],
-            base_path(),
-            [
-                'GATE_RECEIPTS_HELPER' => base_path('scripts/gate-receipts.sh'),
-                'GATE_TEST_ROOT' => $repository,
-            ],
-        );
-        $writeAndMatch->run();
-        expect($writeAndMatch->isSuccessful())->toBeTrue($writeAndMatch->getErrorOutput());
-
-        File::append($repository.'/plan.md', "Additional factual evidence.\n");
-        $progressOnlyChange = new Process(
-            ['bash', '-c', <<<'BASH'
-source "$GATE_RECEIPTS_HELPER"
-assestme_gate_receipt_matches quality "$GATE_TEST_ROOT"
-BASH],
-            base_path(),
-            [
-                'GATE_RECEIPTS_HELPER' => base_path('scripts/gate-receipts.sh'),
-                'GATE_TEST_ROOT' => $repository,
-            ],
-        );
-        $progressOnlyChange->run();
-        expect($progressOnlyChange->isSuccessful())->toBeTrue($progressOnlyChange->getErrorOutput());
-
-        File::put($repository.'/tracked.txt', "changed\n");
-        $staleReceipt = new Process(
-            ['bash', '-c', <<<'BASH'
-source "$GATE_RECEIPTS_HELPER"
-assestme_gate_receipt_matches quality "$GATE_TEST_ROOT"
-BASH],
-            base_path(),
-            [
-                'GATE_RECEIPTS_HELPER' => base_path('scripts/gate-receipts.sh'),
-                'GATE_TEST_ROOT' => $repository,
-            ],
-        );
-        $staleReceipt->run();
-        expect($staleReceipt->isSuccessful())->toBeFalse();
-    } finally {
-        File::deleteDirectory($repository);
+    foreach ([
+        'scripts/quality-isolated.sh',
+        'scripts/verify-core.sh',
+        'scripts/verify.sh',
+        'scripts/gate-receipts.sh',
+    ] as $removedScript) {
+        expect(base_path($removedScript))->not->toBeFile();
     }
 });
-
 it('preserves the legacy generic-host deployment artifact for internal regression coverage', function (): void {
     $script = (string) file_get_contents(base_path('scripts/deploy-production.sh'));
 
@@ -635,85 +561,62 @@ it('uses a configured remote Dusk driver without starting local ChromeDriver', f
         ->toContain('assestme_end_isolated_environment');
 });
 
-it('keeps normal PR quality browser-free and publishes only after complete acceptance', function (): void {
-    $qualityPath = base_path('.github/workflows/quality.yml');
-    $workflowPath = base_path('.github/workflows/acceptance.yml');
-    $qualitySource = (string) file_get_contents($qualityPath);
+it('defines one primary CI workflow with separated non-repeating jobs', function (): void {
+    $workflowPath = base_path('.github/workflows/ci.yml');
     $workflowSource = (string) file_get_contents($workflowPath);
-    $legacyArchiveSuffix = '-cloudpanel'.'.zip';
-    $externalChecksumSuffix = '.zip'.'.sha256';
+    $testApp = (string) file_get_contents(base_path('scripts/test-app.sh'));
+    $check = (string) file_get_contents(base_path('scripts/check.sh'));
 
-    /** @var array{permissions: array{contents: string}, jobs: array<string, array<string, mixed>>} $quality */
-    $quality = Yaml::parseFile($qualityPath);
     /** @var array{permissions: array{contents: string}, jobs: array<string, array<string, mixed>>} $workflow */
     $workflow = Yaml::parseFile($workflowPath);
     $publish = $workflow['jobs']['publish-develop-release'];
-    $release = $workflow['jobs']['release-acceptance'];
-    $releaseDiagnostics = collect($release['steps'])
-        ->firstWhere('name', 'Upload release installer diagnostics');
+    $installer = $workflow['jobs']['installer'];
+    $releaseDiagnostics = collect($installer['steps'])->firstWhere('name', 'Upload release installer diagnostics');
 
-    expect(array_keys($quality['jobs']))->toBe(['quality', 'database-compatibility'])
-        ->and($quality['concurrency'])->toBe([
-            'group' => 'quality-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}',
-            'cancel-in-progress' => true,
-        ])
-        ->and($qualitySource)
-        ->toContain('docker compose -f docker/compose.dev.yml up --build --detach --wait app')
-        ->toContain('app scripts/verify-core.sh')
-        ->not->toContain('--profile browser')
-        ->not->toContain('selenium')
-        ->not->toContain('dusk-isolated.sh')
-        ->and($workflow['permissions'])->toBe(['contents' => 'read'])
-        ->and($publish['if'])->toContain("github.event_name == 'push'")
-        ->and($publish['if'])->toContain("github.ref == 'refs/heads/develop'")
-        ->and($publish['needs'])->toBe([
-            'complete-validation',
-            'release-acceptance',
-            'clean-checkout-bootstrap',
-        ])
+    expect(array_keys($workflow['jobs']))->toBe([
+        'check',
+        'application',
+        'installer',
+        'compatibility-smoke',
+        'publish-develop-release',
+        'deploy_cloudpanel',
+    ])->and($workflow['permissions'])->toBe(['contents' => 'read'])
+        ->and($workflow['jobs']['compatibility-smoke']['if'])->toBe("github.event_name != 'pull_request'")
+        ->and($workflow['jobs']['application']['services']['mariadb']['image'])->toBe('mariadb:12.3.3')
+        ->and($workflow['jobs']['installer']['services']['mariadb']['image'])->toBe('mariadb:12.3.3')
+        ->and($workflow['jobs']['compatibility-smoke']['services']['mysql']['image'])->toBe('mysql:8.4.11')
+        ->and($publish['needs'])->toBe(['check', 'application', 'installer', 'compatibility-smoke'])
         ->and($publish['permissions'])->toBe(['contents' => 'write'])
-        ->and($publish['concurrency'])->toBe([
-            'group' => 'assestme-develop-release',
-            'cancel-in-progress' => true,
-        ])
-        ->and($workflowSource)->toContain('name: assestme-ci-release')
-        ->toContain('path: ${{ runner.temp }}/release/assestme-ci.zip')
-        ->toContain('uses: actions/checkout@v5')
-        ->toContain('uses: actions/download-artifact@v7')
-        ->toContain('uses: actions/upload-artifact@v6')
+        ->and($workflowSource)
+        ->toContain('scripts/check.sh')
+        ->toContain('composer audit --locked --no-interaction')
+        ->toContain('scripts/test-app.sh')
         ->toContain('scripts/build-release.sh ci "${RUNNER_TEMP}/release"')
         ->toContain('scripts/release-installer-acceptance.sh "${RUNNER_TEMP}/validated-release/assestme"')
-        ->toContain('extensions: none, bcmath, ctype, curl, dom, fileinfo, gd, iconv, intl, mbstring, pdo, pdo_mysql, pdo_sqlite, phar, session, simplexml, tokenizer, xml, xmlreader, xmlwriter, zip')
-        ->not->toContain('uses: actions/checkout@v4')
-        ->not->toContain('uses: actions/download-artifact@v4')
-        ->not->toContain('uses: actions/upload-artifact@v4')
-        ->not->toContain('continue-on-error')
-        ->not->toContain('KNOWN_GOOD_COMMIT')
-        ->not->toContain('d02539')
-        ->not->toContain('strace')
-        ->not->toContain('current-http-repeat')
-        ->not->toContain('ASSESTME_FIC_DUSK_FAKE=1')
+        ->toContain('name: assestme-ci-release')
+        ->toContain('path: ${{ runner.temp }}/release/assestme-ci.zip')
         ->toContain('assestme-develop.zip')
         ->toContain("release_tag='develop-latest'")
-        ->toContain("release_title='AssestMe develop — ultima build valida'")
-        ->toContain('--prerelease')
         ->toContain('git rev-parse origin/develop')
-        ->not->toContain($legacyArchiveSuffix)
-        ->not->toContain($externalChecksumSuffix)
+        ->not->toContain('continue-on-error')
+        ->not->toContain('matrix:')
+        ->not->toContain('verify-core.sh')
+        ->not->toContain('verify.sh')
+        ->not->toContain('complete-validation')
+        ->not->toContain('clean-checkout-bootstrap')
+        ->and(substr_count($workflowSource, 'scripts/test-app.sh'))->toBe(1)
+        ->and(substr_count($workflowSource, 'scripts/build-release.sh ci'))->toBe(1)
+        ->and(substr_count($check, '--testsuite=Unit'))->toBe(1)
+        ->and(substr_count($testApp, '--testsuite=Feature'))->toBe(1)
         ->and($releaseDiagnostics)->toBeArray()
         ->and($releaseDiagnostics['if'])->toBe('failure()')
         ->and($releaseDiagnostics['uses'])->toBe('actions/upload-artifact@v6')
-        ->and($releaseDiagnostics['with']['name'])->toBe('release-installer-diagnostics')
         ->and($releaseDiagnostics['with']['path'])
         ->toContain('${{ runner.temp }}/release-installer/storage/logs/release-server.log')
         ->toContain('${{ runner.temp }}/validated-release/assestme/storage/logs/laravel.log')
-        ->toContain('tests/Browser/screenshots')
-        ->toContain('tests/Browser/source')
-        ->toContain('tests/Browser/console')
         ->not->toContain('.env')
-        ->not->toContain('bootstrap-key')
         ->not->toContain('state.enc')
-        ->and($release['steps'])->toContain([
+        ->and($installer['steps'])->toContain([
             'name' => 'Upload validated installable release',
             'uses' => 'actions/upload-artifact@v6',
             'with' => [
@@ -723,10 +626,13 @@ it('keeps normal PR quality browser-free and publishes only after complete accep
                 'retention-days' => 7,
             ],
         ]);
+
+    expect(base_path('.github/workflows/quality.yml'))->not->toBeFile()
+        ->and(base_path('.github/workflows/acceptance.yml'))->not->toBeFile();
 });
 
 it('deploys CloudPanel only after the successful terminal develop job with verified SSH', function (): void {
-    $workflowPath = base_path('.github/workflows/acceptance.yml');
+    $workflowPath = base_path('.github/workflows/ci.yml');
     $workflowSource = (string) file_get_contents($workflowPath);
 
     /** @var array{jobs: array<string, array<string, mixed>>} $workflow */
@@ -745,9 +651,12 @@ it('deploys CloudPanel only after the successful terminal develop job with verif
             'group' => 'assestme-cloudpanel-ci',
             'cancel-in-progress' => false,
         ])
-        ->and($workflow['jobs']['publish-develop-release']['needs'])->toContain('complete-validation')
-        ->toContain('release-acceptance')
-        ->toContain('clean-checkout-bootstrap')
+        ->and($workflow['jobs']['publish-develop-release']['needs'])->toBe([
+            'check',
+            'application',
+            'installer',
+            'compatibility-smoke',
+        ])
         ->and($workflowSource)->toContain('CLOUDPANEL_SSH_PRIVATE_KEY')
         ->toContain('CLOUDPANEL_KNOWN_HOSTS')
         ->toContain('CLOUDPANEL_HOST')

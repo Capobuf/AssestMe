@@ -62,7 +62,7 @@ it('synchronizes changed assessments in chunks no larger than fifty', function (
 
     $selects = [];
     DB::listen(static function ($query) use (&$selects): void {
-        if (str_contains($query->sql, 'from "assessments"')) {
+        if (preg_match('/from ["`]assessments["`]/', $query->sql) === 1) {
             $selects[] = $query->sql;
         }
     });

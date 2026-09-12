@@ -109,7 +109,7 @@ and recommendation constraints.
 - [x] T032 Record factual discoveries and final focused evidence in docs/_meta/discoveries.md and docs/_meta/progress.md
 - [x] T033 Run Pint, PHPStan, and all affected tests; fix and rerun only failing focused commands
 - [x] T034 Start docker/compose.dev.yml and verify real login, real PDF/XLSX generation/validation, and backup/restore without printing credentials
-- [x] T035 Run scripts/verify.sh exactly once, record the exact result, and complete all Spec Kit task checkboxes in specs/001-assessment-integrity/tasks.md
+- [x] T035 Run the then-current complete gate exactly once, record the exact result, and complete all Spec Kit task checkboxes in specs/001-assessment-integrity/tasks.md
 - [x] T036 Review the final diff, commit the complete change set on codex/fix-p0-p1-assessment-integrity, and report the final commit without merging main
 
 ## Dependencies and execution order
@@ -128,7 +128,7 @@ Polish (T030–T036)
 - Within each story, failing contract tests precede the corresponding implementation.
 - The two baseline writing tasks may be edited in separate passes but are sequential because they
   share one JSON file.
-- `scripts/verify.sh` appears only in T035 and runs once.
+- The then-current complete gate appears only in T035 and runs once.
 
 ## Implementation strategy
 

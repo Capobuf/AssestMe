@@ -37,25 +37,22 @@ php artisan dusk --filter=<relevant-browser-test>
 
 Rerun the failed test or command before running a broader gate.
 
-## Core verification
+## Mandatory pre-commit check
 
 ```bash
-docker compose -f docker/compose.dev.yml exec -T app scripts/verify-core.sh
+docker compose -f docker/compose.dev.yml exec -T app scripts/check.sh
 ```
 
-Use this browser-free gate for a coherent normal change set and normal PR feedback. It includes the
-complete unit/feature suite and deterministic focused verification, but no Selenium or Dusk.
+Run this browser-free gate before every commit. It executes strict Composer validation, Pint,
+PHPStan, and the Unit suite once with disposable SQLite. Composer audit remains a CI-only step.
 
-## Complete acceptance verification
+## CI verification
 
-```bash
-docker compose -f docker/compose.dev.yml exec -T app scripts/verify.sh
-```
-
-Run complete acceptance before publication/deployment, before merging to `main`, at milestone
-completion, after browser/test-infrastructure changes, or when explicitly requested. It invokes the
-core gate and then the complete Dusk suite exactly once. Both commands reject unsupported host or
-unmarked-container execution through the core runtime guard.
+The primary `.github/workflows/ci.yml` workflow runs on pull requests to and pushes on `develop` or
+`main`, plus manual dispatch. Its `application` job runs `scripts/test-app.sh` with MariaDB 12.3.3;
+its `installer` job validates one extracted release ZIP with MariaDB 12.3.3. The SQLite/MySQL
+compatibility smoke runs only on branch pushes and manual dispatch. No job nests another complete
+gate.
 
 ## Production release
 

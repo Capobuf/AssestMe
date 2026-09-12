@@ -125,7 +125,7 @@ Apply the approved headings, capitalization, breadcrumb, prominent client identi
 
 ### V7 — Convergence and regression
 
-Review the tree for hidden commercial persistence, automatic grouping, invented API behavior, excess fake/test infrastructure, untranslated UI, and incomplete vertical links. Update canonical product/domain/UI/security/testing documents without duplicating the spec. Run focused Pint/PHPStan/tests first, then reproduce the current `.github/workflows/quality.yml` jobs: quality without Dusk, isolated Dusk, all four current DB matrix entries, CloudPanel release, clean-checkout bootstrap, and locally applicable publish/deploy script checks. GitHub artifact/release and real CloudPanel deployment remain explicitly NOT_RUN unless actually executed.
+Review the tree for hidden commercial persistence, automatic grouping, invented API behavior, excess fake/test infrastructure, untranslated UI, and incomplete vertical links. Update canonical product/domain/UI/security/testing documents without duplicating the spec. Run focused Pint/PHPStan/tests first, then reproduce the current `.github/workflows/ci.yml` responsibilities: pre-commit check, canonical MariaDB application path, extracted-release MariaDB installer, bounded SQLite/MySQL compatibility smoke, and locally applicable publish/deploy script checks. GitHub artifact/release and real CloudPanel deployment remain explicitly NOT_RUN unless actually executed.
 
 ## Design Decisions
 

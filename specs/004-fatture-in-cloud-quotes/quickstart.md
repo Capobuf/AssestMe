@@ -41,15 +41,14 @@ Expected journey: dirty Workspace -> `Crea preventivo` -> confirmed save -> comp
 
 ## Final CI equivalence
 
-Re-read `.github/workflows/quality.yml` immediately before running. As of planning, execute in this order:
+Re-read `.github/workflows/ci.yml` immediately before running. As of planning, execute in this order:
 
 1. Working-tree review, Pint, PHPStan, focused FIC tests.
-2. `docker compose -f docker/compose.dev.yml --profile browser exec -T -e RUN_DUSK=0 app scripts/verify.sh`.
-3. `scripts/dusk-isolated.sh` in the workflow's isolated browser root.
-4. Database matrix equivalents for MySQL 8.0.46, MySQL 8.4.11, MariaDB 11.8.6, MariaDB 12.3.2, including migration/capability, configured full suite, integrity, diagnostics, and real dump/restore round trip.
-5. Build/validate/extract/install the CloudPanel release, run installer Dusk if still configured, `schedule:run`, and diagnostics.
-6. Run `scripts/bootstrap-local.sh` from a disposable clean checkout and verify canonical seed counts/diagnostics.
-7. Statically verify GitHub-only publish/deploy steps and run applicable underlying local scripts; do not publish a GitHub release or claim real CloudPanel deployment.
+2. `scripts/check.sh` in the documented isolated runtime.
+3. `scripts/test-app.sh` once against MariaDB 12.3.3.
+4. Bounded SQLite and MySQL 8.4.11 compatibility smokes.
+5. Build, validate, extract, and install one release ZIP against MariaDB 12.3.3; run installer Dusk, `schedule:run`, and diagnostics.
+6. Statically verify GitHub-only publish/deploy steps and run applicable underlying local scripts; do not publish a GitHub release or claim real CloudPanel deployment.
 
 Record exact commands, exit status, test/assertion counts, failures/root causes/fixes, and `NOT_RUN` GitHub-specific steps. Never convert unexecuted work into PASS.
 

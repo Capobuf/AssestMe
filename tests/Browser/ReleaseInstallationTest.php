@@ -29,12 +29,21 @@ final class ReleaseInstallationTest extends DuskTestCase
             $releasePath = getenv('ASSESTME_RELEASE_PATH');
             $password = getenv('ASSESTME_DUSK_ADMIN_PASSWORD');
             $applicationUrl = getenv('ASSESTME_DUSK_APPLICATION_URL');
+            $databaseHost = getenv('ASSESTME_DUSK_DATABASE_HOST');
+            $databasePort = getenv('ASSESTME_DUSK_DATABASE_PORT');
+            $databaseName = getenv('ASSESTME_DUSK_DATABASE_NAME');
+            $databaseUsername = getenv('ASSESTME_DUSK_DATABASE_USERNAME');
+            $databasePassword = getenv('ASSESTME_DUSK_DATABASE_PASSWORD');
             Assert::assertIsString($releasePath);
             Assert::assertNotSame('', $releasePath);
             Assert::assertIsString($password);
             Assert::assertNotSame('', $password);
             Assert::assertIsString($applicationUrl);
             Assert::assertMatchesRegularExpression('/^https:\/\/[A-Za-z0-9.-]+(?::[0-9]+)?$/', $applicationUrl);
+            foreach ([$databaseHost, $databasePort, $databaseName, $databaseUsername, $databasePassword] as $databaseValue) {
+                Assert::assertIsString($databaseValue);
+                Assert::assertNotSame('', $databaseValue);
+            }
 
             $browser->assertSee('Installa AssestMe su questo dominio')
                 ->assertSee('Basic Authentication')
@@ -48,13 +57,21 @@ final class ReleaseInstallationTest extends DuskTestCase
                 ->type('application_url', $applicationUrl)
                 ->type('timezone', 'Europe/Rome')
                 ->type('backup_root', $releasePath.'/storage/backups')
-                ->radio('database_driver', 'sqlite')
+                ->radio('database_driver', 'mysql')
                 ->press('Continua al database')
-                ->waitForText('Configura SQLite', 20)
+                ->waitForText('Configura MySQL / MariaDB', 20)
                 ->assertPresent('[data-dusk="database-step"]')
                 ->assertMissing('input[name="dump_binary"]')
                 ->assertMissing('input[name="restore_binary"]')
-                ->type('sqlite_path', $releasePath.'/storage/app/database/database.sqlite');
+                ->assertInputValue('database_driver', 'mysql')
+                ->type('database_host', $databaseHost)
+                ->type('database_port', $databasePort)
+                ->type('database_name', $databaseName)
+                ->type('database_username', $databaseUsername)
+                ->type('database_password', $databasePassword)
+                ->type('database_socket', '')
+                ->assertInputValue('database_charset', 'utf8mb4')
+                ->assertInputValue('database_collation', 'utf8mb4_unicode_ci');
 
             $this->advancePastDatabaseStep($browser);
 
@@ -96,7 +113,7 @@ final class ReleaseInstallationTest extends DuskTestCase
                 ->visit('/admin/settings/diagnostics')
                 ->waitFor('[data-dusk="application-diagnostics"]', 30)
                 ->assertSee('Diagnostica AssestMe')
-                ->assertSee('SQLite');
+                ->assertSee('MariaDB');
         });
     }
 

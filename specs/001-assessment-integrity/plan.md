@@ -56,7 +56,7 @@ per form and configured aggregate Evidence limits, a substantial multi-domain se
 - Authoritative persistence/failure: PASS. Save ordering, idempotency, compensation, and explicit
   failures are the central design.
 - Vertical delivery/evidence: PASS. Phase order is US1 then US2 then US3; each reaches focused
-  success/failure tests before the next. `scripts/verify.sh` runs once in final polish.
+  success/failure tests before the next. The then-current complete gate runs once in final polish.
 
 ## Phase 0 Research Decisions
 
@@ -111,7 +111,7 @@ The resolved decisions and rejected alternatives are recorded in [research.md](r
 1. Update ADR 0003/0004 and only the affected canonical reference/repository-layout contracts.
 2. Run Pint, PHPStan, all affected tests, then start `docker/compose.dev.yml` and gather the real
    login, PDF/XLSX, and backup/restore evidence required by `AGENTS.md`.
-3. Run `scripts/verify.sh` exactly once at the end, record factual outcomes, and create the final
+3. Run the then-current complete gate exactly once at the end, record factual outcomes, and create the final
    commit without merging `main`.
 
 ## Project Structure

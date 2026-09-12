@@ -174,7 +174,7 @@ save/report paths working, and clears on retry; disconnect never deletes remote 
 
 - [X] T057 Run `composer validate --strict` and `composer audit --locked`
 - [X] T058 Run the focused commands from `specs/002-google-drive-readable-sync/quickstart.md`
-- [X] T059 Run the single final `scripts/verify.sh` complete gate
+- [X] T059 Run the then-current single final complete gate
 - [X] T060 Run `$speckit-converge`; implement and test any appended tasks until the feature converges
 - [X] T061 Record exact final branch/HEAD, commands, results, and real-Google `NOT VERIFIED` boundaries in `docs/_meta/progress.md`
 

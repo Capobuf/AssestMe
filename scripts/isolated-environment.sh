@@ -2,6 +2,12 @@
 
 assestme_begin_isolated_environment() {
     local prefix="${1:-verify}"
+    local database_driver="${ASSESTME_TEST_DB_DRIVER:-sqlite}"
+
+    if [[ "$database_driver" != "sqlite" && "$database_driver" != "mysql" && "$database_driver" != "mariadb" ]]; then
+        printf 'ERROR: ASSESTME_TEST_DB_DRIVER must be sqlite, mysql, or mariadb.\n' >&2
+        return 1
+    fi
 
     ASSESTME_ISOLATED_ENV_OWNS_ROOT=0
     if [[ -z "${ASSESTME_TEST_ROOT:-}" ]]; then
@@ -43,8 +49,20 @@ assestme_begin_isolated_environment() {
     export ASSESTME_TEST_ISOLATED=1
     export ASSESTME_TEST_ROOT
     export CACHE_STORE=file
-    export DB_CONNECTION=sqlite
-    export DB_DATABASE="$ASSESTME_TEST_ROOT/database.sqlite"
+    export DB_CONNECTION="$database_driver"
+    if [[ "$database_driver" == "sqlite" ]]; then
+        export DB_DATABASE="$ASSESTME_TEST_ROOT/database.sqlite"
+        export DB_HOST=""
+        export DB_PASSWORD=""
+        export DB_PORT=""
+        export DB_USERNAME=""
+    else
+        export DB_DATABASE="${ASSESTME_TEST_DB_DATABASE:-assestme_test}"
+        export DB_HOST="${ASSESTME_TEST_DB_HOST:-${database_driver}-test}"
+        export DB_PASSWORD="${ASSESTME_TEST_DB_PASSWORD:-}"
+        export DB_PORT="${ASSESTME_TEST_DB_PORT:-3306}"
+        export DB_USERNAME="${ASSESTME_TEST_DB_USERNAME:-root}"
+    fi
     export DB_FOREIGN_KEYS=true
     export DB_BUSY_TIMEOUT=5000
     export DB_JOURNAL_MODE=WAL

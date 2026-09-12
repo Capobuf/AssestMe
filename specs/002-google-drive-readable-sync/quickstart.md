@@ -40,10 +40,10 @@ captured output or logs.
 
 ## Complete repository gate
 
-Run once after the coherent feature and documentation are complete:
+Use the current canonical application path after the coherent feature and documentation are complete:
 
 ```bash
-scripts/verify.sh
+scripts/test-app.sh
 ```
 
 ## Manual real-Google acceptance

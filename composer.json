@@ -53,11 +53,8 @@
         }
     },
     "scripts": {
-        "quality": [
-            "bash scripts/quality-isolated.sh"
-        ],
-        "browser": [
-            "bash scripts/dusk-isolated.sh"
+        "check": [
+            "bash scripts/check.sh"
         ],
         "fix": [
             "@php vendor/bin/pint"

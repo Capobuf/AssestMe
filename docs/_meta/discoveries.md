@@ -209,3 +209,16 @@ Add only reproducible observations discovered during implementation or verificat
   5.6.8, Livewire 4.3.3, and CommonMark 2.9.2 packages. Compatible updates to Filament 5.8.1,
   Livewire 4.4.4, and CommonMark 2.10.1 clear the locked dependency audit without changing the
   declared major-version constraints.
+
+## Canonical MariaDB verification discoveries
+
+- Running the complete Feature suite on MariaDB 12.3.3 exposed test-only SQLite assumptions in
+  decimal value types, identifier reuse, SQL identifier quoting, SQLite trigger syntax, and
+  nested transaction handling. The corrections make the assertions and failure mechanisms
+  driver-aware without changing application behavior or supported database semantics.
+- The installer continues to present the shared `mysql` server choice, while its real capability
+  probe identifies and persists MariaDB as the actual product. The extracted-release browser
+  journey proved this boundary against MariaDB 12.3.3.
+- A remote Selenium browser and its PHP server need separate bind, browser, and readiness hosts.
+  Selecting an available acceptance port also prevents an unrelated pre-existing listener from
+  being mistaken for the newly started extracted-release server.

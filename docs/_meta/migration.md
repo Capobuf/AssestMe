@@ -58,6 +58,7 @@ Run the package's documented link-validation method or an equivalent repository-
 - the four hosting guides remain present;
 - no non-documentation file changed.
 
-## Gate-receipt note
+## Historical verification note
 
-`scripts/gate-receipts.sh` currently has special treatment for the old root plan's Progress section. The compatibility stub keeps the file present, so gates remain executable. Changes to `_meta/progress.md` may invalidate receipt reuse more often than before. Altering that optimization is a separate, reviewable code task and is intentionally not bundled here.
+The receipt-based verification gates used during the documentation migration were superseded and
+removed by the testing decisions recorded in ADR 0008.

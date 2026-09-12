@@ -158,11 +158,10 @@ AssestMe non converte dati tra SQLite, MySQL e MariaDB. Un cambio di driver rich
 
 ## Aggiornamento automatico da GitHub Actions
 
-L'istanza CI di AssestMe usa i workflow `Quality` e `Acceptance` del repository `Capobuf/AssestMe`.
-Le pull request eseguono il core browser-free e la matrice database. Su un push a `develop`, il job
-`deploy_cloudpanel` si esegue soltanto dopo `complete-validation`, `release-acceptance`,
-`clean-checkout-bootstrap` e il job terminale `publish-develop-release`. Le pull request non ricevono
-i secret di deploy.
+L'istanza CI di AssestMe usa il workflow unico `CI` del repository `Capobuf/AssestMe`. Su un push a
+`develop`, il job `publish-develop-release` richiede `check`, `application`, `installer` e
+`compatibility-smoke`; `deploy_cloudpanel` si esegue soltanto dopo la pubblicazione riuscita. Le pull
+request non ricevono i secret di deploy.
 
 Il job apre una connessione SSH non interattiva con una chiave dedicata e un file `known_hosts` verificato. La chiave è limitata sul server a un comando forzato che esegue `dploy deploy develop`; il comando crea la release, usa lo storage condiviso e l'overlay `.env`, esegue le operazioni dploy e aggiorna `current`. Non modificare questa procedura per cambiare document root, `.env`, database, storage condiviso o configurazione dploy.
 

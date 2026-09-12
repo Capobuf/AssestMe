@@ -1,7 +1,7 @@
 # Quickstart Validation: Assessment Integrity and MSP Baseline
 
 Run each story as an independent checkpoint from the repository root. Use the current PHP/Composer
-runtime and existing isolated test helpers; do not run `scripts/verify.sh` until final polish.
+runtime and existing isolated test helpers; reserve the canonical application path for final polish.
 
 ## User Story 1 checkpoint
 
@@ -35,4 +35,4 @@ runtime and existing isolated test helpers; do not run `scripts/verify.sh` until
 1. Run Pint, PHPStan, and all affected tests.
 2. Start `docker/compose.dev.yml`; verify a real login and real PDF/XLSX generation and validation.
 3. Execute and verify backup/restore according to the existing operational guide.
-4. Run `scripts/verify.sh` exactly once and record its exact result.
+4. Run the current canonical application path exactly once and record its exact result.

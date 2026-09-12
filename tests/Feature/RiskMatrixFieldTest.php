@@ -14,7 +14,6 @@ use App\Models\RiskProfile;
 use App\Models\User;
 use Database\Seeders\MilestoneOneSeeder;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
@@ -235,36 +234,21 @@ it('rejects matrices with fifteen or seventeen cells', function (int $cellCount)
     expect($profile->matrixEntries()->count())->toBe(16);
 })->with([15, 17]);
 
-it('rolls back the complete aggregate when relational matrix persistence fails', function (): void {
+it('rolls back the complete aggregate when relational level persistence fails', function (): void {
     $profile = defaultRiskMatrixProfile();
     $payload = riskMatrixPayload($profile);
     $payload['label'] = 'Etichetta che deve essere annullata';
     $payload['consequences'][0]['label'] = 'Conseguenza da annullare';
-    $firstConsequence = (string) array_key_first($payload['matrix']);
-    $firstLikelihood = (string) array_key_first($payload['matrix'][$firstConsequence]);
-    $currentPriority = (int) $payload['matrix'][$firstConsequence][$firstLikelihood];
-    $payload['matrix'][$firstConsequence][$firstLikelihood] = (string) $profile->priorityLevels()
-        ->whereKeyNot($currentPriority)
-        ->firstOrFail()
-        ->getKey();
+    [$payload['consequences'][0]['score'], $payload['consequences'][1]['score']] = [
+        $payload['consequences'][1]['score'],
+        $payload['consequences'][0]['score'],
+    ];
     $before = matrixPriorityMap($profile);
     $originalProfileLabel = $profile->label;
     $originalConsequenceLabel = $profile->consequenceLevels->first()->label;
 
-    DB::statement(<<<'SQL'
-        CREATE TRIGGER reject_risk_matrix_update
-        BEFORE UPDATE ON risk_matrix_entries
-        BEGIN
-            SELECT RAISE(ABORT, 'forced matrix failure');
-        END
-        SQL);
-
-    try {
-        expect(fn () => app(SaveRiskProfileConfiguration::class)->handle($profile, $payload))
-            ->toThrow(QueryException::class);
-    } finally {
-        DB::statement('DROP TRIGGER IF EXISTS reject_risk_matrix_update');
-    }
+    expect(fn () => app(SaveRiskProfileConfiguration::class)->handle($profile, $payload))
+        ->toThrow(QueryException::class);
 
     $profile->refresh();
     expect($profile->label)->toBe($originalProfileLabel)

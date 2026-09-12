@@ -11,6 +11,7 @@ uses(InteractsWithCanary::class);
 it('sweeps every Filament page for administrators and guests', function (): void {
     $this->seed(DatabaseSeeder::class);
     Config::set('filament-canary.strict_authorization', true);
+    Config::set('filament-canary.use_transaction', false);
 
     $this->canarySweep();
 });

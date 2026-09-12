@@ -546,3 +546,26 @@ Record only factual work performed, the exact affected area, commands run, and r
   action beside Finding save controls after an error.
 - 2026-09-09: Expanded the active correction at explicit request to add visible vertical spacing
   between the Problem text and the optional Problem explanation in the authoritative PDF layout.
+- 2026-09-12: Started the explicitly approved test-suite and CI refactoring. Scope is limited to
+  the new SQLite Unit pre-commit check, one complete MariaDB 12.3.3 Feature/application path,
+  reduced browser-specific smoke coverage, one release-ZIP MariaDB installer journey, bounded
+  SQLite/MySQL compatibility smokes, removal of superseded recursive gates/matrices, and the
+  corresponding testing documentation.
+- 2026-09-12: Completed the test-suite and CI refactoring from baseline
+  `8de2790898b7181b0c1094d08e68e77adfdc67a6`. `scripts/check.sh` passed Composer validation,
+  Pint on 502 files, PHPStan on 396 files, and 93 Unit tests with 605 assertions in 25.64 seconds;
+  the separate locked dependency audit reported no advisories in 0.75 seconds.
+  `scripts/test-app.sh` passed 546 Feature tests with 4,970 assertions in 678.11 seconds, the real
+  MariaDB backup/restore test with 14 assertions in 19.56 seconds, and five tests across the four
+  explicit application Browser files with 62 assertions in 65.89 seconds; total script time was
+  782.50 seconds. The bounded SQLite smoke passed 5 tests with 31 assertions in 7.39 seconds, and
+  the MySQL 8.4.11 smoke passed 5 tests with 37 assertions in 52.93 seconds.
+- 2026-09-12: Built one production release ZIP in 99.55 seconds, verified its embedded SHA-256
+  manifest, extracted it without installation state, and completed the real MariaDB 12.3.3
+  installer journey. `ReleaseInstallationTest` passed with 43 assertions in 35.31 seconds and the
+  complete acceptance script, including scheduler, JSON diagnostics, health, login, lock/state,
+  and installer closure checks, passed in 38.87 seconds. The temporary archive, extracted release,
+  installer database, and test database user were removed afterward. Shell syntax and workflow
+  YAML parsing passed. GitHub-hosted CI, artifact publication, CloudPanel deployment, physical
+  cross-browser/device checks, and live optional-provider checks were not executed and remain
+  `NOT VERIFIED`.

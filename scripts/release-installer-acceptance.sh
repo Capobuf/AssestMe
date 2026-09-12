@@ -42,22 +42,46 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-port="${ASSESTME_RELEASE_ACCEPTANCE_PORT:-8123}"
+port="${ASSESTME_RELEASE_ACCEPTANCE_PORT:-}"
+if [[ -z "$port" ]]; then
+    port="$(php -r '
+        $socket = stream_socket_server("tcp://127.0.0.1:0", $errorCode, $errorMessage);
+        if ($socket === false) { fwrite(STDERR, $errorMessage); exit(1); }
+        $address = stream_socket_get_name($socket, false);
+        fclose($socket);
+        echo substr((string) $address, strrpos((string) $address, ":") + 1);
+    ')"
+fi
 [[ "$port" =~ ^[0-9]+$ ]] || fail "ASSESTME_RELEASE_ACCEPTANCE_PORT must be numeric."
-application_url="http://127.0.0.1:${port}"
-configured_application_url="https://127.0.0.1:${port}"
+server_bind="${DUSK_SERVER_BIND:-127.0.0.1}"
+browser_host="${DUSK_BROWSER_HOST:-127.0.0.1}"
+ready_host="${DUSK_READY_HOST:-127.0.0.1}"
+application_url="http://${browser_host}:${port}"
+ready_url="http://${ready_host}:${port}"
+configured_application_url="https://${browser_host}:${port}"
 administrator_password="CI!$(php -r 'echo bin2hex(random_bytes(14));')aA1"
+database_host="${ASSESTME_DUSK_DATABASE_HOST:-}"
+database_port="${ASSESTME_DUSK_DATABASE_PORT:-}"
+database_name="${ASSESTME_DUSK_DATABASE_NAME:-}"
+database_username="${ASSESTME_DUSK_DATABASE_USERNAME:-}"
+database_password="${ASSESTME_DUSK_DATABASE_PASSWORD:-}"
+
+[[ -n "$database_host" ]] || fail "ASSESTME_DUSK_DATABASE_HOST is required."
+[[ "$database_port" =~ ^[0-9]+$ ]] || fail "ASSESTME_DUSK_DATABASE_PORT must be numeric."
+[[ -n "$database_name" ]] || fail "ASSESTME_DUSK_DATABASE_NAME is required."
+[[ -n "$database_username" ]] || fail "ASSESTME_DUSK_DATABASE_USERNAME is required."
+[[ -n "$database_password" ]] || fail "ASSESTME_DUSK_DATABASE_PASSWORD is required."
 
 (
     cd "$release_path/public"
-    exec php -d variables_order=EGPCS -S "127.0.0.1:${port}" \
+    exec php -d variables_order=EGPCS -S "${server_bind}:${port}" \
         ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php
 ) >"$test_root/storage/logs/release-server.log" 2>&1 &
 server_pid="$!"
 
 ready=0
 for attempt in {1..40}; do
-    if curl --fail --silent "${application_url}/install" >/dev/null; then
+    if curl --fail --silent "${ready_url}/install" >/dev/null; then
         ready=1
         break
     fi
@@ -69,8 +93,12 @@ cd "$source_project"
 APP_URL="$application_url" \
 ASSESTME_DUSK_ADMIN_PASSWORD="$administrator_password" \
 ASSESTME_DUSK_APPLICATION_URL="$configured_application_url" \
+ASSESTME_DUSK_DATABASE_HOST="$database_host" \
+ASSESTME_DUSK_DATABASE_PORT="$database_port" \
+ASSESTME_DUSK_DATABASE_NAME="$database_name" \
+ASSESTME_DUSK_DATABASE_USERNAME="$database_username" \
+ASSESTME_DUSK_DATABASE_PASSWORD="$database_password" \
 ASSESTME_DUSK_INSTALLER=1 \
-ASSESTME_FIC_DUSK_FAKE=1 \
 ASSESTME_RELEASE_PATH="$release_path" \
 ASSESTME_TEST_ISOLATED=1 \
 ASSESTME_TEST_ROOT="$test_root" \
@@ -84,13 +112,17 @@ php artisan dusk --without-tty tests/Browser/ReleaseInstallationTest.php
 cd "$release_path"
 env -u APP_ENV -u APP_KEY -u APP_URL -u DB_CONNECTION -u DB_DATABASE -u ASSESTME_BACKUP_ROOT \
     php artisan schedule:run
-env -u APP_ENV -u APP_KEY -u APP_URL -u DB_CONNECTION -u DB_DATABASE -u ASSESTME_BACKUP_ROOT \
-    php artisan assestme:diagnose --json >/dev/null
+diagnostic_payload="$(env -u APP_ENV -u APP_KEY -u APP_URL -u DB_CONNECTION -u DB_DATABASE -u ASSESTME_BACKUP_ROOT \
+    php artisan assestme:diagnose --json)"
+printf '%s' "$diagnostic_payload" | php -r '
+    $report = json_decode(stream_get_contents(STDIN), true, 64, JSON_THROW_ON_ERROR);
+    exit(($report["database"]["product"] ?? null) === "MariaDB" ? 0 : 1);
+'
 
-health_payload="$(curl --fail --silent --show-error --max-time 15 "${application_url}/up")"
+health_payload="$(curl --fail --silent --show-error --max-time 15 "${ready_url}/up")"
 [[ "$health_payload" == *'"status":"healthy"'* || "$health_payload" == *'"status": "healthy"'* ]] || \
     fail "The installed application health endpoint is not healthy."
-[[ "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 15 "${application_url}/admin/login")" == "200" ]] || \
+[[ "$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --max-time 15 "${ready_url}/admin/login")" == "200" ]] || \
     fail "The installed administrator login endpoint is unavailable."
 
 printf 'Release installer acceptance passed.\n'
