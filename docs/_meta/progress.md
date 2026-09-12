@@ -602,3 +602,7 @@ Record only factual work performed, the exact affected area, commands run, and r
   pending diagnostic changes. The diagnostic branch uses manual workflow dispatch, whose existing
   conditions skip develop release publication and CloudPanel deployment. The first run-status
   check will occur only after the requested five-minute wait; no application fix is claimed.
+- 2026-09-12: Hosted run `34682936544` passed 546 Feature tests (4,997 assertions) and the real
+  MariaDB backup/restore (14 assertions), but all five Dusk tests failed after PHP 8.3.33 crashed
+  with SIGSEGV during the application smoke Workspace GET. Started native crash diagnosis using
+  allowlisted PHP runtime metadata and argument-free GDB backtraces; raw core files are not uploaded.

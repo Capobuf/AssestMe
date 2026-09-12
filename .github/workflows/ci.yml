@@ -77,18 +77,42 @@ jobs:
           ini-values: memory_limit=1G
           tools: composer:v2
       - name: Install application test runtimes
-        run: sudo apt-get update && sudo apt-get install --yes mariadb-client poppler-utils weasyprint
+        run: sudo apt-get update && sudo apt-get install --yes gdb mariadb-client poppler-utils weasyprint
       - name: Install locked dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
       - name: Install matching ChromeDriver
         run: php artisan dusk:chrome-driver --detect
       - name: Prepare application diagnostics root
-        run: mkdir -p "${RUNNER_TEMP}/application-tests" && touch "${RUNNER_TEMP}/application-tests/.assestme-test-root"
+        run: |
+          mkdir -p "${RUNNER_TEMP}/application-tests/storage/logs" "${RUNNER_TEMP}/php-cores"
+          touch "${RUNNER_TEMP}/application-tests/.assestme-test-root"
+          sudo sysctl -w "kernel.core_pattern=${RUNNER_TEMP}/php-cores/core.%p"
+          {
+            php -v
+            php --ini
+            php -m
+            php -r 'foreach (["memory_limit", "opcache.enable", "opcache.enable_cli", "opcache.jit", "opcache.jit_buffer_size", "opcache.file_cache", "opcache.validate_timestamps", "opcache.file_update_protection"] as $key) { echo $key, "=", ini_get($key), PHP_EOL; }'
+          } > "${RUNNER_TEMP}/application-tests/storage/logs/php-runtime.log"
       - name: Run canonical application suite
         env:
           ASSESTME_TEST_ISOLATED: '1'
           ASSESTME_TEST_ROOT: ${{ runner.temp }}/application-tests
-        run: scripts/test-app.sh
+        run: |
+          ulimit -c unlimited
+          scripts/test-app.sh
+      - name: Collect native PHP crash backtrace
+        if: failure()
+        run: |
+          shopt -s nullglob
+          for core_path in "${RUNNER_TEMP}"/php-cores/core.*; do
+            gdb --batch \
+              -ex 'set debuginfod enabled off' \
+              -ex 'set print frame-arguments none' \
+              -ex 'thread apply all bt' \
+              -ex 'info sharedlibrary' \
+              "$(command -v php)" "$core_path" \
+              > "${RUNNER_TEMP}/application-tests/storage/logs/php-native-$(basename "$core_path").log" 2>&1
+          done
       - name: Upload application browser diagnostics
         if: failure()
         uses: actions/upload-artifact@v6

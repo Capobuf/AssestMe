@@ -231,3 +231,8 @@ Add only reproducible observations discovered during implementation or verificat
   canonical application script owns and removes its default isolated root before the workflow's
   post-failure artifact step, so CI must provide a pre-marked runner-temporary root when server-side
   failure evidence must survive collection.
+- Diagnostic run `34682936544` preserved `dusk-server.log`: PHP 8.3.33 stopped while serving
+  `/admin/assessments/1/workspace` at 08:26:30 UTC. The job shell reported `Segmentation fault
+  (core dumped)` for the PHP server; all five Dusk methods then reported `ERR_CONNECTION_REFUSED`.
+  No Laravel exception log was present. This proves a native crash in that run, not yet the cause
+  of the earlier pair of HTTP 500 responses.
