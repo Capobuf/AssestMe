@@ -617,3 +617,16 @@ Record only factual work performed, the exact affected area, commands run, and r
   assertions) with the inherited configuration restored to `opcache.jit=1235` and a 256 MB buffer.
   The command-line override therefore prevents the reproduced failure without relying on the
   workstation's default disabled JIT. Hosted and complete application verification are pending.
+- 2026-09-12: Hosted corrective run `34684473453` on code commit `2c654fe` passed all four
+  verification jobs. The application job passed 546 Feature tests (4,997 assertions), real
+  MariaDB backup/restore (14 assertions), and all five Dusk tests (62 assertions). Publication
+  and deployment were skipped by the manual-dispatch conditions. The focused runner/workflow
+  contracts passed 2 tests (70 assertions), and the pre-commit gate passed Composer validation,
+  Pint on 502 files, PHPStan on 396 files, and 93 Unit tests (607 assertions).
+- 2026-09-12: Completed the local canonical MariaDB path with the hosted JIT configuration
+  inherited and the corrected server override: 546 Feature tests (4,997 assertions), the real
+  backup/restore (14 assertions), and 5 Dusk tests (62 assertions) passed. The final pre-commit
+  gate also passed (93 Unit tests, 607 assertions). The fix and evidence are on
+  `ci/workspace-http500-diagnostics`; no develop merge, release publication, or deployment was
+  performed. The original unlogged exception remains unrecoverable; the reproduced JIT-induced
+  failures and the hosted native crash are mitigated by the verified server configuration.

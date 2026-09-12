@@ -252,3 +252,7 @@ Add only reproducible observations discovered during implementation or verificat
   the 256 MB buffer and OPcache, passed two tests with 29 assertions. The original run's missing
   exception cannot be recovered, but native crash evidence and this controlled reproduction
   identify inherited function JIT as an actionable runtime cause rather than a navigation delay.
+- The fixed server command, with the hosted JIT settings still inherited, passed the same two
+  local-draft tests. A separate real HTTP probe returned `opcache_enabled=true` and JIT
+  `enabled=false`/`on=false`. Hosted run `34684473453` then passed the unchanged complete Dusk
+  flows (5 tests, 62 assertions) on PHP 8.3.33, with no navigation retry or timeout increase.
