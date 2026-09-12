@@ -13,6 +13,8 @@ final class InstallationRuntimeInspector
 {
     private const MINIMUM_PHP_VERSION = '8.3.0';
 
+    private const MINIMUM_WEASYPRINT_VERSION = '60.0';
+
     /** @var list<string> */
     private const COMMON_EXTENSIONS = [
         'bcmath',
@@ -528,6 +530,7 @@ final class InstallationRuntimeInspector
         $candidates = $configuredBinary !== ''
             ? [$configuredBinary, ...$this->weasyPrintCandidates()]
             : $this->weasyPrintCandidates();
+        $incompatibleVersion = null;
 
         foreach (array_values(array_unique($candidates)) as $candidate) {
             if (! $this->isAbsolutePath($candidate)) {
@@ -542,7 +545,22 @@ final class InstallationRuntimeInspector
 
             $version = $this->inspectWeasyPrintVersion($binary, $projectRoot);
 
-            if ($version === null || ! $this->generateMinimalPdf($binary, $probeDirectory, $projectRoot)) {
+            if ($version === null) {
+                continue;
+            }
+
+            if (! version_compare($version, self::MINIMUM_WEASYPRINT_VERSION, '>=')) {
+                $incompatibleVersion = sprintf(
+                    'weasyprint_version_incompatible path=%s detected=%s minimum_required=%s',
+                    $binary,
+                    $version,
+                    self::MINIMUM_WEASYPRINT_VERSION,
+                );
+
+                continue;
+            }
+
+            if (! $this->generateMinimalPdf($binary, $probeDirectory, $projectRoot)) {
                 continue;
             }
 
@@ -551,14 +569,16 @@ final class InstallationRuntimeInspector
                     key: 'runtime.weasyprint',
                     group: 'pdf',
                     passed: true,
-                    expected: 'absolute_executable_weasyprint_with_pdf_output',
+                    expected: 'weasyprint_>=60.0_with_pdf_output',
                     actual: $binary.' WeasyPrint '.$version.' %PDF-',
                 ),
                 'binary' => $binary,
             ];
         }
 
-        return $this->failedWeasyPrint('weasyprint_not_detected_or_pdf_probe_failed');
+        return $this->failedWeasyPrint(
+            $incompatibleVersion ?? 'weasyprint_not_detected_or_pdf_probe_failed',
+        );
     }
 
     /** @return list<string> */
@@ -595,7 +615,7 @@ final class InstallationRuntimeInspector
 
             $output = $process->getOutput().PHP_EOL.$process->getErrorOutput();
 
-            if (preg_match('/\bWeasyPrint(?:\s+version)?\s+([0-9][^\s]*)/i', $output, $matches) !== 1) {
+            if (preg_match('/\bWeasyPrint(?:\s+version)?\s+([0-9]+(?:\.[0-9]+){1,2}[^\s]*)/i', $output, $matches) !== 1) {
                 return null;
             }
 
@@ -669,7 +689,7 @@ final class InstallationRuntimeInspector
                 key: 'runtime.weasyprint',
                 group: 'pdf',
                 passed: false,
-                expected: 'absolute_executable_weasyprint_with_pdf_output',
+                expected: 'weasyprint_>=60.0_with_pdf_output',
                 actual: $actual,
             ),
             'binary' => null,

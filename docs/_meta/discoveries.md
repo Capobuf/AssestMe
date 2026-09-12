@@ -256,3 +256,12 @@ Add only reproducible observations discovered during implementation or verificat
   local-draft tests. A separate real HTTP probe returned `opcache_enabled=true` and JIT
   `enabled=false`/`on=false`. Hosted run `34684473453` then passed the unchanged complete Dusk
   flows (5 tests, 62 assertions) on PHP 8.3.33, with no navigation retry or timeout increase.
+- The locked `spatie/laravel-pdf` 2.12.0 exposes `PdfBuilder::setDriver()` and a public
+  `WeasyPrintDriver` constructor, while the locked `pontedilana/php-weasyprint` 2.7.0 maps
+  `dpi`, `jpeg-quality`, and `optimize-images` to the corresponding command arguments. This permits
+  an isolated per-generation driver without global configuration mutation or vendor changes.
+- Rebuilding the project-owned PHP 8.3.32 image on Debian Trixie installed WeasyPrint 62.3 through
+  APT. Its MariaDB 11.8 client also verifies server certificates by default; the canonical
+  MariaDB 12.3.3 test server presents a self-signed certificate. Passing the connection's configured
+  CA to dump/restore option files, or explicitly retaining unverified mode when no CA is configured,
+  preserves the application's connection policy and restores the real round trip.

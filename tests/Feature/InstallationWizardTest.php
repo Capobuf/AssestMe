@@ -109,13 +109,43 @@ it('shows operational WeasyPrint installation instructions when automatic detect
         'inspection' => $inspection,
         'errors' => new ViewErrorBag,
     ])
-        ->assertSee('WeasyPrint è obbligatorio')
+        ->assertSee('WeasyPrint 60 o superiore è obbligatorio')
         ->assertSee('sudo apt update')
         ->assertSee('sudo apt install -y weasyprint')
         ->assertSee('weasyprint --version')
         ->assertSee('Hosting condiviso, cPanel o Plesk')
         ->assertSee('LARAVEL_PDF_WEASYPRINT_BINARY')
         ->assertSee('Verifica nuovamente');
+});
+
+it('shows detected and minimum WeasyPrint versions when the runtime is too old', function (): void {
+    $binary = storage_path('framework/testing/weasyprint-57.2');
+    File::put($binary, <<<'SH'
+#!/bin/sh
+if [ "${1:-}" = "--version" ]; then
+    printf 'WeasyPrint version 57.2\n'
+    exit 0
+fi
+printf '%%PDF-1.4\n' > "$2"
+SH);
+    chmod($binary, 0700);
+
+    try {
+        $inspection = (new InstallationRuntimeInspector(
+            phpCandidatePaths: [PHP_BINARY],
+            weasyPrintCandidatePaths: [$binary],
+        ))->inspect(base_path(), configuredWeasyPrintBinary: $binary);
+
+        $this->view('installation.runtime', [
+            'inspection' => $inspection,
+            'errors' => new ViewErrorBag,
+        ])
+            ->assertSee('WeasyPrint 60 o superiore è obbligatorio')
+            ->assertSee('detected=57.2')
+            ->assertSee('minimum_required=60.0');
+    } finally {
+        File::delete($binary);
+    }
 });
 
 it('omits binary and application name fields and ignores a submitted application name', function (): void {

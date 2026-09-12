@@ -15,9 +15,18 @@ trait StreamsSecureDatabaseDump
 {
     private string $validatedDumpBinary = '';
 
+    private ?string $sslCa = null;
+
     public function setValidatedDumpBinary(string $path): static
     {
         $this->validatedDumpBinary = $path;
+
+        return $this;
+    }
+
+    public function setSslCa(?string $path): static
+    {
+        $this->sslCa = $path;
 
         return $this;
     }
@@ -40,6 +49,8 @@ trait StreamsSecureDatabaseDump
             $this->userName,
             $this->password,
             $this->socket,
+            $this->databaseClientDriver(),
+            $this->sslCa,
         );
         $outputHandle = false;
         $outputCreated = false;

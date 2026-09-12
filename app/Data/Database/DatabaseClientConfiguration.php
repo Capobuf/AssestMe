@@ -16,5 +16,6 @@ final readonly class DatabaseClientConfiguration
         #[SensitiveParameter]
         public string $password,
         public string $socket,
+        public ?string $sslCa,
     ) {}
 }

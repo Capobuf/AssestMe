@@ -45,6 +45,9 @@ it('serves the shared report view from an authenticated session-bound preview to
             'primary_color' => '#B42318',
             'executive_summary' => true,
             'summary_table' => true,
+            'pdf_image_dpi' => 180,
+            'pdf_jpeg_quality' => 78,
+            'pdf_optimize_images' => false,
         ]);
     preg_match('/<iframe[^>]+src="([^"]+)"/u', $page->html(), $previewMatch);
     expect($previewMatch)->toHaveKey(1);
@@ -104,6 +107,9 @@ it('serves the shared report view from an authenticated session-bound preview to
         'costs',
         'evidence',
         'evidence_captions',
+        'pdf_image_dpi',
+        'pdf_jpeg_quality',
+        'pdf_optimize_images',
         'methodology_text',
         'disclaimer_text',
         'signature_text',
@@ -118,6 +124,10 @@ it('serves the shared report view from an authenticated session-bound preview to
         'new_page_per_finding',
         'freeze_after_generation',
         'report_excluded_findings_in_xlsx',
+    ])->and($forwardedSettings)->toMatchArray([
+        'pdf_image_dpi' => 180,
+        'pdf_jpeg_quality' => 78,
+        'pdf_optimize_images' => false,
     ]);
 
     Cache::put($cacheKey, [
@@ -161,6 +171,9 @@ it('serves the shared report view from an authenticated session-bound preview to
         'currency_symbol' => 'CHF',
         'currency_symbol_position' => 'before',
         'currency_decimals' => 2,
+        'pdf_image_dpi' => 180,
+        'pdf_jpeg_quality' => 78,
+        'pdf_optimize_images' => true,
     ], now()->addMinutes(5));
 
     $response = $this->get($url)

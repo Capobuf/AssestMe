@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Mockery\MockInterface;
+use Pdo\Mysql;
 use Tests\TestCase;
 
 uses(TestCase::class);
@@ -95,6 +96,7 @@ function assestMeDumpConnection(
     string $socket = '',
     int $driverCalls = 1,
     string $database = 'assestme',
+    ?string $sslCa = null,
 ): Connection {
     $connection = Mockery::mock(Connection::class);
     $connection->shouldReceive('getDriverName')->times($driverCalls)->andReturn($driver);
@@ -111,6 +113,9 @@ function assestMeDumpConnection(
     $connection->shouldReceive('getConfig')->once()->with('username')->andReturn('assestme_user');
     $connection->shouldReceive('getConfig')->once()->with('password')->andReturn($password);
     $connection->shouldReceive('getConfig')->once()->with('unix_socket')->andReturn($socket);
+    $connection->shouldReceive('getConfig')->once()->with('options')->andReturn(
+        $sslCa === null ? [] : [Mysql::ATTR_SSL_CA => $sslCa],
+    );
 
     return $connection;
 }
@@ -368,6 +373,7 @@ it('creates a MySQL SQL snapshot with fixed consistency options and protected es
         version: 'unit-test-mysql',
         versionComment: 'MySQL Community Server',
         password: $password,
+        sslCa: '/etc/ssl/certs/database-ca.pem',
     );
     $snapshotter = app(MySqlSnapshotter::class);
 
@@ -397,7 +403,8 @@ CREDENTIAL;
         ->and(implode("\n", $arguments))->not->toContain($password)
         ->and(trim(File::get($this->captureCredentialMode)))->toBe('600')
         ->and($credentials)->toContain($expectedPasswordLine)
-        ->and(substr_count($credentials, "\n"))->toBe(5)
+        ->and($credentials)->toContain('ssl-ca="/etc/ssl/certs/database-ca.pem"')
+        ->and(substr_count($credentials, "\n"))->toBe(6)
         ->and($credentialsArgument)->toBeString()
         ->and(File::exists(substr((string) $credentialsArgument, strlen('--defaults-file='))))->toBeFalse();
 });
@@ -423,6 +430,7 @@ it('uses the distinct MariaDB binary and preserves a configured Unix socket', fu
     expect($snapshot->driver)->toBe('mariadb')
         ->and($snapshot->product)->toBe('MariaDB')
         ->and(File::get($this->captureCredentialCopy))->toContain('socket="/run/mysqld/mysqld.sock"')
+        ->and(File::get($this->captureCredentialCopy))->toContain('ssl-verify-server-cert=0')
         ->and(File::get($this->captureCredentialCopy))->not->toContain("\nhost=")
         ->and(file($this->captureArguments, FILE_IGNORE_NEW_LINES))->not->toContain('--no-tablespaces');
 });

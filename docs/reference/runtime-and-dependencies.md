@@ -3,6 +3,7 @@
 ## Runtime contract
 
 - PHP web and CLI: 8.3.0 or newer.
+- WeasyPrint: 60.0 or newer.
 - No maximum PHP version is declared by documentation alone; the installer and dependency set validate the actual runtime.
 - No operating-system distribution or CPU architecture is normative.
 - Timestamps are stored in UTC and presented in `Europe/Rome`.
@@ -28,7 +29,9 @@ Database-specific extension:
 - File cache and sessions.
 - Synchronous queue.
 - SQLite, MySQL, and MariaDB for fresh installations.
-- WeasyPrint as the sole PDF renderer through Spatie Laravel PDF.
+- WeasyPrint 60.0 or newer as the sole PDF renderer through Spatie Laravel PDF. Its version is
+  read only from `weasyprint --version`; a separate minimal real-PDF probe verifies that the runtime
+  is operational.
 - PhpSpreadsheet as the direct XLSX dependency.
 - Opis JSON Schema for template validation.
 - Laravel Dusk for browser tests.
@@ -84,6 +87,7 @@ The `app` service:
 - uses the host repository UID/GID for writes;
 - preserves `.env`, `vendor`, database state, storage, reports, evidence, and backups in the bind-mounted repository;
 - contains no Nginx, PHP-FPM, Node.js, Redis, database server, Supervisor, systemd, Horizon, Chromium, or ChromeDriver.
+- is based on Debian Trixie so its APT-provided WeasyPrint satisfies the 60.0 minimum.
 
 Optional Compose profiles provide Selenium and isolated real MySQL/MariaDB compatibility services. They are not mandatory dependencies of normal `up`.
 

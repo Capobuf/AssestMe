@@ -89,6 +89,7 @@ function assestMeRestoreConnection(
     $connection->shouldReceive('getConfig')->once()->with('username')->andReturn('assestme_user');
     $connection->shouldReceive('getConfig')->once()->with('password')->andReturn($password);
     $connection->shouldReceive('getConfig')->once()->with('unix_socket')->andReturn('');
+    $connection->shouldReceive('getConfig')->once()->with('options')->andReturn([]);
 
     return $connection;
 }
@@ -188,6 +189,7 @@ it('uses the MariaDB client identity and returns a sanitized nonzero import fail
 
     expect(fn () => app(MariaDbRestorer::class)->restore($connection, $this->sql))
         ->toThrow(RuntimeException::class, 'The MariaDB database restore process failed.')
+        ->and(File::get($this->credentialCopy))->toContain('ssl-verify-server-cert=0')
         ->and(File::glob($this->restoreWorkspace.DIRECTORY_SEPARATOR.'.assestme-db-credentials-*'))->toBeEmpty();
 });
 

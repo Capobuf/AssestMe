@@ -71,6 +71,9 @@ final class ReportSettingsPage extends SettingsPage
         'costs',
         'evidence',
         'evidence_captions',
+        'pdf_image_dpi',
+        'pdf_jpeg_quality',
+        'pdf_optimize_images',
         'methodology_text',
         'disclaimer_text',
         'signature_text',
@@ -191,6 +194,28 @@ final class ReportSettingsPage extends SettingsPage
                             ...self::toggleFields(),
                         ])
                         ->columns(2),
+                    Section::make(__('assestme.settings.report.pdf_generation'))
+                        ->schema([
+                            TextInput::make('pdf_image_dpi')
+                                ->label(__('assestme.settings.fields.pdf_image_dpi'))
+                                ->helperText(__('assestme.settings.help.pdf_image_dpi'))
+                                ->required()
+                                ->integer()
+                                ->minValue(72)
+                                ->maxValue(600)
+                                ->suffix(__('assestme.settings.units.dpi')),
+                            TextInput::make('pdf_jpeg_quality')
+                                ->label(__('assestme.settings.fields.pdf_jpeg_quality'))
+                                ->helperText(__('assestme.settings.help.pdf_jpeg_quality'))
+                                ->required()
+                                ->integer()
+                                ->minValue(0)
+                                ->maxValue(95),
+                            Toggle::make('pdf_optimize_images')
+                                ->label(__('assestme.settings.fields.pdf_optimize_images'))
+                                ->helperText(__('assestme.settings.help.pdf_optimize_images')),
+                        ])
+                        ->columns(2),
                     Section::make(__('assestme.settings.report.output'))
                         ->schema([
                             TextInput::make('currency')
@@ -271,6 +296,9 @@ final class ReportSettingsPage extends SettingsPage
         }
         $color = (string) ($settings['primary_color'] ?? '');
         $settings['primary_color'] = preg_match('/^#[0-9A-Fa-f]{6}$/', $color) === 1 ? mb_strtoupper($color) : '#65A30D';
+        $settings['pdf_image_dpi'] = (int) ($settings['pdf_image_dpi'] ?? 150);
+        $settings['pdf_jpeg_quality'] = (int) ($settings['pdf_jpeg_quality'] ?? 85);
+        $settings['pdf_optimize_images'] = (bool) ($settings['pdf_optimize_images'] ?? true);
 
         $token = Str::random(40);
         $sessionBinding = session()->get('report_preview_binding');
@@ -325,6 +353,9 @@ final class ReportSettingsPage extends SettingsPage
 
         $data['primary_color'] = mb_strtoupper((string) $data['primary_color']);
         $data['cover_title_mode'] = CoverTitleMode::from((string) $data['cover_title_mode']);
+        $data['pdf_image_dpi'] = (int) $data['pdf_image_dpi'];
+        $data['pdf_jpeg_quality'] = (int) $data['pdf_jpeg_quality'];
+        $data['pdf_optimize_images'] = (bool) $data['pdf_optimize_images'];
 
         return $data;
     }

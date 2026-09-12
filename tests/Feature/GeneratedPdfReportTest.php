@@ -192,8 +192,15 @@ it('persists immutable versioned PDF snapshots and downloads the authoritative f
     [$assessment, $finding] = createPdfReadyAssessment();
     $finding->category?->delete();
 
+    $settings = app(ReportSettings::class);
+    $settings->pdf_image_dpi = 150;
+    $settings->pdf_jpeg_quality = 85;
+    $settings->pdf_optimize_images = true;
+    $settings->save();
+
     $first = app(GenerateAssessmentPdf::class)($assessment->fresh());
     $firstPayload = $first->payload_snapshot;
+    $firstSettingsSnapshot = $first->settings_snapshot;
     $firstPath = Storage::disk('local')->path($first->file_path);
     $pdf = (new Parser)->parseFile($firstPath);
     $text = $pdf->getText();
@@ -208,17 +215,32 @@ it('persists immutable versioned PDF snapshots and downloads the authoritative f
         ->and($first->payload_snapshot['findings'][0])->not->toHaveKey('tags')
         ->and($first->payload_snapshot['client']['name'])->not->toBeEmpty()
         ->and($first->settings_snapshot['primary_color'])->toBe('#2563EB')
+        ->and($first->settings_snapshot)->toMatchArray([
+            'pdf_image_dpi' => 150,
+            'pdf_jpeg_quality' => 85,
+            'pdf_optimize_images' => true,
+        ])
         ->and($first->settings_snapshot)->not->toHaveKey('confidentiality_label')
         ->and(file_get_contents($firstPath, false, null, 0, 5))->toBe('%PDF-')
         ->and($normalizedText)->toContain($finding->title)
         ->and(substr_count($text, $fixedNote))->toBe(1);
 
     $finding->update(['problem' => 'Problema modificato dopo il primo snapshot.']);
+    $settings->pdf_image_dpi = 180;
+    $settings->pdf_jpeg_quality = 78;
+    $settings->pdf_optimize_images = false;
+    $settings->save();
     $second = app(GenerateAssessmentPdf::class)($assessment->fresh());
 
     expect($second->version)->toBe(2)
         ->and($second->payload_snapshot['findings'][0]['problem'])->toBe('Problema modificato dopo il primo snapshot.')
+        ->and($second->settings_snapshot)->toMatchArray([
+            'pdf_image_dpi' => 180,
+            'pdf_jpeg_quality' => 78,
+            'pdf_optimize_images' => false,
+        ])
         ->and($first->fresh()->payload_snapshot)->toBe($firstPayload)
+        ->and($first->fresh()->settings_snapshot)->toBe($firstSettingsSnapshot)
         ->and(fn () => $first->update(['file_name' => 'mutato.pdf']))->toThrow(LogicException::class);
     $first->refresh();
 

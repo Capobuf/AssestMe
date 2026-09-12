@@ -652,3 +652,16 @@ Record only factual work performed, the exact affected area, commands run, and r
   `ci/workspace-http500-diagnostics`; no develop merge, release publication, or deployment was
   performed. The original unlogged exception remains unrecoverable; the reproduced JIT-induced
   failures and the hosted native crash are mitigated by the verified server configuration.
+- 2026-09-12: Started the explicitly requested PDF quality/compression settings slice on
+  `feature/pdf-quality-settings`
+  from `origin/main`. Scope is limited to the three global report settings and immutable snapshot,
+  per-generation WeasyPrint driver options, the WeasyPrint 60.0 minimum runtime requirement,
+  Trixie-based development image, installer/hosting guidance, and focused success/failure coverage.
+- 2026-09-12: Completed the PDF quality/compression slice on `feature/pdf-quality-settings`.
+  The rebuilt PHP 8.3.32 Trixie image provides WeasyPrint 62.3 and generated a real `%PDF-` probe.
+  Focused report/settings/installer/evidence coverage passed 122 tests (1,292 assertions); the
+  canonical MariaDB Feature suite passed 551 tests (5,072 assertions), the real backup/restore
+  round trip passed 1 test (14 assertions), and the four maintained Dusk files passed 5 tests
+  (62 assertions). The final mandatory check passed Composer validation, Pint on 504 files,
+  PHPStan on 397 files, and 101 Unit tests (658 assertions). No merge, push, release publication,
+  or deployment was performed.

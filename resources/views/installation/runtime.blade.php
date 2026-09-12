@@ -7,14 +7,14 @@
 
     @if (! $inspection->requirement('runtime.weasyprint')?->passed)
         <div class="installer-alert installer-alert-error" role="alert">
-            <strong>WeasyPrint è obbligatorio per generare i report PDF.</strong>
+            <strong>WeasyPrint 60 o superiore è obbligatorio per generare i report PDF.</strong>
             <p>VPS Debian/Ubuntu con accesso amministrativo:</p>
             <pre><code>sudo apt update
 sudo apt install -y weasyprint
 weasyprint --version</code></pre>
             <p>Hosting condiviso, cPanel o Plesk senza privilegi amministrativi: chiedi al provider di rendere disponibile WeasyPrint e le sue dipendenze.</p>
             <p>Se il binario è in un percorso non standard, configura <code>LARAVEL_PDF_WEASYPRINT_BINARY</code> nel file <code>.env</code>.</p>
-            <p>Dopo l’installazione premi “Verifica nuovamente”.</p>
+            <p>Dopo l’installazione verifica che il comando mostri la versione 60 o superiore, quindi premi “Verifica nuovamente”.</p>
             <small>Dettaglio tecnico: {{ $inspection->requirement('runtime.weasyprint')?->actual }}</small>
         </div>
     @endif

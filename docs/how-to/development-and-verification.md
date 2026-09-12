@@ -2,7 +2,8 @@
 
 ## Prerequisites
 
-The supported workstation provides Docker, Docker Compose, Git, and the repository. The project-owned image provides PHP, Composer, extensions, WeasyPrint, and project utilities.
+The supported workstation provides Docker, Docker Compose, Git, and the repository. The project-owned
+Debian Trixie image provides PHP, Composer, extensions, WeasyPrint 60.0 or newer, and project utilities.
 
 ## Start
 

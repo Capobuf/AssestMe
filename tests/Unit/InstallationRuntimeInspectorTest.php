@@ -18,16 +18,20 @@ function installationRuntimeFakePhp(string $directory, string $version): string
     return $path;
 }
 
-function installationRuntimeFakeWeasyPrint(string $directory): string
-{
-    $path = $directory.DIRECTORY_SEPARATOR.'weasyprint';
-    File::put($path, <<<'SH'
+function installationRuntimeFakeWeasyPrint(
+    string $directory,
+    string $version = '60.0',
+    bool $writesPdf = true,
+): string {
+    $path = $directory.DIRECTORY_SEPARATOR.'weasyprint-'.str_replace('.', '-', $version);
+    $output = $writesPdf ? "printf '%%PDF-1.4\\n' > \"\$2\"" : "printf 'NOT_A_PDF\\n' > \"\$2\"";
+    File::put($path, <<<SH
 #!/bin/sh
-if [ "${1:-}" = "--version" ]; then
-    printf 'WeasyPrint version 57.2\n'
+if [ "\${1:-}" = "--version" ]; then
+    printf 'WeasyPrint version {$version}\n'
     exit 0
 fi
-printf '%%PDF-1.4\n' > "$2"
+{$output}
 SH);
     chmod($path, 0700);
 
@@ -245,18 +249,61 @@ it('reports that mandatory WeasyPrint was not detected after all candidates fail
         ->and($result->weasyPrintBinary)->toBeNull();
 });
 
+it('enforces the minimum WeasyPrint version before the real PDF probe', function (
+    string $version,
+    bool $expected,
+): void {
+    $weasyPrint = installationRuntimeFakeWeasyPrint($this->runtimeInspectorRoot, $version);
+    $inspector = new InstallationRuntimeInspector(
+        phpCandidatePaths: [],
+        weasyPrintCandidatePaths: [$weasyPrint],
+    );
+    $result = $inspector->inspect(
+        basePath: $this->runtimeInspectorRoot,
+        configuredWeasyPrintBinary: $weasyPrint,
+    );
+    $requirement = $result->requirement('runtime.weasyprint');
+
+    expect($requirement?->passed)->toBe($expected)
+        ->and($requirement?->expected)->toBe('weasyprint_>=60.0_with_pdf_output');
+
+    if ($expected) {
+        expect($result->weasyPrintBinary)->toBe(realpath($weasyPrint))
+            ->and($requirement?->actual)->toContain("WeasyPrint {$version} %PDF-");
+    } else {
+        expect($result->weasyPrintBinary)->toBeNull()
+            ->and($requirement?->actual)->toContain(
+                "detected={$version}",
+                'minimum_required=60.0',
+            );
+    }
+})->with([
+    'WeasyPrint 57.2' => ['57.2', false],
+    'WeasyPrint 59.x' => ['59.9', false],
+    'minimum WeasyPrint 60.0' => ['60.0', true],
+    'newer WeasyPrint 61.x' => ['61.3', true],
+]);
+
+it('continues after an old WeasyPrint candidate and accepts a compatible one', function (): void {
+    $oldDirectory = $this->runtimeInspectorRoot.DIRECTORY_SEPARATOR.'old';
+    $currentDirectory = $this->runtimeInspectorRoot.DIRECTORY_SEPARATOR.'current';
+    File::ensureDirectoryExists($oldDirectory);
+    File::ensureDirectoryExists($currentDirectory);
+    $old = installationRuntimeFakeWeasyPrint($oldDirectory, '57.2');
+    $current = installationRuntimeFakeWeasyPrint($currentDirectory, '61.1');
+
+    $result = (new InstallationRuntimeInspector(
+        phpCandidatePaths: [],
+        weasyPrintCandidatePaths: [$old, $current],
+    ))->inspect($this->runtimeInspectorRoot, configuredWeasyPrintBinary: $old);
+
+    expect($result->weasyPrintBinary)->toBe(realpath($current))
+        ->and($result->requirement('runtime.weasyprint')?->passed)->toBeTrue()
+        ->and($result->requirement('runtime.weasyprint')?->actual)->toContain('WeasyPrint 61.1');
+});
+
 it('rejects a successful WeasyPrint process that does not create a PDF signature', function (): void {
-    $fakeBinary = $this->runtimeInspectorRoot.DIRECTORY_SEPARATOR.'fake-weasyprint';
-    $script = <<<'SH'
-#!/bin/sh
-if [ "${1:-}" = "--version" ]; then
-    printf 'WeasyPrint version 57.2\n'
-    exit 0
-fi
-printf 'NOT_A_PDF' > "${2}"
-SH;
-    File::put($fakeBinary, $script);
-    chmod($fakeBinary, 0700);
+    $fakeBinary = installationRuntimeFakeWeasyPrint($this->runtimeInspectorRoot, '60.0', false);
 
     $inspector = new InstallationRuntimeInspector(
         phpCandidatePaths: [],

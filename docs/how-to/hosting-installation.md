@@ -6,7 +6,7 @@ Questa è la guida generale per CloudPanel, cPanel, Plesk e hosting Linux che es
 
 - PHP web e PHP CLI 8.3 o superiore, con le estensioni richieste dall’installer.
 - PDO coerente: `pdo_sqlite` per SQLite oppure `pdo_mysql` per MySQL/MariaDB.
-- WeasyPrint operativo, verificabile con `weasyprint --version` e con il PDF minimo del wizard.
+- WeasyPrint 60.0 o superiore, verificabile con `weasyprint --version` e con il PDF minimo del wizard.
 - Document root sicura e storage privato fuori dalla document root.
 - Un cron o task pianificato configurabile ogni minuto.
 - Filesystem scrivibile dal medesimo site user del processo PHP: deve poter creare e mantenere `storage/framework/installer` e `storage/app/private` a `0700`, e file privati a `0600`.
@@ -81,8 +81,17 @@ sudo apt install -y weasyprint
 weasyprint --version
 ```
 
-Su hosting condiviso, cPanel o Plesk senza privilegi amministrativi, chiedere al provider WeasyPrint e le sue dipendenze. Se il binario è in una posizione non standard, impostare `LARAVEL_PDF_WEASYPRINT_BINARY` in `.env`. Non eseguire installazioni dal processo web e non assumere che `pip install` sia sufficiente.
+Il pacchetto della distribuzione è compatibile soltanto se il comando restituisce la versione 60.0
+o superiore. L'installazione APT da sola non garantisce il requisito: verificare sempre la versione
+prima di aprire il wizard.
+
+Su hosting condiviso, cPanel o Plesk senza privilegi amministrativi, chiedere al provider WeasyPrint
+60.0 o superiore e le sue dipendenze. Se il binario è in una posizione non standard, impostare
+`LARAVEL_PDF_WEASYPRINT_BINARY` in `.env`. Non eseguire installazioni dal processo web e non assumere
+che `pip install` sia sufficiente.
 
 ## Hosting non compatibile
 
-Un piano non è compatibile se non offre PHP 8.3+, cron/task pianificati, WeasyPrint, un layout con file privati fuori dalla document root, oppure la possibilità per il processo PHP di scrivere e mettere in sicurezza storage e `.env`.
+Un piano non è compatibile se non offre PHP 8.3+, cron/task pianificati, WeasyPrint 60.0 o superiore,
+un layout con file privati fuori dalla document root, oppure la possibilità per il processo PHP di
+scrivere e mettere in sicurezza storage e `.env`.

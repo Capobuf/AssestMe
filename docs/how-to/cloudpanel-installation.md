@@ -35,7 +35,8 @@ Scaricare soltanto l'archivio di release pubblicato. Il pacchetto contiene `RELE
 
 AssestMe richiede PHP web e CLI 8.3 o superiore. Il wizard rileva automaticamente il PHP CLI coerente con il runtime web; non ne chiede il percorso. Richiede inoltre `pdo_sqlite` per SQLite oppure `pdo_mysql` per MySQL e MariaDB.
 
-WeasyPrint è obbligatorio per i report PDF e viene rilevato automaticamente. Su Debian e Ubuntu installarlo prima del wizard:
+WeasyPrint 60.0 o superiore è obbligatorio per i report PDF e viene rilevato automaticamente. Su
+Debian e Ubuntu installarlo prima del wizard:
 
 ```bash
 sudo apt update
@@ -43,7 +44,10 @@ sudo apt install -y weasyprint
 weasyprint --version
 ```
 
-L'installer web non esegue `sudo`, non installa pacchetti e non modifica il sistema. Se non si dispone di accesso root o sudo, chiedere al provider hosting di installare WeasyPrint; poi premere **Verifica nuovamente**.
+L'installazione APT non garantisce da sola una versione compatibile: verificare che il comando mostri
+60.0 o superiore. L'installer web non esegue `sudo`, non installa pacchetti e non modifica il sistema.
+Se non si dispone di accesso root o sudo, chiedere al provider hosting di installare una versione
+compatibile di WeasyPrint; poi premere **Verifica nuovamente**.
 
 I client SQL non servono per connettersi, testare il database, eseguire migration, accedere o usare normalmente AssestMe. Servono soltanto per backup e restore MySQL/MariaDB. Possono essere installati prima o dopo il wizard; AssestMe li rileva alla successiva operazione.
 

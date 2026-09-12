@@ -56,6 +56,7 @@ abstract readonly class MySqlCompatibleSnapshotter implements DatabaseSnapshotte
         $dumper = $this->newDumper();
         $dumper
             ->setValidatedDumpBinary($binary)
+            ->setSslCa($configuration->sslCa)
             ->setHost($configuration->host)
             ->setPort($configuration->port)
             ->setDbName($configuration->database)

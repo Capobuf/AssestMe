@@ -116,7 +116,14 @@ it('preserves mixed evidence order image proportions captions and the immutable 
     $settings->page_numbers = false;
     $settings->evidence = true;
     $settings->evidence_captions = true;
+    $settings->pdf_optimize_images = true;
     $settings->save();
+
+    $originalEvidenceHashes = [
+        $verticalPath => hash('sha256', $verticalPng),
+        $documentPath => hash('sha256', $documentContents),
+        $horizontalPath => hash('sha256', $horizontalPng),
+    ];
 
     $snapshot = app(BuildAssessmentSnapshot::class)($assessment->fresh());
     $html = view('reports.assessment', ['report' => $snapshot])->render();
@@ -225,6 +232,10 @@ it('preserves mixed evidence order image proportions captions and the immutable 
         ->and($withoutCaptionsText)->toContain('Vista orizzontale sala')
         ->and($withoutCaptionsText)->not->toContain('ARMADIO-VERTICALE.PNG', 'Didascalia verticale visibile', 'Didascalia orizzontale visibile')
         ->and(GeneratedReport::query()->where('assessment_id', $assessment->getKey())->count())->toBe(2);
+
+    foreach ($originalEvidenceHashes as $path => $hash) {
+        expect(hash('sha256', Storage::disk('local')->get($path)))->toBe($hash);
+    }
 });
 
 /** @return array{Assessment, Finding} */

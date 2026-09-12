@@ -75,6 +75,12 @@ final class ReportSettings extends Settings
 
     public bool $evidence_captions;
 
+    public int $pdf_image_dpi;
+
+    public int $pdf_jpeg_quality;
+
+    public bool $pdf_optimize_images;
+
     public bool $freeze_after_generation;
 
     public ?string $methodology_text;

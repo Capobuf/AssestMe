@@ -55,6 +55,9 @@ final class ReportPreviewFactory
             'currency_symbol' => '€',
             'currency_symbol_position' => 'after',
             'currency_decimals' => 2,
+            'pdf_image_dpi' => 150,
+            'pdf_jpeg_quality' => 85,
+            'pdf_optimize_images' => true,
         ];
 
         $priorities = [

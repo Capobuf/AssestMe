@@ -20,6 +20,9 @@ Evidence is private and belongs to the applicable Finding/assessment context.
 - One application-owned Blade/CSS report supports mixed A4 orientation.
 - Report settings preview uses the same renderer service and `reports.assessment` view as production.
 - Preview is transient and creates no immutable generated-file record.
+- Global PDF generation settings define image DPI, JPEG quality, and image optimization. Production
+  and preview pass those values from the report settings snapshot to a per-generation WeasyPrint
+  driver; the renderer does not read live settings or mutate global Laravel configuration.
 
 ## Authoritative generation
 
@@ -120,6 +123,8 @@ Backups use a driver-aware schema-v2 manifest:
 
 - SQLite uses a consistent application-controlled snapshot and mandatory real verification.
 - MySQL/MariaDB use operation-time discovery of a product-compatible dump/restore client.
+- SQL dump and restore option files carry the configured connection CA. When no CA is configured,
+  MariaDB clients do not claim server-certificate verification.
 - Missing server-database clients do not block installation, but SQL backup/restore remains unavailable with actionable errors.
 - Restore is CLI-only, requires maintenance mode, verifies hashes, creates a safety backup, and performs best-effort compensation.
 - Failed import plus failed compensation leaves the application in maintenance mode with diagnostic artifacts.

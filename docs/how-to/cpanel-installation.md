@@ -8,6 +8,8 @@ Seguire prima la [guida hosting generale](hosting-installation.md). cPanel è su
 4. Il PHP CLI può essere `/usr/local/bin/php`. Su EasyApache `/usr/bin/php` può essere PHP CGI e viene rifiutato dal probe CLI. Sono supportati anche `/usr/local/bin/ea-php83` e `/usr/local/bin/ea-php84` quando il loro probe `--version` conferma PHP CLI 8.3+.
 5. In **Advanced → Cron Jobs → Add New Cron Job** inserire ogni minuto e usare il comando assoluto mostrato dall’installer.
 
-WeasyPrint spesso non è installabile dal singolo account cPanel: richiederlo al provider. I client SQL sono opzionali; senza di essi il backup MySQL/MariaDB resta da configurare, mentre login e uso ordinario continuano a funzionare.
+WeasyPrint spesso non è installabile dal singolo account cPanel: richiedere al provider la versione
+60.0 o superiore e verificarla con `weasyprint --version`. I client SQL sono opzionali; senza di essi
+il backup MySQL/MariaDB resta da configurare, mentre login e uso ordinario continuano a funzionare.
 
 File, storage e `.env` devono appartenere al medesimo account cPanel che esegue PHP. Non usare `0777`. Al termine verificare login, PDF, cron/heartbeat e backup applicativo.

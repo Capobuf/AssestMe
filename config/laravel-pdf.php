@@ -19,7 +19,6 @@ return [
 
     'weasyprint' => [
         'binary' => env('LARAVEL_PDF_WEASYPRINT_BINARY', '/usr/bin/weasyprint'),
-        // The process timeout remains enforced by the application action on WeasyPrint 57.
         'timeout' => null,
     ],
 

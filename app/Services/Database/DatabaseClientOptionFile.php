@@ -18,6 +18,8 @@ final class DatabaseClientOptionFile
         #[SensitiveParameter]
         string $password,
         string $socket,
+        string $driver,
+        ?string $sslCa,
     ): string {
         $path = $directory.DIRECTORY_SEPARATOR.'.assestme-db-credentials-'.bin2hex(random_bytes(12));
         $handle = @fopen($path, 'xb');
@@ -50,6 +52,14 @@ final class DatabaseClientOptionFile
                 $lines[] = 'socket='.$this->value($socket);
             } else {
                 $lines[] = 'host='.$this->value($host);
+            }
+
+            if ($sslCa !== null) {
+                $lines[] = 'ssl-ca='.$this->value($sslCa);
+            } elseif ($driver === 'mariadb') {
+                // MariaDB 11.4+ verifies certificates by default. Without a configured CA,
+                // retain encrypted client transport without claiming server authentication.
+                $lines[] = 'ssl-verify-server-cert=0';
             }
 
             $this->writeAll($handle, implode(PHP_EOL, $lines).PHP_EOL);

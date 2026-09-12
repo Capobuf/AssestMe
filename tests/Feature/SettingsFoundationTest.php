@@ -11,6 +11,8 @@ use App\Settings\GeneralSettings;
 use App\Settings\ReportSettings;
 use Database\Seeders\MilestoneOneSeeder;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Support\Enums\Width;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
@@ -24,6 +26,9 @@ it('resolves report settings from the real migrated settings state', function ()
             ->exists())->toBeTrue()
         ->and(DB::table('migrations')
             ->where('migration', '2026_07_24_000021_promote_weasyprint_report_settings')
+            ->exists())->toBeTrue()
+        ->and(DB::table('migrations')
+            ->where('migration', '2026_09_12_000028_add_pdf_generation_settings')
             ->exists())->toBeTrue()
         ->and(DB::table('settings')
             ->where('group', 'report')
@@ -39,6 +44,9 @@ it('resolves report settings from the real migrated settings state', function ()
     expect($settings->cover_title_mode)->toBe(CoverTitleMode::Separate)
         ->and($settings->show_priority_descriptions)->toBeTrue()
         ->and($settings->show_resolution)->toBeTrue()
+        ->and($settings->pdf_image_dpi)->toBe(150)
+        ->and($settings->pdf_jpeg_quality)->toBe(85)
+        ->and($settings->pdf_optimize_images)->toBeTrue()
         ->and($settings->toArray())->not->toHaveKey('confidentiality_label');
 
     $settings->business_name = 'Consulenza Migrazione S.r.l.';
@@ -57,6 +65,8 @@ it('mounts the report settings Filament page from migrated values', function ():
 
     $page = Livewire::test(ReportSettingsPage::class)
         ->assertSuccessful()
+        ->assertSee(__('assestme.settings.report.pdf_generation'))
+        ->assertSee(__('assestme.settings.units.dpi'))
         ->assertSee(__('assestme.settings.report.output'))
         ->assertDontSee(__('assestme.settings.fields.summary_solutions'))
         ->assertDontSee(__('assestme.settings.fields.technical_notes_in_report'))
@@ -67,6 +77,9 @@ it('mounts the report settings Filament page from migrated values', function ():
             'cover_title_mode' => CoverTitleMode::Separate->value,
             'show_priority_descriptions' => true,
             'show_resolution' => true,
+            'pdf_image_dpi' => 150,
+            'pdf_jpeg_quality' => 85,
+            'pdf_optimize_images' => true,
             'currency' => 'EUR',
         ]);
 
@@ -78,6 +91,26 @@ it('mounts the report settings Filament page from migrated values', function ():
             && $component->getName() === 'consultant_logo_path');
     expect($logo)->toBeInstanceOf(FileUpload::class)
         ->and($logo?->getAcceptedFileTypes())->toBe(['image/png', 'image/jpeg', 'image/webp']);
+
+    $pdfFields = collect($form?->getFlatComponents())
+        ->filter(static fn (mixed $component): bool => method_exists($component, 'getName')
+            && in_array($component->getName(), [
+                'pdf_image_dpi',
+                'pdf_jpeg_quality',
+                'pdf_optimize_images',
+            ], true));
+
+    expect($pdfFields)->toHaveCount(3)
+        ->and($pdfFields->firstWhere(fn (mixed $component): bool => $component->getName() === 'pdf_image_dpi'))
+        ->toBeInstanceOf(TextInput::class)
+        ->and($pdfFields->firstWhere(fn (mixed $component): bool => $component->getName() === 'pdf_jpeg_quality'))
+        ->toBeInstanceOf(TextInput::class)
+        ->and($pdfFields->firstWhere(fn (mixed $component): bool => $component->getName() === 'pdf_optimize_images'))
+        ->toBeInstanceOf(Toggle::class);
+
+    $pdfFields->each(static function (mixed $component): void {
+        expect($component->isLive())->toBeFalse();
+    });
 });
 
 it('describes every visible report option and hides obsolete duplicate controls', function (): void {
@@ -118,6 +151,9 @@ it('describes every visible report option and hides obsolete duplicate controls'
         'costs',
         'evidence',
         'evidence_captions',
+        'pdf_image_dpi',
+        'pdf_jpeg_quality',
+        'pdf_optimize_images',
         'freeze_after_generation',
         'currency',
         'currency_symbol',
@@ -207,6 +243,9 @@ it('normalizes report identity values without introducing VAT calculations', fun
             'currency_symbol_position' => 'before',
             'currency_decimals' => 0,
             'report_excluded_findings_in_xlsx' => true,
+            'pdf_image_dpi' => '180',
+            'pdf_jpeg_quality' => '78',
+            'pdf_optimize_images' => false,
         ])
         ->call('save')
         ->assertHasNoFormErrors();
@@ -218,6 +257,9 @@ it('normalizes report identity values without introducing VAT calculations', fun
         ->and($settings->primary_color)->toBe('#A1B2C3')
         ->and($settings->cover_title_mode)->toBe(CoverTitleMode::Combined)
         ->and($settings->show_priority_descriptions)->toBeFalse()
+        ->and($settings->pdf_image_dpi)->toBe(180)
+        ->and($settings->pdf_jpeg_quality)->toBe(78)
+        ->and($settings->pdf_optimize_images)->toBeFalse()
         ->and($settings->toArray())->not->toHaveKeys(['vat_rate', 'taxable_amount', 'tax_amount'])
         ->and($generalSettings->currency)->toBe('USD')
         ->and($generalSettings->currency_symbol)->toBe('$')
@@ -237,6 +279,23 @@ it('normalizes report identity values without introducing VAT calculations', fun
     expect($settings->cover_title_mode)->toBe(CoverTitleMode::Separate)
         ->and($settings->show_priority_descriptions)->toBeTrue();
 });
+
+it('rejects PDF generation settings outside their supported ranges', function (
+    string $field,
+    int $value,
+): void {
+    $this->actingAs(User::factory()->create());
+
+    Livewire::test(ReportSettingsPage::class)
+        ->fillForm([$field => $value])
+        ->call('save')
+        ->assertHasFormErrors([$field]);
+})->with([
+    'DPI below minimum' => ['pdf_image_dpi', 71],
+    'DPI above maximum' => ['pdf_image_dpi', 601],
+    'JPEG quality below minimum' => ['pdf_jpeg_quality', -1],
+    'JPEG quality above maximum' => ['pdf_jpeg_quality', 96],
+]);
 
 it('requires authentication for both settings pages', function (): void {
     $this->get(GeneralSettingsPage::getUrl())->assertRedirect('/admin/login');

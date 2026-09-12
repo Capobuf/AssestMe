@@ -54,6 +54,8 @@ abstract class MySqlCompatibleRestorer implements DatabaseRestorer
             $configuration->username,
             $configuration->password,
             $configuration->socket,
+            $driver,
+            $configuration->sslCa,
         );
         $input = @fopen($source, 'rb');
         $failed = false;

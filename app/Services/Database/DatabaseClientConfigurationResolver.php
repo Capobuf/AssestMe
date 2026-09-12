@@ -6,6 +6,7 @@ namespace App\Services\Database;
 
 use App\Data\Database\DatabaseClientConfiguration;
 use Illuminate\Database\Connection;
+use Pdo\Mysql;
 use RuntimeException;
 
 final class DatabaseClientConfigurationResolver
@@ -18,6 +19,8 @@ final class DatabaseClientConfigurationResolver
         $username = $connection->getConfig('username');
         $password = $connection->getConfig('password');
         $socket = $connection->getConfig('unix_socket');
+        $options = $connection->getConfig('options');
+        $sslCa = is_array($options) ? ($options[Mysql::ATTR_SSL_CA] ?? null) : null;
 
         if (! is_string($host)
             || (! is_int($port) && (! is_string($port) || preg_match('/^[0-9]+$/D', $port) !== 1))
@@ -29,6 +32,8 @@ final class DatabaseClientConfigurationResolver
             || $username === ''
             || ! is_string($password)
             || ! is_string($socket)
+            || ($sslCa !== null && (! is_string($sslCa) || $sslCa === ''
+                || preg_match('/[\x00-\x1F\x7F]/', $sslCa) === 1))
             || ($host === '' && $socket === '')) {
             throw new RuntimeException('Database client connection configuration is invalid.');
         }
@@ -46,6 +51,7 @@ final class DatabaseClientConfigurationResolver
             username: $username,
             password: $password,
             socket: $socket,
+            sslCa: $sslCa,
         );
     }
 }

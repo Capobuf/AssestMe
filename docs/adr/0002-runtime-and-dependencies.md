@@ -29,6 +29,7 @@ Defines the framework, runtime capabilities, development environment, dependency
 | D-037 | APPROVED | Right Click and Advanced Table Export enhance standard resource tables only |
 | D-042 (v1) | SUPERSEDED | The Docker development profile published the development HTTP port only on host loopback; superseded by D-042 on 2026-07-18 |
 | D-042 | APPROVED | The Docker development profile is defined by `docker/compose.dev.yml`, a project-owned PHP 8.3 development image, bind-mounted source code, persistent default SQLite state, optional isolated Selenium browser testing, optional real MySQL/MariaDB compatibility-test services, and HTTP publication on all host IPv4 interfaces |
+| D-081 | APPROVED | WeasyPrint 60.0 or newer is the supported PDF runtime; the installer verifies the version exclusively through `weasyprint --version` and separately proves operational capability by generating a minimal real PDF |
 
 ## Consequences
 

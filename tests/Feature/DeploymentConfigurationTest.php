@@ -117,7 +117,8 @@ it('defines the authoritative minimal Docker development topology semantically',
 
     $dockerfile = strtolower((string) file_get_contents($dockerfilePath));
     expect($dockerfile)
-        ->toContain('from php:8.3.32-cli-bookworm')
+        ->toContain('from php:8.3.32-cli-trixie')
+        ->not->toContain('bookworm')
         ->toContain('from composer:2.10.2')
         ->toContain('arg xdebug_version=3.5.3')
         ->toContain('docker-php-ext-configure')
@@ -222,6 +223,7 @@ it('records the superseded installation history and approved Docker and hosted p
         ->toContain('| D-007 | APPROVED | The application requires no Node.js frontend build; Docker Compose is the maintained and authoritative local development environment |')
         ->toContain('| D-042 (v1) | SUPERSEDED | The Docker development profile published the development HTTP port only on host loopback; superseded by D-042 on 2026-07-18 |')
         ->toContain('| D-042 | APPROVED | The Docker development profile is defined by `docker/compose.dev.yml`, a project-owned PHP 8.3 development image, bind-mounted source code, persistent default SQLite state, optional isolated Selenium browser testing, optional real MySQL/MariaDB compatibility-test services, and HTTP publication on all host IPv4 interfaces |')
+        ->toContain('| D-081 | APPROVED | WeasyPrint 60.0 or newer')
         ->toContain('docker/compose.dev.yml');
 
     expect($deploymentAdr)
