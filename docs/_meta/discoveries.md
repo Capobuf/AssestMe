@@ -226,3 +226,33 @@ Add only reproducible observations discovered during implementation or verificat
 - A remote Selenium browser and its PHP server need separate bind, browser, and readiness hosts.
   Selecting an available acceptance port also prevents an unrelated pre-existing listener from
   being mistaken for the newly started extracted-release server.
+- Run `34681219461` retained Dusk screenshots and browser console logs proving two Workspace GETs
+  returned HTTP 500, but its application artifact contained no Laravel or PHP server log. The
+  canonical application script owns and removes its default isolated root before the workflow's
+  post-failure artifact step, so CI must provide a pre-marked runner-temporary root when server-side
+  failure evidence must survive collection.
+- Diagnostic run `34682936544` preserved `dusk-server.log`: PHP 8.3.33 stopped while serving
+  `/admin/assessments/1/workspace` at 08:26:30 UTC. The job shell reported `Segmentation fault
+  (core dumped)` for the PHP server; all five Dusk methods then reported `ERR_CONNECTION_REFUSED`.
+  No Laravel exception log was present. This proves a native crash in that run, not yet the cause
+  of the earlier pair of HTTP 500 responses.
+- Run `34683731693` captured SIGSEGV at `zend_objects_store_del()` with subsequent unresolved
+  native frames. Hosted PHP 8.3.33 inherited `opcache.jit=1235` and a 256 MB JIT buffer from
+  setup-php. Compose PHP 8.3.32 normally has a zero-sized JIT buffer. A real local HTTP probe
+  confirmed that `php -S` activates JIT with the hosted settings even when `opcache.enable_cli=0`:
+  PHP's `cli-server` SAPI is separately supported by OPcache
+  ([PHP source `accel_find_sapi()`](https://github.com/php/php-src/blob/php-8.3.33/ext/opcache/ZendAccelerator.c#L2604)).
+  The inherited values are explicit in
+  [setup-php's JIT configuration at the executed action revision](https://github.com/shivammathur/setup-php/blob/f3e473d116dcccaddc5834248c87452386958240/src/configs/ini/jit.ini).
+- With unchanged application code, applying the hosted function-JIT settings locally made both
+  `WorkspaceLocalDraftTest` methods fail with HTTP 500. Laravel logged `Undefined variable
+  $hasColumnGroups` at line 60 of the compiled Filament table view through Livewire's
+  `ExtendedCompilerEngine`; the first method failed at its recovery reload (line 169), and the
+  second at its first Workspace visit (line 264). Changing only `opcache.jit=disable`, retaining
+  the 256 MB buffer and OPcache, passed two tests with 29 assertions. The original run's missing
+  exception cannot be recovered, but native crash evidence and this controlled reproduction
+  identify inherited function JIT as an actionable runtime cause rather than a navigation delay.
+- The fixed server command, with the hosted JIT settings still inherited, passed the same two
+  local-draft tests. A separate real HTTP probe returned `opcache_enabled=true` and JIT
+  `enabled=false`/`on=false`. Hosted run `34684473453` then passed the unchanged complete Dusk
+  flows (5 tests, 62 assertions) on PHP 8.3.33, with no navigation retry or timeout increase.

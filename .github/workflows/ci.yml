@@ -82,7 +82,20 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-progress
       - name: Install matching ChromeDriver
         run: php artisan dusk:chrome-driver --detect
+      - name: Prepare application diagnostics root
+        run: |
+          mkdir -p "${RUNNER_TEMP}/application-tests/storage/logs"
+          touch "${RUNNER_TEMP}/application-tests/.assestme-test-root"
+          {
+            php -v
+            php --ini
+            php -m
+            php -r 'foreach (["memory_limit", "opcache.enable", "opcache.enable_cli", "opcache.jit", "opcache.jit_buffer_size", "opcache.file_cache", "opcache.validate_timestamps", "opcache.file_update_protection"] as $key) { echo $key, "=", ini_get($key), PHP_EOL; }'
+          } > "${RUNNER_TEMP}/application-tests/storage/logs/php-runtime.log"
       - name: Run canonical application suite
+        env:
+          ASSESTME_TEST_ISOLATED: '1'
+          ASSESTME_TEST_ROOT: ${{ runner.temp }}/application-tests
         run: scripts/test-app.sh
       - name: Upload application browser diagnostics
         if: failure()
@@ -90,7 +103,7 @@ jobs:
         with:
           name: application-browser-diagnostics
           path: |
-            storage/logs/*.log
+            ${{ runner.temp }}/application-tests/storage/logs/*.log
             tests/Browser/screenshots
             tests/Browser/source
             tests/Browser/console

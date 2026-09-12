@@ -17,6 +17,15 @@
   388 assertions. The mandatory pre-commit gate passed strict Composer validation, Pint on 502 files,
   PHPStan on 396 files, and 93 Unit tests with 607 assertions. `actionlint` is unavailable in the
   inspected runtime; hosted manual-dispatch verification remains pending before promotion.
+- 2026-09-12: Manual CI run `34685335777` passed all four verification jobs on the main-only
+  migration commit, so `main` was fast-forwarded to `bb73c28`. Automatic `main` run `34685760523`
+  then passed `check`, compatibility, 546 Feature tests with 4,990 assertions, real MariaDB
+  backup/restore with 14 assertions, and the extracted-release installer, but failed two of five
+  Dusk tests after Workspace, Livewire, and risk-profile requests returned HTTP 500. Release
+  publication and CloudPanel deployment were skipped and `develop` was retained. The user then
+  explicitly authorized integrating `ci/workspace-http500-diagnostics` into `develop` and continuing
+  the migration; the prepared merge preserves the `main`-only workflow and adds the verified PHP JIT
+  disablement plus retained failure diagnostics.
 - 2026-09-12: Started the repair of CI run `34678977316` after the test-suite refactor moved
   application checks onto a clean hosted runner without Poppler, omitted WeasyPrint from the
   compatibility runtime, and stopped creating the existing private disposable `.env` placeholder.
@@ -596,3 +605,50 @@ Record only factual work performed, the exact affected area, commands run, and r
   YAML parsing passed. GitHub-hosted CI, artifact publication, CloudPanel deployment, physical
   cross-browser/device checks, and live optional-provider checks were not executed and remain
   `NOT VERIFIED`.
+- 2026-09-12: Started investigation of the hosted application Dusk failure in run `34681219461`.
+  The retained browser diagnostics prove that two Workspace navigations received HTTP 500, while
+  the CI artifact omitted the isolated Laravel and PHP server logs because that temporary root was
+  deleted before the upload step. Scope is limited to evidence-preserving application-test
+  diagnostics until a reproducible exception identifies an application defect; no timeout, retry,
+  database, renderer, or Workspace fallback is being introduced.
+- 2026-09-12: Completed the bounded Dusk failure investigation without inventing an application
+  cause. The focused local-draft file passed 2 tests with 29 assertions, the four-file MariaDB Dusk
+  sequence passed 5 tests with 62 assertions, and the complete canonical application path passed
+  546 Feature tests with 4,987 assertions, the real MariaDB backup/restore with 14 assertions, and
+  all 5 Dusk tests with 62 assertions. CI now supplies a pre-marked runner-temporary application
+  root and uploads its isolated Laravel/PHP-server logs on failure. Workflow YAML and shell syntax,
+  focused Pint, the 58-assertion workflow contract, and the mandatory check (Composer validation,
+  Pint on 502 files, PHPStan on 396 files, 93 Unit tests with 607 assertions) passed. The specific
+  hosted HTTP 500 root cause remains `NOT VERIFIED` until it recurs with the corrected diagnostics.
+- 2026-09-12: Resumed the HTTP 500 investigation with user-authorized hosted CI execution of the
+  pending diagnostic changes. The diagnostic branch uses manual workflow dispatch, whose existing
+  conditions skip develop release publication and CloudPanel deployment. The first run-status
+  check will occur only after the requested five-minute wait; no application fix is claimed.
+- 2026-09-12: Hosted run `34682936544` passed 546 Feature tests (4,997 assertions) and the real
+  MariaDB backup/restore (14 assertions), but all five Dusk tests failed after PHP 8.3.33 crashed
+  with SIGSEGV during the application smoke Workspace GET. Started native crash diagnosis using
+  allowlisted PHP runtime metadata and argument-free GDB backtraces; raw core files are not uploaded.
+- 2026-09-12: Run `34683731693` reproduced SIGSEGV in `zend_objects_store_del()` and captured
+  the hosted function-JIT settings (`1235`, 256 MB). Reproduced both local-draft HTTP 500 failures
+  on unchanged PHP 8.3.32 application code by applying those JIT settings in Compose: two failed
+  tests and `Undefined variable $hasColumnGroups` in the compiled Filament table view. Changing
+  only `opcache.jit` to `disable` passed both tests with 29 assertions. Started the bounded fix:
+  explicitly disable JIT for the isolated browser server, retain OPcache, and remove temporary
+  native-core instrumentation after collecting its evidence.
+- 2026-09-12: The corrected server command passed the exact local-draft file (2 tests, 29
+  assertions) with the inherited configuration restored to `opcache.jit=1235` and a 256 MB buffer.
+  The command-line override therefore prevents the reproduced failure without relying on the
+  workstation's default disabled JIT. Hosted and complete application verification are pending.
+- 2026-09-12: Hosted corrective run `34684473453` on code commit `2c654fe` passed all four
+  verification jobs. The application job passed 546 Feature tests (4,997 assertions), real
+  MariaDB backup/restore (14 assertions), and all five Dusk tests (62 assertions). Publication
+  and deployment were skipped by the manual-dispatch conditions. The focused runner/workflow
+  contracts passed 2 tests (70 assertions), and the pre-commit gate passed Composer validation,
+  Pint on 502 files, PHPStan on 396 files, and 93 Unit tests (607 assertions).
+- 2026-09-12: Completed the local canonical MariaDB path with the hosted JIT configuration
+  inherited and the corrected server override: 546 Feature tests (4,997 assertions), the real
+  backup/restore (14 assertions), and 5 Dusk tests (62 assertions) passed. The final pre-commit
+  gate also passed (93 Unit tests, 607 assertions). The fix and evidence are on
+  `ci/workspace-http500-diagnostics`; no develop merge, release publication, or deployment was
+  performed. The original unlogged exception remains unrecoverable; the reproduced JIT-induced
+  failures and the hosted native crash are mitigated by the verified server configuration.

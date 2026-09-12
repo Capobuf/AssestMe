@@ -64,6 +64,9 @@ The maintained automated browser set contains five files total: four application
 files plus the separate release installer. Application Dusk covers login/workspace/save/report
 smoke, IndexedDB local-draft recovery, functional risk-matrix interaction, and reactive PDF preview
 fullscreen behavior. It does not use screenshot or pixel geometry assertions as normative coverage.
+The isolated application browser server explicitly disables PHP JIT while retaining OPcache.
+This avoids the reproduced PHP 8.3 function-JIT rendering failures; CLI `opcache.enable_cli=0`
+does not disable JIT for the distinct `cli-server` SAPI used by `php -S`.
 Manual physical checks remain required for:
 
 - Edge;
