@@ -14,6 +14,8 @@ release_path="${1:-}"
 [[ ! -e "$release_path/.env" && -f "$release_path/vendor/autoload.php" ]] || \
     fail "The extracted release is not in a clean installable state."
 
+source "$source_project/scripts/isolated-environment.sh"
+
 test_root="${ASSESTME_TEST_ROOT:-}"
 owns_test_root=0
 if [[ -z "$test_root" ]]; then
@@ -36,11 +38,14 @@ cleanup() {
         fi
     fi
 
+    assestme_cleanup_isolated_environment_file
+
     if [[ "$owns_test_root" == "1" && -f "$test_root/.assestme-test-root" ]]; then
         rm -rf -- "$test_root"
     fi
 }
 trap cleanup EXIT INT TERM
+assestme_prepare_isolated_environment_file "$source_project"
 
 port="${ASSESTME_RELEASE_ACCEPTANCE_PORT:-}"
 if [[ -z "$port" ]]; then

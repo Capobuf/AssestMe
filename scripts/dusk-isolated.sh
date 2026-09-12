@@ -26,9 +26,11 @@ cleanup() {
             :
         fi
     fi
+    assestme_cleanup_isolated_environment_file
     assestme_end_isolated_environment
 }
 trap cleanup EXIT INT TERM
+assestme_prepare_isolated_environment_file "$PWD"
 
 php artisan migrate:fresh --seed --force
 php artisan assestme:installation:lock --force --no-interaction

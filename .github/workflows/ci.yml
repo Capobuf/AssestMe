@@ -77,7 +77,7 @@ jobs:
           ini-values: memory_limit=1G
           tools: composer:v2
       - name: Install application test runtimes
-        run: sudo apt-get update && sudo apt-get install --yes mariadb-client weasyprint
+        run: sudo apt-get update && sudo apt-get install --yes mariadb-client poppler-utils weasyprint
       - name: Install locked dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
       - name: Install matching ChromeDriver
@@ -222,12 +222,16 @@ jobs:
           extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sockets, sqlite3, xml, zip
           ini-values: memory_limit=512M
           tools: composer:v2
-      - name: Install MySQL client
-        run: sudo apt-get update && sudo apt-get install --yes default-mysql-client
+      - name: Install compatibility runtimes
+        run: sudo apt-get update && sudo apt-get install --yes default-mysql-client weasyprint
       - name: Install locked dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
       - name: Run SQLite compatibility smoke
-        run: php artisan test tests/Feature/SeedDataTest.php tests/Feature/ServerDatabaseCapabilityTest.php
+        run: |
+          source scripts/isolated-environment.sh
+          assestme_prepare_isolated_environment_file "$GITHUB_WORKSPACE"
+          trap assestme_cleanup_isolated_environment_file EXIT
+          php artisan test tests/Feature/SeedDataTest.php tests/Feature/ServerDatabaseCapabilityTest.php
       - name: Run MySQL compatibility smoke
         env:
           ASSESTME_TEST_DB_DATABASE: assestme_test
@@ -236,7 +240,11 @@ jobs:
           ASSESTME_TEST_DB_PASSWORD: assestme-ci-database
           ASSESTME_TEST_DB_PORT: 3306
           ASSESTME_TEST_DB_USERNAME: root
-        run: php artisan test tests/Feature/SeedDataTest.php tests/Feature/ServerDatabaseCapabilityTest.php
+        run: |
+          source scripts/isolated-environment.sh
+          assestme_prepare_isolated_environment_file "$GITHUB_WORKSPACE"
+          trap assestme_cleanup_isolated_environment_file EXIT
+          php artisan test tests/Feature/SeedDataTest.php tests/Feature/ServerDatabaseCapabilityTest.php
 
   publish-develop-release:
     name: Publish develop release

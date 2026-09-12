@@ -212,6 +212,10 @@ Add only reproducible observations discovered during implementation or verificat
 
 ## Canonical MariaDB verification discoveries
 
+- A test path moved from the development image to a clean hosted runner must provision every CLI
+  binary consumed by its assertions, not only the production renderer. The same clean-checkout
+  boundary must wrap every PHPUnit and Dusk entry point with the existing owned empty `.env`
+  placeholder; otherwise one missing-file warning is repeated once per test.
 - Running the complete Feature suite on MariaDB 12.3.3 exposed test-only SQLite assumptions in
   decimal value types, identifier reuse, SQL identifier quoting, SQLite trigger syntax, and
   nested transaction handling. The corrections make the assertions and failure mechanisms

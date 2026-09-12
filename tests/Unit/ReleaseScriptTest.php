@@ -46,6 +46,8 @@ it('defines one fail-closed extracted-release browser acceptance path', function
 
     expect($script)
         ->toContain('php artisan dusk --without-tty tests/Browser/ReleaseInstallationTest.php')
+        ->toContain('assestme_prepare_isolated_environment_file "$source_project"')
+        ->toContain('assestme_cleanup_isolated_environment_file')
         ->toContain('ASSESTME_DUSK_INSTALLER=1')
         ->toContain('ASSESTME_DUSK_APPLICATION_URL="$configured_application_url"')
         ->toContain('ASSESTME_DUSK_DATABASE_HOST="$database_host"')

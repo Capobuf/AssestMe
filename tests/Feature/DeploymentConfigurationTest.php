@@ -400,6 +400,8 @@ it('separates the pre-commit application and browser responsibilities without re
 
     expect($check)
         ->toContain('export ASSESTME_TEST_DB_DRIVER=sqlite')
+        ->toContain('assestme_prepare_isolated_environment_file "$PWD"')
+        ->toContain('assestme_cleanup_isolated_environment_file')
         ->toContain('composer validate --strict')
         ->toContain('vendor/bin/pint --test')
         ->toContain('vendor/bin/phpstan analyse --memory-limit=1G')
@@ -414,6 +416,8 @@ it('separates the pre-commit application and browser responsibilities without re
 
     expect($application)
         ->toContain('ASSESTME_TEST_DB_DRIVER:-')
+        ->toContain('assestme_prepare_isolated_environment_file "$PWD"')
+        ->toContain('assestme_cleanup_isolated_environment_file')
         ->toContain('php artisan test --testsuite=Feature')
         ->toContain('php artisan test tests/Unit/ServerDatabaseBackupRestoreTest.php')
         ->toContain('tests/Browser/ApplicationSmokeTest.php')
@@ -430,6 +434,8 @@ it('separates the pre-commit application and browser responsibilities without re
     expect($browser)
         ->toContain('if [[ $# -eq 0 ]]')
         ->toContain('Pass the browser test files')
+        ->toContain('assestme_prepare_isolated_environment_file "$PWD"')
+        ->toContain('assestme_cleanup_isolated_environment_file')
         ->toContain('php artisan dusk --without-tty "$@"')
         ->not->toContain('gate-receipts')
         ->not->toContain('fingerprint');
@@ -571,6 +577,10 @@ it('defines one primary CI workflow with separated non-repeating jobs', function
     $workflow = Yaml::parseFile($workflowPath);
     $publish = $workflow['jobs']['publish-develop-release'];
     $installer = $workflow['jobs']['installer'];
+    $applicationRuntime = collect($workflow['jobs']['application']['steps'])->firstWhere('name', 'Install application test runtimes');
+    $compatibilityRuntime = collect($workflow['jobs']['compatibility-smoke']['steps'])->firstWhere('name', 'Install compatibility runtimes');
+    $sqliteSmoke = collect($workflow['jobs']['compatibility-smoke']['steps'])->firstWhere('name', 'Run SQLite compatibility smoke');
+    $mysqlSmoke = collect($workflow['jobs']['compatibility-smoke']['steps'])->firstWhere('name', 'Run MySQL compatibility smoke');
     $releaseDiagnostics = collect($installer['steps'])->firstWhere('name', 'Upload release installer diagnostics');
 
     expect(array_keys($workflow['jobs']))->toBe([
@@ -608,6 +618,16 @@ it('defines one primary CI workflow with separated non-repeating jobs', function
         ->and(substr_count($workflowSource, 'scripts/build-release.sh ci'))->toBe(1)
         ->and(substr_count($check, '--testsuite=Unit'))->toBe(1)
         ->and(substr_count($testApp, '--testsuite=Feature'))->toBe(1)
+        ->and($applicationRuntime)->toBeArray()
+        ->and($applicationRuntime['run'])->toContain('poppler-utils')
+        ->and($compatibilityRuntime)->toBeArray()
+        ->and($compatibilityRuntime['run'])->toContain('weasyprint')
+        ->and($sqliteSmoke)->toBeArray()
+        ->and($sqliteSmoke['run'])->toContain('assestme_prepare_isolated_environment_file')
+        ->and($sqliteSmoke['run'])->toContain('assestme_cleanup_isolated_environment_file')
+        ->and($mysqlSmoke)->toBeArray()
+        ->and($mysqlSmoke['run'])->toContain('assestme_prepare_isolated_environment_file')
+        ->and($mysqlSmoke['run'])->toContain('assestme_cleanup_isolated_environment_file')
         ->and($releaseDiagnostics)->toBeArray()
         ->and($releaseDiagnostics['if'])->toBe('failure()')
         ->and($releaseDiagnostics['uses'])->toBe('actions/upload-artifact@v6')

@@ -4,6 +4,20 @@
 
 ## Current state
 
+- 2026-09-12: Started the repair of CI run `34678977316` after the test-suite refactor moved
+  application checks onto a clean hosted runner without Poppler, omitted WeasyPrint from the
+  compatibility runtime, and stopped creating the existing private disposable `.env` placeholder.
+  Scope is limited to restoring those test-runtime prerequisites and their regression contracts.
+- 2026-09-12: Completed the focused CI runtime repair. Shell syntax and workflow YAML parsing
+  passed; the workflow/script contracts passed 24 tests with 427 assertions. The mandatory
+  pre-commit check passed Composer validation, Pint on 502 files, PHPStan on 396 files, and 93 Unit
+  tests with 607 assertions without warnings. Bounded compatibility passed 5 SQLite tests with 31
+  assertions and 5 MySQL 8.4.11 tests with 37 assertions. The canonical MariaDB path passed 546
+  Feature tests with 4,987 assertions, the real backup/restore round trip with 14 assertions, and
+  5 Dusk tests with 62 assertions, all without warnings. A fresh production ZIP then completed the
+  real MariaDB installer journey with 43 browser assertions plus scheduler, diagnostics, health,
+  login, and closure checks. Its dedicated database, user, archive, extraction, and test root were
+  removed after verification. GitHub-hosted confirmation remains pending the requested CI launch.
 - 2026-08-13: Started the approved CI gate separation on `develop` at `ba66a7c`. The scoped change
   keeps `quality` and the four-version database matrix as the normal PR gates, introduces a
   browser-free Compose core verifier, moves Dusk and release/install acceptance ahead of develop

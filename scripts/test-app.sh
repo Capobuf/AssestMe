@@ -9,8 +9,13 @@ fail() {
 project_dir="${1:-$PWD}"
 cd "$project_dir"
 
+source scripts/isolated-environment.sh
+
 [[ "${ASSESTME_TEST_DB_DRIVER:-}" == "mariadb" ]] || fail \
     "The canonical application suite requires ASSESTME_TEST_DB_DRIVER=mariadb."
+
+trap assestme_cleanup_isolated_environment_file EXIT
+assestme_prepare_isolated_environment_file "$PWD"
 
 php artisan test --testsuite=Feature
 php artisan test tests/Unit/ServerDatabaseBackupRestoreTest.php
