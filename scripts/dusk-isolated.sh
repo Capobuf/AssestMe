@@ -71,7 +71,8 @@ fi
 
 (
     cd public
-    exec php -d variables_order=EGPCS -S "${DUSK_SERVER_BIND}:${DUSK_PORT}" \
+    # PHP 8.3 function JIT corrupts compiled Workspace views across browser requests.
+    exec php -d variables_order=EGPCS -d opcache.jit=disable -S "${DUSK_SERVER_BIND}:${DUSK_PORT}" \
         ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php
 ) >"$ASSESTME_TEST_ROOT/storage/logs/dusk-server.log" 2>&1 &
 server_pid=$!

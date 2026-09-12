@@ -606,3 +606,14 @@ Record only factual work performed, the exact affected area, commands run, and r
   MariaDB backup/restore (14 assertions), but all five Dusk tests failed after PHP 8.3.33 crashed
   with SIGSEGV during the application smoke Workspace GET. Started native crash diagnosis using
   allowlisted PHP runtime metadata and argument-free GDB backtraces; raw core files are not uploaded.
+- 2026-09-12: Run `34683731693` reproduced SIGSEGV in `zend_objects_store_del()` and captured
+  the hosted function-JIT settings (`1235`, 256 MB). Reproduced both local-draft HTTP 500 failures
+  on unchanged PHP 8.3.32 application code by applying those JIT settings in Compose: two failed
+  tests and `Undefined variable $hasColumnGroups` in the compiled Filament table view. Changing
+  only `opcache.jit` to `disable` passed both tests with 29 assertions. Started the bounded fix:
+  explicitly disable JIT for the isolated browser server, retain OPcache, and remove temporary
+  native-core instrumentation after collecting its evidence.
+- 2026-09-12: The corrected server command passed the exact local-draft file (2 tests, 29
+  assertions) with the inherited configuration restored to `opcache.jit=1235` and a 256 MB buffer.
+  The command-line override therefore prevents the reproduced failure without relying on the
+  workstation's default disabled JIT. Hosted and complete application verification are pending.

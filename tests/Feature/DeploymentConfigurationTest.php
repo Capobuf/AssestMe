@@ -562,7 +562,7 @@ it('uses a configured remote Dusk driver without starting local ChromeDriver', f
         ->toContain('DUSK_READY_HOST="${DUSK_READY_HOST:-127.0.0.1}"')
         ->toContain('export APP_URL="http://${DUSK_BROWSER_HOST}:${DUSK_PORT}"')
         ->toContain('"${DUSK_DRIVER_URL%/}/status"')
-        ->toContain('exec php -d variables_order=EGPCS -S "${DUSK_SERVER_BIND}:${DUSK_PORT}"')
+        ->toContain('exec php -d variables_order=EGPCS -d opcache.jit=disable -S "${DUSK_SERVER_BIND}:${DUSK_PORT}"')
         ->toContain('http://${DUSK_READY_HOST}:${DUSK_PORT}/admin/login')
         ->toContain('assestme_end_isolated_environment');
 });
