@@ -226,3 +226,8 @@ Add only reproducible observations discovered during implementation or verificat
 - A remote Selenium browser and its PHP server need separate bind, browser, and readiness hosts.
   Selecting an available acceptance port also prevents an unrelated pre-existing listener from
   being mistaken for the newly started extracted-release server.
+- Run `34681219461` retained Dusk screenshots and browser console logs proving two Workspace GETs
+  returned HTTP 500, but its application artifact contained no Laravel or PHP server log. The
+  canonical application script owns and removes its default isolated root before the workflow's
+  post-failure artifact step, so CI must provide a pre-marked runner-temporary root when server-side
+  failure evidence must survive collection.

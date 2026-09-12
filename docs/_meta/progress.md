@@ -583,3 +583,22 @@ Record only factual work performed, the exact affected area, commands run, and r
   YAML parsing passed. GitHub-hosted CI, artifact publication, CloudPanel deployment, physical
   cross-browser/device checks, and live optional-provider checks were not executed and remain
   `NOT VERIFIED`.
+- 2026-09-12: Started investigation of the hosted application Dusk failure in run `34681219461`.
+  The retained browser diagnostics prove that two Workspace navigations received HTTP 500, while
+  the CI artifact omitted the isolated Laravel and PHP server logs because that temporary root was
+  deleted before the upload step. Scope is limited to evidence-preserving application-test
+  diagnostics until a reproducible exception identifies an application defect; no timeout, retry,
+  database, renderer, or Workspace fallback is being introduced.
+- 2026-09-12: Completed the bounded Dusk failure investigation without inventing an application
+  cause. The focused local-draft file passed 2 tests with 29 assertions, the four-file MariaDB Dusk
+  sequence passed 5 tests with 62 assertions, and the complete canonical application path passed
+  546 Feature tests with 4,987 assertions, the real MariaDB backup/restore with 14 assertions, and
+  all 5 Dusk tests with 62 assertions. CI now supplies a pre-marked runner-temporary application
+  root and uploads its isolated Laravel/PHP-server logs on failure. Workflow YAML and shell syntax,
+  focused Pint, the 58-assertion workflow contract, and the mandatory check (Composer validation,
+  Pint on 502 files, PHPStan on 396 files, 93 Unit tests with 607 assertions) passed. The specific
+  hosted HTTP 500 root cause remains `NOT VERIFIED` until it recurs with the corrected diagnostics.
+- 2026-09-12: Resumed the HTTP 500 investigation with user-authorized hosted CI execution of the
+  pending diagnostic changes. The diagnostic branch uses manual workflow dispatch, whose existing
+  conditions skip develop release publication and CloudPanel deployment. The first run-status
+  check will occur only after the requested five-minute wait; no application fix is claimed.

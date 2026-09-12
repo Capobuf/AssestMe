@@ -577,7 +577,11 @@ it('defines one primary CI workflow with separated non-repeating jobs', function
     $workflow = Yaml::parseFile($workflowPath);
     $publish = $workflow['jobs']['publish-develop-release'];
     $installer = $workflow['jobs']['installer'];
+    $application = $workflow['jobs']['application'];
     $applicationRuntime = collect($workflow['jobs']['application']['steps'])->firstWhere('name', 'Install application test runtimes');
+    $applicationDiagnosticsRoot = collect($application['steps'])->firstWhere('name', 'Prepare application diagnostics root');
+    $applicationSuite = collect($application['steps'])->firstWhere('name', 'Run canonical application suite');
+    $applicationDiagnostics = collect($application['steps'])->firstWhere('name', 'Upload application browser diagnostics');
     $compatibilityRuntime = collect($workflow['jobs']['compatibility-smoke']['steps'])->firstWhere('name', 'Install compatibility runtimes');
     $sqliteSmoke = collect($workflow['jobs']['compatibility-smoke']['steps'])->firstWhere('name', 'Run SQLite compatibility smoke');
     $mysqlSmoke = collect($workflow['jobs']['compatibility-smoke']['steps'])->firstWhere('name', 'Run MySQL compatibility smoke');
@@ -620,6 +624,20 @@ it('defines one primary CI workflow with separated non-repeating jobs', function
         ->and(substr_count($testApp, '--testsuite=Feature'))->toBe(1)
         ->and($applicationRuntime)->toBeArray()
         ->and($applicationRuntime['run'])->toContain('poppler-utils')
+        ->and($applicationDiagnosticsRoot)->toBeArray()
+        ->and($applicationDiagnosticsRoot['run'])->toContain('${RUNNER_TEMP}/application-tests/.assestme-test-root')
+        ->and($applicationSuite)->toBeArray()
+        ->and($applicationSuite['env'])->toBe([
+            'ASSESTME_TEST_ISOLATED' => '1',
+            'ASSESTME_TEST_ROOT' => '${{ runner.temp }}/application-tests',
+        ])
+        ->and($applicationDiagnostics)->toBeArray()
+        ->and($applicationDiagnostics['if'])->toBe('failure()')
+        ->and($applicationDiagnostics['uses'])->toBe('actions/upload-artifact@v6')
+        ->and($applicationDiagnostics['with']['path'])
+        ->toContain('${{ runner.temp }}/application-tests/storage/logs/*.log')
+        ->not->toContain('.env')
+        ->not->toContain('installed.lock')
         ->and($compatibilityRuntime)->toBeArray()
         ->and($compatibilityRuntime['run'])->toContain('weasyprint')
         ->and($sqliteSmoke)->toBeArray()

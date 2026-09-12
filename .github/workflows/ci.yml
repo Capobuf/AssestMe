@@ -82,7 +82,12 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-progress
       - name: Install matching ChromeDriver
         run: php artisan dusk:chrome-driver --detect
+      - name: Prepare application diagnostics root
+        run: mkdir -p "${RUNNER_TEMP}/application-tests" && touch "${RUNNER_TEMP}/application-tests/.assestme-test-root"
       - name: Run canonical application suite
+        env:
+          ASSESTME_TEST_ISOLATED: '1'
+          ASSESTME_TEST_ROOT: ${{ runner.temp }}/application-tests
         run: scripts/test-app.sh
       - name: Upload application browser diagnostics
         if: failure()
@@ -90,7 +95,7 @@ jobs:
         with:
           name: application-browser-diagnostics
           path: |
-            storage/logs/*.log
+            ${{ runner.temp }}/application-tests/storage/logs/*.log
             tests/Browser/screenshots
             tests/Browser/source
             tests/Browser/console
