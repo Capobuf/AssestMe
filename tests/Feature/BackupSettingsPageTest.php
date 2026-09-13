@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 use App\Actions\Backups\CreateBackup;
 use App\Actions\Backups\VerifyBackup;
+use App\Actions\Operations\RecordOperationalCheck;
+use App\Enums\OperationalCheckStatus;
+use App\Enums\OperationalCheckType;
 use App\Filament\Clusters\SettingsCluster;
 use App\Filament\Pages\BackupSettingsPage;
 use App\Models\User;
 use App\Services\Backups\BackupArchiveCatalog;
+use Carbon\CarbonImmutable;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
@@ -40,6 +44,7 @@ beforeEach(function (): void {
 });
 
 afterEach(function (): void {
+    CarbonImmutable::setTestNow();
     DB::purge('backup_page');
     config()->set('database.default', $this->originalDatabaseConnection);
     DB::reconnect();
@@ -56,17 +61,27 @@ it('is an authenticated native page in the Settings cluster with the approved po
         ->get(BackupSettingsPage::getUrl())
         ->assertOk()
         ->assertSeeText(__('assestme.backups.title'))
-        ->assertSeeText(__('assestme.backups.overview.schedule_heading'))
-        ->assertSeeText(__('assestme.backups.overview.schedule_value'))
-        ->assertSeeText(__('assestme.backups.overview.scheduler_required'))
-        ->assertSeeText(__('assestme.backups.restore.description'));
+        ->assertSeeText(__('assestme.backups.subheading'))
+        ->assertSeeText(__('assestme.backups.overview.heading'))
+        ->assertSeeText(__('assestme.backups.overview.status_never'))
+        ->assertSeeText(__('assestme.backups.table.heading'))
+        ->assertSeeText(__('assestme.backups.technical.heading'))
+        ->assertSeeText(__('assestme.backups.technical.description'))
+        ->assertSeeText(__('assestme.backups.restore.description'))
+        ->assertDontSeeText('database SQLite');
+
+    $component = Livewire::test(BackupSettingsPage::class)
+        ->assertActionExists('createBackup');
+
+    expect($component->instance()->getTable()->getHeaderActions())->toBe([]);
 });
 
 it('creates verifies and immediately lists a real managed backup through the page action', function (): void {
     $this->actingAs(User::factory()->create());
+    CarbonImmutable::setTestNow('2026-09-13 08:15:00 UTC');
     $component = Livewire::test(BackupSettingsPage::class)
         ->assertSee(__('assestme.backups.table.empty'))
-        ->callAction(TestAction::make('createBackup')->table())
+        ->callAction('createBackup')
         ->assertNotified(__('assestme.backups.notifications.created'));
 
     $archive = app(BackupArchiveCatalog::class)->all()[0] ?? null;
@@ -75,19 +90,86 @@ it('creates verifies and immediately lists a real managed backup through the pag
         ->and($archive?->kind)->toBe('backup')
         ->and(app(VerifyBackup::class)->handle($archive->absolutePath)->files())->not->toBeEmpty();
 
-    $component->assertSee($archive->name);
+    $component
+        ->assertSee($archive->name)
+        ->assertSeeText(__('assestme.backups.overview.status_succeeded_at', [
+            'date' => '13/09/2026 10:15',
+        ]));
 });
 
-it('reports creation failure without a success notification', function (): void {
+it('immediately reports a failed creation attempt without exposing its technical error', function (): void {
     $this->actingAs(User::factory()->create());
+    CarbonImmutable::setTestNow('2026-09-13 08:15:00 UTC');
     config()->set('assestme.backup.private_storage_path', $this->backupRoot);
 
     Livewire::test(BackupSettingsPage::class)
-        ->callAction(TestAction::make('createBackup')->table())
+        ->assertSeeText(__('assestme.backups.overview.status_never'))
+        ->callAction('createBackup')
         ->assertNotified(__('assestme.backups.errors.creation_failed'))
-        ->assertNotNotified(__('assestme.backups.notifications.created'));
+        ->assertNotNotified(__('assestme.backups.notifications.created'))
+        ->assertSeeText(__('assestme.backups.overview.status_failed_at', [
+            'date' => '13/09/2026 10:15',
+        ]))
+        ->assertSeeText(__('assestme.backups.overview.backup_failed_heading'))
+        ->assertSee(__('assestme.backups.actions.open_diagnostics'))
+        ->assertDontSee('Private storage root overlaps the backup archive', escape: false);
 
     expect(app(BackupArchiveCatalog::class)->all())->toBe([]);
+});
+
+it('shows ready missing and non-writable directory states while keeping the checks distinct', function (): void {
+    $this->actingAs(User::factory()->create());
+
+    Livewire::test(BackupSettingsPage::class)
+        ->assertSeeText(__('assestme.backups.overview.directory_ready'));
+
+    File::deleteDirectory($this->backupRoot);
+
+    Livewire::test(BackupSettingsPage::class)
+        ->assertSeeText(__('assestme.backups.overview.directory_unavailable'));
+
+    config()->set('assestme.backup.root', '/sys');
+
+    $overview = Livewire::test(BackupSettingsPage::class)
+        ->assertSeeText(__('assestme.backups.overview.directory_not_writable'))
+        ->instance()
+        ->backupOverview();
+
+    expect($overview['directory_exists'])->toBeTrue()
+        ->and($overview['directory_writable'])->toBeFalse();
+});
+
+it('distinguishes ordinary backups from safety copies in the summary and table', function (): void {
+    $this->actingAs(User::factory()->create());
+    app(CreateBackup::class)($this->backupRoot.DIRECTORY_SEPARATOR.'assestme-20260913-080000.tar.gz', false);
+    app(CreateBackup::class)($this->backupRoot.DIRECTORY_SEPARATOR.'assestme-safety-20260913-081000.tar.gz', false);
+
+    Livewire::test(BackupSettingsPage::class)
+        ->assertSeeText(__('assestme.backups.overview.archive_count_summary', [
+            'ordinary' => '1 backup',
+            'safety' => '1 copia di sicurezza',
+        ]))
+        ->assertSeeText(__('assestme.backups.types.backup'))
+        ->assertSeeText(__('assestme.backups.types.safety'));
+});
+
+it('uses the recorded attempt timestamp independently from the newest archive timestamp', function (): void {
+    $this->actingAs(User::factory()->create());
+    $path = $this->backupRoot.DIRECTORY_SEPARATOR.'assestme-20260913-120000.tar.gz';
+    app(CreateBackup::class)($path, false);
+    touch($path, CarbonImmutable::parse('2026-09-13 12:00:00 UTC')->getTimestamp());
+    app(RecordOperationalCheck::class)(
+        OperationalCheckType::Backup,
+        OperationalCheckStatus::Failed,
+        'Bounded test failure',
+        CarbonImmutable::parse('2026-09-13 08:15:00 UTC'),
+    );
+
+    Livewire::test(BackupSettingsPage::class)
+        ->assertSeeText('13/09/2026 14:00')
+        ->assertSeeText(__('assestme.backups.overview.status_failed_at', [
+            'date' => '13/09/2026 10:15',
+        ]));
 });
 
 it('shows success only for a valid archive and leaves a corrupt archive available', function (): void {
@@ -127,7 +209,6 @@ it('shows exact server-resolved CLI restore instructions without a web restore c
             'php artisan down',
             "php artisan assestme:restore-backup '".str_replace("'", "'\\''", $path)."'",
             'php artisan up',
-            __('assestme.backups.restore.rollback'),
         ])
         ->assertDontSee('Ripristina ora')
         ->assertDontSee('type="file"', escape: false);

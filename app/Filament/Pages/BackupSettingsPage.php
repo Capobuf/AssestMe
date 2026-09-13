@@ -18,6 +18,7 @@ use App\Settings\GeneralSettings;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -63,6 +64,23 @@ final class BackupSettingsPage extends Page implements HasTable
         return __('assestme.backups.title');
     }
 
+    public function getSubheading(): string
+    {
+        return __('assestme.backups.subheading');
+    }
+
+    /** @return array<Action> */
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('createBackup')
+                ->label(__('assestme.backups.actions.create'))
+                ->icon(Heroicon::OutlinedArchiveBoxArrowDown)
+                ->color('primary')
+                ->action(fn (): null => $this->createBackup()),
+        ];
+    }
+
     public function content(Schema $schema): Schema
     {
         return $schema
@@ -79,82 +97,111 @@ final class BackupSettingsPage extends Page implements HasTable
                         TextEntry::make('latest_backup')
                             ->label(__('assestme.backups.overview.last_backup'))
                             ->state(fn (): string => (string) $this->backupOverview()['latest_backup'])
-                            ->icon(Heroicon::OutlinedClock)
+                            ->badge()
+                            ->color(fn (): string => $this->backupOverview()['has_backups'] ? 'primary' : 'gray')
+                            ->icon(Heroicon::OutlinedArchiveBox)
                             ->weight(FontWeight::SemiBold),
-                        TextEntry::make('ordinary_count')
-                            ->label(__('assestme.backups.overview.ordinary_count'))
-                            ->state(fn (): int => (int) $this->backupOverview()['ordinary_count'])
+                        TextEntry::make('operational_status')
+                            ->label(__('assestme.backups.overview.operational_status'))
+                            ->state(fn (): string => (string) $this->backupOverview()['operational_status'])
+                            ->badge()
+                            ->color(fn (): string => (string) $this->backupOverview()['operational_color'])
+                            ->icon(fn (): Heroicon => match (true) {
+                                $this->backupOverview()['operational_succeeded'] => Heroicon::OutlinedCheckCircle,
+                                $this->backupOverview()['operational_failed'] => Heroicon::OutlinedXCircle,
+                                default => Heroicon::OutlinedClock,
+                            }),
+                        TextEntry::make('archive_counts')
+                            ->label(__('assestme.backups.overview.archive_counts'))
+                            ->state(fn (): string => $this->archiveCountSummary())
                             ->icon(Heroicon::OutlinedArchiveBox),
-                        TextEntry::make('safety_count')
-                            ->label(__('assestme.backups.overview.safety_count'))
-                            ->state(fn (): int => (int) $this->backupOverview()['safety_count'])
-                            ->icon(Heroicon::OutlinedShieldCheck),
                         TextEntry::make('total_size')
                             ->label(__('assestme.backups.overview.total_size'))
                             ->state(fn (): string => (string) $this->backupOverview()['total_size'])
                             ->icon(Heroicon::OutlinedCircleStack),
-                        TextEntry::make('root')
-                            ->label(__('assestme.backups.overview.directory'))
-                            ->state(fn (): string => (string) $this->backupOverview()['root'])
-                            ->fontFamily(FontFamily::Mono)
-                            ->copyable()
-                            ->columnSpan([
-                                'default' => 1,
-                                'sm' => 2,
-                            ]),
-                        TextEntry::make('directory_exists')
-                            ->label(__('assestme.backups.overview.directory_exists'))
-                            ->state(fn (): string => $this->directoryState('directory_exists'))
-                            ->badge()
-                            ->color(fn (): string => $this->backupOverview()['directory_exists'] ? 'success' : 'danger')
-                            ->icon(fn (): Heroicon => $this->backupOverview()['directory_exists']
-                                ? Heroicon::OutlinedCheckCircle
-                                : Heroicon::OutlinedXCircle),
-                        TextEntry::make('directory_writable')
-                            ->label(__('assestme.backups.overview.directory_writable'))
-                            ->state(fn (): string => $this->directoryState('directory_writable'))
+                        Callout::make(__('assestme.backups.overview.backup_failed_heading'))
+                            ->description(__('assestme.backups.overview.backup_failed_description'))
+                            ->danger()
+                            ->actions([
+                                Action::make('openFailureDiagnostics')
+                                    ->label(__('assestme.backups.actions.open_diagnostics'))
+                                    ->icon(Heroicon::OutlinedWrenchScrewdriver)
+                                    ->url(DiagnosticsPage::getUrl()),
+                            ])
+                            ->visible(fn (): bool => (bool) $this->backupOverview()['operational_failed'])
+                            ->columnSpanFull(),
+                        Callout::make(__('assestme.backups.overview.directory_unavailable'))
+                            ->description(__('assestme.backups.overview.directory_attention'))
+                            ->danger()
+                            ->actions([
+                                Action::make('openUnavailableDirectoryDiagnostics')
+                                    ->label(__('assestme.backups.actions.open_diagnostics'))
+                                    ->icon(Heroicon::OutlinedWrenchScrewdriver)
+                                    ->url(DiagnosticsPage::getUrl()),
+                            ])
+                            ->visible(fn (): bool => ! $this->backupOverview()['directory_exists'])
+                            ->columnSpanFull(),
+                        Callout::make(__('assestme.backups.overview.directory_not_writable'))
+                            ->description(__('assestme.backups.overview.directory_attention'))
+                            ->danger()
+                            ->actions([
+                                Action::make('openUnwritableDirectoryDiagnostics')
+                                    ->label(__('assestme.backups.actions.open_diagnostics'))
+                                    ->icon(Heroicon::OutlinedWrenchScrewdriver)
+                                    ->url(DiagnosticsPage::getUrl()),
+                            ])
+                            ->visible(fn (): bool => $this->backupOverview()['directory_exists']
+                                && ! $this->backupOverview()['directory_writable'])
+                            ->columnSpanFull(),
+                    ]),
+                EmbeddedTable::make(),
+                Section::make(__('assestme.backups.technical.heading'))
+                    ->description(__('assestme.backups.technical.description'))
+                    ->icon(Heroicon::OutlinedCog6Tooth)
+                    ->collapsed()
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ])
+                    ->schema([
+                        TextEntry::make('schedule')
+                            ->label(__('assestme.backups.technical.schedule'))
+                            ->state(__('assestme.backups.technical.schedule_value'))
+                            ->icon(Heroicon::OutlinedCalendarDays),
+                        TextEntry::make('retention')
+                            ->label(__('assestme.backups.technical.retention'))
+                            ->state(fn (): string => __('assestme.backups.technical.retention_values', $this->backupOverview()))
+                            ->icon(Heroicon::OutlinedArchiveBox),
+                        TextEntry::make('directory_status')
+                            ->label(__('assestme.backups.technical.directory_status'))
+                            ->state(fn (): string => $this->directoryStatus())
                             ->badge()
                             ->color(fn (): string => $this->backupOverview()['directory_writable'] ? 'success' : 'danger')
                             ->icon(fn (): Heroicon => $this->backupOverview()['directory_writable']
                                 ? Heroicon::OutlinedCheckCircle
                                 : Heroicon::OutlinedXCircle),
-                        TextEntry::make('retention')
-                            ->label(__('assestme.backups.overview.retention'))
-                            ->state(fn (): string => __('assestme.backups.overview.retention_values', $this->backupOverview()))
-                            ->icon(Heroicon::OutlinedCalendarDays),
-                        TextEntry::make('operational_status')
-                            ->label(__('assestme.backups.overview.operational_status'))
-                            ->state(fn (): string => (string) $this->backupOverview()['operational_status'])
-                            ->badge()
-                            ->color(fn (): string => (string) $this->backupOverview()['operational_color']),
-                        Callout::make(__('assestme.backups.overview.schedule_heading'))
-                            ->description(__('assestme.backups.overview.scheduler_required'))
-                            ->info()
-                            ->icon(Heroicon::OutlinedCalendarDays)
-                            ->footer([
-                                Text::make(__('assestme.backups.overview.schedule_value'))
-                                    ->weight(FontWeight::SemiBold),
-                            ])
+                        TextEntry::make('root')
+                            ->label(__('assestme.backups.technical.directory'))
+                            ->state(fn (): string => (string) $this->backupOverview()['root'])
+                            ->fontFamily(FontFamily::Mono)
+                            ->copyable()
                             ->columnSpanFull(),
+                    ])
+                    ->footerActions([
+                        Action::make('openTechnicalDiagnostics')
+                            ->label(__('assestme.backups.actions.open_diagnostics'))
+                            ->icon(Heroicon::OutlinedWrenchScrewdriver)
+                            ->url(DiagnosticsPage::getUrl()),
                     ]),
-                EmbeddedTable::make(),
                 Section::make(__('assestme.backups.restore.heading'))
                     ->description(__('assestme.backups.restore.description'))
                     ->icon(Heroicon::OutlinedCommandLine)
+                    ->collapsed()
                     ->columns(1)
                     ->schema([
-                        Callout::make(__('assestme.backups.restore.cli_only_heading'))
-                            ->description(__('assestme.backups.restore.cli_only_description'))
-                            ->warning(),
                         Text::make(__('assestme.backups.restore.choose_archive'))
                             ->icon(Heroicon::OutlinedCursorArrowRays),
-                        Text::make(__('assestme.backups.restore.reverifies'))
-                            ->icon(Heroicon::OutlinedShieldCheck),
-                        Text::make(__('assestme.backups.restore.safety_backup'))
-                            ->icon(Heroicon::OutlinedShieldCheck),
-                        Text::make(__('assestme.backups.restore.diagnostics'))
-                            ->icon(Heroicon::OutlinedShieldCheck),
-                        Text::make(__('assestme.backups.restore.rollback'))
+                        Text::make(__('assestme.backups.restore.safeguards_summary'))
                             ->icon(Heroicon::OutlinedShieldCheck),
                     ]),
             ]);
@@ -170,55 +217,60 @@ final class BackupSettingsPage extends Page implements HasTable
                 ])
                 ->all())
             ->columns([
-                TextColumn::make('name')
-                    ->label(__('assestme.backups.table.name'))
-                    ->copyable(),
+                TextColumn::make('modified_at')
+                    ->label(__('assestme.backups.table.modified_at'))
+                    ->dateTime('d/m/Y H:i', app(GeneralSettings::class)->timezone),
                 TextColumn::make('kind')
                     ->label(__('assestme.backups.table.kind'))
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => __("assestme.backups.types.{$state}"))
-                    ->color(fn (string $state): string => $state === 'safety' ? 'warning' : 'primary'),
-                TextColumn::make('modified_at')
-                    ->label(__('assestme.backups.table.modified_at'))
-                    ->dateTime('d/m/Y H:i', app(GeneralSettings::class)->timezone),
+                    ->color(fn (string $state): string => $state === 'safety' ? 'warning' : 'primary')
+                    ->tooltip(fn (string $state): ?string => $state === 'safety'
+                        ? __('assestme.backups.types.safety_description')
+                        : null),
+                TextColumn::make('name')
+                    ->label(__('assestme.backups.table.name'))
+                    ->fontFamily(FontFamily::Mono)
+                    ->copyable()
+                    ->wrap(),
                 TextColumn::make('size')
                     ->label(__('assestme.backups.table.size'))
-                    ->formatStateUsing(fn (int $state): string => $this->formatBytes($state)),
-            ])
-            ->headerActions([
-                Action::make('createBackup')
-                    ->label(__('assestme.backups.actions.create'))
-                    ->icon(Heroicon::OutlinedArchiveBoxArrowDown)
-                    ->action(fn (): null => $this->createBackup()),
+                    ->formatStateUsing(fn (int $state): string => $this->formatBytes($state))
+                    ->visibleFrom('sm'),
             ])
             ->recordActions([
-                Action::make('verify')
-                    ->label(__('assestme.backups.actions.verify'))
-                    ->icon(Heroicon::OutlinedShieldCheck)
-                    ->action(fn (array $record): null => $this->verifyArchive($record)),
                 Action::make('download')
                     ->label(__('assestme.backups.actions.download'))
                     ->icon(Heroicon::OutlinedCloudArrowDown)
+                    ->button()
                     ->url(fn (array $record): string => route('backups.download', ['archive' => $record['name']])),
-                Action::make('restoreInstructions')
-                    ->label(__('assestme.backups.actions.restore_instructions'))
-                    ->icon(Heroicon::OutlinedCommandLine)
-                    ->modalHeading(__('assestme.backups.restore.instructions_title'))
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel(__('assestme.backups.actions.close'))
-                    ->modalWidth(Width::FourExtraLarge)
-                    ->schema(fn (array $record): array => $this->restoreInstructionComponents($record)),
-                Action::make('delete')
-                    ->label(__('assestme.backups.actions.delete'))
-                    ->icon(Heroicon::OutlinedTrash)
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->modalHeading(__('assestme.backups.delete.heading'))
-                    ->modalDescription(fn (array $record): string => __('assestme.backups.delete.description', [
-                        'name' => $record['name'],
-                    ]))
-                    ->modalSubmitActionLabel(__('assestme.backups.delete.confirm'))
-                    ->action(fn (array $record): null => $this->deleteArchive($record)),
+                ActionGroup::make([
+                    Action::make('verify')
+                        ->label(__('assestme.backups.actions.verify'))
+                        ->icon(Heroicon::OutlinedShieldCheck)
+                        ->action(fn (array $record): null => $this->verifyArchive($record)),
+                    Action::make('restoreInstructions')
+                        ->label(__('assestme.backups.actions.restore_instructions'))
+                        ->icon(Heroicon::OutlinedCommandLine)
+                        ->modalHeading(__('assestme.backups.restore.instructions_title'))
+                        ->modalSubmitAction(false)
+                        ->modalCancelActionLabel(__('assestme.backups.actions.close'))
+                        ->modalWidth(Width::FourExtraLarge)
+                        ->schema(fn (array $record): array => $this->restoreInstructionComponents($record)),
+                    Action::make('delete')
+                        ->label(__('assestme.backups.actions.delete'))
+                        ->icon(Heroicon::OutlinedTrash)
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalHeading(__('assestme.backups.delete.heading'))
+                        ->modalDescription(fn (array $record): string => __('assestme.backups.delete.description', [
+                            'name' => $record['name'],
+                        ]))
+                        ->modalSubmitActionLabel(__('assestme.backups.delete.confirm'))
+                        ->action(fn (array $record): null => $this->deleteArchive($record)),
+                ])
+                    ->label(__('assestme.backups.actions.more'))
+                    ->icon(Heroicon::OutlinedEllipsisVertical),
             ])
             ->emptyStateHeading(__('assestme.backups.table.empty'))
             ->emptyStateDescription(__('assestme.backups.table.empty_description'))
@@ -229,6 +281,7 @@ final class BackupSettingsPage extends Page implements HasTable
     /**
      * @return array{
      *     latest_backup: string,
+     *     has_backups: bool,
      *     ordinary_count: int,
      *     safety_count: int,
      *     total_size: string,
@@ -239,7 +292,9 @@ final class BackupSettingsPage extends Page implements HasTable
      *     weekly: int,
      *     monthly: int,
      *     operational_status: string,
-     *     operational_color: string
+     *     operational_color: string,
+     *     operational_succeeded: bool,
+     *     operational_failed: bool
      * }
      */
     public function backupOverview(): array
@@ -247,6 +302,7 @@ final class BackupSettingsPage extends Page implements HasTable
         if ($this->cachedBackupOverview !== null) {
             /** @var array{
              *     latest_backup: string,
+             *     has_backups: bool,
              *     ordinary_count: int,
              *     safety_count: int,
              *     total_size: string,
@@ -257,7 +313,9 @@ final class BackupSettingsPage extends Page implements HasTable
              *     weekly: int,
              *     monthly: int,
              *     operational_status: string,
-             *     operational_color: string
+             *     operational_color: string,
+             *     operational_succeeded: bool,
+             *     operational_failed: bool
              * } $overview
              */
             $overview = $this->cachedBackupOverview;
@@ -272,11 +330,14 @@ final class BackupSettingsPage extends Page implements HasTable
             static fn (BackupArchiveData $archive): bool => $archive->kind === 'backup',
         ));
         $root = $catalog->configuredRoot();
-        $latest = $ordinary[0] ?? null;
+        $latest = $archives[0] ?? null;
         $check = app(OperationalCheckStore::class)->find(OperationalCheckType::Backup);
 
         $this->cachedBackupOverview = [
-            'latest_backup' => $latest === null ? '—' : $this->formatDate($latest->modifiedAt),
+            'latest_backup' => $latest === null
+                ? __('assestme.backups.overview.no_backup')
+                : $this->formatDate($latest->modifiedAt),
+            'has_backups' => $latest !== null,
             'ordinary_count' => count($ordinary),
             'safety_count' => count($archives) - count($ordinary),
             'total_size' => $this->formatBytes(array_sum(array_map(
@@ -290,15 +351,21 @@ final class BackupSettingsPage extends Page implements HasTable
             'weekly' => (int) config('assestme.backup.retention.weekly'),
             'monthly' => (int) config('assestme.backup.retention.monthly'),
             'operational_status' => match ($check?->status) {
-                OperationalCheckStatus::Succeeded => __('assestme.backups.overview.status_succeeded'),
-                OperationalCheckStatus::Failed => __('assestme.backups.overview.status_failed'),
-                default => __('assestme.backups.overview.status_unknown'),
+                OperationalCheckStatus::Succeeded => __('assestme.backups.overview.status_succeeded_at', [
+                    'date' => $this->formatDate($check->lastAttemptedAt),
+                ]),
+                OperationalCheckStatus::Failed => __('assestme.backups.overview.status_failed_at', [
+                    'date' => $this->formatDate($check->lastAttemptedAt),
+                ]),
+                default => __('assestme.backups.overview.status_never'),
             },
             'operational_color' => match ($check?->status) {
                 OperationalCheckStatus::Succeeded => 'success',
                 OperationalCheckStatus::Failed => 'danger',
                 default => 'gray',
             },
+            'operational_succeeded' => $check?->status === OperationalCheckStatus::Succeeded,
+            'operational_failed' => $check?->status === OperationalCheckStatus::Failed,
         ];
 
         return $this->backupOverview();
@@ -320,6 +387,7 @@ final class BackupSettingsPage extends Page implements HasTable
         } catch (Throwable $exception) {
             $this->logFailure('Backup creation from the Filament page failed.', $exception);
             $this->recordBackupCheck(OperationalCheckStatus::Failed, $exception->getMessage());
+            $this->cachedBackupOverview = null;
 
             Notification::make()
                 ->danger()
@@ -424,19 +492,6 @@ final class BackupSettingsPage extends Page implements HasTable
                             ->copyMessage(__('assestme.backups.restore.command_copied')),
                         $commands,
                     )),
-                Section::make(__('assestme.backups.restore.safeguards_heading'))
-                    ->icon(Heroicon::OutlinedShieldCheck)
-                    ->columns(1)
-                    ->schema([
-                        Text::make(__('assestme.backups.restore.reverifies'))
-                            ->icon(Heroicon::OutlinedCheckCircle),
-                        Text::make(__('assestme.backups.restore.safety_backup'))
-                            ->icon(Heroicon::OutlinedCheckCircle),
-                        Text::make(__('assestme.backups.restore.diagnostics'))
-                            ->icon(Heroicon::OutlinedCheckCircle),
-                        Text::make(__('assestme.backups.restore.rollback'))
-                            ->icon(Heroicon::OutlinedCheckCircle),
-                    ]),
             ];
         } catch (Throwable $exception) {
             $this->logFailure('Backup restore instructions could not be prepared.', $exception, $name);
@@ -449,11 +504,29 @@ final class BackupSettingsPage extends Page implements HasTable
         }
     }
 
-    private function directoryState(string $key): string
+    private function archiveCountSummary(): string
     {
-        return (bool) $this->backupOverview()[$key]
-            ? __('assestme.backups.overview.available')
-            : __('assestme.backups.overview.unavailable');
+        $overview = $this->backupOverview();
+
+        return __('assestme.backups.overview.archive_count_summary', [
+            'ordinary' => trans_choice('assestme.backups.overview.ordinary_count_value', (int) $overview['ordinary_count'], [
+                'count' => (int) $overview['ordinary_count'],
+            ]),
+            'safety' => trans_choice('assestme.backups.overview.safety_count_value', (int) $overview['safety_count'], [
+                'count' => (int) $overview['safety_count'],
+            ]),
+        ]);
+    }
+
+    private function directoryStatus(): string
+    {
+        if (! $this->backupOverview()['directory_exists']) {
+            return __('assestme.backups.overview.directory_unavailable');
+        }
+
+        return $this->backupOverview()['directory_writable']
+            ? __('assestme.backups.overview.directory_ready')
+            : __('assestme.backups.overview.directory_not_writable');
     }
 
     private function recordBackupCheck(OperationalCheckStatus $status, ?string $error = null): void

@@ -4,6 +4,19 @@
 
 ## Current state
 
+- 2026-09-13: Started the requested Backup page UI/UX refresh on `ui/backup-page` from
+  `main` at `ba21b07`. Scope is limited to the existing Filament Backup page, its Italian
+  translations, immediate operational-state refresh, focused feature/download coverage, and
+  desktop light/dark plus narrow visual verification; backup/restore contracts remain unchanged.
+- 2026-09-13: Completed focused Backup verification in Docker: `BackupSettingsPageTest` passed
+  11 tests with 110 assertions and `DownloadBackupTest` passed 4 tests with 23 assertions; focused
+  Pint and application PHPStan passed. Browser verification passed the empty, ordinary-plus-safety,
+  failed-attempt, desktop light/dark, 390 px, keyboard action-menu, collapsed technical/restore,
+  and four-command restore-modal states with no page-level horizontal overflow or browser errors.
+  The two generated archives and isolated visual-test directory were removed afterward without
+  touching the pre-existing local backup.
+- 2026-09-13: The mandatory pre-commit gate passed after the Backup refresh: strict Composer
+  validation, Pint on 504 files, PHPStan on 397 files, and 101 Unit tests with 658 assertions.
 - 2026-09-12: Started the explicitly requested branch-model bootstrap on `develop`. Verified after
   fetching and pruning remote refs that `main` is the direct ancestor of `develop` by 95 commits,
   neither permanent branch has local/remote drift, `main` is the GitHub default and is unprotected,
