@@ -22,6 +22,20 @@
   passed; complete application, extracted-release browser acceptance, and hosted CI were still
   in progress at commit preparation. Real hosting and manual device/browser acceptance remain
   NOT VERIFIED.
+- 2026-10-21: PR #1 CI run `39650619172` passed the mandatory check but blocked merge on
+  six Composer advisories affecting five already-locked packages. The remediation therefore
+  includes only targeted upstream security patches: Filament 5.8.3 (its eleven lockstep
+  packages), CommonMark 2.10.2, phpseclib 3.0.57, Symfony HttpFoundation 7.4.21 and YAML 7.4.18.
+  HttpFoundation 7.4.21 includes the upstream correction to the initial security patch's
+  whitespace-separator regression. No audit exception, ignored advisory, or package fork was
+  introduced. The previous local full application run was stopped before replacing dependencies;
+  its partial output is not a passing result. The prior extracted-release MariaDB journey passed
+  1 browser test / 43 assertions, login, diagnostics, scheduler and health; verification must now
+  cover the updated lockfile.
+- 2026-10-21: With the targeted dependency patches installed, the MFA Feature suite passed
+  5 tests / 30 assertions and the mandatory pre-commit gate again passed all 118 Unit tests /
+  708 assertions plus Composer, Pint and PHPStan. Filament's published assets were regenerated
+  through the package command, retaining the repository's non-executable file modes.
 - 2026-09-13: Started the requested Backup page UI/UX refresh on `ui/backup-page` from
   `main` at `ba21b07`. Scope is limited to the existing Filament Backup page, its Italian
   translations, immediate operational-state refresh, focused feature/download coverage, and

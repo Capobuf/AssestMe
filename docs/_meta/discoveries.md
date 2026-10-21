@@ -6,6 +6,11 @@
   every PHP version >=8.3.0 in installer, diagnostics and preflight; CI selected floating 8.3.
   No PHP application guard can patch request parsing before application execution. Production
   remediation requires independently updating and restarting the actual web and CLI runtimes.
+- 2026-10-21: Hosted CI audit on `f99f155` reported six pre-existing advisories in Filament,
+  CommonMark, phpseclib, Symfony HttpFoundation and Symfony YAML. Targeted patch upgrades resolve
+  this merge gate independently of PHP2Shell. The
+  [HttpFoundation advisory](https://symfony.com/cve-2026-108082) documents a regression in the
+  initial fix, corrected in 7.4.21; selecting only 7.4.19 would retain that known regression.
 - 2026-09-13: Axe 4.12.1 on the refreshed Backup page found no violation in the new page content,
   but reported the existing global light-theme lime text contrast for the active top-navigation
   item and Settings tab. It also left three closed Filament dropdown `aria-controls` references
