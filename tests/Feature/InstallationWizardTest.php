@@ -63,14 +63,15 @@ it('exposes only the protected installer flow before the definitive lock', funct
     $this->get('/js/assestme-installer.js')->assertNotFound();
 });
 
-it('does not advance while a real runtime requirement is missing', function (): void {
+it('does not advance while a real runtime requirement is missing or vulnerable', function (?string $runtimeVersion): void {
     Config::set([
         'assestme.installation.php_binary' => null,
         'laravel-pdf.weasyprint.binary' => null,
     ]);
     app()->instance(InstallationRuntimeInspector::class, new InstallationRuntimeInspector(
-        phpCandidatePaths: [],
-        weasyPrintCandidatePaths: [],
+        runtimeVersion: $runtimeVersion,
+        phpCandidatePaths: $runtimeVersion === null ? [] : [PHP_BINARY],
+        weasyPrintCandidatePaths: $runtimeVersion === null ? [] : null,
     ));
     $state = app(InstallationState::class);
     $progress = $state->progress();
@@ -97,7 +98,10 @@ it('does not advance while a real runtime requirement is missing', function (): 
         ->assertSessionHas('installation_error');
 
     expect($state->progress()->step)->toBe('runtime');
-});
+})->with([
+    'missing binaries' => [null],
+    'vulnerable web PHP with patched CLI' => ['8.4.26'],
+]);
 
 it('shows operational WeasyPrint installation instructions when automatic detection fails', function (): void {
     $inspection = (new InstallationRuntimeInspector(

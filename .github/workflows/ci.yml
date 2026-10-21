@@ -25,7 +25,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.3.36'
           coverage: none
           extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sockets, sqlite3, xml, zip
           ini-values: memory_limit=1G
@@ -71,7 +71,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.3.36'
           coverage: none
           extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sockets, sqlite3, xml, zip
           ini-values: memory_limit=1G
@@ -136,7 +136,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.3.36'
           coverage: none
           extensions: none, bcmath, ctype, curl, dom, fileinfo, gd, iconv, intl, mbstring, pdo, pdo_mysql, pdo_sqlite, phar, session, simplexml, tokenizer, xml, xmlreader, xmlwriter, zip
           ini-values: memory_limit=512M
@@ -230,7 +230,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: '8.3.36'
           coverage: none
           extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, pdo_mysql, pdo_sqlite, sockets, sqlite3, xml, zip
           ini-values: memory_limit=512M

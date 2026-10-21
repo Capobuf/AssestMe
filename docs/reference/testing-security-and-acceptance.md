@@ -142,7 +142,7 @@ For the optional Fatture in Cloud quote integration:
 
 The installer performs real deterministic probes for:
 
-- PHP web and CLI 8.3.0+;
+- PHP web and CLI meeting the [runtime security contract](runtime-and-dependencies.md);
 - required extensions;
 - secure writable paths;
 - WeasyPrint and a minimal PDF;

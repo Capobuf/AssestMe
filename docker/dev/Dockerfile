@@ -1,6 +1,6 @@
 FROM composer:2.10.2 AS composer
 
-FROM php:8.3.32-cli-trixie
+FROM php:8.3.36-cli-trixie
 
 ARG XDEBUG_VERSION=3.5.3
 

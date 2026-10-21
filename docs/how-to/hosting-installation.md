@@ -4,7 +4,7 @@ Questa è la guida generale per CloudPanel, cPanel, Plesk e hosting Linux che es
 
 ## Requisiti obbligatori
 
-- PHP web e PHP CLI 8.3 o superiore, con le estensioni richieste dall’installer.
+- PHP web e PHP CLI conformi al [contratto runtime](../reference/runtime-and-dependencies.md), con le estensioni richieste dall’installer.
 - PDO coerente: `pdo_sqlite` per SQLite oppure `pdo_mysql` per MySQL/MariaDB.
 - WeasyPrint 60.0 o superiore, verificabile con `weasyprint --version` e con il PDF minimo del wizard.
 - Document root sicura e storage privato fuori dalla document root.
@@ -14,6 +14,24 @@ Questa è la guida generale per CloudPanel, cPanel, Plesk e hosting Linux che es
 Le estensioni PHP richieste sono: `bcmath`, `ctype`, `curl`, `dom`, `fileinfo`, `filter`, `gd`, `iconv`, `intl`, `libxml`, `mbstring`, `openssl`, `pdo`, `phar`, `session`, `simplexml`, `tokenizer`, `xml`, `xmlreader`, `xmlwriter`, `zip` e `zlib`, oltre al PDO del database scelto.
 
 Non usare `0777`. Se il pre-flight segnala `private_directory_permissions_not_securable_by_web_process`, allineare la proprietà dei file al site user; il processo web non esegue `chown`.
+
+## Aggiornamento PHP2Shell
+
+1. Verificare la versione e il pacchetto PHP effettivamente usati dal sito, separatamente dal
+   binario CLI del cron. Le versioni corrette sono nel [contratto runtime](../reference/runtime-and-dependencies.md).
+2. Aggiornare entrambi tramite il provider o il gestore pacchetti del server. Il ZIP applicativo
+   non contiene PHP: aggiornare solo AssestMe non corregge PHP2Shell.
+3. Riavviare i processi PHP che servono il sito (pool PHP-FPM, Apache/mod_php o altro SAPI in uso)
+   e gli eventuali processi CLI persistenti, secondo la configurazione del provider.
+4. Verificare la nuova versione del processo web tramite il pannello/diagnostica autenticata e
+   quella CLI tramite il percorso effettivo con `--version`; eseguire `php artisan assestme:diagnose`
+   con quel binario e provare accesso, upload e generazione report.
+5. Per lo sviluppo Docker, ricostruire e ricreare il servizio:
+   `docker compose -f docker/compose.dev.yml up -d --build --force-recreate app`.
+
+I controlli applicativi non proteggono un interprete vulnerabile prima dell'esecuzione PHP.
+Le mitigazioni parziali, incluso disabilitare il progresso upload, non sostituiscono l'aggiornamento.
+Non dichiarare risolto un hosting senza evidenza dei runtime aggiornati e dei processi riavviati.
 
 ## Opzionale ma raccomandato
 
@@ -69,7 +87,7 @@ La frequenza è sempre `* * * * *`. Configurare il task dal pannello o, con shel
 
 ### Plesk
 
-Usare **Websites & Domains → Hosting Settings → Document root** per impostare `public`, **Websites & Domains → PHP** per PHP 8.3+, e **Websites & Domains → Scheduled Tasks** per il cron. Un percorso CLI tipico è `/opt/plesk/php/<versione>/bin/php`. Il task può girare in chroot: se quel percorso non è disponibile, usare “Run a PHP script” o chiedere il percorso al provider.
+Usare **Websites & Domains → Hosting Settings → Document root** per impostare `public`, **Websites & Domains → PHP** per la versione PHP prevista dal [contratto runtime](../reference/runtime-and-dependencies.md), e **Websites & Domains → Scheduled Tasks** per il cron. Un percorso CLI tipico è `/opt/plesk/php/<versione>/bin/php`. Il task può girare in chroot: se quel percorso non è disponibile, usare “Run a PHP script” o chiedere il percorso al provider.
 
 ## WeasyPrint
 
@@ -92,6 +110,6 @@ che `pip install` sia sufficiente.
 
 ## Hosting non compatibile
 
-Un piano non è compatibile se non offre PHP 8.3+, cron/task pianificati, WeasyPrint 60.0 o superiore,
+Un piano non è compatibile se non offre PHP conforme al [contratto runtime](../reference/runtime-and-dependencies.md), cron/task pianificati, WeasyPrint 60.0 o superiore,
 un layout con file privati fuori dalla document root, oppure la possibilità per il processo PHP di
 scrivere e mettere in sicurezza storage e `.env`.

@@ -6,13 +6,12 @@ namespace App\Services\Installation;
 
 use App\Data\Installation\InstallationRequirementResult;
 use App\Data\Installation\InstallationRuntimeInspectionResult;
+use App\Support\PhpRuntime;
 use Symfony\Component\Process\Process;
 use Throwable;
 
 final class InstallationRuntimeInspector
 {
-    private const MINIMUM_PHP_VERSION = '8.3.0';
-
     private const MINIMUM_WEASYPRINT_VERSION = '60.0';
 
     /** @var list<string> */
@@ -120,8 +119,8 @@ final class InstallationRuntimeInspector
             new InstallationRequirementResult(
                 key: 'runtime.php.version',
                 group: 'runtime',
-                passed: version_compare($runtimeVersion, self::MINIMUM_PHP_VERSION, '>='),
-                expected: '>= 8.3.0',
+                passed: PhpRuntime::supports($runtimeVersion),
+                expected: PhpRuntime::REQUIREMENT,
                 actual: $runtimeVersion,
             ),
         ];
@@ -424,7 +423,7 @@ final class InstallationRuntimeInspector
                         key: 'runtime.php_cli',
                         group: 'executable',
                         passed: true,
-                        expected: 'absolute_executable_php_cli_>=8.3.0',
+                        expected: 'absolute_executable_php_cli '.PhpRuntime::REQUIREMENT,
                         actual: $inspection['binary'].' '.$inspection['version'],
                     ),
                     'binary' => $inspection['binary'],
@@ -437,8 +436,8 @@ final class InstallationRuntimeInspector
                 key: 'runtime.php_cli',
                 group: 'executable',
                 passed: false,
-                expected: 'absolute_executable_php_cli_>=8.3.0',
-                actual: 'php_cli_>=8.3.0_not_detected',
+                expected: 'absolute_executable_php_cli '.PhpRuntime::REQUIREMENT,
+                actual: 'php_cli_with_php2shell_fixes_not_detected',
             ),
             'binary' => null,
         ];
@@ -495,7 +494,7 @@ final class InstallationRuntimeInspector
             $output = $process->getOutput().PHP_EOL.$process->getErrorOutput();
 
             if (preg_match('/^PHP\s+([0-9]+(?:\.[0-9]+){1,2}[^\s]*)\s+\(cli\)/mi', $output, $matches) !== 1
-                || ! version_compare($matches[1], self::MINIMUM_PHP_VERSION, '>=')) {
+                || ! PhpRuntime::supports($matches[1])) {
                 return null;
             }
 

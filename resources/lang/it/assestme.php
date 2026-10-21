@@ -219,10 +219,10 @@ return [
             'warning' => 'Da configurare',
         ],
         'checks' => [
-            'php_version' => 'PHP >= 8.3.0',
+            'php_version' => 'PHP con correzioni PHP2Shell',
             'memory_limit' => 'Memoria PHP',
             'common_extensions' => 'Estensioni PHP comuni',
-            'php_cli' => 'PHP CLI',
+            'php_cli' => 'PHP CLI con correzioni PHP2Shell',
             'weasyprint' => 'PDF WeasyPrint',
             'writable_paths' => 'Directory scrivibili',
             'production_configuration' => 'Configurazione produzione',

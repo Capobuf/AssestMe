@@ -16,7 +16,7 @@ An agent must not silently reinterpret, weaken, or supersede an accepted decisio
 
 ## Required stack
 
-- PHP web and CLI 8.3.0 or newer; no host operating-system distribution is normative.
+- PHP web and CLI with the PHP2Shell fixes required by `docs/reference/runtime-and-dependencies.md`; no host operating-system distribution is normative.
 - Laravel 13, Filament 5, and Livewire 4.
 - SQLite, MySQL, and MariaDB for fresh installations; no cross-driver data migration.
 - Filament Table Builder as the authoritative Finding navigator.

@@ -17,7 +17,8 @@ Defines the framework, runtime capabilities, development environment, dependency
 | D-003 | APPROVED | No host operating-system distribution is normative; runtime and bootstrap are capability-based |
 | D-004 (v1) | SUPERSEDED | PHP 8.3 was required from the official Ubuntu 24.04 repositories; superseded by D-004 on 2026-07-17 |
 | D-004 (v2) | SUPERSEDED | PHP 8.3 was required without prescribing an operating-system package source; superseded by D-004 on 2026-08-01 |
-| D-004 | APPROVED | PHP web and CLI must be version 8.3.0 or newer, without a maximum version or prescribed operating-system package source |
+| D-004 (v3) | SUPERSEDED | PHP web and CLI must be version 8.3.0 or newer, without a maximum version or prescribed operating-system package source; superseded by D-004 on 2026-10-21 for the explicitly requested PHP2Shell remediation |
+| D-004 | APPROVED | PHP web and CLI must include the PHP2Shell fixes: 8.3.36+ within 8.3, 8.4.27+ within 8.4, 8.5.12+ within 8.5, or stable 8.6.0 and newer, without a maximum version or prescribed operating-system package source |
 | D-005 | SUPERSEDED | SQLite was the sole database with foreign keys, WAL, and a 5-second busy timeout; superseded by D-063 on 2026-07-31 |
 | D-006 | APPROVED | File cache/session and synchronous queue; no Redis or worker |
 | D-007 (v1) | SUPERSEDED | Docker was prohibited together with frontend build dependencies; superseded by D-007 on 2026-07-17 |
