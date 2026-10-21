@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Data\Installation\InstallationRequirementResult;
 use App\Services\Installation\InstallationRuntimeInspector;
+use App\Support\PhpRuntime;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
@@ -111,7 +112,7 @@ it('returns structured passing results after real runtime filesystem CLI and PDF
         ->and($result->failures())->toBe([])
         ->and($result->phpBinary)->toBeString()->toStartWith(DIRECTORY_SEPARATOR)
         ->and($result->weasyPrintBinary)->toBeString()->toStartWith(DIRECTORY_SEPARATOR)
-        ->and($result->requirement('runtime.php.version')?->expected)->toBe('>= 8.3.0')
+        ->and($result->requirement('runtime.php.version')?->expected)->toBe(PhpRuntime::REQUIREMENT)
         ->and($result->requirement('runtime.php_cli')?->passed)->toBeTrue()
         ->and($result->requirement('runtime.weasyprint')?->actual)->toContain('%PDF-')
         ->and($extensionKeys)->toBe(array_map(
@@ -198,7 +199,7 @@ it('refuses a sensitive required directory that resolves below public', function
 });
 
 it('tries standard PHP CLI candidates after an invalid advanced override', function (): void {
-    $php = installationRuntimeFakePhp($this->runtimeInspectorRoot, '8.4.2');
+    $php = installationRuntimeFakePhp($this->runtimeInspectorRoot, '8.4.27');
     $weasyPrint = installationRuntimeFakeWeasyPrint($this->runtimeInspectorRoot);
     $inspector = new InstallationRuntimeInspector(
         phpCandidatePaths: [$php],
@@ -214,7 +215,7 @@ it('tries standard PHP CLI candidates after an invalid advanced override', funct
 });
 
 it('accepts CLI probes from cPanel and Plesk candidate-equivalent paths', function (string $relativePath): void {
-    $php = installationRuntimeFakePhp($this->runtimeInspectorRoot, '8.3.21');
+    $php = installationRuntimeFakePhp($this->runtimeInspectorRoot, '8.3.36');
     $candidate = $this->runtimeInspectorRoot.DIRECTORY_SEPARATOR.$relativePath;
     File::ensureDirectoryExists(dirname($candidate), 0700, true);
     File::move($php, $candidate);
@@ -321,7 +322,7 @@ it('rejects a successful WeasyPrint process that does not create a PDF signature
         ))->toBe([]);
 });
 
-it('accepts PHP 8.3 and 8.4 web and CLI runtimes and rejects PHP 8.2', function (
+it('rejects vulnerable PHP web and CLI versions and accepts each patched release series', function (
     string $version,
     bool $expected,
 ): void {
@@ -341,13 +342,27 @@ it('accepts PHP 8.3 and 8.4 web and CLI runtimes and rejects PHP 8.2', function 
         ->and($result->requirement('runtime.php_cli')?->passed)->toBe($expected)
         ->and($result->phpBinary === null)->toBe(! $expected);
 })->with([
-    'minimum PHP 8.3' => ['8.3.0', true],
-    'newer PHP 8.4' => ['8.4.3', true],
-    'unsupported PHP 8.2' => ['8.2.29', false],
+    'unsupported PHP 8.2 even with fixes' => ['8.2.35', false],
+    'old minimum' => ['8.3.0', false],
+    'previous Docker runtime' => ['8.3.32', false],
+    'last vulnerable 8.3' => ['8.3.35', false],
+    'patched 8.3' => ['8.3.36', true],
+    'later 8.3' => ['8.3.37', true],
+    'vulnerable 8.4' => ['8.4.26', false],
+    'patched 8.4' => ['8.4.27', true],
+    'later 8.4' => ['8.4.28', true],
+    'vulnerable 8.5' => ['8.5.11', false],
+    'patched 8.5' => ['8.5.12', true],
+    'later 8.5' => ['8.5.13', true],
+    'future stable series' => ['8.6.0', true],
+    'unpatched 8.4 prerelease' => ['8.4.0RC1', false],
+    'unpatched 8.5 prerelease' => ['8.5.0RC1', false],
+    'unpatched 8.6 prerelease' => ['8.6.0RC3', false],
+    '8.6 prerelease is not a stable runtime' => ['8.6.0RC4', false],
 ]);
 
 it('detects WeasyPrint automatically and verifies a real PDF signature', function (): void {
-    $php = installationRuntimeFakePhp($this->runtimeInspectorRoot, '8.3.0');
+    $php = installationRuntimeFakePhp($this->runtimeInspectorRoot, '8.3.36');
     $weasyPrint = installationRuntimeFakeWeasyPrint($this->runtimeInspectorRoot);
     $inspector = new InstallationRuntimeInspector(
         phpCandidatePaths: [$php],
@@ -359,4 +374,29 @@ it('detects WeasyPrint automatically and verifies a real PDF signature', functio
     expect($result->weasyPrintBinary)->toBe(realpath($weasyPrint))
         ->and($result->requirement('runtime.weasyprint')?->passed)->toBeTrue()
         ->and($result->requirement('runtime.weasyprint')?->actual)->toContain('%PDF-');
+});
+
+it('checks web and CLI patch levels independently', function (string $webVersion, string $cliVersion): void {
+    $php = installationRuntimeFakePhp($this->runtimeInspectorRoot, $cliVersion);
+    $weasyPrint = installationRuntimeFakeWeasyPrint($this->runtimeInspectorRoot);
+    $result = (new InstallationRuntimeInspector(
+        runtimeVersion: $webVersion,
+        phpCandidatePaths: [$php],
+        weasyPrintCandidatePaths: [$weasyPrint],
+    ))->inspect($this->runtimeInspectorRoot, $php, $weasyPrint);
+
+    expect($result->passed())->toBeFalse()
+        ->and($result->requirement('runtime.php.version')?->passed)->toBe($webVersion === '8.3.36')
+        ->and($result->requirement('runtime.php_cli')?->passed)->toBe($cliVersion === '8.3.36');
+})->with([
+    'only web patched' => ['8.3.36', '8.3.35'],
+    'only CLI patched' => ['8.3.35', '8.3.36'],
+]);
+
+it('keeps the Composer PHP requirement aligned with runtime security checks', function (): void {
+    $composer = json_decode(File::get(base_path('composer.json')), true, flags: JSON_THROW_ON_ERROR);
+    $lock = json_decode(File::get(base_path('composer.lock')), true, flags: JSON_THROW_ON_ERROR);
+
+    expect($composer['require']['php'])->toBe(PhpRuntime::REQUIREMENT)
+        ->and($lock['platform']['php'])->toBe(PhpRuntime::REQUIREMENT);
 });

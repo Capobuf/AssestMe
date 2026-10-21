@@ -4,6 +4,24 @@
 
 ## Current state
 
+- 2026-10-21: Started the requested PHP2Shell remediation on `codex/php2shell` from clean
+  `main` at `1939501`, after fetching refs and finding no unmerged work branches. Scope:
+  patched development/CI PHP, shared web/CLI runtime checks, Composer requirements, regression
+  coverage, and hosting update instructions. The user explicitly requested PR publication and
+  merge after verification; production runtime access has not been established.
+- 2026-10-21: PHP2Shell focused verification passed on rebuilt PHP 8.3.36: 34 runtime Unit
+  tests / 134 assertions; 38 deployment/installer Feature tests / 564 assertions on MariaDB;
+  SQLite smoke 5 tests / 31 assertions and MySQL 8.4.11 smoke 5 tests / 37 assertions.
+  The mandatory Compose pre-commit gate passed Composer validation, Pint (505 files), PHPStan
+  (398 files), and 118 Unit tests / 708 assertions. Its first run failed BenchmarkIsolationTest
+  while release construction and other checks were concurrent; the focused rerun and complete
+  gate rerun passed without code or threshold changes. HTTP returned 200 with PHP/8.3.36 and
+  application diagnostics reported both web-runtime rules and CLI checks passed. The unrelated
+  `mp3-app` container occupied host port 8000, so a temporary, untracked Compose override exposed
+  this application's port on 127.0.0.1:18000. ZIP integrity and SHA-256 manifest verification
+  passed; complete application, extracted-release browser acceptance, and hosted CI were still
+  in progress at commit preparation. Real hosting and manual device/browser acceptance remain
+  NOT VERIFIED.
 - 2026-09-13: Started the requested Backup page UI/UX refresh on `ui/backup-page` from
   `main` at `ba21b07`. Scope is limited to the existing Filament Backup page, its Italian
   translations, immediate operational-state refresh, focused feature/download coverage, and

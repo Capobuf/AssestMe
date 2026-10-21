@@ -20,8 +20,9 @@ database_driver="${2:-${DB_CONNECTION:-sqlite}}"
 [[ "$database_driver" == "sqlite" || "$database_driver" == "mysql" || "$database_driver" == "mariadb" ]] || \
     fail "Database driver must be sqlite, mysql, or mariadb."
 
-php -r 'exit(version_compare(PHP_VERSION, "8.3.0", ">=") ? 0 : 1);' || \
-    fail "PHP >= 8.3.0 is required; detected $(php -r 'echo PHP_VERSION;')."
+php -r 'require $argv[1]; exit(App\Support\PhpRuntime::supports(PHP_VERSION) ? 0 : 1);' \
+    "$project_dir/app/Support/PhpRuntime.php" || \
+    fail "PHP with PHP2Shell fixes is required; detected $(php -r 'echo PHP_VERSION;'). See docs/reference/runtime-and-dependencies.md."
 
 required_extensions=(
     bcmath ctype curl dom fileinfo filter gd iconv intl libxml mbstring openssl

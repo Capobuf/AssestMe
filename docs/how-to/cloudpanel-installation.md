@@ -13,7 +13,7 @@ Scaricare soltanto l'archivio di release pubblicato. Il pacchetto contiene `RELE
 ## Creazione del sito dalla GUI
 
 1. In CloudPanel aprire **Sites**, scegliere **Add Site** e quindi **Create a PHP Site**.
-2. Selezionare il template Laravel 13 e PHP 8.3 o superiore, inserire il dominio e creare il sito.
+2. Selezionare il template Laravel 13 e PHP conforme al [contratto runtime](../reference/runtime-and-dependencies.md), inserire il dominio e creare il sito.
 3. Abilitare SSL/TLS dalla sezione del dominio e verificare che HTTPS sia operativo.
 4. Abilitare temporaneamente **Basic Authentication** nella sezione Security del sito, oppure limitare l'accesso al proprio IP.
 5. Impostare la document root sulla directory `public` dell'applicazione, mai sulla root del progetto. Esempio: `/home/<site-user>/htdocs/<dominio>/public`.
@@ -73,7 +73,7 @@ Su alcune distribuzioni `default-mysql-client` installa in realtà client MariaD
 
 1. Aprire `https://<dominio>/install` autenticandosi con la protezione temporanea CloudPanel.
 2. Controllare dominio e versione nella schermata iniziale e confermare che il database sia nuovo.
-3. Superare i controlli reali su PHP 8.3 o superiore, estensioni, directory, PHP CLI rilevato automaticamente e generazione PDF WeasyPrint.
+3. Superare i controlli reali su PHP conforme al [contratto runtime](../reference/runtime-and-dependencies.md), estensioni, directory, PHP CLI rilevato automaticamente e generazione PDF WeasyPrint.
 4. Inserire URL HTTPS, timezone `Europe/Rome`, locale `it` e directory backup. Il nome applicazione resta sempre `AssestMe`; il wizard non chiede percorsi di binari.
 5. Scegliere SQLite oppure MySQL / MariaDB. Per SQLite usare il percorso proposto sotto `storage/app/database`, fuori da `public`. Per un server database inserire i dati creati in CloudPanel e, se necessario, il socket Unix; AssestMe stabilisce la connessione tramite PDO e rileva automaticamente se il prodotto è MySQL o MariaDB.
 6. Eseguire il test database. AssestMe verifica identità del prodotto, versione, charset, InnoDB, privilegi, schema, vincoli, transazioni e cleanup delle tabelle casuali di probe. Un database non vuoto o appartenente a un'altra applicazione viene bloccato senza offrire cancellazioni.

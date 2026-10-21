@@ -10,7 +10,7 @@ This repository uses a small documentation set instead of the former monolithic 
 - Source branch: `develop`.
 - Source commit inspected: `d466ff1c0c3851fecee3d468cde7cb9359db5ae4`.
 - Original `plan.md` Git blob: `c201bf64ec39519e1f26eba5f18e63886f3ae8ae`.
-- PHP contract: PHP web and CLI 8.3.0 or newer.
+- PHP contract: patched web and CLI versions listed in [Runtime and dependencies](docs/reference/runtime-and-dependencies.md).
 - Application stack: Laravel 13, Filament 5, Livewire 4.
 - Databases for fresh installations: SQLite, MySQL, MariaDB.
 - PDF renderer: WeasyPrint through Spatie Laravel PDF.

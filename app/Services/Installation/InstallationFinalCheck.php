@@ -115,7 +115,7 @@ final readonly class InstallationFinalCheck
             return 'Bootstrap, database e invarianti applicative rispondono.';
         });
 
-        $checks[] = $this->check('php_cli', 'PHP CLI >= 8.3.0', function () use ($application): string {
+        $checks[] = $this->check('php_cli', __('assestme.diagnostics.checks.php_cli'), function () use ($application): string {
             $inspection = $this->runtimeInspector->inspect(base_path(), $application->phpBinary, $application->weasyPrintBinary);
 
             if ($inspection->phpBinary !== $application->phpBinary || ! $inspection->passed()) {

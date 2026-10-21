@@ -1,5 +1,11 @@
 # Discoveries
 
+- 2026-10-21: PHP's [official advisory](https://www.php.net/archive/2026.php#2026-10-21-5) confirms
+  PHP2Shell (CVE-2026-109618/CVE-2026-109619) is fixed in PHP 8.3.36, 8.4.27 and 8.5.12
+  for the application-supported series. The repository pinned Docker to 8.3.32 and accepted
+  every PHP version >=8.3.0 in installer, diagnostics and preflight; CI selected floating 8.3.
+  No PHP application guard can patch request parsing before application execution. Production
+  remediation requires independently updating and restarting the actual web and CLI runtimes.
 - 2026-09-13: Axe 4.12.1 on the refreshed Backup page found no violation in the new page content,
   but reported the existing global light-theme lime text contrast for the active top-navigation
   item and Settings tab. It also left three closed Filament dropdown `aria-controls` references

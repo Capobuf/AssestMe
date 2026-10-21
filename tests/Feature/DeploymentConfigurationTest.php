@@ -117,7 +117,7 @@ it('defines the authoritative minimal Docker development topology semantically',
 
     $dockerfile = strtolower((string) file_get_contents($dockerfilePath));
     expect($dockerfile)
-        ->toContain('from php:8.3.32-cli-trixie')
+        ->toContain('from php:8.3.36-cli-trixie')
         ->not->toContain('bookworm')
         ->toContain('from composer:2.10.2')
         ->toContain('arg xdebug_version=3.5.3')
@@ -298,7 +298,7 @@ it('uses capability-based preflight and rejects an incomplete project root', fun
     $script = (string) file_get_contents(base_path('scripts/preflight.sh'));
 
     expect($script)
-        ->toContain('PHP >= 8.3.0 is required')
+        ->toContain('PHP with PHP2Shell fixes is required')
         ->toContain('Missing required PHP extension')
         ->toContain('artisan, composer.json, and composer.lock')
         ->not->toContain('lsb_release')
@@ -588,6 +588,12 @@ it('defines one primary CI workflow with separated non-repeating jobs', function
     $sqliteSmoke = collect($workflow['jobs']['compatibility-smoke']['steps'])->firstWhere('name', 'Run SQLite compatibility smoke');
     $mysqlSmoke = collect($workflow['jobs']['compatibility-smoke']['steps'])->firstWhere('name', 'Run MySQL compatibility smoke');
     $releaseDiagnostics = collect($installer['steps'])->firstWhere('name', 'Upload release installer diagnostics');
+
+    foreach (['check', 'application', 'installer', 'compatibility-smoke'] as $job) {
+        $phpSetup = collect($workflow['jobs'][$job]['steps'])->firstWhere('name', 'Set up PHP');
+
+        expect($phpSetup['with']['php-version'])->toBe('8.3.36');
+    }
 
     expect(array_keys($workflow['jobs']))->toBe([
         'check',

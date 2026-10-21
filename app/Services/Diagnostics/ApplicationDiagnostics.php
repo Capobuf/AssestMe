@@ -13,6 +13,7 @@ use App\Services\Database\DatabaseClientBinaryResolver;
 use App\Services\Database\DatabaseDriverResolver;
 use App\Services\Installation\InstallationRuntimeInspector;
 use App\Services\Installation\SchedulerHeartbeat;
+use App\Support\PhpRuntime;
 use Illuminate\Database\Connection;
 use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Support\Facades\DB;
@@ -168,7 +169,7 @@ final readonly class ApplicationDiagnostics
      */
     private function runtimeChecks(array $missingExtensions): array
     {
-        $versionPassed = version_compare(PHP_VERSION, '8.3.0', '>=');
+        $versionPassed = PhpRuntime::supports(PHP_VERSION);
         $memoryLimit = trim((string) ini_get('memory_limit'));
         $memoryBytes = ini_parse_quantity($memoryLimit);
         $memoryPassed = $memoryLimit === '-1' || $memoryBytes >= 512 * 1024 * 1024;

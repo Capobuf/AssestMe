@@ -2,11 +2,20 @@
 
 ## Runtime contract
 
-- PHP web and CLI: 8.3.0 or newer.
+- PHP web and CLI must include the PHP2Shell fixes: PHP 8.3.36+ within 8.3,
+  8.4.27+ within 8.4, 8.5.12+ within 8.5, or stable 8.6.0 and newer. Older releases in each series fail runtime checks.
 - WeasyPrint: 60.0 or newer.
 - No maximum PHP version is declared by documentation alone; the installer and dependency set validate the actual runtime.
 - No operating-system distribution or CPU architecture is normative.
 - Timestamps are stored in UTC and presented in `Europe/Rome`.
+
+The [PHP security advisory](https://www.php.net/archive/2026.php#2026-10-21-5) identifies
+CVE-2026-109618 and CVE-2026-109619 as runtime vulnerabilities that can occur before application
+code executes. Installer, diagnostics, preflight and Composer checks prevent accepting a known
+vulnerable upstream version; they do not patch PHP or protect request parsing on an old runtime.
+Vendor backports retaining an older version string are not automatically accepted because these
+checks cannot establish patch provenance. Upgrade and restart both web workers and CLI consumers
+using the [hosting procedure](../how-to/hosting-installation.md#aggiornamento-php2shell).
 
 Required PHP extensions:
 
